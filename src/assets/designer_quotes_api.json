@@ -1,0 +1,767 @@
+[
+  {
+    "id": 1,
+    "quote": "好的设计显而易见，伟大的设计是透明的。"
+  },
+  {
+    "id": 2,
+    "quote": "创造力是用不完的。你用得越多，就有越多。",
+    "author": "玛娅·安杰鲁 (Maya Angelou)"
+  },
+  {
+    "id": 3,
+    "quote": "设计不仅仅是它的外观和感觉。设计是它的工作方式。",
+    "author": "史蒂夫·乔布斯 (Steve Jobs)"
+  },
+  {
+    "id": 4,
+    "quote": "每一个伟大的设计都始于一个更好的故事。"
+  },
+  {
+    "id": 5,
+    "quote": "简单是终极的复杂。",
+    "author": "达芬奇 (Leonardo da Vinci)"
+  },
+  {
+    "id": 6,
+    "quote": "少即是多。",
+    "author": "密斯·凡·德罗 (Ludwig Mies van der Rohe)"
+  },
+  {
+    "id": 7,
+    "quote": "颜色、形状和字体是设计的语法。"
+  },
+  {
+    "id": 8,
+    "quote": "设计增加价值的速度快于成本。"
+  },
+  {
+    "id": 9,
+    "quote": "好的设计尽可能少的设计。",
+    "author": "迪特·拉姆斯 (Dieter Rams)"
+  },
+  {
+    "id": 10,
+    "quote": "细节不是细枝末节，它们成就了设计。",
+    "author": "查尔斯·伊姆斯 (Charles Eames)"
+  },
+  {
+    "id": 11,
+    "quote": "创新与设计密不可分."
+  },
+  {
+    "id": 12,
+    "quote": "排版是赋予语言持久视觉形式的技艺."
+  },
+  {
+    "id": 13,
+    "quote": "设计是品牌无声的代言人.",
+    "author": "保罗·兰德 (Paul Rand)"
+  },
+  {
+    "id": 14,
+    "quote": "设计必须反映商业中的实用性和美观性，但最重要的是，好的设计必须主要服务于人."
+  },
+  {
+    "id": 15,
+    "quote": "最好的设计是人们从未注意到的.",
+    "author": "雷蒙德·罗维 (Raymond Loewy)"
+  },
+  {
+    "id": 16,
+    "quote": "设计师知道他实现了完美，不是当没有东西可加时，而是当没有东西可减时.",
+    "author": "安托万·德·圣-埃克苏佩里 (Antoine de Saint-Exupery)"
+  },
+  {
+    "id": 17,
+    "quote": "用户界面就像笑话，如果需要解释，那就不好了."
+  },
+  {
+    "id": 18,
+    "quote": "设计是可见的智慧.",
+    "author": "保罗·兰德 (Paul Rand)"
+  },
+  {
+    "id": 19,
+    "quote": "创造力需要勇气，但设计赋予它目的.",
+    "author": "亨利·马蒂斯 (Henri Matisse)"
+  },
+  {
+    "id": 20,
+    "quote": "设计不是装饰，设计是解决问题.",
+    "author": "查尔斯·伊姆斯 (Charles Eames)"
+  },
+  {
+    "id": 21,
+    "quote": "设计是一种思维方式，不仅仅是一种技能.",
+    "author": "蒂姆·布朗 (Tim Brown)"
+  },
+  {
+    "id": 22,
+    "quote": "没有调研的设计就是装饰.",
+    "author": "艾伦·库珀 (Alan Cooper)"
+  },
+  {
+    "id": 23,
+    "quote": "设计的终极目标是改善人们的生活.",
+    "author": "维克多·帕帕纳克 (Victor Papanek)"
+  },
+  {
+    "id": 24,
+    "quote": "优秀的设计是永恒的.",
+    "author": "马西莫·维格内利 (Massimo Vignelli)"
+  },
+  {
+    "id": 25,
+    "quote": "设计不仅关乎美感，更关乎功能.",
+    "author": "唐·诺曼 (Don Norman)"
+  },
+  {
+    "id": 26,
+    "quote": "在设计中，减法往往比加法更重要.",
+    "author": "贾尼·罗达里 (Gianni Rodari)"
+  },
+  {
+    "id": 27,
+    "quote": "设计是将混乱转化为秩序的过程.",
+    "author": "布鲁诺·穆纳里 (Bruno Munari)"
+  },
+  {
+    "id": 28,
+    "quote": "真正的创新来自对用户的深入理解.",
+    "author": "唐·诺曼 (Don Norman)"
+  },
+  {
+    "id": 29,
+    "quote": "设计的力量在于它能够改变人们的行为.",
+    "author": "罗伯特·布林赫斯特 (Robert Bringhurst)"
+  },
+  {
+    "id": 30,
+    "quote": "好的设计应该是直观的.",
+    "author": "史蒂夫·克鲁格 (Steve Krug)"
+  },
+  {
+    "id": 31,
+    "quote": "设计是一种服务，不是一种表演.",
+    "author": "马西莫·维格内利 (Massimo Vignelli)"
+  },
+  {
+    "id": 32,
+    "quote": "设计的本质是解决问题，而不是创造问题.",
+    "author": "查尔斯·伊姆斯 (Charles Eames)"
+  },
+  {
+    "id": 33,
+    "quote": "优秀的设计始于对问题的正确定义.",
+    "author": "亨利·德雷福斯 (Henry Dreyfuss)"
+  },
+  {
+    "id": 34,
+    "quote": "设计是一种平衡的艺术.",
+    "author": "保罗·兰德 (Paul Rand)"
+  },
+  {
+    "id": 35,
+    "quote": "没有约束的设计不是真正的设计.",
+    "author": "查尔斯·伊姆斯 (Charles Eames)"
+  },
+  {
+    "id": 36,
+    "quote": "设计应该服务于目的，而不是个人喜好.",
+    "author": "迪特·拉姆斯 (Dieter Rams)"
+  },
+  {
+    "id": 37,
+    "quote": "好的设计让产品更有价值.",
+    "author": "托马斯·沃森 (Thomas J. Watson)"
+  },
+  {
+    "id": 38,
+    "quote": "设计是连接艺术与工程的桥梁.",
+    "author": "史蒂夫·乔布斯 (Steve Jobs)"
+  },
+  {
+    "id": 39,
+    "quote": "优秀的设计源于对细节的执着.",
+    "author": "查尔斯·伊姆斯 (Charles Eames)"
+  },
+  {
+    "id": 40,
+    "quote": "设计不是装饰，而是沟通.",
+    "author": "索尔·巴斯 (Saul Bass)"
+  },
+  {
+    "id": 41,
+    "quote": "真正的设计是看不见的.",
+    "author": "迪特·拉姆斯 (Dieter Rams)"
+  },
+  {
+    "id": 42,
+    "quote": "设计的价值在于它能解决的问题.",
+    "author": "约翰·梅达 (John Maeda)"
+  },
+  {
+    "id": 43,
+    "quote": "好的设计让复杂的事物变得简单.",
+    "author": "约翰·梅达 (John Maeda)"
+  },
+  {
+    "id": 44,
+    "quote": "设计是一种策略，不仅仅是美学.",
+    "author": "拉尔夫·卡普兰 (Ralph Caplan)"
+  },
+  {
+    "id": 45,
+    "quote": "设计的终极目标是创造价值.",
+    "author": "托马斯·沃森 (Thomas J. Watson)"
+  },
+  {
+    "id": 46,
+    "quote": "优秀的设计来自于深思熟虑.",
+    "author": "布鲁诺·穆纳里 (Bruno Munari)"
+  },
+  {
+    "id": 47,
+    "quote": "设计是一种责任，不仅仅是一种职业.",
+    "author": "维克多·帕帕纳克 (Victor Papanek)"
+  },
+  {
+    "id": 48,
+    "quote": "好的设计应该经得起时间的考验.",
+    "author": "马西莫·维格内利 (Massimo Vignelli)"
+  },
+  {
+    "id": 49,
+    "quote": "设计的力量在于它的普遍性.",
+    "author": "布鲁斯·劳 (Bruce Mau)"
+  },
+  {
+    "id": 50,
+    "quote": "设计是一种对话，不是独白.",
+    "author": "艾伦·弗莱彻 (Alan Fletcher)"
+  },
+  {
+    "id": 51,
+    "quote": "优秀的设计应该是可持续的.",
+    "author": "维克多·帕帕纳克 (Victor Papanek)"
+  },
+  {
+    "id": 52,
+    "quote": "设计是创新的催化剂.",
+    "author": "罗伯特·布伦纳 (Robert Brunner)"
+  },
+  {
+    "id": 53,
+    "quote": "好的设计让生活更美好.",
+    "author": "迪特·拉姆斯 (Dieter Rams)"
+  },
+  {
+    "id": 54,
+    "quote": "设计是一种思考方式.",
+    "author": "蒂姆·布朗 (Tim Brown)"
+  },
+  {
+    "id": 55,
+    "quote": "设计的真谛在于简约而不简单.",
+    "author": "爱德华·图夫特 (Edward Tufte)"
+  },
+  {
+    "id": 56,
+    "quote": "设计是艺术与科技的完美融合.",
+    "author": "史蒂夫·乔布斯 (Steve Jobs)"
+  },
+  {
+    "id": 57,
+    "quote": "好的设计是有温度的.",
+    "author": "雷·伊姆斯 (Ray Eames)"
+  },
+  {
+    "id": 58,
+    "quote": "设计是一种责任担当.",
+    "author": "维克多·帕帕纳克 (Victor Papanek)"
+  },
+  {
+    "id": 59,
+    "quote": "设计的本质是创新.",
+    "author": "罗伯特·布伦纳 (Robert Brunner)"
+  },
+  {
+    "id": 60,
+    "quote": "设计是一种生活方式.",
+    "author": "马西莫·维格内利 (Massimo Vignelli)"
+  },
+  {
+    "id": 61,
+    "quote": "设计不是修饰，而是重新思考整个问题.",
+    "author": "埃特尔·索尼恩 (Ettore Sottsass)"
+  },
+  {
+    "id": 62,
+    "quote": "设计的目的不是让产品看起来漂亮，而是让它工作得更好.",
+    "author": "亨利·德雷福斯 (Henry Dreyfuss)"
+  },
+  {
+    "id": 63,
+    "quote": "设计就是让每个细节都完美契合.",
+    "author": "尼克·劳 (Nick Law)"
+  },
+  {
+    "id": 64,
+    "quote": "优秀的设计让科技更人性化.",
+    "author": "格尔德·阿尔诺德 (Gerd Arntz)"
+  },
+  {
+    "id": 65,
+    "quote": "设计应该像空气一样自然.",
+    "author": "内维尔·布罗迪 (Neville Brody)"
+  },
+  {
+    "id": 66,
+    "quote": "好的设计是诚实的设计.",
+    "author": "奥托·艾舍 (Otl Aicher)"
+  },
+  {
+    "id": 67,
+    "quote": "设计不仅是表达，更是探索.",
+    "author": "沃尔夫冈·魏因加特 (Wolfgang Weingart)"
+  },
+  {
+    "id": 68,
+    "quote": "设计的终极目标是改变行为.",
+    "author": "罗伯特·格林 (Robert Greene)"
+  },
+  {
+    "id": 69,
+    "quote": "简单不是简化，而是深入理解.",
+    "author": "赫伯特·拜尔 (Herbert Bayer)"
+  },
+  {
+    "id": 70,
+    "quote": "设计是一种态度，不仅仅是一种技巧.",
+    "author": "拉斯洛·莫霍利-纳吉 (László Moholy-Nagy)"
+  },
+  {
+    "id": 71,
+    "quote": "好的设计应该是环境友好的.",
+    "author": "威廉·麦克唐纳 (William McDonough)"
+  },
+  {
+    "id": 72,
+    "quote": "设计的力量在于它能够连接人与人.",
+    "author": "扬·奇希霍尔德 (Jan Tschichold)"
+  },
+  {
+    "id": 73,
+    "quote": "设计不是装饰，而是解决方案.",
+    "author": "约瑟夫·缪勒-布洛克曼 (Josef Müller-Brockmann)"
+  },
+  {
+    "id": 74,
+    "quote": "优秀的设计源于对问题的深刻理解.",
+    "author": "阿德里安·弗鲁蒂格 (Adrian Frutiger)"
+  },
+  {
+    "id": 75,
+    "quote": "设计应该尊重使用者的智慧.",
+    "author": "村上春树 (Haruki Murakami)"
+  },
+  {
+    "id": 76,
+    "quote": "设计的真正价值在于它如何改善生活.",
+    "author": "理查德·布坎南 (Richard Buchanan)"
+  },
+  {
+    "id": 77,
+    "quote": "好的设计是永恒的对话.",
+    "author": "埃米尔·鲁德 (Emil Ruder)"
+  },
+  {
+    "id": 78,
+    "quote": "设计应该是一种无声的服务.",
+    "author": "肯·加兰德 (Ken Garland)"
+  },
+  {
+    "id": 79,
+    "quote": "创新设计始于对传统的理解.",
+    "author": "伊藤丰雄 (Toyoo Ito)"
+  },
+  {
+    "id": 80,
+    "quote": "设计的本质是解决矛盾.",
+    "author": "原研哉 (Kenya Hara)"
+  },
+  {
+    "id": 81,
+    "quote": "好的设计让复杂变得优雅.",
+    "author": "深泽直人 (Naoto Fukasawa)"
+  },
+  {
+    "id": 82,
+    "quote": "设计是文化的视觉表达.",
+    "author": "田中一光 (Ikko Tanaka)"
+  },
+  {
+    "id": 83,
+    "quote": "设计应该尊重材料的本质.",
+    "author": "柳宗理 (Sori Yanagi)"
+  },
+  {
+    "id": 84,
+    "quote": "最好的设计是最少的设计.",
+    "author": "三宅一生 (Issey Miyake)"
+  },
+  {
+    "id": 85,
+    "quote": "设计的终极目标是创造和谐.",
+    "author": "安藤忠雄 (Tadao Ando)"
+  },
+  {
+    "id": 86,
+    "quote": "用户体验设计的关键是理解用户的心智模型.",
+    "author": "杰克·尼尔森 (Jakob Nielsen)"
+  },
+  {
+    "id": 87,
+    "quote": "交互设计的目标是减少用户的认知负荷.",
+    "author": "艾伦·库珀 (Alan Cooper)"
+  },
+  {
+    "id": 88,
+    "quote": "最好的界面是没有界面.",
+    "author": "戈尔登·克罗夫 (Golden Krishna)"
+  },
+  {
+    "id": 89,
+    "quote": "设计不是艺术家的自我表达，而是解决用户问题的过程.",
+    "author": "迈克·蒙泰罗 (Mike Monteiro)"
+  },
+  {
+    "id": 90,
+    "quote": "优秀的设计让用户感觉自己很聪明.",
+    "author": "贾里德·斯普尔 (Jared Spool)"
+  },
+  {
+    "id": 91,
+    "quote": "设计是一个迭代的过程，永远不会真正完成.",
+    "author": "丹·诺曼 (Dan Norman)"
+  },
+  {
+    "id": 92,
+    "quote": "用户界面设计的本质是消除摩擦.",
+    "author": "卢克·乌鲁布莱夫斯基 (Luke Wroblewski)"
+  },
+  {
+    "id": 93,
+    "quote": "设计不仅是外表，更是体验.",
+    "author": "比尔·莫格里奇 (Bill Moggridge)"
+  },
+  {
+    "id": 94,
+    "quote": "最好的设计是帮助用户实现目标的设计.",
+    "author": "凯伦·麦戈尼格尔 (Karen McGrane)"
+  },
+  {
+    "id": 95,
+    "quote": "响应式设计不是关于像素，而是关于人.",
+    "author": "伊桑·马科特 (Ethan Marcotte)"
+  },
+  {
+    "id": 96,
+    "quote": "设计系统的目的是创造一致性和效率.",
+    "author": "布拉德·弗罗斯特 (Brad Frost)"
+  },
+  {
+    "id": 97,
+    "quote": "微交互决定了产品的情感体验.",
+    "author": "丹·萨弗 (Dan Saffer)"
+  },
+  {
+    "id": 98,
+    "quote": "内容优先，设计其次.",
+    "author": "杰弗里·泽尔德曼 (Jeffrey Zeldman)"
+  },
+  {
+    "id": 99,
+    "quote": "设计的终极目标是创造愉悦的用户体验.",
+    "author": "惠特尼·赫斯 (Whitney Hess)"
+  },
+  {
+    "id": 100,
+    "quote": "移动优先不仅是一种设计方法，更是一种思维方式.",
+    "author": "卢克·乌鲁布莱夫斯基 (Luke Wroblewski)"
+  },
+  {
+    "id": 101,
+    "quote": "设计的真正挑战在于理解人性.",
+    "author": "艾伦·库珀 (Alan Cooper)"
+  },
+  {
+    "id": 102,
+    "quote": "用户体验设计是一场持续的对话.",
+    "author": "杰西·詹姆斯·加勒特 (Jesse James Garrett)"
+  },
+  {
+    "id": 103,
+    "quote": "设计的目的是让技术更人性化.",
+    "author": "约翰·梅达 (John Maeda)"
+  },
+  {
+    "id": 104,
+    "quote": "好的设计让用户感觉被理解.",
+    "author": "史蒂夫·波特 (Steve Porter)"
+  },
+  {
+    "id": 105,
+    "quote": "设计不是装饰，而是解决问题的过程.",
+    "author": "马克·贝尼奥夫 (Mark Benioff)"
+  },
+  {
+    "id": 106,
+    "quote": "用户体验是一个整体，不仅仅是界面.",
+    "author": "彼得·莫维尔 (Peter Morville)"
+  },
+  {
+    "id": 107,
+    "quote": "设计思维是解决复杂问题的方法.",
+    "author": "蒂姆·布朗 (Tim Brown)"
+  },
+  {
+    "id": 108,
+    "quote": "交互设计的核心是预测用户需求.",
+    "author": "艾伦·库珀 (Alan Cooper)"
+  },
+  {
+    "id": 109,
+    "quote": "设计是一种服务，而不是一种产品.",
+    "author": "马克·汉布里奇 (Mark Hambidge)"
+  },
+  {
+    "id": 110,
+    "quote": "优秀的设计始于深入的研究.",
+    "author": "简·弗尔顿 (Jane Fulton Suri)"
+  },
+  {
+    "id": 111,
+    "quote": "设计的力量在于它能改变人们的行为方式.",
+    "author": "罗伯特·胡克斯 (Robert Hoekman Jr.)"
+  },
+  {
+    "id": 112,
+    "quote": "用户体验设计是关于同理心.",
+    "author": "惠特尼·赫斯 (Whitney Hess)"
+  },
+  {
+    "id": 113,
+    "quote": "设计不仅是解决问题，也是发现问题.",
+    "author": "乔恩·科尔科 (Jon Kolko)"
+  },
+  {
+    "id": 114,
+    "quote": "好的设计让复杂的事物变得简单易懂.",
+    "author": "史蒂芬·安德森 (Stephen P. Anderson)"
+  },
+  {
+    "id": 115,
+    "quote": "设计是一种持续改进的过程.",
+    "author": "丹·布朗 (Dan Brown)"
+  },
+  {
+    "id": 116,
+    "quote": "用户界面应该像好的笑话一样，不需要解释.",
+    "author": "马丁·勒布朗 (Martin LeBlanc)"
+  },
+  {
+    "id": 117,
+    "quote": "设计的目标是创造有意义的连接.",
+    "author": "黛博拉·阿德勒 (Deborah Adler)"
+  },
+  {
+    "id": 118,
+    "quote": "好的设计让用户感到自信.",
+    "author": "艾琳·基辛格 (Irene Pereyra)"
+  },
+  {
+    "id": 119,
+    "quote": "设计是一种策略性思维.",
+    "author": "丹尼尔·伯卡 (Daniel Burka)"
+  },
+  {
+    "id": 120,
+    "quote": "用户体验设计是关于创造情感连接.",
+    "author": "阿伦·沃特 (Aaron Walter)"
+  },
+  {
+    "id": 121,
+    "quote": "设计应该服务于用户的目标.",
+    "author": "金·古德温 (Kim Goodwin)"
+  },
+  {
+    "id": 122,
+    "quote": "好的设计是无形的.",
+    "author": "贾里德·斯普尔 (Jared Spool)"
+  },
+  {
+    "id": 123,
+    "quote": "设计是一种持续学习的过程.",
+    "author": "迈克·蒙泰罗 (Mike Monteiro)"
+  },
+  {
+    "id": 124,
+    "quote": "用户体验设计是关于减少摩擦.",
+    "author": "史蒂夫·克鲁格 (Steve Krug)"
+  },
+  {
+    "id": 125,
+    "quote": "设计应该是包容的.",
+    "author": "莎拉·霍顿 (Sarah Horton)"
+  },
+  {
+    "id": 126,
+    "quote": "好的设计让用户感到被重视.",
+    "author": "凯特·莱文 (Kate Levin)"
+  },
+  {
+    "id": 127,
+    "quote": "设计是一种解决问题的艺术.",
+    "author": "大卫·凯利 (David Kelley)"
+  },
+  {
+    "id": 128,
+    "quote": "用户体验设计是关于创造价值.",
+    "author": "杰西·詹姆斯·加勒特 (Jesse James Garrett)"
+  },
+  {
+    "id": 129,
+    "quote": "设计应该是可持续的.",
+    "author": "威廉·麦克唐纳 (William McDonough)"
+  },
+  {
+    "id": 130,
+    "quote": "好的设计是有目的的.",
+    "author": "丹·萨弗 (Dan Saffer)"
+  },
+  {
+    "id": 131,
+    "quote": "AI不是取代设计师，而是增强设计师的能力."
+  },
+  {
+    "id": 132,
+    "quote": "元宇宙设计的核心是创造沉浸式体验."
+  },
+  {
+    "id": 133,
+    "quote": "可访问性不是功能，而是基本人权."
+  },
+  {
+    "id": 134,
+    "quote": "数字设计应该尊重用户的注意力."
+  },
+  {
+    "id": 135,
+    "quote": "设计的未来在于个性化体验."
+  },
+  {
+    "id": 136,
+    "quote": "可持续设计不是选择，而是责任."
+  },
+  {
+    "id": 137,
+    "quote": "设计应该考虑到产品的整个生命周期."
+  },
+  {
+    "id": 138,
+    "quote": "数字伦理是现代设计的基石."
+  },
+  {
+    "id": 139,
+    "quote": "设计的终极目标是创造积极的社会影响."
+  },
+  {
+    "id": 140,
+    "quote": "跨文化设计需要深入的文化理解."
+  },
+  {
+    "id": 141,
+    "quote": "设计思维应该融入企业文化."
+  },
+  {
+    "id": 142,
+    "quote": "数字包容性是设计的基本原则."
+  },
+  {
+    "id": 143,
+    "quote": "设计应该预见未来的需求."
+  },
+  {
+    "id": 144,
+    "quote": "生物设计是未来设计的方向."
+  },
+  {
+    "id": 145,
+    "quote": "设计应该促进社会创新."
+  },
+  {
+    "id": 146,
+    "quote": "数字设计应该保护用户隐私."
+  },
+  {
+    "id": 147,
+    "quote": "设计的力量在于连接虚拟和现实."
+  },
+  {
+    "id": 148,
+    "quote": "未来的设计是自适应的."
+  },
+  {
+    "id": 149,
+    "quote": "设计应该考虑到边缘案例."
+  },
+  {
+    "id": 150,
+    "quote": "情感设计是用户体验的核心.",
+    "author": "唐·诺曼 (Don Norman)"
+  },
+  {
+    "id": 151,
+    "quote": "设计应该跨越设备和平台的界限."
+  },
+  {
+    "id": 152,
+    "quote": "声音用户界面是下一个设计前沿."
+  },
+  {
+    "id": 153,
+    "quote": "设计应该尊重用户的时间."
+  },
+  {
+    "id": 154,
+    "quote": "数据驱动的设计需要人性化的解释.",
+    "author": "爱德华·图夫特 (Edward Tufte)"
+  },
+  {
+    "id": 155,
+    "quote": "设计的未来是无界面交互."
+  },
+  {
+    "id": 156,
+    "quote": "设计应该促进数字福祉."
+  },
+  {
+    "id": 157,
+    "quote": "混合现实设计需要新的思维模式."
+  },
+  {
+    "id": 158,
+    "quote": "设计应该考虑到认知负荷."
+  },
+  {
+    "id": 159,
+    "quote": "未来的设计是对话式的."
+  },
+  {
+    "id": 160,
+    "quote": "设计应该服务于社会公平.",
+    "author": "维克多·帕帕纳克 (Victor Papanek)"
+  }
+]

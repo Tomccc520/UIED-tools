@@ -1,0 +1,53 @@
+# https://www.uiedtool.com robots.txt
+
+# 全局规则
+User-agent: *
+Allow: /
+Allow: /tools/
+Allow: /changelog
+Allow: /sitemap.xml
+Allow: /rss.xml
+
+# 通用禁止规则
+Disallow: /api/
+Disallow: /admin/
+Disallow: /private/
+Disallow: /backend/
+Disallow: /src/
+Disallow: /*.(json|js|css|php|asp|aspx|sql|log|lock|env|config)$
+Disallow: /*?*
+Disallow: /*&*
+
+# 百度爬虫
+User-agent: Baiduspider
+Crawl-delay: 2
+
+# 搜狗爬虫
+User-agent: Sogou spider
+User-agent: Sogou web spider
+Crawl-delay: 2
+
+# 必应爬虫
+User-agent: Bingbot
+User-agent: msnbot
+Crawl-delay: 1
+
+# Google爬虫
+User-agent: Googlebot
+Crawl-delay: 1
+
+# 图片爬虫
+User-agent: Googlebot-Image
+Disallow: /assets/images/
+Disallow: /static/images/
+
+# 禁止其他爬虫
+User-agent: YandexBot
+User-agent: AhrefsBot
+User-agent: SemrushBot
+User-agent: MJ12bot
+User-agent: HTTrack
+Disallow: /
+
+# Sitemap
+Sitemap: https://www.uiedtool.com/sitemap.xml

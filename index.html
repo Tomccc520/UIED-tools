@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+  <link rel="shortcut icon" type="image/svg+xml" href="/public/favicon.ico" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="renderer" content="webkit">
+  <title>UIED Tools - 免费在线工具集合</title>
+  <!-- SEO Meta 标签 -->
+  <meta name="description"
+    content="UIED Tools 提供免费的在线工具集合，包括AI工具（AI对话、图标生成）、图片处理（压缩、裁剪、水印、格式转换）、PDF工具（合并、分割、压缩）、文本工具（JSON格式化、时间戳转换、MD5加密）等实用功能，让您的在线工作更轻松。" />
+  <meta name="keywords"
+    content="在线工具,免费工具,AI工具,AI对话,AI图标生成,图片处理,PDF工具,JSON格式化,二维码生成,图片压缩,PDF合并,PDF分割,时间戳转换,MD5加密,在线工具箱,UIED Tools" />
+  <meta name="author" content="UIED技术团队">
+  <meta name="robots" content="index,follow">
+  <!-- Open Graph 标签 -->
+  <meta property="og:locale" content="zh_CN">
+  <meta property="og:title" content="UIED Tools - 免费在线工具集合" />
+  <meta property="og:site_name" content="UIED Tools">
+  <meta property="og:description" content="免费的在线工具集合，提供AI工具、图片处理、PDF工具、文本工具等多种实用功能" />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://uiedtool.com" />
+  <meta property="og:image" content="/favicon.ico">
+  <!-- 其他优化标签 -->
+  <link rel="canonical" href="https://uiedtool.com" />
+  <meta name="application-name" content="UIED Tools" />
+  <!-- 移动端优化 -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="UIED Tools" />
+  <meta name="format-detection" content="telephone=no" />
+
+  <!-- PDF.js -->
+  <script src="/pdf.min.js"></script>
+  <script>
+    window.pdfjsLib = pdfjsLib;
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
+  </script>
+
+  <!-- 百度统计 -->
+  <script>
+    var _hmt = _hmt || [];
+    (function () {
+      var hm = document.createElement("script");
+      hm.src = "https://hm.baidu.com/hm.js?fa0e1ea984a0683d87cb210fa95b15ee";
+      var s = document.getElementsByTagName("script")[0];
+      s.parentNode.insertBefore(hm, s);
+    })();
+  </script>
+</head>
+
+<body class="bg-[--base-gray]">
+  <!--[if lt IE 9]>
+  <div class="notice chromeframe">您的浏览器版本<strong>很旧很旧</strong>，为了正常地访问网站，请升级您的浏览器</div>
+  <![endif]-->
+  <div id="app"></div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
+</html>

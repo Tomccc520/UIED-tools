@@ -1,0 +1,10 @@
+<style>
+.principle-example p {
+  margin-bottom: 5px;
+}
+
+.principle-example ul {
+  list-style-type: disc;
+  padding-left: 20px;
+}
+</style>
