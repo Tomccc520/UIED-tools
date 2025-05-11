@@ -1553,3 +1553,57 @@ useHead({
 3. **验证部署**：
    - 访问 https://tomccc520.github.io/UIED-tools/ 检查更新是否生效
    - 可能需要等待几分钟GitHub Pages缓存刷新
+
+#### 一次成功的更新示例
+
+以下是2025年5月11日成功将文档更新推送到GitHub的实际操作步骤和经验分享：
+
+1. **本地更新文档**：
+   - 更新了 `docs/avatar-tool-development.md` 文件
+   - 添加了"GitHub更新详细步骤"部分内容
+
+2. **提交更改**：
+   ```bash
+   git add docs/avatar-tool-development.md
+   git commit -m "更新文档：添加GitHub更新详细步骤指南"
+   ```
+   > 提交信息简洁明了，清晰描述了此次更新的内容
+
+3. **遇到的问题**：
+   - 使用 `git push origin main` 命令遇到连接超时和权限错误
+   - 网络检查正常（可以 ping 通 GitHub 服务器）
+   - 尝试使用包含令牌的URL未成功
+
+4. **解决方法**：
+   ```bash
+   # 设置凭据存储
+   git config --global credential.helper store
+
+   # 设置远程URL（不包含令牌）
+   git remote set-url origin https://github.com/Tomccc520/UIED-tools.git
+
+   # 使用简化的push命令
+   git push
+   ```
+
+5. **成功结果**：
+   ```
+   枚举对象中: 7, 完成.
+   对象计数中: 100% (7/7), 完成.
+   使用 10 个线程进行压缩
+   压缩对象中: 100% (4/4), 完成.
+   写入对象中: 100% (4/4), 3.49 KiB | 3.49 MiB/s, 完成.
+   总共 4（差异 2），复用 0（差异 0），包复用 0（来自  0 个包）
+   remote: Resolving deltas: 100% (2/2), completed with 2 local objects.
+   To https://github.com/Tomccc520/UIED-tools.git
+      697ec38..fb64647  main -> main
+   ```
+
+6. **经验总结**：
+   - 使用 `git config --global credential.helper store` 设置凭据存储是关键
+   - 简化的 `git push` 命令比 `git push origin main` 更可靠
+   - 当出现认证问题时，重新设置远程URL而不是添加令牌到URL可能更有效
+   - 推送前先检查网络连接状态可以避免不必要的尝试
+   - 多次失败后适当的间隔再尝试有助于解决临时网络问题
+
+这次推送成功的关键在于使用了Git凭据存储功能，它更安全地管理GitHub凭据，避免了在命令行中直接使用令牌的做法。此方法也更符合GitHub的最佳安全实践。
