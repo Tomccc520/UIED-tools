@@ -5,6 +5,7 @@
 这是一个功能丰富的免费在线工具集合网站，集成了多种实用工具，包括 AI 工具、设计工具、开发工具等。该项目旨在为设计师、开发者和普通用户提供一站式工具解决方案，提高工作效率。
 
 在线站点：<a href="https://uiedtool.com/" target="_blank">UIED免费在线工具集</a>
+![输入图片说明](public/assets/image.png)
 
 ## 更新日志
 <a href="https://uiedtool.com/changelog" target="_blank">更新日志2025.5.11</a>
