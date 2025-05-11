@@ -1297,3 +1297,259 @@ useHead({
 2. 避免关键词堆砌
 3. 保持描述的准确性和吸引力
 4. 定期更新结构化数据
+
+## 下次更新流程
+
+### 1. 本地开发环境设置
+1. 克隆最新代码：
+   ```bash
+   git clone https://github.com/Tomccc520/UIED-tools.git
+   cd UIED-tools
+   ```
+
+2. 安装依赖：
+   ```bash
+   npm install
+   ```
+
+3. 创建环境文件：
+   ```bash
+   cp .env.example .env
+   ```
+
+4. 根据需要修改 `.env` 文件中的配置
+
+5. 启动开发服务器：
+   ```bash
+   npm run dev
+   ```
+
+### 2. 代码修改流程
+1. 创建新分支：
+   ```bash
+   git checkout -b feature/新功能名称
+   ```
+
+2. 开发新功能：
+   - 在 `src/components/Tools` 中添加新组件
+   - 在 `src/router` 中添加新路由
+   - 在 `components/Tools/tools.ts` 中注册新工具
+   - 更新相关文档
+
+3. 测试功能：
+   - 确保新功能正常工作
+   - 检查移动端适配
+   - 验证与现有功能的兼容性
+
+4. 提交更改：
+   ```bash
+   git add .
+   git commit -m "添加新功能：xxx"
+   ```
+
+### 3. 部署流程
+1. 构建生产代码：
+   ```bash
+   npm run build
+   ```
+
+2. 推送到GitHub：
+   ```bash
+   git push -u origin feature/新功能名称
+   ```
+
+3. 创建合并请求（Pull Request）：
+   - 在GitHub上创建新的PR
+   - 提供详细的功能说明和测试情况
+   - 等待审核通过
+
+4. 合并到主分支：
+   ```bash
+   git checkout main
+   git pull
+   git merge feature/新功能名称
+   git push
+   ```
+
+### 4. 更新日志维护
+1. 在 `src/components/Home/Changelog.vue` 中添加新的更新记录：
+   - 版本号：按照语义化版本规则递增
+   - 日期：使用当前日期和时间
+   - 更新内容：详细描述新增功能或修复的问题
+
+2. 更新样例：
+   ```vue
+   <li class="relative pb-10">
+     <div class="timeline-point"></div>
+     <div class="ml-6">
+       <div class="flex">
+         <div class="flex-1">
+           <span class="text-lg font-medium">v2.2.X</span>
+         </div>
+         <div class="text-sm text-slate-500">202X-XX-XX XX:XX</div>
+       </div>
+       <div class="mt-1 text-sm text-slate-700">
+         <p class="mb-1">1. 新增：XXX功能</p>
+         <p class="mb-1">2. 优化：XXX体验</p>
+         <p class="mb-1">3. 修复：XXX问题</p>
+       </div>
+     </div>
+   </li>
+   ```
+
+### 5. 常见问题与解决方案
+1. 依赖安装失败：
+   - 清除npm缓存：`npm cache clean --force`
+   - 使用国内镜像：`npm config set registry https://registry.npmmirror.com`
+   - 尝试使用yarn或pnpm：`yarn install` 或 `pnpm install`
+
+2. GitHub推送失败：
+   - 检查远程仓库设置：`git remote -v`
+   - 确认访问权限和凭证
+   - 使用令牌认证：`git remote set-url origin https://[TOKEN]@github.com/Tomccc520/UIED-tools.git`
+
+3. 构建错误：
+   - 检查控制台错误信息
+   - 验证依赖版本兼容性
+   - 确保所有导入路径正确
+
+4. 环境变量问题：
+   - 确保 `.env` 文件配置正确
+   - 开发环境可能需要重启服务器
+   - 检查变量名称是否以 `VITE_` 开头
+
+### 6. 性能优化建议
+1. 组件懒加载：
+   ```javascript
+   const Component = () => import('./Component.vue')
+   ```
+
+2. 图片优化：
+   - 使用WebP格式
+   - 实现懒加载
+   - 提供合适的尺寸和分辨率
+
+3. 代码分割：
+   - 拆分大型组件
+   - 使用动态导入
+   - 考虑使用微前端架构
+
+4. 缓存策略：
+   - 利用浏览器缓存
+   - 实现服务端缓存
+   - 使用CDN加速静态资源
+
+### 7. GitHub更新详细步骤
+
+#### 方法一：使用命令行更新GitHub
+
+1. **确保本地变更已提交**：
+   ```bash
+   git status  # 查看当前状态
+   git add .   # 添加所有更改
+   git commit -m "更新说明：添加XXX功能或修复XXX问题"  # 提交更改
+   ```
+
+2. **拉取远程最新代码**（避免冲突）：
+   ```bash
+   git pull origin main  # 拉取主分支最新代码
+   # 如果有冲突，解决冲突后再继续
+   ```
+
+3. **推送到GitHub**：
+   ```bash
+   git push origin main  # 推送到主分支
+   ```
+
+4. **使用访问令牌推送**（如果遇到认证问题）：
+   ```bash
+   # 设置带有访问令牌的远程URL
+   git remote set-url origin https://[访问令牌]@github.com/Tomccc520/UIED-tools.git
+
+   # 然后推送
+   git push origin main
+   ```
+
+   > 注意：请将[访问令牌]替换为您在GitHub生成的个人访问令牌
+
+5. **查看推送结果**：
+   - 访问 https://github.com/Tomccc520/UIED-tools 查看更新是否成功
+   - 检查最新提交记录和文件变更
+
+#### 方法二：使用GitHub Desktop更新
+
+1. **打开GitHub Desktop应用**
+
+2. **选择正确的仓库**：
+   - 从左上角的当前仓库下拉菜单中选择"UIED-tools"
+
+3. **检查更改**：
+   - 在左侧面板可以看到所有更改的文件
+   - 确认更改内容无误
+
+4. **提交更改**：
+   - 在左下角填写"Summary"（必填），简要描述此次更新内容
+   - 可选填写"Description"，提供更详细的说明
+   - 点击"Commit to main"按钮提交更改
+
+5. **推送到GitHub**：
+   - 点击右上角的"Push origin"按钮
+   - 等待推送完成
+
+6. **验证更新**：
+   - 点击"View on GitHub"在浏览器中打开仓库
+   - 确认更改已经成功推送
+
+#### 常见问题与解决方案
+
+1. **认证失败**：
+   - 错误信息：`remote: Invalid username or password`
+   - 解决方案：
+     - 生成新的个人访问令牌：GitHub > Settings > Developer settings > Personal access tokens
+     - 使用令牌进行身份验证：`git remote set-url origin https://[TOKEN]@github.com/Tomccc520/UIED-tools.git`
+
+2. **推送被拒绝**：
+   - 错误信息：`Updates were rejected because the remote contains work that you do not have locally`
+   - 解决方案：
+     - 先拉取最新代码：`git pull --rebase origin main`
+     - 解决可能的冲突
+     - 再次推送：`git push origin main`
+
+3. **分支冲突**：
+   - 问题描述：本地分支与远程分支有冲突
+   - 解决方案：
+     - 使用 `git pull --rebase` 而不是简单的 `git pull`
+     - 手动解决冲突文件
+     - 使用 `git add .` 标记冲突已解决
+     - 使用 `git rebase --continue` 继续变基过程
+     - 最后 `git push origin main`
+
+4. **文件太大**：
+   - 错误信息：`File exceeds GitHub's file size limit of 100 MB`
+   - 解决方案：
+     - 移除大文件：`git rm --cached [大文件路径]`
+     - 更新 .gitignore 文件添加该文件
+     - 提交更改：`git commit -m "Remove large file"`
+     - 推送更改：`git push origin main`
+
+#### 更新GitHub Pages(如果有)
+
+如果项目使用GitHub Pages部署网站，更新步骤：
+
+1. **构建最新版本**：
+   ```bash
+   npm run build
+   ```
+
+2. **部署到gh-pages分支**：
+   ```bash
+   # 如果使用gh-pages包
+   npx gh-pages -d dist
+
+   # 或手动部署
+   git subtree push --prefix dist origin gh-pages
+   ```
+
+3. **验证部署**：
+   - 访问 https://tomccc520.github.io/UIED-tools/ 检查更新是否生效
+   - 可能需要等待几分钟GitHub Pages缓存刷新
