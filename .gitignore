@@ -39,3 +39,4 @@ pnpm-debug.log*
 .env.*.local
 
 public/sitemap.txt
+UIED-Tools/
