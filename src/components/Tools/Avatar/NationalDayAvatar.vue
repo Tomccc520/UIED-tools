@@ -1,14 +1,42 @@
 /**
- * @copyright Tomda (https://www.tomda.top)
- * @copyright UIED技术团队 (https://fsuied.com)
- * @author UIED技术团队
- * @createDate 2025-9-22
- */
+* @copyright Tomda (https://www.tomda.top)
+* @copyright UIED技术团队 (https://fsuied.com)
+* @author UIED技术团队
+* @createDate 2025-9-22
+*/
 
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+
+// 导入静态资源
+import backgroundImageUrl from '@/assets/national-day/background-image.png'
+import titleImageUrl from '@/assets/national-day/title-image.png'
+// import sloganImageUrl from '@/assets/national-day/slogan-image.png' // 文件不存在，注释掉
+
+// 导入所有国庆框架图片
+import hat1 from '@/assets/national-day/hat1.png'
+import hat8 from '@/assets/national-day/hat8.png'
+import hat9 from '@/assets/national-day/hat9.png'
+import hat10 from '@/assets/national-day/hat10.png'
+import hat11 from '@/assets/national-day/hat11.png'
+import hat12 from '@/assets/national-day/hat12.png'
+import hat13 from '@/assets/national-day/hat13.png'
+import hat14 from '@/assets/national-day/hat14.png'
+import hat15 from '@/assets/national-day/hat15.png'
+import hat16 from '@/assets/national-day/hat16.png'
+import hat17 from '@/assets/national-day/hat17.png'
+import hat18 from '@/assets/national-day/hat18.png'
+import hat21 from '@/assets/national-day/hat21.png'
+import hat22 from '@/assets/national-day/hat22.png'
+import hat23 from '@/assets/national-day/hat23.png'
+import head1 from '@/assets/national-day/head1.png'
+import head2 from '@/assets/national-day/head2.png'
+import head3 from '@/assets/national-day/head3.png'
+import head4 from '@/assets/national-day/head4.png'
+import head5 from '@/assets/national-day/head5.png'
+import head6 from '@/assets/national-day/head6.png'
 
 const route = useRoute()
 const originalImage = ref<HTMLImageElement | null>(null)
@@ -23,6 +51,31 @@ const generatedImageUrl = ref('')
 const showPreview = ref(false)
 const participantCount = ref(522)
 
+// 国庆头像框架图片映射
+const frameImageMap = {
+  'hat1.png': hat1,
+  'hat8.png': hat8,
+  'hat9.png': hat9,
+  'hat10.png': hat10,
+  'hat11.png': hat11,
+  'hat12.png': hat12,
+  'hat13.png': hat13,
+  'hat14.png': hat14,
+  'hat15.png': hat15,
+  'hat16.png': hat16,
+  'hat17.png': hat17,
+  'hat18.png': hat18,
+  'hat21.png': hat21,
+  'hat22.png': hat22,
+  'hat23.png': hat23,
+  'head1.png': head1,
+  'head2.png': head2,
+  'head3.png': head3,
+  'head4.png': head4,
+  'head5.png': head5,
+  'head6.png': head6
+}
+
 // 国庆头像框架图片列表
 const frameImages = [
   'hat1.png', 'hat8.png', 'hat9.png', 'hat10.png', 'hat11.png', 'hat12.png',
@@ -32,9 +85,18 @@ const frameImages = [
 ]
 
 // 背景图片
-const backgroundImage = computed(() => '/src/assets/national-day/background-image.png')
-const titleImage = computed(() => '/src/assets/national-day/title-image.png')
-const sloganImage = computed(() => '/src/assets/national-day/slogan-image.png')
+const backgroundImage = computed(() => backgroundImageUrl)
+const titleImage = computed(() => titleImageUrl)
+// const sloganImage = computed(() => sloganImageUrl) // 注释掉不存在的图片
+
+/**
+ * 获取框架图片URL
+ * @param frameName 框架文件名
+ * @returns 图片URL
+ */
+const getFrameImageUrl = (frameName: string): string => {
+  return frameImageMap[frameName as keyof typeof frameImageMap] || hat1
+}
 
 /**
  * 显示提示消息
@@ -79,13 +141,13 @@ const isValidImageFile = (file: File): boolean => {
 const handleFileUpload = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  
+
   if (!file || !isValidImageFile(file)) {
     return
   }
 
   loading.value = true
-  
+
   const reader = new FileReader()
   reader.onload = (e) => {
     const img = new Image()
@@ -147,15 +209,15 @@ const drawCanvas = async () => {
   frameImg.onload = () => {
     ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height)
   }
-  frameImg.src = `/src/assets/national-day/${frameImages[currentFrameIndex.value]}`
+  frameImg.src = getFrameImageUrl(frameImages[currentFrameIndex.value])
 }
 
 /**
  * 切换到上一个框架
  */
 const prevFrame = () => {
-  currentFrameIndex.value = currentFrameIndex.value === 0 
-    ? frameImages.length - 1 
+  currentFrameIndex.value = currentFrameIndex.value === 0
+    ? frameImages.length - 1
     : currentFrameIndex.value - 1
   drawCanvas()
 }
@@ -178,7 +240,7 @@ const generateAvatar = () => {
   }
 
   loading.value = true
-  
+
   setTimeout(() => {
     const canvas = canvasRef.value!
     generatedImageUrl.value = canvas.toDataURL('image/png')
@@ -229,13 +291,13 @@ onMounted(() => {
       if (ctx) {
         canvas.width = 400
         canvas.height = 400
-        
+
         // 绘制默认框架
         const frameImg = new Image()
         frameImg.onload = () => {
           ctx.drawImage(frameImg, 0, 0, canvas.width, canvas.height)
         }
-        frameImg.src = `/src/assets/national-day/${frameImages[0]}`
+        frameImg.src = getFrameImageUrl(frameImages[0])
       }
     }
   })
@@ -265,12 +327,10 @@ onMounted(() => {
             <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-6">
               <div class="flex justify-center items-center">
                 <div class="relative">
-                  <canvas 
-                    ref="canvasRef"
-                    class="border border-gray-300 rounded-lg shadow-sm max-w-full h-auto"
-                    style="width: 300px; height: 300px;"
-                  ></canvas>
-                  <div v-if="loading" class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
+                  <canvas ref="canvasRef" class="border border-gray-300 rounded-lg shadow-sm max-w-full h-auto"
+                    style="width: 300px; height: 300px;"></canvas>
+                  <div v-if="loading"
+                    class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-lg">
                     <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
                   </div>
                 </div>
@@ -279,34 +339,27 @@ onMounted(() => {
 
             <!-- 框架选择 -->
             <div class="bg-white border border-gray-200 rounded-lg p-4">
-              <h3 class="text-lg font-semibold mb-4 text-gray-800">选择国庆框架</h3>
+              <h3 class="text-lg font-semibold mb-4 text-gray-800">领取你的国庆专属头像</h3>
               <div class="flex items-center justify-center space-x-4">
-                <button 
-                  @click="prevFrame"
+                <button @click="prevFrame"
                   class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-200"
-                  :disabled="loading"
-                >
+                  :disabled="loading">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
                   </svg>
                 </button>
-                
+
                 <div class="text-center">
                   <div class="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center mb-2">
-                    <img 
-                      :src="`/src/assets/national-day/${frameImages[currentFrameIndex]}`" 
-                      :alt="`框架 ${currentFrameIndex + 1}`"
-                      class="w-12 h-12 object-contain"
-                    />
+                    <img :src="getFrameImageUrl(frameImages[currentFrameIndex])" :alt="`框架 ${currentFrameIndex + 1}`"
+                      class="w-12 h-12 object-contain" />
                   </div>
                   <span class="text-sm text-gray-600">{{ currentFrameIndex + 1 }} / {{ frameImages.length }}</span>
                 </div>
-                
-                <button 
-                  @click="nextFrame"
+
+                <button @click="nextFrame"
                   class="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors duration-200"
-                  :disabled="loading"
-                >
+                  :disabled="loading">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                   </svg>
@@ -321,36 +374,29 @@ onMounted(() => {
             <div class="bg-white border border-gray-200 rounded-lg p-6">
               <h3 class="text-lg font-semibold mb-4 text-gray-800">上传头像</h3>
               <div class="space-y-4">
-                <button
-                  @click="triggerUpload"
+                <button @click="triggerUpload"
                   class="w-full py-3 px-4 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-medium"
-                  :disabled="loading"
-                >
+                  :disabled="loading">
                   <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
                   </svg>
                   选择图片
                 </button>
-                <input
-                  ref="uploadRef"
-                  type="file"
-                  accept="image/*"
-                  @change="handleFileUpload"
-                  class="hidden"
-                />
+                <input ref="uploadRef" type="file" accept="image/*" @change="handleFileUpload" class="hidden" />
               </div>
             </div>
 
             <!-- 生成头像 -->
             <div class="bg-white border border-gray-200 rounded-lg p-6">
               <h3 class="text-lg font-semibold mb-4 text-gray-800">生成头像</h3>
-              <button
-                @click="generateAvatar"
+              <button @click="generateAvatar"
                 class="w-full py-3 px-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg hover:from-yellow-600 hover:to-yellow-700 transition-all duration-200 font-medium"
-                :disabled="loading || !originalImage"
-              >
+                :disabled="loading || !originalImage">
                 <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z">
+                  </path>
                 </svg>
                 生成国庆头像
               </button>
@@ -386,7 +432,8 @@ onMounted(() => {
       <ToolsRecommend :currentPath="route.path" />
 
       <!-- 预览弹窗 -->
-      <div v-if="showPreview" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" @click="closePreview">
+      <div v-if="showPreview" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        @click="closePreview">
         <div class="bg-white rounded-lg p-6 max-w-md mx-4" @click.stop>
           <div class="text-center">
             <h3 class="text-lg font-semibold mb-4">国庆头像生成成功！</h3>
@@ -395,16 +442,12 @@ onMounted(() => {
             </div>
             <p class="text-sm text-gray-600 mb-4">长按图片保存到相册，或点击下载按钮</p>
             <div class="flex space-x-3">
-              <button
-                @click="downloadAvatar"
-                class="flex-1 py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200"
-              >
+              <button @click="downloadAvatar"
+                class="flex-1 py-2 px-4 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200">
                 下载头像
               </button>
-              <button
-                @click="closePreview"
-                class="flex-1 py-2 px-4 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200"
-              >
+              <button @click="closePreview"
+                class="flex-1 py-2 px-4 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors duration-200">
                 关闭
               </button>
             </div>

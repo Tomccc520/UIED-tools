@@ -153,7 +153,6 @@
                   <div class="feature-desc">
                     <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
                       <li>支持上传个人头像，一键生成国庆主题头像</li>
-                      <li>提供15种精美的国庆帽子框架选择（hat1, hat8-hat18, hat21-hat23）</li>
                       <li>支持JPG、PNG格式图片上传，最大文件大小5MB</li>
                       <li>实时预览效果，所见即所得的编辑体验</li>
                       <li>一键下载生成的国庆头像，方便社交媒体使用</li>
