@@ -65,15 +65,15 @@ export const useToolsStore = defineStore('tools', {
       const adTools: Tool[] = [
         {
           id: 1000,
-          title: "DeepSeek满血版",
-          desc: "免费无限白嫖满血版DeepSeek-R1的隐藏入口，带联网搜索+图片+文档+语音+群聊",
-          url: "https://askmany.cn/login?i=bd8ce9a1",
+          title: "Adobe 正版全家桶可用AI",
+          desc: "Adobe正版全家桶软件，包含Photoshop、Illustrator、Premiere Pro等全套设计工具，支持AI功能",
+          url: "https://universalbus.cn/?s=lPLG02aydo",
           logo: { type: 'svg', name: 'palette' },
           cate: "热门工具",
           isExternal: true
         },
         {
-          id: 1002,
+          id: 1001,
           title: "免费AI编程工具",
           desc: "Chat模式支持 doubao-1.5-pro， DeepSeek R1&amp;V3 三种大模型。",
           url: "https://www.trae.com.cn/?utm_source=advertising&utm_medium=uied_ug_cpa&utm_term=hw_trae_uied",
@@ -82,7 +82,16 @@ export const useToolsStore = defineStore('tools', {
           isExternal: true
         },
         {
-          id: 1002,
+          id: 1009,
+          title: "AI导航",
+          desc: "聚合导航工具，包含AI工具、AI学习网站、AI新闻、AI产品榜等",
+          url: "https://www.88sheji.cn/ai",
+          logo: { type: 'svg', name: 'palette' },
+          cate: "热门工具",
+          isExternal: true
+        },
+        {
+          id: 1006,
           title: "AI学习网站",
           desc: "每天逛一逛",
           url: "https://www.uied.cn/category/aigc/ai",
@@ -128,8 +137,8 @@ export const useToolsStore = defineStore('tools', {
         },
         {
           id: 1007,
-          title: "GPT-4.0",
-          desc: "最新版GPT-4.0智能对话工具",
+          title: "GPT-5.0",
+          desc: "最新版GPT-5.0智能对话工具",
           url: "https://nf.video/oemcwv/?gid=18",
           logo: { type: 'svg', name: 'code' },
           cate: "热门工具",
@@ -137,9 +146,9 @@ export const useToolsStore = defineStore('tools', {
         },
         {
           id: 1008,
-          title: "ChatExcel表格",
-          desc: "AI Excel 数据分析辅助工具",
-          url: "https://www.chatexcel.com/#/home?partner_uuid=4227AB911C6531FF898C5E7BB54757E6",
+          title: "AI知识库",
+          desc: "AI知识库合集（DeepSeek、豆包、即梦、kimi、GPT等）",
+          url: "https://dfz3y4k04g.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink",
           logo: { type: 'svg', name: 'code' },
           cate: "热门工具",
           isExternal: true

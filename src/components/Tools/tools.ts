@@ -568,6 +568,17 @@ export function getToolsCate(): ToolCategory[] {
               desc: '生成可爱的摸头GIF图片',
               url: '/tools/avatar/rua',
               cate: '头像工具'
+            },
+            {
+              id: 524,
+              title: '国庆专属头像',
+              logo: { type: 'svg', name: 'nationalDayAvatar' },
+              desc: '为您的头像添加国庆元素，支持多种国庆帽子和装饰，生成专属国庆头像',
+              url: '/tools/avatar/national-day',
+              cate: '头像工具',
+              releaseDate: '2024/9/22 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
             }
           ]
         },

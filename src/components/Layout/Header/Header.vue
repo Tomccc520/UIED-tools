@@ -436,7 +436,7 @@ onUnmounted(() => {
               </el-tooltip>
             </router-link>
 
-            <a href="http://hezuo.tomda.top/" target="_blank" class="menu-icon-btn hover:text-blue-500">
+            <a href="https://tomda.top/" target="_blank" class="menu-icon-btn hover:text-blue-500">
               <el-tooltip content="个人网站">
                 <svg class="w-5 h-5" viewBox="0 0 1024 1024">
                   <path

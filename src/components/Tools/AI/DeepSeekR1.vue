@@ -3,7 +3,7 @@
  * @description DeepSeek R1 AI对话组件,基于 SiliconFlow 平台的 DeepSeek R1 模型实现智能对话
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-2-6
+ * @createDate 2025-5-19
  *
  * 功能特性：
  * 1. 支持与AI进行自然对话
