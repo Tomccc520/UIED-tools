@@ -1,8 +1,8 @@
+/// <reference types="vitest" />
 /**
  * @file vite.config.ts
  * @description Vite 配置文件，包含开发服务器代理配置
  * @author UIED技术团队
- * @copyright UIED技术团队 (https://fsuied.com)
  *
  * API 代理配置说明:
  * 1. 翻译接口 (/api/translate)
@@ -601,6 +601,14 @@ export default defineConfig({
       strict: false,
       // 允许的文件类型
       allow: ['..']
+    }
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: [],
+    deps: {
+      inline: ['@vue/test-utils']
     }
   }
 })

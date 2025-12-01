@@ -141,8 +141,8 @@
             <el-button type="primary" :loading="loading" @click="generateIcon" size="large" class="px-8">
               {{ loading ? '正在生成...' : '生成图标' }}
               <template #suffix>
-                <span class="ml-2 text-xs opacity-75">(消耗 {{ aiModels.find((m: AIModel) => m.value ===
-                  selectedModel)?.points }}
+                <span class="ml-2 text-xs opacity-75">(消耗 {{aiModels.find((m: AIModel) => m.value ===
+                  selectedModel)?.points}}
                   点)</span>
               </template>
             </el-button>
@@ -176,7 +176,7 @@
                   <div class="icon-preview max-w-[200px] mx-auto" v-html="selectedIcon.svg"></div>
                 </div>
                 <div class="text-center text-sm text-gray-500">
-                  当前动画: {{ animationOptions.find((a: AnimationOption) => a.value === selectedAnimation)?.label || '无' }}
+                  当前动画: {{animationOptions.find((a: AnimationOption) => a.value === selectedAnimation)?.label || '无'}}
                 </div>
               </div>
 
