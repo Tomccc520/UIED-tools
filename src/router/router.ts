@@ -773,6 +773,16 @@ export const constantRoute = [
       description: '上传头像或输入QQ号，一键生成可爱的摸头GIF图片，支持JPG/PNG格式',
     }
   },
+  {
+    path: '/tools/avatar/national-day',
+    component: () => import('@/components/Tools/Avatar/NationalDayAvatar.vue'),
+    name: 'nationalDayAvatar',
+    meta: {
+      title: '国庆专属头像',
+      keywords: '国庆头像,国庆专属头像,头像生成,国庆装饰,节日头像',
+      description: '为您的头像添加国庆元素，支持多种国庆帽子和装饰，生成专属国庆头像',
+    }
+  },
   // 设计工具路由
   {
     path: '/tools/design/DesignQuote',

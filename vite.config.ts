@@ -1,8 +1,8 @@
+/// <reference types="vitest" />
 /**
  * @file vite.config.ts
  * @description Vite 配置文件，包含开发服务器代理配置
  * @author UIED技术团队
- * @copyright UIED技术团队 (https://fsuied.com)
  *
  * API 代理配置说明:
  * 1. 翻译接口 (/api/translate)
@@ -169,6 +169,18 @@ export default defineConfig({
         }
       },
 
+      // KFC文案备用接口代理配置
+      '/api/kfc-backup': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/kfc-backup/, '/api/v1/get/kfc'),
+        secure: false,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      },
+
       // 情话文案接口代理配置
       '/api/wenan': {
         target: 'https://api.uomg.com',
@@ -216,11 +228,19 @@ export default defineConfig({
         rewrite: (path) => '/api/hotlist/all',
         secure: false,
         headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
           'Origin': 'https://api.vvhan.com',
-          'Referer': 'https://api.vvhan.com/',
-          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          'Referer': 'https://api.vvhan.com/'
+        }
+      },
+
+      // 图片上传接口代理配置
+      '/api/upload': {
+        target: 'https://sm.ms',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/upload/, '/api/v2/upload'),
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          'Authorization': 'YOUR_API_KEY'
         }
       },
 
@@ -581,6 +601,14 @@ export default defineConfig({
       strict: false,
       // 允许的文件类型
       allow: ['..']
+    }
+  },
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: [],
+    deps: {
+      inline: ['@vue/test-utils']
     }
   }
 })

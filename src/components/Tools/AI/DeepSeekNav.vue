@@ -351,14 +351,14 @@ const recommendedItems = ref<NavItem[]>([
 
   {
     id: 117,
-    title: 'AskMany',
+    title: 'AskManyAl',
     logo: askmanyLogo,
     description: '免费使用满血版DeepSeek-R1，支持联网搜索、图片文档对话，体验接近官网',
     tags: ['免费', '联网', '多模态'],
     online: true,
     speed: 'fast',
     releaseDate: '2024-03-28',
-    url: 'https://dazi.co/login?i=bd8ce9a1'
+    url: 'https://askmany.cn/login?i=bd8ce9a1'
   },
   {
     id: 102,

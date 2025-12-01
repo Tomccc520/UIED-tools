@@ -13,9 +13,9 @@ import { Close } from '@element-plus/icons-vue'  // 导入Close图标
 const bannerList = ref([
   {
     id: 1,
-    link: 'https://askmany.cn/login?i=bd8ce9a1',
+    link: 'https://fsuied.com/website-scmz.html',
     gradient: 'linear-gradient(to right, rgb(99, 102, 241) 0%, rgb(224, 231, 255) 35%, rgb(237, 242, 255) 45%, rgb(139, 92, 246) 100%)',
-    text: 'DeepSeek·满血版高速专线 →'
+    text: '无需代码 会打字就能轻松建网站 →'
   },
   {
     id: 2,

@@ -42,7 +42,7 @@
                   <a @click="handleNavigation('https://xiaoyi.huawei.com/chat/')"
                     class="text-xs md:text-sm text-blue-500 hover:text-blue-600 cursor-pointer">华为小艺助手接入DeepSeek！</a>
                   <span class="text-gray-300 hidden md:inline">|</span>
-                  <a @click="handleNavigation('https://askmany.cn/login?i=bd8ce9a1')"
+                  <a @click="handleNavigation('https://www.wenxiaobai.com/?forceLogin=true&source=uied&ad_source=uied')"
                     class="text-xs md:text-sm text-blue-500 hover:text-blue-600 cursor-pointer">DeepSeek-R1满血版</a>
                   <span class="text-gray-300 hidden md:inline">|</span>
                   <a @click="handleNavigation('https://uiedtool.com/tools/ai/deepseek-r1')"
@@ -145,7 +145,7 @@
                       </div>
                       <div class="flex items-center gap-2 mb-3">
                         <span class="px-2 py-0.5 text-xs bg-blue-50 text-blue-600 rounded-full">{{ category.name
-                        }}</span>
+                          }}</span>
                         <div class="flex gap-1">
                           <span v-for="tag in prompt.tags" :key="tag"
                             class="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">

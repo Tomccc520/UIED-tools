@@ -135,6 +135,14 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- 文案工具 -->
+  <url>
+    <loc>https://www.uiedtool.com/tools/copywriting/kfc</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <lastmod>2025-03-15</lastmod>
+  </url>
+
   <!-- 新增工具 -->
   <url>
     <loc>https://www.uiedtool.com/tools/jwt</loc>

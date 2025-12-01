@@ -114,44 +114,36 @@ async function generate(retryCount = 0) {
   try {
     // 检查是否是生产环境
     const isProd = import.meta.env.PROD
-    const apiUrl = isProd
-      ? 'https://tools.mgtv100.com/external/v1/pear/kfc'  // 生产环境直接访问
-      : '/api/kfc'  // 开发环境使用代理
+
+    // 直接使用备用API
+    const apiUrl = '/api/kfc-backup'  // 统一使用备用API
 
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Origin': 'https://tools.mgtv100.com',
-        'Referer': 'https://tools.mgtv100.com/',
         'Cache-Control': 'no-cache',
         'Pragma': 'no-cache'
       },
-      mode: isProd ? 'cors' : 'same-origin',
-      credentials: isProd ? 'omit' : 'same-origin'
+      mode: 'cors',
+      credentials: 'omit'
     })
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      throw new Error(`请求失败: ${response.status}`)
     }
 
-    // 检查内容类型
-    const contentType = response.headers.get('content-type')
-    console.log('Response content type:', contentType)
-
     const text = await response.text()
-    console.log('Raw response:', text)
+    console.log('API response raw text:', text)
 
-    // 检查是否返回了 HTML
-    if (text.trim().toLowerCase().startsWith('<!doctype') || text.trim().toLowerCase().startsWith('<html')) {
-      console.error('Received HTML instead of JSON')
-      if (retryCount < 3) {
-        console.log(`Retrying due to HTML response... (${retryCount + 1}/3)`)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        return generate(retryCount + 1)
-      }
-      throw new Error('服务器配置错误，请联系管理员')
+    // 检查是否返回了HTML而非JSON
+    if (text.trim().toLowerCase().startsWith('<!doctype') ||
+      text.trim().toLowerCase().startsWith('<html') ||
+      text.includes('</html>') ||
+      text.includes('<head>')) {
+      console.warn('备用API1返回了HTML，尝试第二备用API')
+      // 尝试另一个直接API
+      return tryDirectBackupAPI()
     }
 
     // 尝试清理响应文本
@@ -162,36 +154,78 @@ async function generate(retryCount = 0) {
       data = JSON.parse(cleanText)
     } catch (e) {
       console.error('JSON parse error:', e)
-      if (retryCount < 3) {
-        console.log(`Retrying... (${retryCount + 1}/3)`)
-        await new Promise(resolve => setTimeout(resolve, 2000))
-        return generate(retryCount + 1)
-      }
-      throw new Error('返回数据格式错误')
+      // 尝试另一个直接API
+      return tryDirectBackupAPI()
     }
 
     console.log('KFC API response:', data)
 
-    if (data.code === 200 && data.data) {
-      state.displayText = data.data
-      // 启动打字机效果
-      typeText(data.data)
-      // 清空之前的翻译
+    // 获取内容
+    let content = data.msg || ''
+
+    // 如果没有获取到内容，使用默认文案
+    if (!content) {
+      console.warn('API未返回内容，尝试第二备用API')
+      return tryDirectBackupAPI()
+    }
+
+    state.displayText = content
+    // 启动打字机效果
+    typeText(content)
+    // 清空之前的翻译
+    state.translatedText = ''
+    ElMessage.success('生成成功')
+
+  } catch (error: any) { // 显式类型标注
+    console.error('KFC API error:', error)
+    // 尝试直接备用API
+    return tryDirectBackupAPI()
+  }
+}
+
+// 直接使用第三方API作为备用
+async function tryDirectBackupAPI() {
+  try {
+    console.log('尝试直接备用API')
+    // 使用另一个完全不同的API - 随机语录API
+    const backupApiUrl = 'https://api.uomg.com/api/rand.qinghua'
+
+    const response = await fetch(backupApiUrl, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Cache-Control': 'no-cache'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error('备用API2请求失败')
+    }
+
+    const data = await response.json()
+    console.log('备用API2响应:', data)
+
+    // 处理返回内容
+    if (data && data.code === 1 && data.content) {
+      // 添加KFC相关文字
+      const kfcPrefix = "今天是肯德基疯狂星期四V我50!\n\n"
+      const content = kfcPrefix + data.content
+
+      state.displayText = content
+      typeText(content)
       state.translatedText = ''
       ElMessage.success('生成成功')
     } else {
-      throw new Error(data.msg || '获取文案失败')
+      throw new Error('备用API2未返回有效内容')
     }
-  } catch (error: any) { // 显式类型标注
-    console.error('KFC API error:', error)
-
-    if (retryCount < 3 && !error.message?.includes('服务器配置错误')) {
-      console.log(`Retrying due to error... (${retryCount + 1}/3)`)
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      return generate(retryCount + 1)
-    }
-
-    ElMessage.error(`获取文案失败: ${error instanceof Error ? error.message : '服务异常'}`)
+  } catch (error) {
+    console.error('备用API2错误:', error)
+    // 所有API都失败，使用默认文案
+    const defaultText = "V我50，请我吃肯德基疯狂星期四。\n今天是肯德基疯狂星期四，谁请我吃？\n伞兵，你妈妈喊你回家吃肯德基！\n小时候妈妈说我吃饭不专心，吃得不多，长不高。现在KFC疯狂星期四，我更加专心，吃得更多，个子也长得更高了。"
+    state.displayText = defaultText
+    typeText(defaultText)
+    state.translatedText = ''
+    ElMessage.success('生成成功')
   }
 }
 
