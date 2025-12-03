@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-01 14:30
- * @version Beta 2.2.8
- * @toolsCount 当前工具总数：88个
+ * @lastUpdate 2025-12-03 10:00
+ * @version Beta 2.3.2
+ * @toolsCount 当前工具总数：90个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -243,7 +243,7 @@ onUnmounted(() => {
           </a>
         </div>
         <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：88个 | 最后更新：2025-12-01 10:00
+          当前工具总数：90个 | 最后更新：2025-12-03 10:00
         </div>
       </div>
 
@@ -279,6 +279,155 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.3.2 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.2</span>
+              <span class="date">2025-12-03 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">免费在线文本配音工具上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">文本转语音功能</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>支持多种角色声音选择（少女音、阳光男声、成熟女声等）</li>
+                        <li>提供丰富的情感风格（愉快、悲伤、严肃等）</li>
+                        <li>一键生成自然流畅的语音，支持在线试听与下载</li>
+                        <router-link target="_blank" rel="noopener noreferrer" to="/tools/ai/text-to-speech"
+                          class="text-blue-500 hover:text-blue-600 ml-1">立即体验 →</router-link>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">功能优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>图片提示词反推工具</strong>：优化UI设计，精简模型选择，提升反推体验</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.1 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.1</span>
+              <span class="date">2025-12-02 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">免费图片提示词反推工具上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">核心功能</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>支持图片上传与URL输入反推提示词</li>
+                        <li>通用模型精准识别，中文结果输出</li>
+                        <li>一键复制反推结果，便捷高效</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <router-link target="_blank" rel="noopener noreferrer" to="/tools/ai/prompt-reverse"
+                    class="text-blue-500 hover:text-blue-600 inline-block mt-1">立即体验 →</router-link>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.0 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.0</span>
+              <span class="date">2025-12-02 15:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="danger" class="mr-2">重磅</el-tag>
+                <span class="text-gray-700">星座运势工具全新升级</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">视觉与交互重构</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>全新 <strong>深空主题UI</strong>，融合毛玻璃拟态设计，沉浸感十足</li>
+                        <li>新增 <strong>横向滚动星座选择器</strong>，配合流畅动效，切换更丝滑</li>
+                        <li>重构 <strong>响应式网格布局</strong>，完美适配移动端与桌面端显示</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">功能与体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增 <strong>文案完整性智能检测</strong>，自动处理截断问题，确保内容完整</li>
+                        <li>优化 <strong>分享卡片生成算法</strong>，支持动态高度与高清渲染</li>
+                        <li>集成 <strong>SEO 结构化数据</strong> 与语义化文件名，提升搜索可见性</li>
+                        <router-link target="_blank" rel="noopener noreferrer" to="/tools/horoscope"
+                          class="text-blue-500 hover:text-blue-600 inline-block mt-1">立即体验 →</router-link>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.2.9 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.2.9</span>
+              <span class="date">2025-12-02 11:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="danger" class="mr-2">重磅</el-tag>
+                <span class="text-gray-700">免费应用图标生成器全新升级</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">核心功能增强</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>支持 <strong>多格式导出 (PNG/SVG/ICO)</strong>，满足全平台开发需求</li>
+                        <li>新增 <strong>自定义尺寸设置</strong> (16x16 至 1024x1024)，灵活适配各种场景</li>
+                        <li>支持 <strong>实时预览</strong> 与 <strong>多图层编辑</strong>，设计效果所见即所得</li>
+                        <li>内置 <strong>多平台预设</strong> (iOS/Android/Web)，一键生成标准图标包</li>
+                        <router-link target="_blank" rel="noopener noreferrer" to="/tools/design/icon-generator"
+                          class="text-blue-500 hover:text-blue-600 inline-block mt-1">立即体验 →</router-link>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">性能与体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>采用 <strong>异步渲染引擎</strong> 与 <strong>智能缓存机制</strong>，操作流畅无卡顿</li>
+                        <li>全新 <strong>响应式布局</strong>，完美适配移动端与桌面端操作</li>
+                        <li>纯前端处理，<strong>数据不上传</strong>，完全保护用户隐私</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.2.8 -->
           <div class="timeline-item">

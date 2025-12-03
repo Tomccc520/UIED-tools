@@ -113,6 +113,17 @@ export function getToolsCate(): ToolCategory[] {
               desc: '专业的 AI 绘图提示词编辑工具，支持可视化编辑和智能优化',
               url: '/tools/ai/prompt-editor',
               cate: 'AI提示词'
+               },
+            {
+              id: 406,
+              title: '免费图片提示词反推',
+              logo: { type: 'svg', name: 'promptReverse' },
+              desc: '上传图片智能反推提示词，支持Flux、Stable Diffusion、Midjourney等多种模型',
+              url: '/tools/ai/prompt-reverse',
+              cate: 'AI图像工具',
+              releaseDate: '2025/12/02 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
             }
           ]
         },
@@ -234,6 +245,17 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/ai-outsource-quote',
               cate: 'AI效率工具',
               releaseDate: '2024/3/20 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+              },
+            {
+              id: 602,
+              title: '免费在线文本配音',
+              logo: { type: 'svg', name: 'microphone' },
+              desc: '免费在线文本转语音工具，支持多种角色和情感风格，一键生成自然流畅的语音配音',
+              url: '/tools/ai/text-to-speech',
+              cate: 'AI效率工具',
+              releaseDate: '2024/12/03 00:00:00',
               tags: ['免费', '新品'],
               isNew: true
             }

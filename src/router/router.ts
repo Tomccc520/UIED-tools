@@ -717,6 +717,26 @@ export const constantRoute = [
       description: '使用 DeepSeek AI 生成走心的新年朋友圈文案，让你的新年祝福与众不同。'
     }
   },
+  {
+    path: '/tools/ai/prompt-reverse',
+    component: () => import('@/components/Tools/AI/PromptReverse.vue'),
+    name: 'promptReverse',
+    meta: {
+      title: "免费图片提示词反推",
+      keywords: '提示词反推,图片转提示词,AI提示词生成,Flux提示词,Midjourney提示词',
+      description: '上传图片智能反推提示词，支持Flux、Stable Diffusion、Midjourney等多种模型，一键生成精准提示词',
+    }
+  },
+  {
+    path: '/tools/ai/text-to-speech',
+    component: () => import('@/components/Tools/AI/TextToSpeech.vue'),
+    name: 'textToSpeech',
+    meta: {
+      title: "免费在线文本配音",
+      keywords: '文本转语音,在线配音,AI配音,文字转语音,免费配音工具',
+      description: '免费在线文本转语音工具，支持多种角色和情感风格，一键生成自然流畅的语音配音',
+    }
+  },
   // 关于
   {
     path: '/about',
