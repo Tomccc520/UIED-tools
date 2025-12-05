@@ -12,8 +12,8 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-03 10:00
- * @version Beta 2.3.2
+ * @lastUpdate 2025-12-03 16:00
+ * @version Beta 2.3.3
  * @toolsCount 当前工具总数：90个
  */
 
@@ -243,7 +243,7 @@ onUnmounted(() => {
           </a>
         </div>
         <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：90个 | 最后更新：2025-12-03 10:00
+          当前工具总数：90个 | 最后更新：2025-12-03 16:00
         </div>
       </div>
 
@@ -279,6 +279,63 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.3.3 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.3</span>
+              <span class="date">2025-12-03 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI对话助手与DeepSeek R1重大更新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">
+                      <router-link to="/tools/ai/chat"
+                        class="hover:text-blue-600 transition-colors flex items-center gap-2 group" target="_blank">
+                        AI对话助手 (AIChat) 界面重构
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none"
+                          stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                      </router-link>
+                    </div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>界面升级</strong>：采用 Ant Design X 极简风格，优化输入框圆角与阴影，提升视觉体验。</li>
+                        <li><strong>交互优化</strong>：办公智能体移至主对话区“快速提示词”，新增代码解释、周报生成等8种常用场景。</li>
+                        <li><strong>功能增强</strong>：新增系统提示词与温度设置功能；顶部增加AI知识库等实用导航链接（新窗口打开）。</li>
+                        <li><strong>细节打磨</strong>：模型选择增加SVG图标，消息气泡样式微调，响应式布局优化。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">
+                      <router-link to="/tools/ai/deepseek-r1"
+                        class="hover:text-blue-600 transition-colors flex items-center gap-2 group" target="_blank">
+                        DeepSeek R1 修复与优化
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none"
+                          stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                      </router-link>
+                    </div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>修复 CSS 构建错误，优化思考动画与代码块样式。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.3.2 -->
           <div class="timeline-item">

@@ -99,6 +99,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/ai/remove-watermark',
+    component: () => import('@/components/Tools/AI/RemoveWatermark.vue'),
+    name: 'aiRemoveWatermark',
+    meta: {
+      title: "AI智能去水印",
+      keywords: '去水印,AI去水印,在线去水印,图片去水印,免费去水印',
+      description: '免费在线AI智能去水印工具，自动识别并移除图片水印，支持JPG/PNG等格式',
+    }
+  },
+  {
     path: '/tools/image-to-webp',
     component: () => import('@/components/Tools/ImageToWebp/ImageToWebp.vue'),
     name: 'imageToWebp',
@@ -1113,6 +1123,16 @@ export const constantRoute = [
       title: "小红书风格图片生成",
       keywords: '小红书图片,笔记图片生成,图文排版,自动生成图片',
       description: '一键生成小红书风格的图片，支持自定义内容和样式，快速美化你的图文笔记',
+    }
+  },
+  {
+    path: '/tools/ai/chat',
+    component: () => import('@/components/Tools/AI/AIChat.vue'),
+    name: 'aiChat',
+    meta: {
+      title: "免费AI聚合聊天 - 多模型智能对话助手",
+      keywords: 'AI聊天,免费AI,聚合聊天,DeepSeek,GPT,智能对话,AI助手',
+      description: '免费在线AI聚合聊天工具，支持DeepSeek、GPT等多种大模型，提供智能对话、代码编写、创意写作等功能。基于Ant Design X风格设计。',
     }
   },
   {

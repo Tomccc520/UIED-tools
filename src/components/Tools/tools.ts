@@ -93,6 +93,17 @@ export function getToolsCate(): ToolCategory[] {
           title: 'AI对话助手',
           list: [
             {
+              id: 100,
+              title: '免费AI聚合聊天',
+              logo: { type: 'svg', name: 'aiChat' },
+              desc: '聚合多种AI大模型，支持智能对话、代码编写、创意写作等，基于Ant Design X设计风格',
+              url: '/tools/ai/chat',
+              cate: 'AI对话助手',
+              releaseDate: '2025/12/03 10:00:00',
+              tags: ['免费', '多模型', '新品'],
+              isNew: true
+            },
+            {
               id: 103,
               title: '讯飞星火 Lite1.5',
               logo: { type: 'svg', name: 'xunfeiSpark' },
@@ -159,6 +170,17 @@ export function getToolsCate(): ToolCategory[] {
           id: 5,
           title: 'AI图像工具',
           list: [
+            {
+              id: 407,
+              title: 'AI智能去水印',
+              logo: { type: 'svg', name: 'removeWatermark' },
+              desc: '免费在线AI智能去水印工具，自动识别并移除图片水印，支持JPG/PNG等格式',
+              url: '/tools/ai/remove-watermark',
+              cate: 'AI图像工具',
+              releaseDate: '2025/12/04 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
             {
               id: 401,
               title: 'StableDiffusion AI绘画',
