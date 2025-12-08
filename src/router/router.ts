@@ -133,9 +133,29 @@ export const constantRoute = [
     component: () => import('@/components/Tools/ImgCut/ImgCut.vue'),
     name: 'imgCut',
     meta: {
-      title: "图片切割",
-      keywords: '图片分割,图片切割,九宫格切图',
-      description: '九宫格切图工具',
+      title: "免费九宫格切图",
+      keywords: '图片分割,图片切割,九宫格切图,朋友圈切图,微博切图',
+      description: '专业的在线图片切割工具，支持自定义行列数的九宫格切图，支持朋友圈、微博等社交媒体配图制作',
+    }
+  },
+  {
+    path: '/tools/image-joiner',
+    component: () => import('@/components/Tools/ImageJoiner/ImageJoiner.vue'),
+    name: 'imageJoiner',
+    meta: {
+      title: "免费在线图片拼接",
+      keywords: '图片拼接,长图制作,拼图工具,多图拼接',
+      description: '支持多张图片横向或纵向拼接，自定义间距和背景色，制作长图神器',
+    }
+  },
+  {
+    path: '/tools/image-to-gif',
+    component: () => import('@/components/Tools/ImageToGif/ImageToGif.vue'),
+    name: 'imageToGif',
+    meta: {
+      title: "免费图片合成GIF",
+      keywords: '图片转GIF,GIF合成,多图转GIF,GIF制作',
+      description: '在线将多张图片合成为动态GIF，支持自定义延迟、尺寸和循环播放',
     }
   },
   {
@@ -576,6 +596,97 @@ export const constantRoute = [
       title: "Markdown编辑器",
       keywords: 'Markdown编辑器,Markdown预览,Markdown转换',
       description: '在线Markdown编辑器，支持实时预览和导出',
+    }
+  },
+  // 潜能测试路由
+  {
+    path: '/tools/psychology/mbti',
+    component: () => import('@/components/Tools/Psychology/MBTI.vue'),
+    name: 'mbti',
+    meta: {
+      title: "MBTI职业性格测试（简洁版）",
+      keywords: 'MBTI,性格测试,职业规划,16型人格',
+      description: 'MBTI职业性格测试简洁版，快速了解你的性格类型和职业倾向',
+    }
+  },
+  {
+    path: '/tools/psychology/enneagram',
+    component: () => import('@/components/Tools/Psychology/Enneagram.vue'),
+    name: 'enneagram',
+    meta: {
+      title: "九型人格测试（简洁版）",
+      keywords: '九型人格,性格分析,心理测试',
+      description: '九型人格测试简洁版，探索你的核心性格型号',
+    }
+  },
+  {
+    path: '/tools/psychology/big-five',
+    component: () => import('@/components/Tools/Psychology/BigFive.vue'),
+    name: 'bigfive',
+    meta: {
+      title: "大五人格测试（简洁版）",
+      keywords: '大五人格,OCEAN,性格维度,心理评估',
+      description: '大五人格测试简洁版，从五个维度全面分析你的性格特征',
+    }
+  },
+  {
+    path: '/tools/psychology/abo',
+    component: () => import('@/components/Tools/Psychology/ABO.vue'),
+    name: 'abo',
+    meta: {
+      title: "ABO心理性别测试",
+      keywords: 'ABO测试,心理性别,趣味测试',
+      description: '趣味ABO心理性别测试，看看你是Alpha、Beta还是Omega',
+    }
+  },
+  {
+    path: '/tools/psychology/programmer-test',
+    component: () => import('@/components/Tools/Psychology/ProgrammerTest.vue'),
+    name: 'programmerTest',
+    meta: {
+      title: "程序员vs设计师潜能测试",
+      keywords: '程序员测试,设计师测试,职业潜能,左右脑测试',
+      description: '测试你的思维更偏向逻辑严密的程序员，还是感性创意的设计师',
+    }
+  },
+  {
+    path: '/tools/psychology/left-right-brain',
+    component: () => import('@/components/Tools/Psychology/LeftRightBrain.vue'),
+    name: 'leftRightBrain',
+    meta: {
+      title: "左右脑优势测试",
+      keywords: '左右脑测试,大脑优势,思维偏好,心理测试',
+      description: '测试你的大脑优势区域，是左脑逻辑型还是右脑创造型',
+    }
+  },
+  {
+    path: '/tools/psychology/eq-test',
+    component: () => import('@/components/Tools/Psychology/EQTest.vue'),
+    name: 'eqTest',
+    meta: {
+      title: "EQ情商测试（简洁版）",
+      keywords: 'EQ测试,情商测试,情绪智力,心理测试',
+      description: '测试你的情商水平，了解你的情绪管理和人际交往能力',
+    }
+  },
+  {
+    path: '/tools/psychology/eq-test',
+    component: () => import('@/components/Tools/Psychology/EQTest.vue'),
+    name: 'eqTest',
+    meta: {
+      title: "国际标准情商(EQ)测试",
+      keywords: 'EQ测试,情商测试,情绪管理,社交能力',
+      description: '评估你的情绪感知、控制和社交能力，了解你的情商水平',
+    }
+  },
+  {
+    path: '/tools/psychology/left-right-brain',
+    component: () => import('@/components/Tools/Psychology/LeftRightBrain.vue'),
+    name: 'leftRightBrain',
+    meta: {
+      title: "左右脑优势测试",
+      keywords: '左右脑测试,大脑优势,思维偏好,逻辑与直觉',
+      description: '了解你是理性逻辑的左脑型，还是感性创意的右脑型',
     }
   },
   {
@@ -1259,6 +1370,87 @@ export const constantRoute = [
       title: "AI简历生成器",
       keywords: 'AI简历,简历生成器,在线简历制作,简历模板,PDF简历',
       description: '使用AI技术，一键生成专业简历，支持多种模板和导出为PDF，让求职更加高效',
+    }
+  },
+  {
+    path: '/tools/radar',
+    component: () => import('@/components/Tools/Chart/Radar/Radar.vue'),
+    name: 'radar',
+    meta: {
+      title: "在线雷达图制作",
+      keywords: '雷达图,雷达图制作,在线图表,数据可视化,多维数据分析',
+      description: '在线制作雷达图，适用于多维数据对比分析，支持导出静态或动态图表',
+    }
+  },
+  {
+    path: '/tools/funnel',
+    component: () => import('@/components/Tools/Chart/Funnel/Funnel.vue'),
+    name: 'funnel',
+    meta: {
+      title: "在线漏斗图制作",
+      keywords: '漏斗图,漏斗图制作,在线图表,数据可视化,转化率分析',
+      description: '在线制作漏斗图，适用于转化率分析，支持导出静态或动态图表',
+    }
+  },
+  {
+    path: '/tools/gauge',
+    component: () => import('@/components/Tools/Chart/Gauge/Gauge.vue'),
+    name: 'gauge',
+    meta: {
+      title: "在线仪表盘制作",
+      keywords: '仪表盘,仪表盘制作,在线图表,数据可视化,进度展示',
+      description: '在线制作仪表盘，适用于进度展示、完成率分析，支持导出静态或动态图表',
+    }
+  },
+  // 数据换算工具
+  {
+    path: '/tools/calculation/mortgage-rate',
+    component: () => import('@/components/Tools/Calculation/MortgageRate.vue'),
+    name: 'mortgageRate',
+    meta: {
+      title: "房贷利率调整计算器",
+      keywords: '房贷利率计算器,存量房贷利率调整,房贷计算,LPR利率',
+      description: '在线计算房贷利率调整后的月供变化，支持LPR利率调整计算，帮助您快速了解房贷调整方案。',
+    }
+  },
+  {
+    path: '/tools/calculation/investment',
+    component: () => import('@/components/Tools/Calculation/Investment.vue'),
+    name: 'investment',
+    meta: {
+      title: "投资收益计算器",
+      keywords: '投资计算器,复利计算器,理财计算,定投计算',
+      description: '在线投资收益计算器，支持复利计算、定投计算，帮助您规划理财方案，预估投资回报。',
+    }
+  },
+  {
+    path: '/tools/calculation/social-insurance',
+    component: () => import('@/components/Tools/Calculation/SocialInsurance.vue'),
+    name: 'socialInsurance',
+    meta: {
+      title: "五险一金计算器",
+      keywords: '五险一金计算器,社保计算器,公积金计算,工资计算器,税后工资',
+      description: '2025最新五险一金计算器，支持全国各城市社保公积金计算，快速计算个人应缴和实发工资。',
+    }
+  },
+  {
+    path: '/tools/calculation/temperature',
+    component: () => import('@/components/Tools/Calculation/Temperature.vue'),
+    name: 'temperature',
+    meta: {
+      title: "温度转换器",
+      keywords: '温度转换,摄氏度转换,华氏度转换,开尔文转换,温度单位换算',
+      description: '在线温度单位转换工具，支持摄氏度、华氏度、开尔文之间的快速互转，提供换算公式参考。',
+    }
+  },
+  {
+    path: '/tools/calculation/mortgage',
+    component: () => import('@/components/Tools/Calculation/Mortgage.vue'),
+    name: 'mortgage',
+    meta: {
+      title: "房贷计算器",
+      keywords: '房贷计算器,商业贷款计算,公积金贷款计算,组合贷款计算,月供计算',
+      description: '专业的房贷计算器，支持等额本息和等额本金两种还款方式，快速计算月供、利息和还款总额。',
     }
   },
 ]

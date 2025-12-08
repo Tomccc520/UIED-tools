@@ -86,6 +86,7 @@ export function getToolsCate(): ToolCategory[] {
               tags: ['免费', '新品'],
               isNew: true
             }
+
           ]
         },
         {
@@ -569,11 +570,31 @@ export function getToolsCate(): ToolCategory[] {
             },
             {
               id: 518,
-              title: '图片切割',
+              title: '免费九宫格切图',
               logo: { type: 'svg', name: 'imgCut' },
-              desc: '九宫格切图工具',
+              desc: '专业的在线图片切割工具，支持自定义行列数的九宫格切图',
               url: '/tools/img-cut',
               cate: '图片工具'
+            },
+            {
+              id: 520,
+              title: '免费在线图片拼接',
+              logo: { type: 'svg', name: 'imageJoin' },
+              desc: '支持多张图片横向或纵向拼接，自定义间距和背景色，制作长图神器',
+              url: '/tools/image-joiner',
+              cate: '图片工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 521,
+              title: '免费图片合成GIF',
+              logo: { type: 'svg', name: 'imageToGif' },
+              desc: '在线将多张图片合成为动态GIF，支持自定义延迟、尺寸和循环播放',
+              url: '/tools/image-to-gif',
+              cate: '图片工具',
+              isNew: true,
+              tags: ['免费', '新品']
             },
             {
               id: 519,
@@ -703,6 +724,39 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/scatter',
               cateId: 8,
               cate: '数据图表'
+            },
+            {
+              id: 545,
+              title: '雷达图',
+              logo: { type: 'svg', name: 'radar' },
+              desc: '在线制作雷达图，适用于多维数据对比分析，支持导出静态或动态图表',
+              url: '/tools/radar',
+              cateId: 8,
+              cate: '数据图表',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 546,
+              title: '漏斗图',
+              logo: { type: 'svg', name: 'funnel' },
+              desc: '在线制作漏斗图，适用于转化率分析，支持导出静态或动态图表',
+              url: '/tools/funnel',
+              cateId: 8,
+              cate: '数据图表',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 547,
+              title: '仪表盘',
+              logo: { type: 'svg', name: 'gauge' },
+              desc: '在线制作仪表盘，适用于进度展示、完成率分析，支持导出静态或动态图表',
+              url: '/tools/gauge',
+              cateId: 8,
+              cate: '数据图表',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         }
@@ -886,6 +940,95 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/textedit',
               cateId: 11,
               cate: '文本处理'
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 12,
+      title: '潜能测试',
+      icon: '',
+      list: [
+        {
+          id: 121,
+          title: '性格测试',
+          list: [
+            {
+              id: 1211,
+              title: 'MBTI职业性格测试',
+              logo: { type: 'svg', name: 'mbti' },
+              desc: '简洁版MBTI测试，快速分析你的性格类型和职业倾向',
+              url: '/tools/psychology/mbti',
+              cate: '性格测试',
+              tags: ['热门', '免费'],
+              isNew: true
+            },
+            {
+              id: 1212,
+              title: '九型人格测试',
+              logo: { type: 'svg', name: 'enneagram' },
+              desc: '探索你的核心性格型号，了解深层动机和恐惧',
+              url: '/tools/psychology/enneagram',
+              cate: '性格测试',
+              tags: ['免费'],
+              isNew: true
+            },
+            {
+              id: 1213,
+              title: '大五人格测试',
+              logo: { type: 'svg', name: 'bigfive' },
+              desc: '从五个维度全面分析你的性格特征，科学权威',
+              url: '/tools/psychology/big-five',
+              cate: '性格测试',
+              tags: ['专业', '免费'],
+              isNew: true
+            },
+            {
+              id: 1214,
+              title: 'ABO心理性别测试',
+              logo: { type: 'svg', name: 'abo' },
+              desc: '趣味测试：你是霸气的Alpha，温和的Beta，还是惹人怜爱的Omega？',
+              url: '/tools/psychology/abo',
+              cate: '趣味测试',
+              tags: ['趣味', '免费'],
+              isNew: true
+            },
+            {
+              id: 1215,
+              title: '国际标准情商(EQ)测试',
+              logo: { type: 'svg', name: 'eqTest' },
+              desc: '评估你的情绪感知、控制和社交能力，了解你的情商水平',
+              url: '/tools/psychology/eq-test',
+              cate: '性格测试',
+              tags: ['专业', '免费'],
+              isNew: true
+            }
+          ]
+        },
+        {
+          id: 122,
+          title: '职业潜能',
+          list: [
+            {
+              id: 1221,
+              title: '程序员vs设计师测试',
+              logo: { type: 'svg', name: 'programmerTest' },
+              desc: '测试你的思维更偏向逻辑严密的程序员，还是感性创意的设计师',
+              url: '/tools/psychology/programmer-test',
+              cate: '职业潜能',
+              tags: ['职业', '免费'],
+              isNew: true
+            },
+            {
+              id: 1222,
+              title: '左右脑优势测试',
+              logo: { type: 'svg', name: 'brainTest' },
+              desc: '了解你是理性逻辑的左脑型，还是感性创意的右脑型',
+              url: '/tools/psychology/left-right-brain',
+              cate: '职业潜能',
+              tags: ['思维', '免费'],
+              isNew: true
             }
           ]
         }
@@ -1277,6 +1420,57 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/dice',
               cateId: 3,
               cate: '选择随机'
+            }
+          ]
+        },
+        {
+          id: 34,
+          title: '数据换算',
+          list: [
+            {
+              id: 341,
+              title: '房贷利率调整计算器',
+              logo: { type: 'svg', name: 'calculator' },
+              desc: '在线计算房贷利率调整后的月供变化，支持LPR利率调整计算',
+              url: '/tools/calculation/mortgage-rate',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 342,
+              title: '投资收益计算器',
+              logo: { type: 'svg', name: 'chart' },
+              desc: '在线投资收益计算器，支持复利计算、定投计算',
+              url: '/tools/calculation/investment',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 343,
+              title: '五险一金计算器',
+              logo: { type: 'svg', name: 'money' },
+              desc: '2025最新五险一金计算器，快速计算个人应缴和实发工资',
+              url: '/tools/calculation/social-insurance',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 344,
+              title: '温度转换器',
+              logo: { type: 'svg', name: 'temperature' },
+              desc: '在线温度单位转换工具，支持摄氏度、华氏度、开尔文之间的快速互转',
+              url: '/tools/calculation/temperature',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 345,
+              title: '房贷计算器',
+              logo: { type: 'svg', name: 'house' },
+              desc: '专业的房贷计算器，支持等额本息和等额本金两种还款方式',
+              url: '/tools/calculation/mortgage',
+              cateId: 3,
+              cate: '数据换算'
             }
           ]
         },

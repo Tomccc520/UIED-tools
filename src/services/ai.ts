@@ -5,7 +5,7 @@ import { debugLog, debugError, debugTimeStart, debugTimeEnd } from '@/utils/debu
 // AI搜索服务配置
 const AI_API_CONFIG = {
   baseURL: 'https://api.siliconflow.cn/v1',
-  timeout: 30000,
+  timeout: 60000,
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -53,6 +53,11 @@ aiClient.interceptors.response.use(
       data: error.response?.data,
       message: error.message
     })
+
+    if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+      throw new Error('请求超时，请稍后重试')
+    }
+
     throw new Error(error.response?.data?.message || '服务器错误，请稍后重试')
   }
 )
@@ -130,15 +135,11 @@ export const searchWithAI = async (query: string, onUpdate?: (data: { content?: 
     let buffer = ''
 
     const response = await aiClient.post('/chat/completions', {
-      model: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
+      model: 'deepseek-ai/DeepSeek-V3',
       messages,
       temperature: 0.6,
       max_tokens: 2000,
-      stream: true,
-      extra_options: {
-        show_reasoning: true,
-        reasoning_type: 'detailed'
-      }
+      stream: true
     }, {
       responseType: 'text',
       onDownloadProgress: (progressEvent) => {

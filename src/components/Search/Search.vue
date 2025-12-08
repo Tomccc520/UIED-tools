@@ -45,15 +45,6 @@
                 </div>
               </div>
               <div class="message-content">
-                <div v-if="chat.answer.reasoning_content" class="reasoning-content">
-                  <div class="reasoning-header">
-                    <el-icon>
-                      <Cpu />
-                    </el-icon>
-                    <span>推理过程</span>
-                  </div>
-                  <div class="reasoning-text" v-html="renderMarkdown(chat.answer.reasoning_content)"></div>
-                </div>
                 <div class="final-answer">
                   <div class="answer-header">
                     <el-icon>
@@ -85,17 +76,6 @@
               </div>
             </div>
             <div class="message-content">
-              <!-- 推理过程 -->
-              <div v-if="aiResponse.reasoning_content" class="reasoning-content">
-                <div class="reasoning-header">
-                  <el-icon>
-                    <Cpu />
-                  </el-icon>
-                  <span>推理过程</span>
-                </div>
-                <div class="reasoning-text" v-html="renderMarkdown(aiResponse.reasoning_content)"></div>
-              </div>
-
               <!-- 最终答案 -->
               <div class="final-answer">
                 <div class="answer-header">
@@ -134,13 +114,8 @@
         <!-- 快捷工具 -->
         <template v-if="!searchParam.title">
           <div class="welcome-section">
-            <h3>欢迎使用AI智能搜索</h3>
-            <p>您可以:</p>
-            <ul>
-              <li>输入关键词搜索相关工具</li>
-              <li>描述您的需求获取推荐</li>
-              <li>询问工具的使用方法</li>
-            </ul>
+            <h3 class="welcome-title">AI智能助手</h3>
+            <p class="welcome-desc">我可以帮您查找工具、解答问题或推荐解决方案。</p>
           </div>
 
           <div class="quick-access">
@@ -191,14 +166,14 @@
           <el-icon class="loading-icon" :size="24">
             <Loading />
           </el-icon>
-          <span>让我想想哦~ (｀・ω・´)</span>
+          <span>AI正在思考中...</span>
         </div>
       </div>
 
       <!-- 底部搜索框 -->
       <div class="search-footer">
         <div class="search-input-wrapper">
-          <el-input v-model="searchParam.title" placeholder="有什么我可以帮你的吗？(。・∀・)ノ" :prefix-icon="Search"
+          <el-input v-model="searchParam.title" placeholder="输入关键词搜索工具，或描述您的需求..." :prefix-icon="Search"
             class="search-input" @keyup.enter="handleEnterSearch" :loading="searchParam.loading"
             :disabled="searchParam.loading" />
           <div class="button-group">
@@ -222,7 +197,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, type Ref } from 'vue'
-import { Search, Delete, Link as LinkIcon, ArrowRight, Close, Loading, User, ChatDotRound, Cpu, Check } from '@element-plus/icons-vue'
+import { Search, Delete, Link as LinkIcon, ArrowRight, Close, Loading, User, ChatDotRound, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
 import logoImg from '@/assets/uiedlogo.png'
@@ -271,18 +246,16 @@ const searchHistory = ref<string[]>([])
 const MAX_HISTORY = 10
 
 // 打字机效果相关变量
-const TYPING_SPEED = 20 // 打字速度(ms)
+const TYPING_SPEED = 5 // 打字速度(ms)
 let typingTimer: ReturnType<typeof setTimeout> | null = null
 
 // 缓存的响应内容
 const responseBuffer = reactive({
-  content: '',
-  reasoning_content: ''
+  content: ''
 })
 
 // 实际显示的内容
 const displayContent = ref('')
-const displayReasoning = ref('')
 
 // 是否正在输出
 const isTyping = ref(false)
@@ -321,20 +294,14 @@ const updateDisplay = () => {
     type()
   }
 
-  // 先打字推理过程，再打字回答
-  if (responseBuffer.reasoning_content !== displayReasoning.value) {
-    typeText(responseBuffer.reasoning_content, displayReasoning, () => {
-      if (responseBuffer.content !== displayContent.value) {
-        typeText(responseBuffer.content, displayContent)
-      }
-    })
-  } else if (responseBuffer.content !== displayContent.value) {
+  // 直接打字回答
+  if (responseBuffer.content !== displayContent.value) {
     typeText(responseBuffer.content, displayContent)
   }
 }
 
 // 更新响应内容的防抖函数
-const updateResponse = (data: { content?: string, reasoning_content?: string }) => {
+const updateResponse = (data: { content?: string }) => {
   if (!aiResponse.value) return
 
   if (typingTimer) {
@@ -347,10 +314,6 @@ const updateResponse = (data: { content?: string, reasoning_content?: string }) 
     if (data.content) {
       responseBuffer.content += data.content
       aiResponse.value!.content = responseBuffer.content
-    }
-    if (data.reasoning_content) {
-      responseBuffer.reasoning_content += data.reasoning_content
-      aiResponse.value!.reasoning_content = responseBuffer.reasoning_content
     }
     updateDisplay()
   }, TYPING_SPEED)
@@ -445,14 +408,11 @@ const handleSearch = async () => {
 
     // 重置当前回答的内容
     responseBuffer.content = ''
-    responseBuffer.reasoning_content = ''
     displayContent.value = ''
-    displayReasoning.value = ''
 
     // 创建新的回答
     const newResponse = {
       content: '',
-      reasoning_content: '正在分析您的问题...',
       suggestions: []
     }
 
@@ -482,7 +442,6 @@ const handleSearch = async () => {
 
       // 确保最后一次更新完成
       responseBuffer.content = response.content
-      responseBuffer.reasoning_content = response.reasoning_content || ''
       updateDisplay()
 
       aiResponse.value = response
@@ -551,9 +510,7 @@ const handleClose = () => {
   aiResponse.value = null
   chatHistory.value = []
   responseBuffer.content = ''
-  responseBuffer.reasoning_content = ''
   displayContent.value = ''
-  displayReasoning.value = ''
 }
 
 // 清除搜索
@@ -639,32 +596,39 @@ const handleEnterSearch = () => {
 .quick-tool-item {
   background: white;
   border: 1px solid #e2e8f0;
-  padding: 16px;
-  border-radius: 8px;
+  padding: 1rem;
+  border-radius: 0.75rem;
   cursor: pointer;
   transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  height: 100%;
 }
 
 .quick-tool-item:hover {
   border-color: #6C54FF;
-  border-width: 1px;
+  box-shadow: 0 4px 12px rgba(108, 84, 255, 0.1);
+  transform: translateY(-2px);
 }
 
-.quick-tool-item::before {
-  display: none;
-  /* 移除左侧竖线 */
+.quick-tool-title {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #1e293b;
+  margin-bottom: 0.25rem;
+  transition: color 0.2s ease;
 }
 
-.quick-tool-item:hover::before {
-  display: none;
-  /* 确保悬停时也不显示 */
+.quick-tool-desc {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.4;
 }
 
 .quick-tool-item:hover .quick-tool-title {
   color: #6C54FF;
-  /* 保留文字颜色变化 */
 }
 
 /* 简化响应式样式 */
@@ -828,29 +792,6 @@ const handleEnterSearch = () => {
   color: #64748b;
 }
 
-/* 推理内容样式 */
-.reasoning-content {
-  margin-bottom: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: #f8fafc;
-  border-radius: 0.75rem;
-  border: 1px dashed #cbd5e1;
-  position: relative;
-  overflow: hidden;
-}
-
-.reasoning-content::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: #6C54FF;
-  opacity: 0.5;
-}
-
-.reasoning-header,
 .answer-header {
   display: flex;
   align-items: center;
@@ -861,7 +802,6 @@ const handleEnterSearch = () => {
   font-weight: 500;
 }
 
-.reasoning-header .el-icon,
 .answer-header .el-icon {
   font-size: 14px;
   color: #6C54FF;
@@ -1032,6 +972,19 @@ const handleEnterSearch = () => {
   margin-bottom: 24px;
   position: relative;
   overflow: hidden;
+}
+
+.welcome-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 0.5rem 0;
+}
+
+.welcome-desc {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
 }
 
 .welcome-section::before,

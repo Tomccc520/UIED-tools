@@ -24,13 +24,14 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 interface Category {
   id: number
   title: string
-  icon: string
+  icon?: string
   list: Array<{
     id: number
     title: string
-    url: string
-    cateId: number
-    cate: string
+    url?: string
+    cateId?: number
+    cate?: string
+    list?: Array<any> // Allow nested list for tool categories
   }>
 }
 
@@ -394,6 +395,29 @@ onMounted(() => {
           </el-menu-item-group>
         </el-sub-menu>
 
+        <!-- 潜能测试菜单 -->
+        <el-sub-menu index="psychology">
+          <template #title>
+            <div class="relative">
+              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zM9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            </div>
+            <span class="ml-2">潜能测试</span>
+          </template>
+          <el-menu-item-group>
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '潜能测试')?.list"
+              :key="category.id" :index="`psychology-${category.id}`"
+              @click="handleMenuClick(`psychology-${category.id}`)">
+              {{ category.title }}
+            </el-menu-item>
+          </el-menu-item-group>
+        </el-sub-menu>
+
         <!-- 开发工具菜单 -->
         <el-sub-menu index="dev">
           <template #title>
@@ -472,6 +496,8 @@ onMounted(() => {
             </el-menu-item>
           </el-menu-item-group>
         </el-sub-menu>
+
+
 
         <!-- 更新记录 -->
         <el-menu-item index="changelog" @click="handleMenuClick('changelog')">

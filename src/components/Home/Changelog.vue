@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-03 16:00
- * @version Beta 2.3.3
- * @toolsCount 当前工具总数：90个
+ * @lastUpdate 2025-12-08 10:00
+ * @version Beta 2.3.6
+ * @toolsCount 当前工具总数：105个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -243,7 +243,7 @@ onUnmounted(() => {
           </a>
         </div>
         <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：90个 | 最后更新：2025-12-03 16:00
+          当前工具总数：100个 | 最后更新：2025-12-06 14:00
         </div>
       </div>
 
@@ -279,6 +279,146 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.3.6 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.6</span>
+              <span class="date">2025-12-08 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">新增多款实用计算器与工具详情页优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增5款效率计算器</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/calculation/mortgage"
+                              class="hover:text-blue-600 transition-colors">房贷计算器</router-link></strong>：支持商业贷款、公积金贷款及组合贷款计算，提供等额本息与等额本金两种还款方式对比。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/mortgage-rate"
+                              class="hover:text-blue-600 transition-colors">房贷利率调整计算器</router-link></strong>：快速计算LPR利率调整前后的月供变化与利息节省情况。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/investment"
+                              class="hover:text-blue-600 transition-colors">投资收益计算器</router-link></strong>：支持复利计算与定投收益预测，辅助制定长期理财规划。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/social-insurance"
+                              class="hover:text-blue-600 transition-colors">五险一金计算器</router-link></strong>：依据2025最新政策，精准计算个人应缴社保公积金及税后收入。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/temperature"
+                              class="hover:text-blue-600 transition-colors">温度转换器</router-link></strong>：支持摄氏度、华氏度、开尔文温标的实时双向转换。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">工具详情页体验升级</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>新增工具指南</strong>：所有计算器页面新增详细的"工具介绍"与"使用方法"指南，帮助用户快速上手。</li>
+                        <li><strong>视觉与布局优化</strong>：统一优化页面布局与视觉风格，提升浏览体验。</li>
+                        <li><strong>智能推荐集成</strong>：底部集成智能工具推荐功能，方便用户发现更多实用工具。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.5 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.5</span>
+              <span class="date">2025-12-06 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">优化</el-tag>
+                <span class="text-gray-700">心理测试组件重构与架构标准化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">心理测试组件全面重构</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>组件标准化</strong>：完成 LeftRightBrain、EQTest、ProgrammerTest、BigFive、Enneagram、ABO、MBTI
+                          等7个核心测试组件的重构。</li>
+                        <li><strong>架构升级</strong>：统一采用 BaseTest 模板架构，移除冗余代码与重复依赖，大幅提升代码可维护性。</li>
+                        <li><strong>体验优化</strong>：优化组件加载逻辑与数据流转，确保测试过程更加流畅稳定。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.4 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.4</span>
+              <span class="date">2025-12-06 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">图片工具矩阵扩充与AI助手优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增数据图表工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/radar"
+                              class="hover:text-blue-600 transition-colors">雷达图</router-link></strong>：支持多维数据对比分析，适用于能力评估、绩效分析等场景。
+                        </li>
+                        <li><strong><router-link to="/tools/funnel"
+                              class="hover:text-blue-600 transition-colors">漏斗图</router-link></strong>：支持转化率分析，适用于销售漏斗、用户行为路径等场景。
+                        </li>
+                        <li><strong><router-link to="/tools/gauge"
+                              class="hover:text-blue-600 transition-colors">仪表盘</router-link></strong>：支持进度展示与完成率分析，适用于KPI监控、目标追踪等场景。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增图片处理工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>免费在线图片拼接</strong>：支持多张图片横向或纵向拼接，可自定义间距与背景色，制作长图神器。</li>
+                        <li><strong>免费图片合成GIF</strong>：在线将多张静态图片合成为动态GIF，支持自定义帧率、尺寸与画质。</li>
+                        <li><strong>免费九宫格切图</strong>：原"图片切割"工具升级，支持拖拽上传与自定义行列数，完美适配社交媒体配图。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">AI助手与搜索优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>AI智能搜索</strong>：大幅优化响应速度，移除冗余推理过程，提升UI交互体验，修复API超时问题。</li>
+                        <li><strong>AI对话助手</strong>：新增使用限制与密码验证功能，保障服务稳定性；优化图标与界面细节。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>证件照换底色</strong>：新增容差调节功能，优化抠图效果；调整UI布局提升易用性。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.3.3 -->
           <div class="timeline-item">

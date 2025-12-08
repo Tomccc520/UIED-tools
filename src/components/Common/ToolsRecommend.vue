@@ -40,7 +40,7 @@
          - 展示8个同类工具
          - 仅支持站内路由跳转
     -->
-    <div class="bg-white rounded-xl shadow-sm">
+    <div class="bg-white rounded-xl border border-gray-100">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
@@ -75,7 +75,7 @@
          - 支持外部链接跳转
          - 使用isExternal属性区分链接类型
     -->
-    <div class="bg-white rounded-xl shadow-sm">
+    <div class="bg-white rounded-xl border border-gray-100">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24"
@@ -220,5 +220,8 @@ const handleToolClick = (tool: any) => {
 const hotTools = getHotTools(8)  // 热门工具: 8个固定外部链接
 const newTools = getNewTools(8)  // 新品工具: 随机8个
 const utilityTools = getUtilityTools(8)  // 实用工具: 随机8个
-const relatedTools = getRelatedTools(props.currentPath, 8, 0)  // 相关工具: 8个同类工具
+
+// 获取相关工具: 优先获取同类工具,如果不足则用其他工具补充,总共8个
+const allRelatedTools = getRelatedTools(props.currentPath, 8, 8)
+const relatedTools = allRelatedTools.slice(0, 8)
 </script>

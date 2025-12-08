@@ -21,7 +21,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
-import * as JSZip from 'jszip'
+import JSZip from 'jszip'
 import { ref, computed, watch, onMounted } from '@vue/runtime-core'
 
 const route = useRoute()
@@ -142,6 +142,24 @@ const handleDrop = (e: DragEvent) => {
 }
 
 /**
+ * 处理文件输入改变
+ */
+const handleFileInputChange = (e: Event) => {
+  const input = e.target as HTMLInputElement
+  if (input.files && input.files[0]) {
+    updateDataFile({ file: input.files[0] })
+  }
+  input.value = ''
+}
+
+/**
+ * 触发文件选择
+ */
+const triggerFileInput = () => {
+  dataFileRef.value?.click()
+}
+
+/**
  * 切割图片
  * 将图片按照设定的行列数进行等分切割
  */
@@ -189,7 +207,8 @@ const cut = () => {
 const cutImgStyle = computed(() => {
   // 限制最大宽度为600px或窗口宽度的70%
   const maxWidth = Math.min(600, window.innerWidth * 0.7)
-  const width = `width: ${Math.min(image.value.width || maxWidth, maxWidth)}px`
+  // 使用图片原始宽度和最大宽度的较小值
+  const width = `width: ${Math.min(image.value.naturalWidth || maxWidth, maxWidth)}px`
   const grid = `grid: repeat(${lineNum.value}, 1fr) / repeat(${lineNum.value}, 1fr)`
   return `${width}; ${grid}`
 })
@@ -272,10 +291,8 @@ onMounted(() => {
               class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-gray-50"
               :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
               @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-              <el-upload ref="dataFileRef" class="h-full w-full absolute inset-0 opacity-0 z-10 cursor-pointer"
-                :auto-upload="true" :show-file-list="false" :on-change="updateDataFile" :on-exceed="handleExceed"
-                :limit="1" accept="image/*">
-              </el-upload>
+              <input ref="dataFileRef" type="file" class="hidden" accept="image/*" @change="handleFileInputChange" />
+              <div class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></div>
               <div class="text-center px-4">
                 <div class="w-8 h-8 mb-2 mx-auto">
                   <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
