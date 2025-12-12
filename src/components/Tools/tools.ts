@@ -86,7 +86,16 @@ export function getToolsCate(): ToolCategory[] {
               tags: ['免费', '新品'],
               isNew: true
             }
-
+            {
+              id: 816,
+              title: '记忆翻牌',
+              logo: { type: 'svg', name: 'memoryCard' },
+              desc: '经典的记忆翻牌游戏，翻开卡片寻找相同的图案，考验你的瞬间记忆力！',
+              url: '/tools/games/memory-card',
+              cate: '摸鱼小游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
           ]
         },
         {
@@ -744,6 +753,16 @@ export function getToolsCate(): ToolCategory[] {
               cate: '实用查询',
               isNew: true,
               tags: ['免费', '新品']
+            },
+            {
+              id: 816,
+              title: '帮我决定',
+              logo: { type: 'svg', name: 'decisionMaker' },
+              desc: '选择困难症福音！输入选项，让运气帮你做决定',
+              url: '/tools/daily/decision-maker',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         }
@@ -1259,6 +1278,16 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/psychology/eq-test',
               cate: '性格测试',
               tags: ['专业', '免费'],
+              isNew: true
+            },
+            {
+              id: 1216,
+              title: '色彩性格测试',
+              logo: { type: 'svg', name: 'colorTest' },
+              desc: '探索你是红、蓝、白、黄哪种性格，了解你的核心动力和优势',
+              url: '/tools/psychology/color-test',
+              cate: '性格测试',
+              tags: ['免费'],
               isNew: true
             }
           ]
