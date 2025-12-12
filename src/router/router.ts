@@ -1574,6 +1574,16 @@ export const constantRoute = [
       description: '经典的2048数字合成游戏，移动方块合并数字，挑战合成2048！',
     }
   },
+  {
+    path: '/tools/games/memory-card',
+    component: () => import('@/components/Tools/Games/MemoryCard/MemoryCard.vue'),
+    name: 'memoryCard',
+    meta: {
+      title: "记忆翻牌",
+      keywords: '记忆翻牌,Memory Card,记忆力游戏,配对游戏,益智游戏',
+      description: '经典的记忆翻牌游戏，翻开卡片寻找相同的图案，考验你的瞬间记忆力！',
+    }
+  },
   // AI简历生成器
   {
     path: '/tools/ai/resume',

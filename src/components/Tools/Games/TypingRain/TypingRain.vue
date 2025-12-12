@@ -24,7 +24,7 @@
           </div>
         </div>
 
-        <div
+        <div ref="gameContainer"
           class="typing-rain-container relative w-full overflow-y-auto bg-gray-900 flex flex-col items-center justify-center font-sans text-white select-none rounded-xl py-8 min-h-[600px]">
           <!-- 背景图层 -->
           <div
@@ -182,6 +182,12 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2025-9-22
+ */
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -210,6 +216,7 @@ const maxLives = 5
 const inputValue = ref('')
 const activeWords = ref<Word[]>([])
 const gameArea = ref<HTMLElement | null>(null)
+const gameContainer = ref<HTMLElement | null>(null)
 const inputField = ref<HTMLInputElement | null>(null)
 const isFullscreen = ref(false)
 
@@ -228,10 +235,10 @@ let isComposing = false // 输入法状态
 
 // 全屏切换
 const toggleFullscreen = () => {
-  if (!gameArea.value) return
+  if (!gameContainer.value) return
 
   if (!document.fullscreenElement) {
-    gameArea.value.requestFullscreen().catch(err => {
+    gameContainer.value.requestFullscreen().catch(err => {
       console.error(`Error attempting to enable fullscreen: ${err.message}`)
     })
   } else {

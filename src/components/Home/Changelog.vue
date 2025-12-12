@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-12 10:00
- * @version Beta 2.4.1
- * @toolsCount 当前工具总数：176个
+ * @lastUpdate 2025-12-12 11:30
+ * @version Beta 2.4.2
+ * @toolsCount 当前工具总数：177个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -243,7 +243,7 @@ onUnmounted(() => {
           </a>
         </div>
         <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：176个 | 最后更新：2025-12-12 10:00
+          当前工具总数：177个 | 最后更新：2025-12-12 11:30
         </div>
       </div>
 
@@ -279,6 +279,43 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.4.2 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.2</span>
+              <span class="date">2025-12-12 11:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">游戏体验修复与新增</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增小游戏</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/memory-card"
+                              class="hover:text-blue-600 transition-colors">记忆翻牌</router-link></strong>：考验记忆力的翻牌配对游戏，支持
+                          4x4 和 6x6 两种难度。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">问题修复</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>打字雨</strong>：修复了全屏模式下输入框无法显示的问题，现在全屏体验更加完美。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.4.1 -->
           <div class="timeline-item">

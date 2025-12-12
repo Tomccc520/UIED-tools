@@ -100,6 +100,12 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2025-9-22
+ */
 import { ref, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
