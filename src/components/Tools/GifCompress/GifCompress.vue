@@ -193,15 +193,15 @@
                           <div>原始图片</div>
                           <div class="flex items-center gap-2 text-xs">
                             <span class="bg-gray-100 px-2 py-0.5 rounded text-gray-600">{{ originalDimensions.width
-                              }}x{{ originalDimensions.height }}</span>
+                            }}x{{ originalDimensions.height }}</span>
                             <span v-if="originalSize > 0" class="bg-gray-100 px-2 py-0.5 rounded text-gray-600">{{
                               formatSize(originalSize) }}</span>
                           </div>
                         </div>
                         <div
                           class="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 flex items-center justify-center flex-1 min-h-[300px] relative group p-4">
-                          <div
-                            class="absolute inset-0 bg-[url('@/assets/transparent-bg.png')] opacity-10 pointer-events-none">
+                          <div class="absolute inset-0 opacity-10 pointer-events-none"
+                            style="background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;">
                           </div> <!-- 透明背景纹理 -->
                           <el-image :src="originalSrc" class="max-w-full max-h-[400px] rounded-lg z-0"
                             :preview-src-list="[originalSrc]" fit="contain">
@@ -225,12 +225,12 @@
                           <div class="flex items-center gap-2 text-xs" v-if="compressedSrc">
                             <span class="bg-green-50 text-green-600 px-2 py-0.5 rounded border border-green-100">{{
                               customDimensions.width
-                              }}x{{ customDimensions.height }}</span>
+                            }}x{{ customDimensions.height }}</span>
                             <span class="bg-green-50 text-green-600 px-2 py-0.5 rounded border border-green-100">{{
                               formatSize(compressedSize)
-                              }}</span>
+                            }}</span>
                             <span class="bg-green-500 text-white px-2 py-0.5 rounded font-bold">-{{ calculateReduction()
-                              }}%</span>
+                            }}%</span>
                           </div>
                         </div>
                         <div

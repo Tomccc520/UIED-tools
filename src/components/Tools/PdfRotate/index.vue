@@ -14,33 +14,29 @@
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 标题区域 -->
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
-            </div>
-          </h2>
-          <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
+        <div class="text-center mb-8">
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ info.title }}</h2>
+          <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="!currentFile">
           <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
-            @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
+            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+            @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
-              <div class="w-8 h-8 mb-2 mx-auto">
-                <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
-              <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽PDF文件到这里</div>
-              <p class="text-xs text-gray-400">单个文件最大 200MB</p>
+              <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
+              <p class="text-sm text-gray-400">单个文件最大 200MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
@@ -182,9 +178,12 @@
         </div>
       </div>
 
-      <!-- 工具推荐 -->
-      <ToolsRecommend :currentPath="route.path" />
+      <!-- 使用说明 -->
+      <UsageGuide :steps="guideSteps" :notes="guideNotes" />
     </div>
+
+    <!-- 工具推荐 -->
+    <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
 
@@ -197,42 +196,18 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
 import VueDraggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
+import * as pdfjsLib from 'pdfjs-dist'
+
+// 设置 PDF.js worker
+// @ts-ignore
+import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 
 const route = useRoute()
 
-// 声明全局变量
-declare global {
-  interface Window {
-    pdfjsLib: any
-  }
-}
-
 // 初始化状态
-const pdfJsReady = ref(false)
-
-// 初始化 PDF.js worker
-onMounted(() => {
-  // 检查 PDF.js 是否已加载
-  const maxAttempts = 10 // 最大尝试次数
-  let attempts = 0
-
-  const checkPdfJs = () => {
-    if (window.pdfjsLib) {
-      pdfJsReady.value = true
-      return
-    }
-
-    attempts++
-    if (attempts < maxAttempts) {
-      setTimeout(checkPdfJs, 500)
-    } else {
-      console.error('PDF.js 加载失败')
-      ElMessage.error('PDF.js 加载失败，请刷新页面重试')
-    }
-  }
-
-  checkPdfJs()
-})
+const pdfJsReady = ref(true)
 
 // 注册组件
 const components = {
@@ -249,6 +224,18 @@ const info = reactive({
   title: "免费在线PDF页面旋转工具",
   subtitle: "可批量旋转、单独旋转页面，同时可调整页面顺序、删除页面"
 })
+
+const guideSteps = [
+  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为200MB。' },
+  { title: '旋转页面', description: '点击页面右上角的旋转按钮单独旋转，或使用上方工具栏批量旋转所有页面。' },
+  { title: '保存并下载', description: '调整完成后，点击“保存并下载”按钮，系统将自动生成新的PDF文件。' }
+]
+
+const guideNotes = [
+  '支持拖拽调整页面顺序。',
+  '删除的页面将不会包含在最终生成的PDF文件中。',
+  '所有文件处理均在本地浏览器完成，不会上传到服务器，确保您的文件安全。'
+]
 
 // 功能特点
 const features = [
@@ -353,7 +340,7 @@ const handleFile = async (file: File) => {
     const arrayBuffer = await file.arrayBuffer()
 
     // 先用 pdf.js 检查文件是否可以正常打开
-    const loadingTask = window.pdfjsLib.getDocument(arrayBuffer)
+    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
     const pdfDoc = await loadingTask.promise
     pageCount.value = pdfDoc.numPages
 
@@ -440,7 +427,7 @@ const rotatePage = async (index: number, angle: number) => {
       const arrayBuffer = await currentFile.value?.arrayBuffer()
       if (!arrayBuffer) return
 
-      const loadingTask = window.pdfjsLib.getDocument(arrayBuffer)
+      const loadingTask = pdfjsLib.getDocument(arrayBuffer)
       const pdfDoc = await loadingTask.promise
       const page = await pdfDoc.getPage(index + 1)
       const canvas = pageCanvases.value[index]
@@ -487,7 +474,7 @@ const rotateAll = async (angle: number) => {
     const arrayBuffer = await currentFile.value?.arrayBuffer()
     if (!arrayBuffer) return
 
-    const loadingTask = window.pdfjsLib.getDocument(arrayBuffer)
+    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
     const pdfDoc = await loadingTask.promise
 
     for (let i = 0; i < pdfDoc.numPages; i++) {
@@ -548,7 +535,7 @@ const deletePage = async (index: number) => {
       const arrayBuffer = await currentFile.value?.arrayBuffer()
       if (!arrayBuffer) return
 
-      const loadingTask = window.pdfjsLib.getDocument(arrayBuffer)
+      const loadingTask = pdfjsLib.getDocument(arrayBuffer)
       const pdfDoc = await loadingTask.promise
 
       // 清除所有画布
@@ -624,7 +611,7 @@ const savePDF = async () => {
     }
 
     const pdfBytes = await newPdfDoc.save()
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+    const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url

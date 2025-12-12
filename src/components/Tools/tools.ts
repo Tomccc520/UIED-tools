@@ -86,12 +86,24 @@ export function getToolsCate(): ToolCategory[] {
               tags: ['免费', '新品'],
               isNew: true
             }
+
           ]
         },
         {
           id: 2,
           title: 'AI对话助手',
           list: [
+            {
+              id: 100,
+              title: '免费AI聚合聊天',
+              logo: { type: 'svg', name: 'aiChat' },
+              desc: '聚合多种AI大模型，支持智能对话、代码编写、创意写作等，基于Ant Design X设计风格',
+              url: '/tools/ai/chat',
+              cate: 'AI对话助手',
+              releaseDate: '2025/12/03 10:00:00',
+              tags: ['免费', '多模型', '新品'],
+              isNew: true
+            },
             {
               id: 103,
               title: '讯飞星火 Lite1.5',
@@ -113,6 +125,17 @@ export function getToolsCate(): ToolCategory[] {
               desc: '专业的 AI 绘图提示词编辑工具，支持可视化编辑和智能优化',
               url: '/tools/ai/prompt-editor',
               cate: 'AI提示词'
+               },
+            {
+              id: 406,
+              title: '免费图片提示词反推',
+              logo: { type: 'svg', name: 'promptReverse' },
+              desc: '上传图片智能反推提示词，支持Flux、Stable Diffusion、Midjourney等多种模型',
+              url: '/tools/ai/prompt-reverse',
+              cate: 'AI图像工具',
+              releaseDate: '2025/12/02 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
             }
           ]
         },
@@ -148,6 +171,17 @@ export function getToolsCate(): ToolCategory[] {
           id: 5,
           title: 'AI图像工具',
           list: [
+            {
+              id: 407,
+              title: 'AI智能去水印',
+              logo: { type: 'svg', name: 'removeWatermark' },
+              desc: '免费在线AI智能去水印工具，自动识别并移除图片水印，支持JPG/PNG等格式',
+              url: '/tools/ai/remove-watermark',
+              cate: 'AI图像工具',
+              releaseDate: '2025/12/04 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
             {
               id: 401,
               title: 'StableDiffusion AI绘画',
@@ -234,6 +268,17 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/ai-outsource-quote',
               cate: 'AI效率工具',
               releaseDate: '2024/3/20 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+              },
+            {
+              id: 602,
+              title: '免费在线文本配音',
+              logo: { type: 'svg', name: 'microphone' },
+              desc: '免费在线文本转语音工具，支持多种角色和情感风格，一键生成自然流畅的语音配音',
+              url: '/tools/ai/text-to-speech',
+              cate: 'AI效率工具',
+              releaseDate: '2024/12/03 00:00:00',
               tags: ['免费', '新品'],
               isNew: true
             }
@@ -442,6 +487,263 @@ export function getToolsCate(): ToolCategory[] {
               desc: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传',
               url: '/tools/pdf-compress',
               cate: 'PDF工具'
+            },
+            {
+              id: 618,
+              title: 'PDF添加水印',
+              logo: { type: 'svg', name: 'pdfWatermark' },
+              desc: '免费在线PDF添加水印工具，支持自定义文字、大小、颜色、透明度和旋转角度，本地处理更安全。',
+              url: '/tools/pdf-watermark',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 619,
+              title: 'PDF加密',
+              logo: { type: 'svg', name: 'pdfEncrypt' },
+              desc: '免费在线PDF加密工具，支持设置打开密码和权限密码，本地处理更安全。',
+              url: '/tools/pdf-encrypt',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 620,
+              title: 'PDF添加页码',
+              logo: { type: 'svg', name: 'pdfPageNumber' },
+              desc: '免费在线PDF添加页码工具，支持自定义位置、格式和字体样式，本地处理更安全。',
+              url: '/tools/pdf-page-number',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 625,
+              title: 'PDF签名',
+              logo: { type: 'svg', name: 'pdfSign' },
+              desc: '免费在线PDF签名工具，支持手写签名并添加到PDF文件中，本地处理更安全。',
+              url: '/tools/pdf-sign',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 626,
+              title: 'PDF文本提取',
+              logo: { type: 'svg', name: 'pdfExtractText' },
+              desc: '免费在线提取PDF文件中的文本内容，支持复制和导出TXT，本地处理更安全。',
+              url: '/tools/pdf-extract-text',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 627,
+              title: '文本转PDF',
+              logo: { type: 'svg', name: 'textToPdf' },
+              desc: '在线将文本内容转换为PDF文档，支持自定义排版',
+              url: '/tools/text-to-pdf',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 628,
+              title: 'Markdown转PDF',
+              logo: { type: 'svg', name: 'markdownToPdf' },
+              desc: '在线将Markdown文档转换为PDF，支持代码高亮和实时预览',
+              url: '/tools/markdown-to-pdf',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 62,
+          title: '表格工具',
+          list: [
+            {
+              id: 621,
+              title: 'Excel转JSON',
+              logo: { type: 'svg', name: 'excelToJson' },
+              desc: '在线将Excel文件转换为JSON格式，支持.xlsx, .xls格式，本地处理更安全。',
+              url: '/tools/excel-to-json',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 622,
+              title: 'JSON转Excel',
+              logo: { type: 'svg', name: 'jsonToExcel' },
+              desc: '在线将JSON数据转换为Excel文件，支持数组格式JSON，本地处理更安全。',
+              url: '/tools/json-to-excel',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 623,
+              title: 'CSV转Excel',
+              logo: { type: 'svg', name: 'csvToExcel' },
+              desc: '在线将CSV文件转换为Excel (.xlsx)格式，自动处理编码问题，本地处理更安全。',
+              url: '/tools/csv-to-excel',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 624,
+              title: 'Excel转CSV',
+              logo: { type: 'svg', name: 'excelToCsv' },
+              desc: '在线将Excel文件转换为CSV格式，支持.xlsx, .xls格式，本地处理更安全。',
+              url: '/tools/excel-to-csv',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 63,
+          title: '文档工具',
+          list: [
+            {
+              id: 631,
+              title: '字数统计',
+              logo: { type: 'svg', name: 'wordCount' },
+              desc: '在线字数统计工具，支持字符数、单词数、行数、段落数统计，实时计算阅读时间',
+              url: '/tools/word-count',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 64,
+          title: '辅助工具',
+          list: [
+            {
+              id: 641,
+              title: '日期计算器',
+              logo: { type: 'svg', name: 'dateCalculator' },
+              desc: '在线日期计算器，支持日期间隔计算和日期推算',
+              url: '/tools/date-calculator',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 642,
+              title: '在线屏幕录制',
+              logo: { type: 'svg', name: 'screenRecorder' },
+              desc: '免费在线屏幕录制工具，支持录制系统声音，本地录制更安全',
+              url: '/tools/screen-recorder',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 643,
+              title: '亲戚称呼计算器',
+              logo: { type: 'svg', name: 'relationship' },
+              desc: '中国亲戚关系称呼查询，支持互查，逢年过节必备神器',
+              url: '/tools/relationship',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 65,
+          title: '效率工具',
+          list: [
+            {
+              id: 651,
+              title: '待办清单',
+              logo: { type: 'svg', name: 'todoList' },
+              desc: '极简风格的待办事项清单，支持任务管理、优先级设置，帮助您高效管理日常任务',
+              url: '/tools/todo-list',
+              cate: '效率工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 652,
+              title: '番茄钟',
+              logo: { type: 'svg', name: 'pomodoro' },
+              desc: '基于番茄工作法的专注时钟，支持自定义工作/休息时长，助您保持专注高效',
+              url: '/tools/pomodoro',
+              cate: '效率工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 8,
+      title: '生活常用',
+      icon: '',
+      list: [
+        {
+          id: 81,
+          title: '实用查询',
+          list: [
+            {
+              id: 811,
+              title: '天气查询',
+              logo: { type: 'svg', name: 'weather' },
+              desc: '免费天气预报查询，支持全球城市，提供实时温度、湿度、风速等详细气象信息',
+              url: '/tools/daily/weather',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 812,
+              title: 'BMI计算器',
+              logo: { type: 'svg', name: 'bmi' },
+              desc: '在线计算身体质量指数(BMI)，评估身体健康状况',
+              url: '/tools/daily/bmi',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 813,
+              title: '在线秒表',
+              logo: { type: 'svg', name: 'stopwatch' },
+              desc: '简单好用的在线秒表工具，支持计次功能',
+              url: '/tools/daily/stopwatch',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 814,
+              title: '年龄计算器',
+              logo: { type: 'svg', name: 'ageCalculator' },
+              desc: '在线计算精确年龄，包含周岁、虚岁、生肖及星座',
+              url: '/tools/daily/age-calculator',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 815,
+              title: '人生进度条',
+              logo: { type: 'svg', name: 'lifeProgress' },
+              desc: '可视化展示人生进度，计算已度过的时间和剩余时间',
+              url: '/tools/daily/life-progress',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         }
@@ -525,11 +827,31 @@ export function getToolsCate(): ToolCategory[] {
             },
             {
               id: 518,
-              title: '图片切割',
+              title: '免费九宫格切图',
               logo: { type: 'svg', name: 'imgCut' },
-              desc: '九宫格切图工具',
+              desc: '专业的在线图片切割工具，支持自定义行列数的九宫格切图',
               url: '/tools/img-cut',
               cate: '图片工具'
+            },
+            {
+              id: 520,
+              title: '免费在线图片拼接',
+              logo: { type: 'svg', name: 'imageJoin' },
+              desc: '支持多张图片横向或纵向拼接，自定义间距和背景色，制作长图神器',
+              url: '/tools/image-joiner',
+              cate: '图片工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 521,
+              title: '免费图片合成GIF',
+              logo: { type: 'svg', name: 'imageToGif' },
+              desc: '在线将多张图片合成为动态GIF，支持自定义延迟、尺寸和循环播放',
+              url: '/tools/image-to-gif',
+              cate: '图片工具',
+              isNew: true,
+              tags: ['免费', '新品']
             },
             {
               id: 519,
@@ -659,6 +981,39 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/scatter',
               cateId: 8,
               cate: '数据图表'
+            },
+            {
+              id: 545,
+              title: '雷达图',
+              logo: { type: 'svg', name: 'radar' },
+              desc: '在线制作雷达图，适用于多维数据对比分析，支持导出静态或动态图表',
+              url: '/tools/radar',
+              cateId: 8,
+              cate: '数据图表',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 546,
+              title: '漏斗图',
+              logo: { type: 'svg', name: 'funnel' },
+              desc: '在线制作漏斗图，适用于转化率分析，支持导出静态或动态图表',
+              url: '/tools/funnel',
+              cateId: 8,
+              cate: '数据图表',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 547,
+              title: '仪表盘',
+              logo: { type: 'svg', name: 'gauge' },
+              desc: '在线制作仪表盘，适用于进度展示、完成率分析，支持导出静态或动态图表',
+              url: '/tools/gauge',
+              cateId: 8,
+              cate: '数据图表',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         }
@@ -848,6 +1203,95 @@ export function getToolsCate(): ToolCategory[] {
       ]
     },
     {
+      id: 12,
+      title: '潜能测试',
+      icon: '',
+      list: [
+        {
+          id: 121,
+          title: '性格测试',
+          list: [
+            {
+              id: 1211,
+              title: 'MBTI职业性格测试',
+              logo: { type: 'svg', name: 'mbti' },
+              desc: '简洁版MBTI测试，快速分析你的性格类型和职业倾向',
+              url: '/tools/psychology/mbti',
+              cate: '性格测试',
+              tags: ['热门', '免费'],
+              isNew: true
+            },
+            {
+              id: 1212,
+              title: '九型人格测试',
+              logo: { type: 'svg', name: 'enneagram' },
+              desc: '探索你的核心性格型号，了解深层动机和恐惧',
+              url: '/tools/psychology/enneagram',
+              cate: '性格测试',
+              tags: ['免费'],
+              isNew: true
+            },
+            {
+              id: 1213,
+              title: '大五人格测试',
+              logo: { type: 'svg', name: 'bigfive' },
+              desc: '从五个维度全面分析你的性格特征，科学权威',
+              url: '/tools/psychology/big-five',
+              cate: '性格测试',
+              tags: ['专业', '免费'],
+              isNew: true
+            },
+            {
+              id: 1214,
+              title: 'ABO心理性别测试',
+              logo: { type: 'svg', name: 'abo' },
+              desc: '趣味测试：你是霸气的Alpha，温和的Beta，还是惹人怜爱的Omega？',
+              url: '/tools/psychology/abo',
+              cate: '趣味测试',
+              tags: ['趣味', '免费'],
+              isNew: true
+            },
+            {
+              id: 1215,
+              title: '国际标准情商(EQ)测试',
+              logo: { type: 'svg', name: 'eqTest' },
+              desc: '评估你的情绪感知、控制和社交能力，了解你的情商水平',
+              url: '/tools/psychology/eq-test',
+              cate: '性格测试',
+              tags: ['专业', '免费'],
+              isNew: true
+            }
+          ]
+        },
+        {
+          id: 122,
+          title: '职业潜能',
+          list: [
+            {
+              id: 1221,
+              title: '程序员vs设计师测试',
+              logo: { type: 'svg', name: 'programmerTest' },
+              desc: '测试你的思维更偏向逻辑严密的程序员，还是感性创意的设计师',
+              url: '/tools/psychology/programmer-test',
+              cate: '职业潜能',
+              tags: ['职业', '免费'],
+              isNew: true
+            },
+            {
+              id: 1222,
+              title: '左右脑优势测试',
+              logo: { type: 'svg', name: 'brainTest' },
+              desc: '了解你是理性逻辑的左脑型，还是感性创意的右脑型',
+              url: '/tools/psychology/left-right-brain',
+              cate: '职业潜能',
+              tags: ['思维', '免费'],
+              isNew: true
+            }
+          ]
+        }
+      ]
+    },
+    {
       id: 2,
       title: '开发工具',
       icon: '',
@@ -900,6 +1344,16 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/md5',
               cateId: 2,
               cate: '开发运维'
+            },
+            {
+              id: 2114,
+              title: 'Base64转换工具',
+              logo: { type: 'svg', name: 'base64' },
+              desc: '支持文本/图片与Base64编码之间的相互转换',
+              url: '/tools/base64',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true
             },
             {
               id: 216,
@@ -1072,6 +1526,72 @@ export function getToolsCate(): ToolCategory[] {
               isNew: true
             }
           ]
+        },
+        {
+          id: 74,
+          title: '摸鱼游戏',
+          list: [
+            {
+              id: 741,
+              title: '打字雨 (中文)',
+              logo: { type: 'svg', name: 'typingRain' },
+              desc: '经典的打字雨游戏中文版，锻炼打字速度与反应能力',
+              url: '/tools/games/typing-rain-cn',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 742,
+              title: '打字雨 (English)',
+              logo: { type: 'svg', name: 'typingRain' },
+              desc: 'Classic Typing Rain game, test your English typing speed',
+              url: '/tools/games/typing-rain-en',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 743,
+              title: '贪吃蛇',
+              logo: { type: 'svg', name: 'snake' },
+              desc: '经典的贪吃蛇游戏，控制蛇吃食物变长，挑战最高分',
+              url: '/tools/games/snake',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 744,
+              title: '扫雷',
+              logo: { type: 'svg', name: 'minesweeper' },
+              desc: '经典的扫雷游戏，运用逻辑推理避开地雷，锻炼大脑',
+              url: '/tools/games/minesweeper',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 745,
+              title: '电子木鱼',
+              logo: { type: 'svg', name: 'game' },
+              desc: '在线敲木鱼，积攒功德，放松心情，净化心灵',
+              url: '/tools/games/woodfish',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '解压']
+            },
+            {
+              id: 746,
+              title: '2048',
+              logo: { type: 'svg', name: 'game' },
+              desc: '经典的数字合成游戏，移动方块合并数字，挑战2048',
+              url: '/tools/games/2048',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '益智']
+            }
+          ]
         }
       ]
     },
@@ -1233,6 +1753,57 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/dice',
               cateId: 3,
               cate: '选择随机'
+            }
+          ]
+        },
+        {
+          id: 34,
+          title: '数据换算',
+          list: [
+            {
+              id: 341,
+              title: '房贷利率调整计算器',
+              logo: { type: 'svg', name: 'calculator' },
+              desc: '在线计算房贷利率调整后的月供变化，支持LPR利率调整计算',
+              url: '/tools/calculation/mortgage-rate',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 342,
+              title: '投资收益计算器',
+              logo: { type: 'svg', name: 'chart' },
+              desc: '在线投资收益计算器，支持复利计算、定投计算',
+              url: '/tools/calculation/investment',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 343,
+              title: '五险一金计算器',
+              logo: { type: 'svg', name: 'money' },
+              desc: '2025最新五险一金计算器，快速计算个人应缴和实发工资',
+              url: '/tools/calculation/social-insurance',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 344,
+              title: '温度转换器',
+              logo: { type: 'svg', name: 'temperature' },
+              desc: '在线温度单位转换工具，支持摄氏度、华氏度、开尔文之间的快速互转',
+              url: '/tools/calculation/temperature',
+              cateId: 3,
+              cate: '数据换算'
+            },
+            {
+              id: 345,
+              title: '房贷计算器',
+              logo: { type: 'svg', name: 'house' },
+              desc: '专业的房贷计算器，支持等额本息和等额本金两种还款方式',
+              url: '/tools/calculation/mortgage',
+              cateId: 3,
+              cate: '数据换算'
             }
           ]
         },

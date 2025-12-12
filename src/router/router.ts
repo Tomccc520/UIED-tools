@@ -99,6 +99,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/ai/remove-watermark',
+    component: () => import('@/components/Tools/AI/RemoveWatermark.vue'),
+    name: 'aiRemoveWatermark',
+    meta: {
+      title: "AI智能去水印",
+      keywords: '去水印,AI去水印,在线去水印,图片去水印,免费去水印',
+      description: '免费在线AI智能去水印工具，自动识别并移除图片水印，支持JPG/PNG等格式',
+    }
+  },
+  {
     path: '/tools/image-to-webp',
     component: () => import('@/components/Tools/ImageToWebp/ImageToWebp.vue'),
     name: 'imageToWebp',
@@ -123,9 +133,29 @@ export const constantRoute = [
     component: () => import('@/components/Tools/ImgCut/ImgCut.vue'),
     name: 'imgCut',
     meta: {
-      title: "图片切割",
-      keywords: '图片分割,图片切割,九宫格切图',
-      description: '九宫格切图工具',
+      title: "免费九宫格切图",
+      keywords: '图片分割,图片切割,九宫格切图,朋友圈切图,微博切图',
+      description: '专业的在线图片切割工具，支持自定义行列数的九宫格切图，支持朋友圈、微博等社交媒体配图制作',
+    }
+  },
+  {
+    path: '/tools/image-joiner',
+    component: () => import('@/components/Tools/ImageJoiner/ImageJoiner.vue'),
+    name: 'imageJoiner',
+    meta: {
+      title: "免费在线图片拼接",
+      keywords: '图片拼接,长图制作,拼图工具,多图拼接',
+      description: '支持多张图片横向或纵向拼接，自定义间距和背景色，制作长图神器',
+    }
+  },
+  {
+    path: '/tools/image-to-gif',
+    component: () => import('@/components/Tools/ImageToGif/ImageToGif.vue'),
+    name: 'imageToGif',
+    meta: {
+      title: "免费图片合成GIF",
+      keywords: '图片转GIF,GIF合成,多图转GIF,GIF制作',
+      description: '在线将多张图片合成为动态GIF，支持自定义延迟、尺寸和循环播放',
     }
   },
   {
@@ -154,8 +184,8 @@ export const constantRoute = [
     name: 'imageToPdf',
     meta: {
       title: "图片转PDF",
-      keywords: '图片转PDF,JPG转PDF,PNG转PDF',
-      description: '在线图片转PDF工具，支持多张图片合并成PDF',
+      keywords: '图片转PDF,JPG转PDF,PNG转PDF,图片合并PDF,创建PDF',
+      description: '在线图片转PDF工具，支持JPG、PNG等多种格式图片合并成PDF，自定义页面大小和边距，本地处理更安全。'
     }
   },
   {
@@ -174,17 +204,18 @@ export const constantRoute = [
     name: 'pdfMerge',
     meta: {
       title: "免费在线PDF合并工具",
-      keywords: 'PDF合并,PDF合并工具,在线PDF合并,免费PDF合并',
-      description: '免费在线PDF合并工具，支持多个PDF文件合并，无需上传至云端，本地处理更安全。'
+      keywords: 'PDF合并,PDF合并工具,在线PDF合并,免费PDF合并,PDF文件合并,合并PDF',
+      description: '免费在线PDF合并工具，支持多个PDF文件合并，无需上传至云端，本地处理更安全。支持调整合并顺序。'
     }
   },
   {
     path: '/tools/pdf-split',
     component: () => import('@/components/Tools/PdfSplit/index.vue'),
+    name: 'pdfSplit',
     meta: {
       title: '免费在线PDF分割工具',
-      keywords: 'PDF分割,PDF拆分,PDF分页,在线PDF分割,免费PDF分割',
-      description: '免费在线PDF分割工具，支持将PDF拆分为单页，批量处理多个文件，本地处理更安全。'
+      keywords: 'PDF分割,PDF拆分,PDF分页,在线PDF分割,免费PDF分割,PDF提取页面',
+      description: '免费在线PDF分割工具，支持将PDF拆分为单页，提取指定页面，批量处理多个文件，本地处理更安全。'
     }
   },
   {
@@ -193,8 +224,8 @@ export const constantRoute = [
     name: 'pdfRotate',
     meta: {
       title: "PDF页面旋转",
-      keywords: 'PDF旋转,PDF页面旋转,PDF文档旋转,在线PDF旋转',
-      description: '在线PDF页面旋转工具，支持批量旋转、单独旋转页面，同时可调整页面顺序',
+      keywords: 'PDF旋转,PDF页面旋转,PDF文档旋转,在线PDF旋转,旋转PDF',
+      description: '在线PDF页面旋转工具，支持批量旋转、单独旋转页面，同时可调整页面顺序，本地处理更安全。'
     }
   },
   {
@@ -203,8 +234,8 @@ export const constantRoute = [
     name: 'pdfDelete',
     meta: {
       title: "PDF页面删除",
-      keywords: 'PDF删除页面,PDF页面删除,PDF文档编辑,在线PDF删除',
-      description: '在线PDF页面删除工具，支持删除指定页面，同时可调整页面顺序和旋转页面',
+      keywords: 'PDF删除页面,PDF页面删除,PDF文档编辑,在线PDF删除,删除PDF页',
+      description: '在线PDF页面删除工具，支持删除指定页面，同时可调整页面顺序和旋转页面，本地处理更安全。'
     }
   },
   {
@@ -213,8 +244,169 @@ export const constantRoute = [
     name: 'pdfCompress',
     meta: {
       title: "免费PDF压缩工具",
-      keywords: 'PDF压缩,PDF文件压缩,在线PDF压缩,免费PDF压缩',
-      description: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传',
+      keywords: 'PDF压缩,PDF文件压缩,在线PDF压缩,免费PDF压缩,缩小PDF',
+      description: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传，保持良好画质。'
+    }
+  },
+  {
+    path: '/tools/pdf-watermark',
+    component: () => import('@/components/Tools/PdfWatermark/index.vue'),
+    name: 'pdfWatermark',
+    meta: {
+      title: "PDF添加水印",
+      keywords: 'PDF水印,PDF加水印,PDF添加水印,在线PDF水印,文本水印',
+      description: '免费在线PDF添加水印工具，支持自定义文字、大小、颜色、透明度和旋转角度，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-encrypt',
+    component: () => import('@/components/Tools/PdfEncrypt/index.vue'),
+    name: 'pdfEncrypt',
+    meta: {
+      title: "PDF加密",
+      keywords: 'PDF加密,PDF密码保护,PDF设置密码,在线PDF加密,保护PDF',
+      description: '免费在线PDF加密工具，支持设置打开密码和权限密码，防止文件被未授权访问，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-page-number',
+    component: () => import('@/components/Tools/PdfPageNumber/index.vue'),
+    name: 'pdfPageNumber',
+    meta: {
+      title: "PDF添加页码",
+      keywords: 'PDF页码,PDF添加页码,PDF页码设置,在线PDF页码,PDF插入页码',
+      description: '免费在线PDF添加页码工具，支持自定义位置、格式和样式，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-sign',
+    component: () => import('@/components/Tools/PdfSign/index.vue'),
+    name: 'pdfSign',
+    meta: {
+      title: "PDF签名",
+      keywords: 'PDF签名,PDF电子签名,在线PDF签名,PDF手写签名,签署PDF',
+      description: '免费在线PDF签名工具，支持手写签名并添加到PDF文件中，无需打印扫描，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-extract-text',
+    component: () => import('@/components/Tools/PdfExtractText/index.vue'),
+    name: 'pdfExtractText',
+    meta: {
+      title: "PDF文本提取",
+      keywords: 'PDF文本提取,PDF转TXT,PDF复制文本,PDF文字识别,提取PDF内容',
+      description: '免费在线提取PDF文件中的文本内容，支持复制和导出TXT，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/text-to-pdf',
+    component: () => import('@/components/Tools/TextToPdf/index.vue'),
+    name: 'textToPdf',
+    meta: {
+      title: "文本转PDF",
+      keywords: '文本转PDF,TXT转PDF,在线文本转PDF,生成PDF',
+      description: '在线将文本内容转换为PDF文档，支持自定义字体大小和排版，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/markdown-to-pdf',
+    component: () => import('@/components/Tools/MarkdownToPdf/index.vue'),
+    name: 'markdownToPdf',
+    meta: {
+      title: "Markdown转PDF",
+      keywords: 'Markdown转PDF,MD转PDF,在线Markdown转PDF,生成PDF',
+      description: '在线将Markdown文档转换为PDF，支持代码高亮、实时预览和自定义排版，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/word-count',
+    component: () => import('@/components/Tools/WordCount/index.vue'),
+    name: 'wordCount',
+    meta: {
+      title: "在线字数统计",
+      keywords: '字数统计,在线字数统计,字符统计,单词统计,行数统计,阅读时间计算',
+      description: '免费在线字数统计工具，实时统计字符数、单词数、行数、段落数，支持中英文混合统计，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/date-calculator',
+    component: () => import('@/components/Tools/DateCalculator/index.vue'),
+    name: 'dateCalculator',
+    meta: {
+      title: "日期计算器",
+      keywords: '日期计算器,日期推算,天数计算,日期间隔计算,在线日期计算器',
+      description: '在线日期计算器，支持计算两个日期之间的天数间隔，以及根据日期往后推算未来日期，方便快捷。'
+    }
+  },
+  {
+    path: '/tools/screen-recorder',
+    component: () => import('@/components/Tools/ScreenRecorder/index.vue'),
+    name: 'screenRecorder',
+    meta: {
+      title: "在线屏幕录制",
+      keywords: '屏幕录制,在线录屏,网页录屏,无需安装,免费录屏,录制系统声音',
+      description: '免费在线屏幕录制工具，无需安装软件，支持录制屏幕、窗口或标签页，支持录制系统声音，本地录制更安全。'
+    }
+  },
+  {
+    path: '/tools/relationship',
+    component: () => import('@/components/Tools/Relationship/Relationship.vue'),
+    name: 'relationship',
+    meta: {
+      title: "亲戚称呼计算器",
+      keywords: '亲戚计算器,称呼计算器,亲戚关系,三姑六婆',
+      description: '中国亲戚关系称呼查询，支持互查，逢年过节必备神器',
+    }
+  },
+  {
+    path: '/tools/base64',
+    component: () => import('@/components/Tools/Base64/Base64.vue'),
+    name: 'base64',
+    meta: {
+      title: "Base64转换工具",
+      keywords: 'Base64编码,Base64解码,图片转Base64,Base64转图片',
+      description: '支持文本/图片与Base64编码之间的相互转换，本地处理更安全',
+    }
+  },
+  // 表格工具
+  {
+    path: '/tools/excel-to-json',
+    component: () => import('@/components/Tools/ExcelToJson/index.vue'),
+    name: 'excelToJson',
+    meta: {
+      title: "Excel转JSON",
+      keywords: 'Excel转JSON,Excel转JSON工具,在线Excel转JSON',
+      description: '在线将Excel文件转换为JSON格式，支持.xlsx, .xls格式，本地处理更安全。',
+    }
+  },
+  {
+    path: '/tools/json-to-excel',
+    component: () => import('@/components/Tools/JsonToExcel/index.vue'),
+    name: 'jsonToExcel',
+    meta: {
+      title: "JSON转Excel",
+      keywords: 'JSON转Excel,JSON转Excel工具,在线JSON转Excel',
+      description: '在线将JSON数据转换为Excel文件，支持数组格式JSON，本地处理更安全。',
+    }
+  },
+  {
+    path: '/tools/csv-to-excel',
+    component: () => import('@/components/Tools/CsvToExcel/index.vue'),
+    name: 'csvToExcel',
+    meta: {
+      title: "CSV转Excel",
+      keywords: 'CSV转Excel,CSV转XLSX,在线CSV转换',
+      description: '在线将CSV文件转换为Excel (.xlsx)格式，自动处理编码问题，本地处理更安全。',
+    }
+  },
+  {
+    path: '/tools/excel-to-csv',
+    component: () => import('@/components/Tools/ExcelToCsv/index.vue'),
+    name: 'excelToCsv',
+    meta: {
+      title: "Excel转CSV",
+      keywords: 'Excel转CSV,XLSX转CSV,在线Excel转换',
+      description: '在线将Excel文件转换为CSV格式，支持自定义分隔符，本地处理更安全。',
     }
   },
   //工具
@@ -278,16 +470,7 @@ export const constantRoute = [
       description: '在线字数计数器,主要是方便计算字数，以控制文字数量的小工具(小说作者、论文、文档、文字编辑必备工具)。',
     }
   },
-  {
-    path: '/tools/ip',
-    component: () => import('@/components/Tools/Ip/Ip.vue'),
-    name: 'ip',
-    meta: {
-      title: "IP查询",
-      keywords: 'ip,ip查询,ip地址查询,ip138,查ip,我的ip,公网ip,ip归属地查询',
-      description: '公网ip地址归属地查询',
-    }
-  },
+
   {
     path: '/tools/scaletran',
     component: () => import('@/components/Tools/ScaleTran/ScaleTran.vue'),
@@ -568,6 +751,97 @@ export const constantRoute = [
       description: '在线Markdown编辑器，支持实时预览和导出',
     }
   },
+  // 潜能测试路由
+  {
+    path: '/tools/psychology/mbti',
+    component: () => import('@/components/Tools/Psychology/MBTI.vue'),
+    name: 'mbti',
+    meta: {
+      title: "MBTI职业性格测试（简洁版）",
+      keywords: 'MBTI,性格测试,职业规划,16型人格',
+      description: 'MBTI职业性格测试简洁版，快速了解你的性格类型和职业倾向',
+    }
+  },
+  {
+    path: '/tools/psychology/enneagram',
+    component: () => import('@/components/Tools/Psychology/Enneagram.vue'),
+    name: 'enneagram',
+    meta: {
+      title: "九型人格测试（简洁版）",
+      keywords: '九型人格,性格分析,心理测试',
+      description: '九型人格测试简洁版，探索你的核心性格型号',
+    }
+  },
+  {
+    path: '/tools/psychology/big-five',
+    component: () => import('@/components/Tools/Psychology/BigFive.vue'),
+    name: 'bigfive',
+    meta: {
+      title: "大五人格测试（简洁版）",
+      keywords: '大五人格,OCEAN,性格维度,心理评估',
+      description: '大五人格测试简洁版，从五个维度全面分析你的性格特征',
+    }
+  },
+  {
+    path: '/tools/psychology/abo',
+    component: () => import('@/components/Tools/Psychology/ABO.vue'),
+    name: 'abo',
+    meta: {
+      title: "ABO心理性别测试",
+      keywords: 'ABO测试,心理性别,趣味测试',
+      description: '趣味ABO心理性别测试，看看你是Alpha、Beta还是Omega',
+    }
+  },
+  {
+    path: '/tools/psychology/programmer-test',
+    component: () => import('@/components/Tools/Psychology/ProgrammerTest.vue'),
+    name: 'programmerTest',
+    meta: {
+      title: "程序员vs设计师潜能测试",
+      keywords: '程序员测试,设计师测试,职业潜能,左右脑测试',
+      description: '测试你的思维更偏向逻辑严密的程序员，还是感性创意的设计师',
+    }
+  },
+  {
+    path: '/tools/psychology/left-right-brain',
+    component: () => import('@/components/Tools/Psychology/LeftRightBrain.vue'),
+    name: 'leftRightBrain',
+    meta: {
+      title: "左右脑优势测试",
+      keywords: '左右脑测试,大脑优势,思维偏好,心理测试',
+      description: '测试你的大脑优势区域，是左脑逻辑型还是右脑创造型',
+    }
+  },
+  {
+    path: '/tools/psychology/eq-test',
+    component: () => import('@/components/Tools/Psychology/EQTest.vue'),
+    name: 'eqTest',
+    meta: {
+      title: "EQ情商测试（简洁版）",
+      keywords: 'EQ测试,情商测试,情绪智力,心理测试',
+      description: '测试你的情商水平，了解你的情绪管理和人际交往能力',
+    }
+  },
+  {
+    path: '/tools/psychology/eq-test',
+    component: () => import('@/components/Tools/Psychology/EQTest.vue'),
+    name: 'eqTest',
+    meta: {
+      title: "国际标准情商(EQ)测试",
+      keywords: 'EQ测试,情商测试,情绪管理,社交能力',
+      description: '评估你的情绪感知、控制和社交能力，了解你的情商水平',
+    }
+  },
+  {
+    path: '/tools/psychology/left-right-brain',
+    component: () => import('@/components/Tools/Psychology/LeftRightBrain.vue'),
+    name: 'leftRightBrain',
+    meta: {
+      title: "左右脑优势测试",
+      keywords: '左右脑测试,大脑优势,思维偏好,逻辑与直觉',
+      description: '了解你是理性逻辑的左脑型，还是感性创意的右脑型',
+    }
+  },
   {
     path: '/tools/morse',
     component: () => import('@/components/Tools/Morse/Morse.vue'),
@@ -715,6 +989,26 @@ export const constantRoute = [
       title: '新年朋友圈文案生成器',
       keywords: '新年文案,新年祝福,朋友圈文案,新年快乐,AI文案',
       description: '使用 DeepSeek AI 生成走心的新年朋友圈文案，让你的新年祝福与众不同。'
+    }
+  },
+  {
+    path: '/tools/ai/prompt-reverse',
+    component: () => import('@/components/Tools/AI/PromptReverse.vue'),
+    name: 'promptReverse',
+    meta: {
+      title: "免费图片提示词反推",
+      keywords: '提示词反推,图片转提示词,AI提示词生成,Flux提示词,Midjourney提示词',
+      description: '上传图片智能反推提示词，支持Flux、Stable Diffusion、Midjourney等多种模型，一键生成精准提示词',
+    }
+  },
+  {
+    path: '/tools/ai/text-to-speech',
+    component: () => import('@/components/Tools/AI/TextToSpeech.vue'),
+    name: 'textToSpeech',
+    meta: {
+      title: "免费在线文本配音",
+      keywords: '文本转语音,在线配音,AI配音,文字转语音,免费配音工具',
+      description: '免费在线文本转语音工具，支持多种角色和情感风格，一键生成自然流畅的语音配音',
     }
   },
   // 关于
@@ -1096,6 +1390,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/ai/chat',
+    component: () => import('@/components/Tools/AI/AIChat.vue'),
+    name: 'aiChat',
+    meta: {
+      title: "免费AI聚合聊天 - 多模型智能对话助手",
+      keywords: 'AI聊天,免费AI,聚合聊天,DeepSeek,GPT,智能对话,AI助手',
+      description: '免费在线AI聚合聊天工具，支持DeepSeek、GPT等多种大模型，提供智能对话、代码编写、创意写作等功能。基于Ant Design X风格设计。',
+    }
+  },
+  {
     path: '/tools/ai/prompt-editor',
     component: AIPromptEditor,
     name: 'aiPromptEditor',
@@ -1210,6 +1514,66 @@ export const constantRoute = [
       description: '在线查看摸鱼日历，了解距离各种假期的剩余时间，支持历史日期查询',
     }
   },
+  {
+    path: '/tools/games/typing-rain-cn',
+    component: () => import('@/components/Tools/Games/TypingRain/TypingRain.vue'),
+    name: 'typingRainCn',
+    meta: {
+      title: "打字雨(中文版)",
+      keywords: '打字游戏,打字练习,中文打字,趣味打字,摸鱼小游戏',
+      description: '经典的打字雨游戏中文版，在单词落下前输入正确的拼音或汉字，锻炼打字速度与反应能力',
+    }
+  },
+  {
+    path: '/tools/games/typing-rain-en',
+    component: () => import('@/components/Tools/Games/TypingRain/TypingRain.vue'),
+    name: 'typingRainEn',
+    meta: {
+      title: "打字雨(英文版)",
+      keywords: 'Typing Game,Typing Rain,英文打字,打字练习,摸鱼小游戏',
+      description: 'Classic Typing Rain game, type the falling words before they hit the ground. Test your typing speed and accuracy.',
+    }
+  },
+  {
+    path: '/tools/games/snake',
+    component: () => import('@/components/Tools/Games/Snake/Snake.vue'),
+    name: 'snake',
+    meta: {
+      title: "贪吃蛇",
+      keywords: '贪吃蛇,Snake,经典游戏,摸鱼小游戏,网页游戏',
+      description: '经典的贪吃蛇游戏，控制蛇吃食物变长，挑战最高分，重温童年回忆。',
+    }
+  },
+  {
+    path: '/tools/games/minesweeper',
+    component: () => import('@/components/Tools/Games/Minesweeper/Minesweeper.vue'),
+    name: 'minesweeper',
+    meta: {
+      title: "扫雷",
+      keywords: '扫雷,Minesweeper,经典游戏,益智游戏,摸鱼小游戏',
+      description: '经典的扫雷游戏，运用逻辑推理避开地雷，挑战不同难度，锻炼大脑。',
+    }
+  },
+  {
+    path: '/tools/games/woodfish',
+    component: () => import('@/components/Tools/Games/Woodfish/Woodfish.vue'),
+    name: 'woodfish',
+    meta: {
+      title: "电子木鱼",
+      keywords: '电子木鱼,积攒功德,解压工具,摸鱼神器,在线木鱼',
+      description: '在线电子木鱼，点击屏幕敲击木鱼，积攒功德，放松心情，净化心灵。',
+    }
+  },
+  {
+    path: '/tools/games/2048',
+    component: () => import('@/components/Tools/Games/Game2048/Game2048.vue'),
+    name: 'game2048',
+    meta: {
+      title: "2048",
+      keywords: '2048,益智游戏,数字游戏,合成游戏,经典游戏',
+      description: '经典的2048数字合成游戏，移动方块合并数字，挑战合成2048！',
+    }
+  },
   // AI简历生成器
   {
     path: '/tools/ai/resume',
@@ -1219,6 +1583,160 @@ export const constantRoute = [
       title: "AI简历生成器",
       keywords: 'AI简历,简历生成器,在线简历制作,简历模板,PDF简历',
       description: '使用AI技术，一键生成专业简历，支持多种模板和导出为PDF，让求职更加高效',
+    }
+  },
+  {
+    path: '/tools/radar',
+    component: () => import('@/components/Tools/Chart/Radar/Radar.vue'),
+    name: 'radar',
+    meta: {
+      title: "在线雷达图制作",
+      keywords: '雷达图,雷达图制作,在线图表,数据可视化,多维数据分析',
+      description: '在线制作雷达图，适用于多维数据对比分析，支持导出静态或动态图表',
+    }
+  },
+  {
+    path: '/tools/funnel',
+    component: () => import('@/components/Tools/Chart/Funnel/Funnel.vue'),
+    name: 'funnel',
+    meta: {
+      title: "在线漏斗图制作",
+      keywords: '漏斗图,漏斗图制作,在线图表,数据可视化,转化率分析',
+      description: '在线制作漏斗图，适用于转化率分析，支持导出静态或动态图表',
+    }
+  },
+  {
+    path: '/tools/gauge',
+    component: () => import('@/components/Tools/Chart/Gauge/Gauge.vue'),
+    name: 'gauge',
+    meta: {
+      title: "在线仪表盘制作",
+      keywords: '仪表盘,仪表盘制作,在线图表,数据可视化,进度展示',
+      description: '在线制作仪表盘，适用于进度展示、完成率分析，支持导出静态或动态图表',
+    }
+  },
+  // 数据换算工具
+  {
+    path: '/tools/calculation/mortgage-rate',
+    component: () => import('@/components/Tools/Calculation/MortgageRate.vue'),
+    name: 'mortgageRate',
+    meta: {
+      title: "房贷利率调整计算器",
+      keywords: '房贷利率计算器,存量房贷利率调整,房贷计算,LPR利率',
+      description: '在线计算房贷利率调整后的月供变化，支持LPR利率调整计算，帮助您快速了解房贷调整方案。',
+    }
+  },
+  {
+    path: '/tools/calculation/investment',
+    component: () => import('@/components/Tools/Calculation/Investment.vue'),
+    name: 'investment',
+    meta: {
+      title: "投资收益计算器",
+      keywords: '投资计算器,复利计算器,理财计算,定投计算',
+      description: '在线投资收益计算器，支持复利计算、定投计算，帮助您规划理财方案，预估投资回报。',
+    }
+  },
+  {
+    path: '/tools/calculation/social-insurance',
+    component: () => import('@/components/Tools/Calculation/SocialInsurance.vue'),
+    name: 'socialInsurance',
+    meta: {
+      title: "五险一金计算器",
+      keywords: '五险一金计算器,社保计算器,公积金计算,工资计算器,税后工资',
+      description: '2025最新五险一金计算器，支持全国各城市社保公积金计算，快速计算个人应缴和实发工资。',
+    }
+  },
+  {
+    path: '/tools/calculation/temperature',
+    component: () => import('@/components/Tools/Calculation/Temperature.vue'),
+    name: 'temperature',
+    meta: {
+      title: "温度转换器",
+      keywords: '温度转换,摄氏度转换,华氏度转换,开尔文转换,温度单位换算',
+      description: '在线温度单位转换工具，支持摄氏度、华氏度、开尔文之间的快速互转，提供换算公式参考。',
+    }
+  },
+  {
+    path: '/tools/calculation/mortgage',
+    component: () => import('@/components/Tools/Calculation/Mortgage.vue'),
+    name: 'mortgage',
+    meta: {
+      title: "房贷计算器",
+      keywords: '房贷计算器,商业贷款计算,公积金贷款计算,组合贷款计算,月供计算',
+      description: '专业的房贷计算器，支持等额本息和等额本金两种还款方式，快速计算月供、利息和还款总额。',
+    }
+  },
+  // 生活常用工具
+  {
+    path: '/tools/daily/weather',
+    component: () => import('@/components/Tools/Daily/Weather/index.vue'),
+    name: 'weather',
+    meta: {
+      title: "天气查询",
+      keywords: '天气查询,天气预报,实时天气,全球天气',
+      description: '免费天气预报查询，支持全球城市，提供实时温度、湿度、风速等详细气象信息',
+    }
+  },
+  {
+    path: '/tools/daily/bmi',
+    component: () => import('@/components/Tools/Daily/Bmi/index.vue'),
+    name: 'bmi',
+    meta: {
+      title: "BMI计算器",
+      keywords: 'BMI计算,身体质量指数,健康计算器',
+      description: '在线计算身体质量指数(BMI)，快速评估您的身体健康状况',
+    }
+  },
+  {
+    path: '/tools/daily/stopwatch',
+    component: () => import('@/components/Tools/Daily/Stopwatch/index.vue'),
+    name: 'stopwatch',
+    meta: {
+      title: "在线秒表",
+      keywords: '在线秒表,计时器,秒表工具,计次秒表',
+      description: '简单好用的在线秒表工具，支持毫秒级计时和计次功能',
+    }
+  },
+  {
+    path: '/tools/daily/age-calculator',
+    component: () => import('@/components/Tools/Daily/AgeCalculator/index.vue'),
+    name: 'ageCalculator',
+    meta: {
+      title: "年龄计算器",
+      keywords: '年龄计算器,周岁计算,虚岁计算,生日倒计时,生肖星座查询',
+      description: '在线计算精确年龄，包含周岁、虚岁、生肖、星座及下一个生日倒计时',
+    }
+  },
+  {
+    path: '/tools/daily/life-progress',
+    component: () => import('@/components/Tools/Daily/LifeProgress/index.vue'),
+    name: 'lifeProgress',
+    meta: {
+      title: "人生进度条",
+      keywords: '人生进度条,生命倒计时,时间管理,人生规划',
+      description: '可视化展示人生进度，计算已度过的时间和剩余时间，助您珍惜当下',
+    }
+  },
+
+  // 效率工具
+  {
+    path: '/tools/todo-list',
+    component: () => import('@/components/Tools/TodoList/index.vue'),
+    name: 'todoList',
+    meta: {
+      title: "待办清单",
+      keywords: '待办清单,TodoList,任务管理,日程管理',
+      description: '极简风格的待办事项清单，支持任务管理、优先级设置，帮助您高效管理日常任务',
+    }
+  },
+  {
+    path: '/tools/pomodoro',
+    component: () => import('@/components/Tools/Pomodoro/index.vue'),
+    name: 'pomodoro',
+    meta: {
+      title: "番茄钟",
+      keywords: '番茄钟,番茄工作法,专注时钟,时间管理',
+      description: '基于番茄工作法的专注时钟，支持自定义工作/休息时长，助您保持专注高效',
     }
   },
 ]
