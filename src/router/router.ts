@@ -1584,6 +1584,26 @@ export const constantRoute = [
       description: '经典的记忆翻牌游戏，翻开卡片寻找相同的图案，考验你的瞬间记忆力！',
     }
   },
+  {
+    path: '/tools/daily/decision-maker',
+    component: () => import('@/components/Tools/Daily/DecisionMaker/DecisionMaker.vue'),
+    name: 'decisionMaker',
+    meta: {
+      title: "帮我决定",
+      keywords: '帮我决定,选择困难症,随机选择,做决定,转盘',
+      description: '选择困难症福音！输入选项，让运气帮你做决定，快速解决吃什么、去哪玩等难题。',
+    }
+  },
+  {
+    path: '/tools/psychology/color-test',
+    component: () => import('@/components/Tools/Psychology/ColorTest.vue'),
+    name: 'colorTest',
+    meta: {
+      title: "色彩性格测试",
+      keywords: '色彩性格测试,性格色彩,FPA,性格分析,心理测试',
+      description: '通过哈特曼色彩性格测试，探索你是红、蓝、白、黄哪种性格，了解你的核心动力和优势。',
+    }
+  },
   // AI简历生成器
   {
     path: '/tools/ai/resume',

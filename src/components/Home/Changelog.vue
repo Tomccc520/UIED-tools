@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-12 11:30
- * @version Beta 2.4.2
- * @toolsCount 当前工具总数：177个
+ * @lastUpdate 2025-12-12 12:00
+ * @version Beta 2.4.3
+ * @toolsCount 当前工具总数：179个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -243,7 +243,7 @@ onUnmounted(() => {
           </a>
         </div>
         <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：177个 | 最后更新：2025-12-12 11:30
+          当前工具总数：179个 | 最后更新：2025-12-12 12:00
         </div>
       </div>
 
@@ -279,6 +279,52 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.4.3 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.3</span>
+              <span class="date">2025-12-12 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">生活工具与心理测试上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增生活常用工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/daily/decision-maker"
+                              class="hover:text-blue-600 transition-colors">帮我决定</router-link></strong>：选择困难症福音，输入选项，让运气帮你做决定。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增潜能测试</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/psychology/color-test"
+                              class="hover:text-blue-600 transition-colors">色彩性格测试</router-link></strong>：基于哈特曼性格色彩密码，探索你的核心动力和性格优势。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">规范优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>全面检查并优化了生活常用类和潜能测试类工具的页面布局，确保符合统一的 UI 设计规范。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.4.2 -->
           <div class="timeline-item">
