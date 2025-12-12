@@ -338,6 +338,55 @@ onMounted(() => {
           </div>
         </div>
 
+        <!-- 生活常用区域 -->
+        <div id="daily">
+          <!-- 主标题样式 -->
+          <div class="section-title">
+            <div class="title-text">生活常用</div>
+            <div class="title-line"></div>
+          </div>
+          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '生活常用')?.list"
+            :key="category.id">
+            <!-- 子标题样式 -->
+            <div :id="`daily-${category.id}`" class="sub-title">
+              <div class="sub-title-indicator"></div>
+              <div class="sub-title-text">{{ category.title }}</div>
+            </div>
+            <div class="grid gap-4">
+              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
+                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
+                <div
+                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
+                  :style="getCardStyle" @click="handleToolClick(item)">
+                  <div class="flex items-center border-b pb-2 relative z-10">
+                    <ToolIcon :icon="item.logo" />
+                    <div class="flex flex-col ml-2 w-full">
+                      <div class="flex flex-col">
+                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
+                      </div>
+                      <div class="flex justify-between mt-1">
+                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="flex mt-2 relative z-10">
+                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
+                  </div>
+                  <!-- 卡片光效 -->
+                  <div class="card-shine"></div>
+                  <!-- 添加箭头元素 -->
+                  <div class="card-arrow">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- 文案工具区域 -->
         <div id="copywriting">
           <!-- 主标题样式 -->
@@ -582,6 +631,7 @@ onMounted(() => {
             </div>
           </div>
         </div>
+
 
         <!-- 返回顶部 -->
         <el-backtop :right="10" :bottom="50" />

@@ -184,8 +184,8 @@ export const constantRoute = [
     name: 'imageToPdf',
     meta: {
       title: "图片转PDF",
-      keywords: '图片转PDF,JPG转PDF,PNG转PDF',
-      description: '在线图片转PDF工具，支持多张图片合并成PDF',
+      keywords: '图片转PDF,JPG转PDF,PNG转PDF,图片合并PDF,创建PDF',
+      description: '在线图片转PDF工具，支持JPG、PNG等多种格式图片合并成PDF，自定义页面大小和边距，本地处理更安全。'
     }
   },
   {
@@ -204,17 +204,18 @@ export const constantRoute = [
     name: 'pdfMerge',
     meta: {
       title: "免费在线PDF合并工具",
-      keywords: 'PDF合并,PDF合并工具,在线PDF合并,免费PDF合并',
-      description: '免费在线PDF合并工具，支持多个PDF文件合并，无需上传至云端，本地处理更安全。'
+      keywords: 'PDF合并,PDF合并工具,在线PDF合并,免费PDF合并,PDF文件合并,合并PDF',
+      description: '免费在线PDF合并工具，支持多个PDF文件合并，无需上传至云端，本地处理更安全。支持调整合并顺序。'
     }
   },
   {
     path: '/tools/pdf-split',
     component: () => import('@/components/Tools/PdfSplit/index.vue'),
+    name: 'pdfSplit',
     meta: {
       title: '免费在线PDF分割工具',
-      keywords: 'PDF分割,PDF拆分,PDF分页,在线PDF分割,免费PDF分割',
-      description: '免费在线PDF分割工具，支持将PDF拆分为单页，批量处理多个文件，本地处理更安全。'
+      keywords: 'PDF分割,PDF拆分,PDF分页,在线PDF分割,免费PDF分割,PDF提取页面',
+      description: '免费在线PDF分割工具，支持将PDF拆分为单页，提取指定页面，批量处理多个文件，本地处理更安全。'
     }
   },
   {
@@ -223,8 +224,8 @@ export const constantRoute = [
     name: 'pdfRotate',
     meta: {
       title: "PDF页面旋转",
-      keywords: 'PDF旋转,PDF页面旋转,PDF文档旋转,在线PDF旋转',
-      description: '在线PDF页面旋转工具，支持批量旋转、单独旋转页面，同时可调整页面顺序',
+      keywords: 'PDF旋转,PDF页面旋转,PDF文档旋转,在线PDF旋转,旋转PDF',
+      description: '在线PDF页面旋转工具，支持批量旋转、单独旋转页面，同时可调整页面顺序，本地处理更安全。'
     }
   },
   {
@@ -233,8 +234,8 @@ export const constantRoute = [
     name: 'pdfDelete',
     meta: {
       title: "PDF页面删除",
-      keywords: 'PDF删除页面,PDF页面删除,PDF文档编辑,在线PDF删除',
-      description: '在线PDF页面删除工具，支持删除指定页面，同时可调整页面顺序和旋转页面',
+      keywords: 'PDF删除页面,PDF页面删除,PDF文档编辑,在线PDF删除,删除PDF页',
+      description: '在线PDF页面删除工具，支持删除指定页面，同时可调整页面顺序和旋转页面，本地处理更安全。'
     }
   },
   {
@@ -243,8 +244,169 @@ export const constantRoute = [
     name: 'pdfCompress',
     meta: {
       title: "免费PDF压缩工具",
-      keywords: 'PDF压缩,PDF文件压缩,在线PDF压缩,免费PDF压缩',
-      description: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传',
+      keywords: 'PDF压缩,PDF文件压缩,在线PDF压缩,免费PDF压缩,缩小PDF',
+      description: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传，保持良好画质。'
+    }
+  },
+  {
+    path: '/tools/pdf-watermark',
+    component: () => import('@/components/Tools/PdfWatermark/index.vue'),
+    name: 'pdfWatermark',
+    meta: {
+      title: "PDF添加水印",
+      keywords: 'PDF水印,PDF加水印,PDF添加水印,在线PDF水印,文本水印',
+      description: '免费在线PDF添加水印工具，支持自定义文字、大小、颜色、透明度和旋转角度，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-encrypt',
+    component: () => import('@/components/Tools/PdfEncrypt/index.vue'),
+    name: 'pdfEncrypt',
+    meta: {
+      title: "PDF加密",
+      keywords: 'PDF加密,PDF密码保护,PDF设置密码,在线PDF加密,保护PDF',
+      description: '免费在线PDF加密工具，支持设置打开密码和权限密码，防止文件被未授权访问，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-page-number',
+    component: () => import('@/components/Tools/PdfPageNumber/index.vue'),
+    name: 'pdfPageNumber',
+    meta: {
+      title: "PDF添加页码",
+      keywords: 'PDF页码,PDF添加页码,PDF页码设置,在线PDF页码,PDF插入页码',
+      description: '免费在线PDF添加页码工具，支持自定义位置、格式和样式，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-sign',
+    component: () => import('@/components/Tools/PdfSign/index.vue'),
+    name: 'pdfSign',
+    meta: {
+      title: "PDF签名",
+      keywords: 'PDF签名,PDF电子签名,在线PDF签名,PDF手写签名,签署PDF',
+      description: '免费在线PDF签名工具，支持手写签名并添加到PDF文件中，无需打印扫描，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/pdf-extract-text',
+    component: () => import('@/components/Tools/PdfExtractText/index.vue'),
+    name: 'pdfExtractText',
+    meta: {
+      title: "PDF文本提取",
+      keywords: 'PDF文本提取,PDF转TXT,PDF复制文本,PDF文字识别,提取PDF内容',
+      description: '免费在线提取PDF文件中的文本内容，支持复制和导出TXT，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/text-to-pdf',
+    component: () => import('@/components/Tools/TextToPdf/index.vue'),
+    name: 'textToPdf',
+    meta: {
+      title: "文本转PDF",
+      keywords: '文本转PDF,TXT转PDF,在线文本转PDF,生成PDF',
+      description: '在线将文本内容转换为PDF文档，支持自定义字体大小和排版，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/markdown-to-pdf',
+    component: () => import('@/components/Tools/MarkdownToPdf/index.vue'),
+    name: 'markdownToPdf',
+    meta: {
+      title: "Markdown转PDF",
+      keywords: 'Markdown转PDF,MD转PDF,在线Markdown转PDF,生成PDF',
+      description: '在线将Markdown文档转换为PDF，支持代码高亮、实时预览和自定义排版，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/word-count',
+    component: () => import('@/components/Tools/WordCount/index.vue'),
+    name: 'wordCount',
+    meta: {
+      title: "在线字数统计",
+      keywords: '字数统计,在线字数统计,字符统计,单词统计,行数统计,阅读时间计算',
+      description: '免费在线字数统计工具，实时统计字符数、单词数、行数、段落数，支持中英文混合统计，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/date-calculator',
+    component: () => import('@/components/Tools/DateCalculator/index.vue'),
+    name: 'dateCalculator',
+    meta: {
+      title: "日期计算器",
+      keywords: '日期计算器,日期推算,天数计算,日期间隔计算,在线日期计算器',
+      description: '在线日期计算器，支持计算两个日期之间的天数间隔，以及根据日期往后推算未来日期，方便快捷。'
+    }
+  },
+  {
+    path: '/tools/screen-recorder',
+    component: () => import('@/components/Tools/ScreenRecorder/index.vue'),
+    name: 'screenRecorder',
+    meta: {
+      title: "在线屏幕录制",
+      keywords: '屏幕录制,在线录屏,网页录屏,无需安装,免费录屏,录制系统声音',
+      description: '免费在线屏幕录制工具，无需安装软件，支持录制屏幕、窗口或标签页，支持录制系统声音，本地录制更安全。'
+    }
+  },
+  {
+    path: '/tools/relationship',
+    component: () => import('@/components/Tools/Relationship/Relationship.vue'),
+    name: 'relationship',
+    meta: {
+      title: "亲戚称呼计算器",
+      keywords: '亲戚计算器,称呼计算器,亲戚关系,三姑六婆',
+      description: '中国亲戚关系称呼查询，支持互查，逢年过节必备神器',
+    }
+  },
+  {
+    path: '/tools/base64',
+    component: () => import('@/components/Tools/Base64/Base64.vue'),
+    name: 'base64',
+    meta: {
+      title: "Base64转换工具",
+      keywords: 'Base64编码,Base64解码,图片转Base64,Base64转图片',
+      description: '支持文本/图片与Base64编码之间的相互转换，本地处理更安全',
+    }
+  },
+  // 表格工具
+  {
+    path: '/tools/excel-to-json',
+    component: () => import('@/components/Tools/ExcelToJson/index.vue'),
+    name: 'excelToJson',
+    meta: {
+      title: "Excel转JSON",
+      keywords: 'Excel转JSON,Excel转JSON工具,在线Excel转JSON',
+      description: '在线将Excel文件转换为JSON格式，支持.xlsx, .xls格式，本地处理更安全。',
+    }
+  },
+  {
+    path: '/tools/json-to-excel',
+    component: () => import('@/components/Tools/JsonToExcel/index.vue'),
+    name: 'jsonToExcel',
+    meta: {
+      title: "JSON转Excel",
+      keywords: 'JSON转Excel,JSON转Excel工具,在线JSON转Excel',
+      description: '在线将JSON数据转换为Excel文件，支持数组格式JSON，本地处理更安全。',
+    }
+  },
+  {
+    path: '/tools/csv-to-excel',
+    component: () => import('@/components/Tools/CsvToExcel/index.vue'),
+    name: 'csvToExcel',
+    meta: {
+      title: "CSV转Excel",
+      keywords: 'CSV转Excel,CSV转XLSX,在线CSV转换',
+      description: '在线将CSV文件转换为Excel (.xlsx)格式，自动处理编码问题，本地处理更安全。',
+    }
+  },
+  {
+    path: '/tools/excel-to-csv',
+    component: () => import('@/components/Tools/ExcelToCsv/index.vue'),
+    name: 'excelToCsv',
+    meta: {
+      title: "Excel转CSV",
+      keywords: 'Excel转CSV,XLSX转CSV,在线Excel转换',
+      description: '在线将Excel文件转换为CSV格式，支持自定义分隔符，本地处理更安全。',
     }
   },
   //工具
@@ -308,16 +470,7 @@ export const constantRoute = [
       description: '在线字数计数器,主要是方便计算字数，以控制文字数量的小工具(小说作者、论文、文档、文字编辑必备工具)。',
     }
   },
-  {
-    path: '/tools/ip',
-    component: () => import('@/components/Tools/Ip/Ip.vue'),
-    name: 'ip',
-    meta: {
-      title: "IP查询",
-      keywords: 'ip,ip查询,ip地址查询,ip138,查ip,我的ip,公网ip,ip归属地查询',
-      description: '公网ip地址归属地查询',
-    }
-  },
+
   {
     path: '/tools/scaletran',
     component: () => import('@/components/Tools/ScaleTran/ScaleTran.vue'),
@@ -1361,6 +1514,66 @@ export const constantRoute = [
       description: '在线查看摸鱼日历，了解距离各种假期的剩余时间，支持历史日期查询',
     }
   },
+  {
+    path: '/tools/games/typing-rain-cn',
+    component: () => import('@/components/Tools/Games/TypingRain/TypingRain.vue'),
+    name: 'typingRainCn',
+    meta: {
+      title: "打字雨(中文版)",
+      keywords: '打字游戏,打字练习,中文打字,趣味打字,摸鱼小游戏',
+      description: '经典的打字雨游戏中文版，在单词落下前输入正确的拼音或汉字，锻炼打字速度与反应能力',
+    }
+  },
+  {
+    path: '/tools/games/typing-rain-en',
+    component: () => import('@/components/Tools/Games/TypingRain/TypingRain.vue'),
+    name: 'typingRainEn',
+    meta: {
+      title: "打字雨(英文版)",
+      keywords: 'Typing Game,Typing Rain,英文打字,打字练习,摸鱼小游戏',
+      description: 'Classic Typing Rain game, type the falling words before they hit the ground. Test your typing speed and accuracy.',
+    }
+  },
+  {
+    path: '/tools/games/snake',
+    component: () => import('@/components/Tools/Games/Snake/Snake.vue'),
+    name: 'snake',
+    meta: {
+      title: "贪吃蛇",
+      keywords: '贪吃蛇,Snake,经典游戏,摸鱼小游戏,网页游戏',
+      description: '经典的贪吃蛇游戏，控制蛇吃食物变长，挑战最高分，重温童年回忆。',
+    }
+  },
+  {
+    path: '/tools/games/minesweeper',
+    component: () => import('@/components/Tools/Games/Minesweeper/Minesweeper.vue'),
+    name: 'minesweeper',
+    meta: {
+      title: "扫雷",
+      keywords: '扫雷,Minesweeper,经典游戏,益智游戏,摸鱼小游戏',
+      description: '经典的扫雷游戏，运用逻辑推理避开地雷，挑战不同难度，锻炼大脑。',
+    }
+  },
+  {
+    path: '/tools/games/woodfish',
+    component: () => import('@/components/Tools/Games/Woodfish/Woodfish.vue'),
+    name: 'woodfish',
+    meta: {
+      title: "电子木鱼",
+      keywords: '电子木鱼,积攒功德,解压工具,摸鱼神器,在线木鱼',
+      description: '在线电子木鱼，点击屏幕敲击木鱼，积攒功德，放松心情，净化心灵。',
+    }
+  },
+  {
+    path: '/tools/games/2048',
+    component: () => import('@/components/Tools/Games/Game2048/Game2048.vue'),
+    name: 'game2048',
+    meta: {
+      title: "2048",
+      keywords: '2048,益智游戏,数字游戏,合成游戏,经典游戏',
+      description: '经典的2048数字合成游戏，移动方块合并数字，挑战合成2048！',
+    }
+  },
   // AI简历生成器
   {
     path: '/tools/ai/resume',
@@ -1451,6 +1664,79 @@ export const constantRoute = [
       title: "房贷计算器",
       keywords: '房贷计算器,商业贷款计算,公积金贷款计算,组合贷款计算,月供计算',
       description: '专业的房贷计算器，支持等额本息和等额本金两种还款方式，快速计算月供、利息和还款总额。',
+    }
+  },
+  // 生活常用工具
+  {
+    path: '/tools/daily/weather',
+    component: () => import('@/components/Tools/Daily/Weather/index.vue'),
+    name: 'weather',
+    meta: {
+      title: "天气查询",
+      keywords: '天气查询,天气预报,实时天气,全球天气',
+      description: '免费天气预报查询，支持全球城市，提供实时温度、湿度、风速等详细气象信息',
+    }
+  },
+  {
+    path: '/tools/daily/bmi',
+    component: () => import('@/components/Tools/Daily/Bmi/index.vue'),
+    name: 'bmi',
+    meta: {
+      title: "BMI计算器",
+      keywords: 'BMI计算,身体质量指数,健康计算器',
+      description: '在线计算身体质量指数(BMI)，快速评估您的身体健康状况',
+    }
+  },
+  {
+    path: '/tools/daily/stopwatch',
+    component: () => import('@/components/Tools/Daily/Stopwatch/index.vue'),
+    name: 'stopwatch',
+    meta: {
+      title: "在线秒表",
+      keywords: '在线秒表,计时器,秒表工具,计次秒表',
+      description: '简单好用的在线秒表工具，支持毫秒级计时和计次功能',
+    }
+  },
+  {
+    path: '/tools/daily/age-calculator',
+    component: () => import('@/components/Tools/Daily/AgeCalculator/index.vue'),
+    name: 'ageCalculator',
+    meta: {
+      title: "年龄计算器",
+      keywords: '年龄计算器,周岁计算,虚岁计算,生日倒计时,生肖星座查询',
+      description: '在线计算精确年龄，包含周岁、虚岁、生肖、星座及下一个生日倒计时',
+    }
+  },
+  {
+    path: '/tools/daily/life-progress',
+    component: () => import('@/components/Tools/Daily/LifeProgress/index.vue'),
+    name: 'lifeProgress',
+    meta: {
+      title: "人生进度条",
+      keywords: '人生进度条,生命倒计时,时间管理,人生规划',
+      description: '可视化展示人生进度，计算已度过的时间和剩余时间，助您珍惜当下',
+    }
+  },
+
+  // 效率工具
+  {
+    path: '/tools/todo-list',
+    component: () => import('@/components/Tools/TodoList/index.vue'),
+    name: 'todoList',
+    meta: {
+      title: "待办清单",
+      keywords: '待办清单,TodoList,任务管理,日程管理',
+      description: '极简风格的待办事项清单，支持任务管理、优先级设置，帮助您高效管理日常任务',
+    }
+  },
+  {
+    path: '/tools/pomodoro',
+    component: () => import('@/components/Tools/Pomodoro/index.vue'),
+    name: 'pomodoro',
+    meta: {
+      title: "番茄钟",
+      keywords: '番茄钟,番茄工作法,专注时钟,时间管理',
+      description: '基于番茄工作法的专注时钟，支持自定义工作/休息时长，助您保持专注高效',
     }
   },
 ]

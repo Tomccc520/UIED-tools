@@ -487,6 +487,263 @@ export function getToolsCate(): ToolCategory[] {
               desc: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传',
               url: '/tools/pdf-compress',
               cate: 'PDF工具'
+            },
+            {
+              id: 618,
+              title: 'PDF添加水印',
+              logo: { type: 'svg', name: 'pdfWatermark' },
+              desc: '免费在线PDF添加水印工具，支持自定义文字、大小、颜色、透明度和旋转角度，本地处理更安全。',
+              url: '/tools/pdf-watermark',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 619,
+              title: 'PDF加密',
+              logo: { type: 'svg', name: 'pdfEncrypt' },
+              desc: '免费在线PDF加密工具，支持设置打开密码和权限密码，本地处理更安全。',
+              url: '/tools/pdf-encrypt',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 620,
+              title: 'PDF添加页码',
+              logo: { type: 'svg', name: 'pdfPageNumber' },
+              desc: '免费在线PDF添加页码工具，支持自定义位置、格式和字体样式，本地处理更安全。',
+              url: '/tools/pdf-page-number',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 625,
+              title: 'PDF签名',
+              logo: { type: 'svg', name: 'pdfSign' },
+              desc: '免费在线PDF签名工具，支持手写签名并添加到PDF文件中，本地处理更安全。',
+              url: '/tools/pdf-sign',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 626,
+              title: 'PDF文本提取',
+              logo: { type: 'svg', name: 'pdfExtractText' },
+              desc: '免费在线提取PDF文件中的文本内容，支持复制和导出TXT，本地处理更安全。',
+              url: '/tools/pdf-extract-text',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 627,
+              title: '文本转PDF',
+              logo: { type: 'svg', name: 'textToPdf' },
+              desc: '在线将文本内容转换为PDF文档，支持自定义排版',
+              url: '/tools/text-to-pdf',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 628,
+              title: 'Markdown转PDF',
+              logo: { type: 'svg', name: 'markdownToPdf' },
+              desc: '在线将Markdown文档转换为PDF，支持代码高亮和实时预览',
+              url: '/tools/markdown-to-pdf',
+              cate: 'PDF工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 62,
+          title: '表格工具',
+          list: [
+            {
+              id: 621,
+              title: 'Excel转JSON',
+              logo: { type: 'svg', name: 'excelToJson' },
+              desc: '在线将Excel文件转换为JSON格式，支持.xlsx, .xls格式，本地处理更安全。',
+              url: '/tools/excel-to-json',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 622,
+              title: 'JSON转Excel',
+              logo: { type: 'svg', name: 'jsonToExcel' },
+              desc: '在线将JSON数据转换为Excel文件，支持数组格式JSON，本地处理更安全。',
+              url: '/tools/json-to-excel',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 623,
+              title: 'CSV转Excel',
+              logo: { type: 'svg', name: 'csvToExcel' },
+              desc: '在线将CSV文件转换为Excel (.xlsx)格式，自动处理编码问题，本地处理更安全。',
+              url: '/tools/csv-to-excel',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 624,
+              title: 'Excel转CSV',
+              logo: { type: 'svg', name: 'excelToCsv' },
+              desc: '在线将Excel文件转换为CSV格式，支持.xlsx, .xls格式，本地处理更安全。',
+              url: '/tools/excel-to-csv',
+              cate: '表格工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 63,
+          title: '文档工具',
+          list: [
+            {
+              id: 631,
+              title: '字数统计',
+              logo: { type: 'svg', name: 'wordCount' },
+              desc: '在线字数统计工具，支持字符数、单词数、行数、段落数统计，实时计算阅读时间',
+              url: '/tools/word-count',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 64,
+          title: '辅助工具',
+          list: [
+            {
+              id: 641,
+              title: '日期计算器',
+              logo: { type: 'svg', name: 'dateCalculator' },
+              desc: '在线日期计算器，支持日期间隔计算和日期推算',
+              url: '/tools/date-calculator',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 642,
+              title: '在线屏幕录制',
+              logo: { type: 'svg', name: 'screenRecorder' },
+              desc: '免费在线屏幕录制工具，支持录制系统声音，本地录制更安全',
+              url: '/tools/screen-recorder',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 643,
+              title: '亲戚称呼计算器',
+              logo: { type: 'svg', name: 'relationship' },
+              desc: '中国亲戚关系称呼查询，支持互查，逢年过节必备神器',
+              url: '/tools/relationship',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 65,
+          title: '效率工具',
+          list: [
+            {
+              id: 651,
+              title: '待办清单',
+              logo: { type: 'svg', name: 'todoList' },
+              desc: '极简风格的待办事项清单，支持任务管理、优先级设置，帮助您高效管理日常任务',
+              url: '/tools/todo-list',
+              cate: '效率工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 652,
+              title: '番茄钟',
+              logo: { type: 'svg', name: 'pomodoro' },
+              desc: '基于番茄工作法的专注时钟，支持自定义工作/休息时长，助您保持专注高效',
+              url: '/tools/pomodoro',
+              cate: '效率工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        }
+      ]
+    },
+    {
+      id: 8,
+      title: '生活常用',
+      icon: '',
+      list: [
+        {
+          id: 81,
+          title: '实用查询',
+          list: [
+            {
+              id: 811,
+              title: '天气查询',
+              logo: { type: 'svg', name: 'weather' },
+              desc: '免费天气预报查询，支持全球城市，提供实时温度、湿度、风速等详细气象信息',
+              url: '/tools/daily/weather',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 812,
+              title: 'BMI计算器',
+              logo: { type: 'svg', name: 'bmi' },
+              desc: '在线计算身体质量指数(BMI)，评估身体健康状况',
+              url: '/tools/daily/bmi',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 813,
+              title: '在线秒表',
+              logo: { type: 'svg', name: 'stopwatch' },
+              desc: '简单好用的在线秒表工具，支持计次功能',
+              url: '/tools/daily/stopwatch',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 814,
+              title: '年龄计算器',
+              logo: { type: 'svg', name: 'ageCalculator' },
+              desc: '在线计算精确年龄，包含周岁、虚岁、生肖及星座',
+              url: '/tools/daily/age-calculator',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 815,
+              title: '人生进度条',
+              logo: { type: 'svg', name: 'lifeProgress' },
+              desc: '可视化展示人生进度，计算已度过的时间和剩余时间',
+              url: '/tools/daily/life-progress',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         }
@@ -1089,6 +1346,16 @@ export function getToolsCate(): ToolCategory[] {
               cate: '开发运维'
             },
             {
+              id: 2114,
+              title: 'Base64转换工具',
+              logo: { type: 'svg', name: 'base64' },
+              desc: '支持文本/图片与Base64编码之间的相互转换',
+              url: '/tools/base64',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true
+            },
+            {
               id: 216,
               title: 'Json在线转换',
               logo: { type: 'svg', name: 'json' },
@@ -1257,6 +1524,72 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/fish-calendar',
               cate: '其他摸鱼',
               isNew: true
+            }
+          ]
+        },
+        {
+          id: 74,
+          title: '摸鱼游戏',
+          list: [
+            {
+              id: 741,
+              title: '打字雨 (中文)',
+              logo: { type: 'svg', name: 'typingRain' },
+              desc: '经典的打字雨游戏中文版，锻炼打字速度与反应能力',
+              url: '/tools/games/typing-rain-cn',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 742,
+              title: '打字雨 (English)',
+              logo: { type: 'svg', name: 'typingRain' },
+              desc: 'Classic Typing Rain game, test your English typing speed',
+              url: '/tools/games/typing-rain-en',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 743,
+              title: '贪吃蛇',
+              logo: { type: 'svg', name: 'snake' },
+              desc: '经典的贪吃蛇游戏，控制蛇吃食物变长，挑战最高分',
+              url: '/tools/games/snake',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 744,
+              title: '扫雷',
+              logo: { type: 'svg', name: 'minesweeper' },
+              desc: '经典的扫雷游戏，运用逻辑推理避开地雷，锻炼大脑',
+              url: '/tools/games/minesweeper',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 745,
+              title: '电子木鱼',
+              logo: { type: 'svg', name: 'game' },
+              desc: '在线敲木鱼，积攒功德，放松心情，净化心灵',
+              url: '/tools/games/woodfish',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '解压']
+            },
+            {
+              id: 746,
+              title: '2048',
+              logo: { type: 'svg', name: 'game' },
+              desc: '经典的数字合成游戏，移动方块合并数字，挑战2048',
+              url: '/tools/games/2048',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '益智']
             }
           ]
         }

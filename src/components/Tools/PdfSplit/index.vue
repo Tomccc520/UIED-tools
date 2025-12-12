@@ -1,10 +1,10 @@
 <!--
  * @file PdfSplit.vue
- * @description PDF分割工具组件，支持将PDF拆分为每页一个独立文件
+ * @description PDF拆分工具组件，支持按范围拆分、提取页面、每一页单独拆分
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-26
+ * @createDate 2025-12-10
  * @license MIT
 -->
 
@@ -14,576 +14,586 @@
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 标题区域 -->
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
-            </div>
-          </h2>
-          <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
+        <div class="text-center mb-8">
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">PDF拆分</h2>
+          <p class="text-gray-500 text-sm">将PDF文件拆分为多个文件，支持按页面范围拆分或提取每一页</p>
         </div>
 
         <!-- 上传区域 -->
-        <div v-if="files.length === 0">
+        <div v-if="!currentFile">
           <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
-            @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" multiple accept=".pdf,application/pdf"
+            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+            @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
+            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
-              <div class="w-8 h-8 mb-2 mx-auto">
-                <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
-              <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽PDF文件到这里</div>
-              <p class="text-xs text-gray-400">最多选择 10 个文件，单个文件最大 500MB，少于1000页</p>
+              <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
+              <p class="text-sm text-gray-400">单个文件最大 200MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
         </div>
 
-        <!-- 文件列表和操作按钮 -->
-        <template v-if="files.length > 0">
-          <div class="mb-6">
-            <div class="flex justify-between items-center mb-4">
-              <div class="flex items-center gap-4">
-                <h2 class="text-lg font-medium">已选择的文件</h2>
-                <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                  {{ files.length }} 个文件
-                </span>
-              </div>
-              <div class="flex items-center space-x-3">
-                <button @click="clearFiles" class="text-sm text-gray-500 hover:text-red-500 transition-colors"
-                  :disabled="processing">
-                  清空队列
-                </button>
-                <button @click="splitAll" :disabled="processing"
-                  class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all">
-                  <span class="flex items-center justify-center">
-                    <span class="mr-2">{{ processing ? '⚙️' : '✨' }}</span>
-                    {{ processing ? '处理中...' : '开始分割' }}
-                  </span>
-                </button>
-                <button v-if="files.length > 0" @click="downloadAllSplitFiles"
-                  class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium shadow-sm hover:shadow transition-all">
-                  打包下载全部
-                </button>
+        <!-- PDF页面预览和操作区域 -->
+        <div v-if="currentFile && pdfPages.length > 0" class="mt-6">
+          <div class="flex flex-col md:flex-row gap-6">
+            <!-- 左侧设置区域 -->
+            <div class="w-full md:w-1/3 space-y-6">
+              <div class="bg-gray-50 p-6 rounded-lg">
+                <h3 class="font-medium text-gray-900 mb-4">拆分设置</h3>
+
+                <!-- 拆分模式选择 -->
+                <div class="space-y-3">
+                  <label class="flex items-center space-x-3 cursor-pointer">
+                    <input type="radio" v-model="splitMode" value="extract"
+                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                    <span class="text-gray-700">提取为单个PDF</span>
+                  </label>
+                  <p class="text-xs text-gray-500 ml-7">将选中的页面或指定范围的页面合并为一个新的PDF文件。</p>
+
+                  <label class="flex items-center space-x-3 cursor-pointer mt-4">
+                    <input type="radio" v-model="splitMode" value="split_every"
+                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                    <span class="text-gray-700">每一页单独拆分</span>
+                  </label>
+                  <p class="text-xs text-gray-500 ml-7">将PDF的每一页保存为一个单独的PDF文件，打包下载。</p>
+
+                  <label class="flex items-center space-x-3 cursor-pointer mt-4">
+                    <input type="radio" v-model="splitMode" value="split_range"
+                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                    <span class="text-gray-700">按范围拆分为多个PDF</span>
+                  </label>
+                  <p class="text-xs text-gray-500 ml-7">根据输入的范围，每个范围生成一个PDF文件，打包下载。</p>
+                </div>
+
+                <!-- 范围输入 -->
+                <div v-if="splitMode !== 'split_every'" class="mt-6">
+                  <label class="block text-sm font-medium text-gray-700 mb-2">页面范围</label>
+                  <input type="text" v-model="rangeInput" placeholder="例如: 1-3, 5, 8-10"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                  <p class="text-xs text-gray-500 mt-2">
+                    输入要提取/拆分的页面页码或范围，用逗号分隔。
+                    <br>
+                    例如 "1-3, 5" 表示提取第1到3页和第5页。
+                  </p>
+                </div>
+
+                <!-- 操作按钮 -->
+                <div class="mt-8 space-y-3">
+                  <button @click="processPdf"
+                    :disabled="processing || (splitMode !== 'split_every' && !rangeInput.trim())"
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    <svg v-if="processing" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                      xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                      <path class="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                      </path>
+                    </svg>
+                    {{ processing ? '处理中...' : '开始拆分/提取' }}
+                  </button>
+
+                  <button @click="clearFile"
+                    class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    清除文件
+                  </button>
+                </div>
               </div>
             </div>
 
-            <!-- 文件列表 -->
-            <div class="space-y-4">
-              <div v-for="(file, index) in files" :key="file.name"
-                class="relative group bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center space-x-3">
-                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <div>
-                      <p class="text-sm text-gray-700">{{ file.name }}</p>
-                      <div class="flex items-center space-x-2">
-                        <span class="text-xs text-gray-500">{{ formatFileSize(file.size) }}</span>
-                        <span v-if="file.pageCount" class="text-xs text-gray-500">{{ file.pageCount }}页</span>
-                        <span v-if="file.status === 'processing'" class="text-xs text-blue-500">处理中...</span>
-                        <span v-if="file.status === 'completed'" class="text-xs text-green-500">已完成</span>
-                        <span v-if="file.status === 'error'" class="text-xs text-red-500">处理失败</span>
-                      </div>
+            <!-- 右侧预览区域 -->
+            <div class="w-full md:w-2/3">
+              <div class="flex items-center justify-between mb-4">
+                <h3 class="font-medium text-gray-900">页面预览 ({{ pdfPages.length }}页)</h3>
+                <div class="text-sm text-gray-500">
+                  点击页面可快速添加到范围输入框
+                </div>
+              </div>
+
+              <div
+                class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-[600px] overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                <div v-for="page in pdfPages" :key="page.pageIndex" class="relative group cursor-pointer"
+                  @click="togglePageSelection(page.pageNumber)">
+                  <div class="aspect-[1/1.4] bg-white shadow-sm rounded border border-gray-200 overflow-hidden relative"
+                    :class="{ 'ring-2 ring-blue-500': isPageSelected(page.pageNumber) }">
+                    <img :src="page.thumbnail" class="w-full h-full object-contain" />
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity">
                     </div>
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <!-- 操作按钮组 -->
-                    <button @click="previewPDF(file)"
-                      class="text-gray-400 hover:text-blue-500 p-1.5 rounded-full hover:bg-blue-50 transition-colors"
-                      :disabled="processing">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+
+                    <!-- 页码 -->
+                    <div
+                      class="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1.5 py-0.5 rounded">
+                      {{ page.pageNumber }}
+                    </div>
+
+                    <!-- 选中标记 -->
+                    <div v-if="isPageSelected(page.pageNumber)"
+                      class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-0.5">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                       </svg>
-                    </button>
-                    <button v-if="file.status === 'completed'" @click="downloadSplitFiles(file)"
-                      class="text-gray-400 hover:text-green-500 p-1.5 rounded-full hover:bg-green-50 transition-colors">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                      </svg>
-                    </button>
-                    <button @click="removeFile(index)"
-                      class="text-gray-400 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
-                      :disabled="processing">
-                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-        </template>
+        </div>
       </div>
 
       <!-- 功能说明区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 功能特点 -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
-            <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div v-for="feature in features" :key="feature.title"
+            class="bg-gray-50 p-6 rounded-xl hover:shadow-sm transition-shadow">
+            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+              <svg v-if="feature.icon === 'Split'" class="w-6 h-6" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
               </svg>
-              <div>
-                <h3 class="font-medium text-gray-900 mb-1">{{ feature.title }}</h3>
-                <p class="text-sm text-gray-500 leading-relaxed">{{ feature.desc }}</p>
-              </div>
+              <svg v-else-if="feature.icon === 'Extract'" class="w-6 h-6" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              <svg v-else-if="feature.icon === 'Preview'" class="w-6 h-6" fill="none" stroke="currentColor"
+                viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              <svg v-else class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
             </div>
+            <h3 class="font-bold text-gray-900 mb-2">{{ feature.title }}</h3>
+            <p class="text-sm text-gray-500 leading-relaxed">{{ feature.desc }}</p>
           </div>
         </div>
 
-        <!-- 适用场景说明 -->
-        <div class="mt-8 bg-gray-50 rounded-lg p-6">
-          <h2 class="text-lg font-medium text-gray-900 mb-4">适用场景</h2>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div class="flex items-start space-x-2">
-              <svg class="w-4 h-4 text-green-500 mt-1 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <p class="text-sm text-gray-600">学生：分割课件和讲义，便于分享和学习</p>
-            </div>
-            <div class="flex items-start space-x-2">
-              <svg class="w-4 h-4 text-green-500 mt-1 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <p class="text-sm text-gray-600">办公：拆分合同和报告，方便单独处理</p>
-            </div>
-            <div class="flex items-start space-x-2">
-              <svg class="w-4 h-4 text-green-500 mt-1 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <p class="text-sm text-gray-600">设计：提取设计稿中的特定页面，便于修改</p>
-            </div>
-            <div class="flex items-start space-x-2">
-              <svg class="w-4 h-4 text-green-500 mt-1 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-              </svg>
-              <p class="text-sm text-gray-600">日常：分割扫描文件，整理归档更方便</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- 常见问题解答 -->
-        <div class="mt-8 bg-white rounded-lg p-6 border">
-          <h2 class="text-lg font-medium text-gray-900 mb-6">常见问题解答</h2>
-          <div class="space-y-6">
-            <div v-for="faq in faqs" :key="faq.question" class="border-b border-gray-100 pb-6 last:border-0 last:pb-0">
-              <h3 class="text-base font-medium text-gray-800 mb-2">{{ faq.question }}</h3>
+        <!-- 常见问题 -->
+        <div class="mt-12">
+          <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
+            <svg class="w-6 h-6 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            常见问题
+          </h3>
+          <div class="space-y-4">
+            <div v-for="(faq, index) in faqs" :key="index" class="bg-gray-50 rounded-lg p-5 border border-gray-100">
+              <h4 class="font-bold text-gray-800 mb-2">{{ faq.question }}</h4>
               <p class="text-sm text-gray-600">{{ faq.answer }}</p>
             </div>
           </div>
         </div>
+
+        <!-- 使用指南 -->
+        <UsageGuide :steps="guideSteps" :notes="guideNotes" />
       </div>
 
       <!-- 工具推荐 -->
       <ToolsRecommend :currentPath="route.path" />
     </div>
-
-    <!-- PDF预览对话框 -->
-    <el-dialog v-model="previewDialogVisible" :title="previewFile?.name" width="80%" destroy-on-close
-      class="pdf-preview-dialog">
-      <div class="w-full h-[70vh]">
-        <iframe v-if="previewUrl" :src="previewUrl" class="w-full h-full border-0"></iframe>
-      </div>
-    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import { PDFDocument } from 'pdf-lib'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import { formatFileSize } from '@/utils/file'
-import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import * as pdfjsLib from 'pdfjs-dist'
+// @ts-ignore
+import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
 import JSZip from 'jszip'
+import { ElMessage } from 'element-plus'
+import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
+
+// 设置 PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
 
 const route = useRoute()
 
-interface ProcessedFile extends File {
-  pageCount?: number
-  status?: 'pending' | 'processing' | 'completed' | 'error'
-  splitFiles?: Blob[]
-}
-
-const info = reactive({
-  title: "免费在线PDF分割工具",
-  subtitle: "将PDF文件拆分为单页，支持批量处理多个文件，本地处理更安全"
-})
-
-const files = ref<ProcessedFile[]>([])
-const processing = ref(false)
-const isDragging = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
-
-// 功能特点
 const features = [
   {
     icon: 'Split',
-    title: '智能分割',
-    desc: '自动将PDF文档拆分为单页文件，完整保留原有质量和格式'
+    title: '多种拆分模式',
+    desc: '提供按每一页拆分、提取选中页面、按范围拆分等多种灵活的拆分模式'
   },
   {
-    icon: 'Batch',
-    title: '批量处理',
-    desc: '支持同时处理多个PDF文件，大幅提升工作效率'
+    icon: 'Extract',
+    title: '精准提取',
+    desc: '可以精确提取指定的单页或多页，并合并为一个新的PDF文件'
+  },
+  {
+    icon: 'Preview',
+    title: '实时预览',
+    desc: '上传后可查看每一页的缩略图，方便确认页面内容和页码'
   },
   {
     icon: 'Lock',
-    title: '安全可靠',
-    desc: '所有处理都在浏览器本地完成，无需上传服务器，确保文件安全'
-  },
-  {
-    icon: 'Download',
-    title: '便捷下载',
-    desc: '支持单个下载或打包下载所有分割后的文件，满足不同需求'
+    title: '安全隐私',
+    desc: '所有拆分和提取过程均在浏览器本地完成，文件无需上传服务器，保护您的数据安全'
   }
 ]
 
-// 常见问题
 const faqs = [
   {
-    question: '这款PDF分割工具是否免费？',
-    answer: '是的，我们的PDF分割工具完全免费使用，没有任何使用次数的限制。我们致力于为用户提供高质量的在线工具服务。'
+    question: '拆分后的文件质量会下降吗？',
+    answer: '不会。我们使用无损拆分技术，拆分后的文件将保持与原文件完全一致的质量和清晰度。'
   },
   {
-    question: '为什么分割出来的打包文件体积变大了？',
-    answer: '这是由PDF文件格式特性决定的。对于包含字体嵌入的PDF，每个分割后的文件都需要单独存储相关信息，因此打包后的总体积会大于原始文件。而对于扫描生成的PDF文档，分割后的文件总体积与原始文件相近。'
+    question: '可以直接删除某些页面吗？',
+    answer: '可以通过“提取”模式，只选择您需要保留的页面，变相实现删除不需要页面的效果。'
   },
   {
-    question: '使用这款PDF分割工具是否有数据泄露风险？',
-    answer: '完全不用担心数据安全问题。我们的PDF分割工具采用纯浏览器本地处理技术，所有文件都在您的设备上处理，不会上传到任何服务器，确保您的文件安全和隐私。'
+    question: '支持多大的文件？',
+    answer: '为了保证浏览器运行流畅，建议处理200MB以内的PDF文件。'
   }
 ]
 
-// 计算已完成的文件
-const completedFiles = computed(() => {
-  return files.value.filter((file: ProcessedFile) =>
-    file.status === 'completed' && file.splitFiles && file.splitFiles.length > 0
-  )
-})
-
-// 处理文件拖放
-const handleDrop = (e: DragEvent) => {
-  e.preventDefault()
-  isDragging.value = false
-  const droppedFiles = e.dataTransfer?.files
-  if (!droppedFiles) return
-
-  const pdfFiles = Array.from(droppedFiles).filter(file =>
-    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  )
-  handleFiles(pdfFiles)
+interface PdfPage {
+  pageIndex: number
+  pageNumber: number
+  thumbnail: string
 }
 
-// 触发文件选择
-const triggerFileInput = () => {
-  fileInputRef.value?.click()
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const currentFile = ref<File | null>(null)
+const pdfPages = ref<PdfPage[]>([])
+const isDragging = ref(false)
+const processing = ref(false)
+const splitMode = ref<'extract' | 'split_every' | 'split_range'>('extract')
+const rangeInput = ref('')
+
+// 指南内容
+const guideSteps = [
+  { title: '上传文件', description: '点击上传区域或拖拽PDF文件到指定位置。' },
+  { title: '选择模式', description: '选择"提取为单个PDF"、"每一页单独拆分"或"按范围拆分"模式。' },
+  { title: '设置范围', description: '如果需要，输入要提取或拆分的页面范围（如 1-3, 5）。' },
+  { title: '下载文件', description: '点击"开始拆分/提取"按钮，处理完成后将自动下载文件（多个文件将打包为ZIP）。' }
+]
+
+const guideNotes = [
+  '支持的范围格式：单页（如 5）、连续范围（如 1-3）。',
+  '多个范围请用逗号分隔，例如：1-3, 5, 8-10。',
+  '文件处理在本地进行，保障您的数据安全。'
+]
+
+// 处理文件拖拽
+const handleDrop = (e: DragEvent) => {
+  isDragging.value = false
+  const files = e.dataTransfer?.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    if (file.type === 'application/pdf') {
+      processFile(file)
+    } else {
+      ElMessage.warning('请上传PDF文件')
+    }
+  }
 }
 
 // 处理文件选择
-const handleFileInputChange = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (!input.files) return
-
-  const selectedFiles = Array.from(input.files).filter(file =>
-    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  )
-  handleFiles(selectedFiles)
-
-  // 清空 input 值，允许重复选择同一文件
-  input.value = ''
-}
-
-// 处理文件
-const handleFiles = (newFiles: File[]) => {
-  // 检查文件类型
-  const invalidFiles = newFiles.filter(file =>
-    !(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-  )
-  if (invalidFiles.length > 0) {
-    ElMessage.error('只能上传PDF文件')
-    return
-  }
-
-  // 检查文件大小
-  const oversizedFiles = newFiles.filter(file => file.size > 500 * 1024 * 1024)
-  if (oversizedFiles.length > 0) {
-    ElMessage.error('文件大小不能超过500MB')
-    return
-  }
-
-  // 添加文件到列表
-  const processedFiles = newFiles.map(file => {
-    const processedFile = new File([file], file.name, { type: file.type }) as ProcessedFile
-    processedFile.status = 'pending'
-    processedFile.splitFiles = []
-    processedFile.pageCount = undefined
-    return processedFile
-  })
-
-  files.value.push(...processedFiles)
-
-  // 检查文件数量
-  if (files.value.length > 10) {
-    files.value = files.value.slice(0, 10)
-    ElMessage.warning('最多只能选择10个文件')
-  }
-
-  // 获取页数
-  processedFiles.forEach(checkPageCount)
-}
-
-// 检查PDF页数
-const checkPageCount = async (file: ProcessedFile) => {
-  try {
-    const reader = new FileReader()
-    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-      reader.onload = () => {
-        if (reader.result instanceof ArrayBuffer) {
-          resolve(reader.result)
-        } else {
-          reject(new Error('读取文件失败'))
-        }
-      }
-      reader.onerror = () => reject(new Error('读取文件失败'))
-      reader.readAsArrayBuffer(file)
-    })
-
-    const pdf = await PDFDocument.load(arrayBuffer)
-    const pageCount = pdf.getPageCount()
-
-    if (pageCount > 1000) {
-      ElMessage.error(`文件 ${file.name} 页数超过1000页限制`)
-      removeFile(files.value.indexOf(file))
-      return
-    }
-
-    file.pageCount = pageCount
-  } catch (error) {
-    console.error('获取PDF页数失败:', error)
-    ElMessage.error(`文件 ${file.name} 解析失败`)
-    removeFile(files.value.indexOf(file))
+const handleFileInputChange = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    processFile(target.files[0])
   }
 }
 
-// 移除文件
-const removeFile = (index: number) => {
-  if (index > -1) {
-    files.value.splice(index, 1)
-  }
-}
-
-// 清空文件列表
-const clearFiles = () => {
-  files.value = []
-}
-
-// 分割单个PDF文件
-const splitPDF = async (file: ProcessedFile) => {
-  if (!file) return
+// 处理文件加载和预览
+const processFile = async (file: File) => {
+  currentFile.value = file
+  pdfPages.value = []
 
   try {
-    file.status = 'processing'
-    const reader = new FileReader()
-    const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
-      reader.onload = () => {
-        if (reader.result instanceof ArrayBuffer) {
-          resolve(reader.result)
-        } else {
-          reject(new Error('读取文件失败'))
-        }
-      }
-      reader.onerror = () => reject(new Error('读取文件失败'))
-      reader.readAsArrayBuffer(file)
-    })
+    const arrayBuffer = await file.arrayBuffer()
+    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
+    const pdf = await loadingTask.promise
 
-    const pdf = await PDFDocument.load(arrayBuffer)
-    const pageCount = pdf.getPageCount()
+    // 生成缩略图
+    const scale = 0.3 // 缩略图比例
 
-    file.splitFiles = []
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const viewport = page.getViewport({ scale })
 
-    for (let i = 0; i < pageCount; i++) {
-      const newPdf = await PDFDocument.create()
-      const [page] = await newPdf.copyPages(pdf, [i])
-      newPdf.addPage(page)
-      const pdfBytes = await newPdf.save()
-      const blob = new Blob([pdfBytes], { type: 'application/pdf' })
-      file.splitFiles.push(blob)
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      canvas.height = viewport.height
+      canvas.width = viewport.width
+
+      await page.render({
+        canvasContext: context!,
+        viewport: viewport
+      }).promise
+
+      pdfPages.value.push({
+        pageIndex: i - 1,
+        pageNumber: i,
+        thumbnail: canvas.toDataURL('image/jpeg')
+      })
     }
 
-    file.status = 'completed'
+    // 默认全选范围
+    rangeInput.value = `1-${pdf.numPages}`
+
   } catch (error) {
-    console.error('PDF分割失败:', error)
-    file.status = 'error'
-    throw error
+    console.error('Error loading PDF:', error)
+    ElMessage.error('PDF文件加载失败，可能是文件损坏或加密')
+    clearFile()
   }
 }
 
-// 分割所有文件
-const splitAll = async () => {
-  if (files.value.length === 0) {
-    ElMessage.warning('请先选择要分割的PDF文件')
-    return
+// 清除文件
+const clearFile = () => {
+  currentFile.value = null
+  pdfPages.value = []
+  rangeInput.value = ''
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
   }
+}
+
+// 解析范围字符串
+const parseRange = (rangeStr: string, totalPages: number): number[][] => {
+  const ranges: number[][] = []
+  const parts = rangeStr.split(/[,，]/) // 支持中文逗号
+
+  for (const part of parts) {
+    const trimmed = part.trim()
+    if (!trimmed) continue
+
+    if (trimmed.includes('-')) {
+      const [start, end] = trimmed.split('-').map(n => parseInt(n))
+      if (!isNaN(start) && !isNaN(end)) {
+        const validStart = Math.max(1, Math.min(start, totalPages))
+        const validEnd = Math.max(1, Math.min(end, totalPages))
+        // 生成该范围内的所有页码
+        const rangePages = []
+        for (let i = Math.min(validStart, validEnd); i <= Math.max(validStart, validEnd); i++) {
+          rangePages.push(i)
+        }
+        ranges.push(rangePages)
+      }
+    } else {
+      const page = parseInt(trimmed)
+      if (!isNaN(page)) {
+        if (page >= 1 && page <= totalPages) {
+          ranges.push([page])
+        }
+      }
+    }
+  }
+  return ranges
+}
+
+// 判断页面是否在当前输入范围内
+const isPageSelected = (pageNumber: number) => {
+  if (splitMode.value === 'split_every') return true
+  if (!rangeInput.value) return false
+
+  const ranges = parseRange(rangeInput.value, pdfPages.value.length)
+  // Flatten ranges and check if pageNumber is in it
+  return ranges.some(range => range.includes(pageNumber))
+}
+
+// 点击页面切换选中状态 (简单实现：添加到范围字符串或移除)
+// 这是一个比较复杂的交互，为了简单起见，这里只做追加逻辑，或者不做复杂交互
+// 更好的做法是维护一个 selectedPages 数组，然后同步到 rangeInput
+// 但这里 rangeInput 是主数据源。
+// 让我们做一个简单的交互：点击页面，如果不在范围内，则追加 ", N"。如果在，则不处理或尝试移除（移除很难解析）。
+// 简化：点击页面将其页码追加到输入框
+const togglePageSelection = (pageNumber: number) => {
+  if (splitMode.value === 'split_every') return
+
+  const currentRanges = parseRange(rangeInput.value, pdfPages.value.length)
+  const isSelected = currentRanges.some(range => range.includes(pageNumber))
+
+  if (!isSelected) {
+    if (rangeInput.value.trim()) {
+      rangeInput.value += `, ${pageNumber}`
+    } else {
+      rangeInput.value = `${pageNumber}`
+    }
+  } else {
+    // 尝试移除比较复杂，暂时不做，或者提示用户手动修改
+    // 为了更好的体验，可以解析整个字符串，移除该页码，重新生成字符串
+    // 这里简单实现一下移除
+    const allSelectedPages = new Set<number>()
+    currentRanges.forEach(range => range.forEach(p => allSelectedPages.add(p)))
+    allSelectedPages.delete(pageNumber)
+
+    // 重新生成范围字符串（简化为逗号分隔）
+    const sortedPages = Array.from(allSelectedPages).sort((a, b) => a - b)
+    // 尝试合并连续页码
+    let newStr = ''
+    if (sortedPages.length > 0) {
+      let start = sortedPages[0]
+      let end = start
+
+      const ranges = []
+      for (let i = 1; i < sortedPages.length; i++) {
+        if (sortedPages[i] === end + 1) {
+          end = sortedPages[i]
+        } else {
+          ranges.push(start === end ? `${start}` : `${start}-${end}`)
+          start = sortedPages[i]
+          end = start
+        }
+      }
+      ranges.push(start === end ? `${start}` : `${start}-${end}`)
+      newStr = ranges.join(', ')
+    }
+    rangeInput.value = newStr
+  }
+}
+
+// 处理PDF拆分/提取
+const processPdf = async () => {
+  if (!currentFile.value) return
 
   processing.value = true
-
   try {
-    const pendingFiles = files.value.filter(file => file.status !== 'completed')
-    if (pendingFiles.length === 0) {
-      ElMessage.warning('所有文件已处理完成')
-      processing.value = false
-      return
+    const arrayBuffer = await currentFile.value.arrayBuffer()
+    const srcDoc = await PDFDocument.load(arrayBuffer)
+    const totalPages = srcDoc.getPageCount()
+
+    // 准备要处理的页面组
+    let pageGroups: number[][] = []
+
+    if (splitMode.value === 'split_every') {
+      for (let i = 1; i <= totalPages; i++) {
+        pageGroups.push([i])
+      }
+    } else if (splitMode.value === 'split_range') {
+      // 解析输入，每个逗号分隔的部分作为一个组
+      // parseRange 返回的是 number[][]，每个元素是一个组包含的页码数组
+      // 但我之前的 parseRange 实现是将所有解析出的页码都扁平化处理了吗？
+      // 并没有，parseRange 返回的是 number[][]，其中每个子数组是一个范围块解析出的页码
+      // 例如 "1-3, 5" -> [[1,2,3], [5]]
+      // 这正好符合 split_range 的需求：每个范围块生成一个文件
+      const ranges = parseRange(rangeInput.value, totalPages)
+      if (ranges.length === 0) {
+        ElMessage.warning('请输入有效的页面范围')
+        processing.value = false
+        return
+      }
+      pageGroups = ranges
+    } else {
+      // extract: 所有选中的页面合并为一个组
+      const ranges = parseRange(rangeInput.value, totalPages)
+      const allPages = new Set<number>()
+      ranges.forEach(range => range.forEach(p => allPages.add(p)))
+      if (allPages.size === 0) {
+        ElMessage.warning('请输入有效的页面范围')
+        processing.value = false
+        return
+      }
+      pageGroups = [Array.from(allPages).sort((a, b) => a - b)]
     }
 
-    for (const file of pendingFiles) {
-      await splitPDF(file)
+    // 如果只有一个组，直接下载PDF
+    if (pageGroups.length === 1) {
+      const pages = pageGroups[0]
+      const newDoc = await PDFDocument.create()
+      // page indices are 0-based
+      const pageIndices = pages.map(p => p - 1)
+      const copiedPages = await newDoc.copyPages(srcDoc, pageIndices)
+      copiedPages.forEach(page => newDoc.addPage(page))
+
+      const pdfBytes = await newDoc.save()
+      const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `extracted_${currentFile.value.name}`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      ElMessage.success('提取成功')
+    } else {
+      // 多个组，生成ZIP
+      const zip = new JSZip()
+      const folder = zip.folder('split_files')
+
+      for (let i = 0; i < pageGroups.length; i++) {
+        const pages = pageGroups[i]
+        const newDoc = await PDFDocument.create()
+        const pageIndices = pages.map(p => p - 1)
+        const copiedPages = await newDoc.copyPages(srcDoc, pageIndices)
+        copiedPages.forEach(page => newDoc.addPage(page))
+
+        const pdfBytes = await newDoc.save()
+        // 文件名：如果是单页，用页码；如果是范围，用 start-end
+        let filename = ''
+        if (pages.length === 1) {
+          filename = `page_${pages[0]}.pdf`
+        } else {
+          filename = `pages_${pages[0]}-${pages[pages.length - 1]}.pdf`
+        }
+
+        // 避免重名
+        if (folder?.file(filename)) {
+          filename = `part_${i + 1}_${filename}`
+        }
+
+        folder?.file(filename, pdfBytes)
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(content)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `split_${currentFile.value.name.replace('.pdf', '')}.zip`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+      ElMessage.success('拆分成功')
     }
-    ElMessage.success('PDF分割完成')
+
   } catch (error) {
-    console.error('批量分割失败:', error)
-    ElMessage.error('部分文件分割失败，请重试')
+    console.error('Split error:', error)
+    ElMessage.error('处理失败，请重试')
   } finally {
     processing.value = false
   }
 }
-
-// 下载单个文件的分割结果
-const downloadSplitFiles = async (file: ProcessedFile) => {
-  if (!file.splitFiles || file.splitFiles.length === 0) {
-    ElMessage.error('没有可下载的文件')
-    return
-  }
-
-  try {
-    const zip = new JSZip()
-    const folder = zip.folder(file.name.replace('.pdf', ''))
-
-    if (!folder) {
-      throw new Error('创建文件夹失败')
-    }
-
-    file.splitFiles.forEach((blob, index) => {
-      folder.file(`第${index + 1}页.pdf`, blob)
-    })
-
-    const content = await zip.generateAsync({ type: 'blob' })
-    const url = URL.createObjectURL(content)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `${file.name.replace('.pdf', '')}_分割.zip`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-  } catch (error) {
-    console.error('下载失败:', error)
-    ElMessage.error('下载失败，请重试')
-  }
-}
-
-// 打包下载所有分割后的文件
-const downloadAllSplitFiles = async () => {
-  const completedFiles = files.value.filter(file =>
-    file.status === 'completed' && file.splitFiles && file.splitFiles.length > 0
-  )
-
-  if (completedFiles.length === 0) {
-    ElMessage.warning('请先点击开始分割按钮处理文件')
-    return
-  }
-
-  try {
-    const zip = new JSZip()
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
-
-    for (const file of completedFiles) {
-      const fileName = file.name.replace('.pdf', '')
-      const folder = zip.folder(fileName)
-      if (!folder) continue
-
-      // 添加原始PDF文件
-      folder.file(file.name, file)
-
-      // 创建分割后的文件夹
-      const splitFolder = folder.folder('分割页面')
-      if (!splitFolder) continue
-
-      // 添加分割后的文件
-      file.splitFiles?.forEach((blob, index) => {
-        const pageNum = String(index + 1).padStart(3, '0')
-        splitFolder.file(`${fileName}_第${pageNum}页.pdf`, blob)
-      })
-    }
-
-    const content = await zip.generateAsync({ type: 'blob' })
-    const url = URL.createObjectURL(content)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `PDF分割结果_${timestamp}.zip`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
-    ElMessage.success('打包下载成功')
-  } catch (error) {
-    console.error('打包下载失败:', error)
-    ElMessage.error('打包下载失败，请重试')
-  }
-}
-
-// 预览相关
-const previewDialogVisible = ref(false)
-const previewFile = ref<File | null>(null)
-const previewUrl = ref('')
-
-// 预览PDF
-const previewPDF = (file: File) => {
-  previewFile.value = file
-  previewUrl.value = URL.createObjectURL(file)
-  previewDialogVisible.value = true
-}
-
-// 监听预览对话框关闭
-watch(previewDialogVisible, (newVal) => {
-  if (!newVal && previewUrl.value) {
-    URL.revokeObjectURL(previewUrl.value)
-    previewUrl.value = ''
-    previewFile.value = null
-  }
-})
 </script>
 
 <style scoped>
-.min-w-24 {
-  min-width: 6rem;
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.pdf-preview-dialog :deep(.el-dialog__body) {
-  padding: 16px;
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 </style>

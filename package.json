@@ -66,6 +66,7 @@
     "prismjs": "^1.29.0",
     "qrcode": "^1.5.4",
     "qrcode-vue3": "^1.6.8",
+    "relationship.js": "^1.2.7",
     "rss-parser": "^3.13.0",
     "sass": "^1.69.5",
     "sass-loader": "^13.3.2",

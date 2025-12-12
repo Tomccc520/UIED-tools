@@ -371,6 +371,28 @@ onMounted(() => {
           </el-menu-item-group>
         </el-sub-menu>
 
+        <!-- 生活常用菜单 -->
+        <el-sub-menu index="daily">
+          <template #title>
+            <div class="relative">
+              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+              </svg>
+              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            </div>
+            <span class="ml-2">生活常用</span>
+          </template>
+          <el-menu-item-group>
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '生活常用')?.list"
+              :key="category.id" :index="`daily-${category.id}`" @click="handleMenuClick(`daily-${category.id}`)">
+              {{ category.title }}
+            </el-menu-item>
+          </el-menu-item-group>
+        </el-sub-menu>
+
         <!-- 文案工具 -->
         <el-sub-menu index="copywriting">
           <template #title>

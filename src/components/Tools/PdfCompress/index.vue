@@ -25,11 +25,12 @@
 import { ref, reactive, watch, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import * as JSZip from 'jszip'
+import JSZip from 'jszip'
 import { PDFDocument } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { jsPDF } from 'jspdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
 
 // 设置 PDF.js worker
 // 使用 Vite 的显式 URL 导入功能
@@ -79,6 +80,18 @@ const isDragging = ref(false)
 const dataFileRef = ref()
 const processedFiles = ref<Map<string, ProcessedFile>>(new Map())
 const showAdvanced = ref(false)
+
+const guideSteps = [
+  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，支持批量上传。' },
+  { title: '选择压缩模式', description: '根据需求选择低、中、高三种压缩质量，或自定义DPI和图片质量。' },
+  { title: '开始压缩', description: '点击“开始压缩”按钮，系统将自动处理文件。' },
+  { title: '下载文件', description: '压缩完成后，可预览效果并下载单个文件或打包下载所有文件。' }
+]
+
+const guideNotes = [
+  '压缩效果取决于原文件内容，图片较多的PDF文件压缩效果最明显。',
+  '建议先尝试“中等质量”模式，如果体积仍过大可尝试“低质量”模式。'
+]
 
 // 预设配置
 const presets = {
@@ -825,6 +838,9 @@ const showLogs = (file: UploadFile) => {
             </div>
           </div>
         </div>
+
+        <!-- 使用说明 -->
+        <UsageGuide :steps="guideSteps" :notes="guideNotes" />
       </div>
 
       <!-- 工具推荐 -->

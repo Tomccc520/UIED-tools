@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-08 10:00
- * @version Beta 2.3.6
- * @toolsCount 当前工具总数：105个
+ * @lastUpdate 2025-12-12 10:00
+ * @version Beta 2.4.1
+ * @toolsCount 当前工具总数：176个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -243,7 +243,7 @@ onUnmounted(() => {
           </a>
         </div>
         <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：100个 | 最后更新：2025-12-06 14:00
+          当前工具总数：168个 | 最后更新：2025-12-11 10:00
         </div>
       </div>
 
@@ -279,6 +279,216 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.4.1 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.1</span>
+              <span class="date">2025-12-12 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">游戏功能升级与新工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增摸鱼工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/woodfish"
+                              class="hover:text-blue-600 transition-colors">电子木鱼</router-link></strong>：在线敲木鱼，积攒功德，净化心灵。
+                        </li>
+                        <li><strong><router-link to="/tools/games/2048"
+                              class="hover:text-blue-600 transition-colors">2048</router-link></strong>：经典的数字合成游戏，挑战合成2048。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>打字雨</strong>：新增全屏模式，提供更沉浸的打字体验。</li>
+                        <li><strong>界面优化</strong>：统一了扫雷、贪吃蛇、打字雨、电子木鱼、2048等小游戏页面的排版风格，增加工具推荐。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.0 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.0</span>
+              <span class="date">2025-12-11 20:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="warning" class="mr-2">娱乐</el-tag>
+                <span class="text-gray-700">摸鱼游戏再添新成员</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增经典小游戏</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/snake"
+                              class="hover:text-blue-600 transition-colors">贪吃蛇</router-link></strong>：经典怀旧游戏，控制小蛇吃食物变长，挑战反应速度与策略规划。
+                        </li>
+                        <li><strong><router-link to="/tools/games/minesweeper"
+                              class="hover:text-blue-600 transition-colors">扫雷</router-link></strong>：Windows
+                          经典再现，提供初级、中级、高级三种难度，支持右键插旗标记，锻炼逻辑推理能力。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.9 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.9</span>
+              <span class="date">2025-12-11 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="warning" class="mr-2">娱乐</el-tag>
+                <span class="text-gray-700">新增摸鱼小游戏</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增打字雨游戏</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/typing-rain-cn"
+                              class="hover:text-blue-600 transition-colors">打字雨
+                              (中文版)</router-link></strong>：经典打字游戏，支持中文词库，锻炼拼音输入速度。
+                        </li>
+                        <li><strong><router-link to="/tools/games/typing-rain-en"
+                              class="hover:text-blue-600 transition-colors">打字雨 (英文版)</router-link></strong>：Type the
+                          falling words before they hit the ground! 锻炼英文打字速度。
+                        </li>
+                        <li><strong>游戏特性</strong>：包含动态难度调整、连击系统、准确率统计以及炫酷的城市夜景雨滴效果。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.8 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.8</span>
+              <span class="date">2025-12-11 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">新增生活常用与开发工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增实用工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/relationship"
+                              class="hover:text-blue-600 transition-colors">亲戚称呼计算器</router-link></strong>：解决过年走亲戚不知如何称呼的尴尬，支持互查，逢年过节必备神器。
+                        </li>
+                        <li><strong><router-link to="/tools/base64"
+                              class="hover:text-blue-600 transition-colors">Base64转换工具</router-link></strong>：支持文本与图片的Base64编码转换，支持UTF-8字符集与常见图片格式。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.7 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.7</span>
+              <span class="date">2025-12-11 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="danger" class="mr-2">重磅</el-tag>
+                <span class="text-gray-700">全面升级PDF工具箱与新增效率工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">PDF工具箱全面升级</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增
+                          <strong><router-link to="/tools/pdf-rotate" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF旋转</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-split" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF拆分</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-merge" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF合并</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-watermark" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF水印</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-encrypt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF加密</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-page-number" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF页码</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-extract-text" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF文本提取</router-link></strong>
+                          等8大核心工具。
+                        </li>
+                        <li>统一全新的 <strong>UI设计规范</strong>，支持 <strong>实时预览</strong> 与 <strong>本地处理</strong>，保护隐私安全。</li>
+                        <li>优化 <strong><router-link to="/tools/markdown-to-pdf" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown转PDF</router-link></strong>
+                          工具，支持代码高亮与样式定制。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增效率办公工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增
+                          <strong><router-link to="/tools/word-count" target="_blank"
+                              class="hover:text-blue-600 transition-colors">字数统计</router-link></strong>、
+                          <strong><router-link to="/tools/date-calculator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">日期计算器</router-link></strong>、
+                          <strong><router-link to="/tools/screen-recorder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">屏幕录制</router-link></strong>、
+                          <strong><router-link to="/tools/todo-list" target="_blank"
+                              class="hover:text-blue-600 transition-colors">待办清单</router-link></strong>、
+                          <strong><router-link to="/tools/pomodoro" target="_blank"
+                              class="hover:text-blue-600 transition-colors">番茄钟</router-link></strong>
+                          等实用工具。
+                        </li>
+                        <li>新增
+                          <strong><router-link to="/tools/daily/age-calculator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">年龄计算器</router-link></strong> 与
+                          <strong><router-link to="/tools/daily/life-progress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">人生进度条</router-link></strong>，可视化展示时间流逝。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.3.6 -->
           <div class="timeline-item">

@@ -244,6 +244,9 @@
 
       <!-- 工具推荐 -->
       <ToolsRecommend :currentPath="route.path" />
+
+      <!-- 使用说明 -->
+      <UsageGuide :steps="guideSteps" :notes="guideNotes" />
     </div>
   </div>
 </template>
@@ -257,6 +260,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { Document, Upload, Delete } from '@element-plus/icons-vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -273,6 +277,18 @@ const files = ref<File[]>([])
 const quality = ref(150)
 const converting = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+const guideSteps = [
+  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，支持批量上传。' },
+  { title: '选择质量', description: '选择普通(150dpi)或高清(300dpi)图片质量。' },
+  { title: '转换下载', description: '点击“开始转换”按钮，系统将自动转换并打包下载所有图片。' }
+]
+
+const guideNotes = [
+  '转换过程完全在本地进行，不会消耗您的流量，也不会上传文件。',
+  '单个文件限制500MB，页数不超过1000页。',
+  '转换后的图片格式为PNG。'
+]
 
 // 触发文件选择
 const triggerFileInput = () => {
@@ -370,31 +386,32 @@ const convertPdfToImages = async (file: File) => {
 
 // 拖放处理
 onMounted(async () => {
-  const dropZone = document.querySelector('.border-dashed')
-  if (!dropZone) return
+  // const dropZone = document.querySelector('.border-dashed')
+  // if (!dropZone) return
 
-  dropZone.addEventListener('dragover', ((e: Event) => {
-    e.preventDefault()
-    if (e instanceof DragEvent) {
-      dropZone.classList.add('border-blue-500')
-    }
-  }) as EventListener)
+  // dropZone.addEventListener('dragover', ((e: Event) => {
+  //   e.preventDefault()
+  //   if (e instanceof DragEvent) {
+  //     dropZone.classList.add('border-blue-500')
+  //   }
+  // }) as EventListener)
 
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('border-blue-500')
-  })
+  // dropZone.addEventListener('dragleave', () => {
+  //   dropZone.classList.remove('border-blue-500')
+  // })
 
-  dropZone.addEventListener('drop', ((e: Event) => {
-    e.preventDefault()
-    if (e instanceof DragEvent && e.dataTransfer) {
-      dropZone.classList.remove('border-blue-500')
-      const droppedFiles = e.dataTransfer.files
-      const pdfFiles = Array.from(droppedFiles).filter((file: File) => file.type.includes('pdf'))
-      files.value.push(...pdfFiles)
-    }
-  }) as EventListener)
+  // dropZone.addEventListener('drop', ((e: Event) => {
+  //   e.preventDefault()
+  //   if (e instanceof DragEvent && e.dataTransfer) {
+  //     dropZone.classList.remove('border-blue-500')
+  //     const droppedFiles = e.dataTransfer.files
+  //     const pdfFiles = Array.from(droppedFiles).filter((file: File) => file.type.includes('pdf'))
+  //     files.value.push(...pdfFiles)
+  //   }
+  // }) as EventListener)
 
   // 动态加载 PDF Worker
+  // @ts-ignore
   const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.js')
   pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default
 })
@@ -419,6 +436,16 @@ const clearFiles = () => {
 
 // 添加拖拽状态
 const isDragging = ref(false)
+
+const handleDragover = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = true
+}
+
+const handleDragleave = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = false
+}
 
 // 在 script setup 部分添加 handleDrop 方法
 const handleDrop = (e: DragEvent) => {
