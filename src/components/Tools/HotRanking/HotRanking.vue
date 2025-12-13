@@ -1,8 +1,9 @@
 <!--
 * @file HotRanking.vue
 * @description 每日热榜工具，汇聚各大平台热点内容
-* @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
+* @author UIED技术团队
 * @createDate 2025-1-22
 *
 * 功能特性：

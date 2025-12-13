@@ -1032,12 +1032,6 @@ export const constantRoute = [
     }
   },
   {
-    //重定向
-    path: '/:pathMatch(.*)*',
-    redirect: '/404',
-    name: 'Any'
-  },
-  {
     path: '/tools/random-tools',
     component: () => import('@/components/Tools/RandomTools/RandomTools.vue'),
     name: 'randomTools',
@@ -1178,6 +1172,16 @@ export const constantRoute = [
       title: '免费图标下载-设计师图标工具，提供常用设计图标下载',
       keywords: '图标下载,免费图标,svg图标,ui图标,设计图标,矢量图标,图标素材,图标库',
       description: '免费提供上千个高质量的设计图标资源，包括UI设计、网页设计等多种风格图标，支持SVG矢量格式下载',
+    }
+  },
+  {
+    path: '/tools/design/image-compressor',
+    component: () => import('@/components/Tools/Design/ImageCompressor/ImageCompressor.vue'),
+    name: 'imageCompressor',
+    meta: {
+      title: "在线图片压缩",
+      keywords: '图片压缩,在线压缩,JPG压缩,PNG压缩,图片瘦身',
+      description: '免费在线图片压缩工具，支持JPG/PNG/WEBP格式，可调节压缩质量和尺寸，本地处理保护隐私。',
     }
   },
   {
@@ -1585,6 +1589,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/games/reaction-test',
+    component: () => import('@/components/Tools/Games/ReactionTest/ReactionTest.vue'),
+    name: 'reactionTest',
+    meta: {
+      title: "反应速度测试",
+      keywords: '反应速度测试,反应力,手速测试,反应时间,Reaction Test',
+      description: '测试你的神经反射速度，看看你能有多快！',
+    }
+  },
+  {
     path: '/tools/daily/decision-maker',
     component: () => import('@/components/Tools/Daily/DecisionMaker/DecisionMaker.vue'),
     name: 'decisionMaker',
@@ -1602,6 +1616,76 @@ export const constantRoute = [
       title: "色彩性格测试",
       keywords: '色彩性格测试,性格色彩,FPA,性格分析,心理测试',
       description: '通过哈特曼色彩性格测试，探索你是红、蓝、白、黄哪种性格，了解你的核心动力和优势。',
+    }
+  },
+  {
+    path: '/tools/games/gomoku',
+    component: () => import('@/components/Tools/Games/Gomoku/Gomoku.vue'),
+    name: 'gomoku',
+    meta: {
+      title: "五子棋",
+      keywords: '五子棋,Gomoku,双人游戏,棋类游戏,策略游戏',
+      description: '经典的双人对弈五子棋游戏，五子连珠即可获胜，支持悔棋功能。',
+    }
+  },
+  {
+    path: '/tools/daily/breathing',
+    component: () => import('@/components/Tools/Daily/Breathing/Breathing.vue'),
+    name: 'breathing',
+    meta: {
+      title: "呼吸冥想",
+      keywords: '呼吸冥想,深呼吸,放松,解压,4-7-8呼吸法',
+      description: '跟随指引进行深呼吸练习，帮助你放松身心，缓解焦虑和压力。',
+    }
+  },
+  {
+    path: '/tools/daily/screen-test',
+    component: () => import('@/components/Tools/Daily/ScreenTest/ScreenTest.vue'),
+    name: 'screenTest',
+    meta: {
+      title: "屏幕测试",
+      keywords: '屏幕测试,坏点检测,漏光检测,显示器测试,纯色背景',
+      description: '在线屏幕测试工具，提供纯色背景检测屏幕坏点、漏光和色彩表现。',
+    }
+  },
+  {
+    path: '/tools/dev/cron',
+    component: () => import('@/components/Tools/Dev/Cron/Cron.vue'),
+    name: 'cron',
+    meta: {
+      title: "Cron表达式生成器",
+      keywords: 'Cron表达式,Cron生成,定时任务,Quartz Cron,Linux Cron',
+      description: '在线Cron表达式生成器，可视化生成和解析Cron表达式，支持Quartz和Linux格式。',
+    }
+  },
+  {
+    path: '/tools/dev/case-converter',
+    component: () => import('@/components/Tools/Dev/CaseConverter/CaseConverter.vue'),
+    name: 'caseConverter',
+    meta: {
+      title: "变量命名转换",
+      keywords: '变量命名转换,驼峰命名,下划线命名,Case Converter,CamelCase,SnakeCase',
+      description: '在线变量命名风格转换工具，支持Camel、Pascal、Snake、Kebab等多种格式互转。',
+    }
+  },
+  {
+    path: '/tools/text/lorem-ipsum',
+    component: () => import('@/components/Tools/LoremIpsum/LoremIpsum.vue'),
+    name: 'loremIpsum',
+    meta: {
+      title: "乱数假文生成",
+      keywords: '乱数假文,Lorem Ipsum,随机文本,占位符文本,排版测试',
+      description: '在线生成Lorem Ipsum或中文随机文本，用于设计排版和布局测试。',
+    }
+  },
+  {
+    path: '/tools/dev/keyboard-test',
+    component: () => import('@/components/Tools/Dev/KeyboardTest/KeyboardTest.vue'),
+    name: 'keyboardTest',
+    meta: {
+      title: "键盘按键测试",
+      keywords: '键盘测试,KeyCode,键盘代码,按键检测,Keyboard Test',
+      description: '在线键盘按键测试工具，实时显示按键的KeyCode、Code和组合键状态。',
     }
   },
   // AI简历生成器
@@ -1696,7 +1780,27 @@ export const constantRoute = [
       description: '专业的房贷计算器，支持等额本息和等额本金两种还款方式，快速计算月供、利息和还款总额。',
     }
   },
+  {
+    path: '/tools/calculation/bmr',
+    component: () => import('@/components/Tools/Calculation/BMR/BMR.vue'),
+    name: 'bmr',
+    meta: {
+      title: "BMR基础代谢计算器",
+      keywords: 'BMR计算器,基础代谢率,TDEE计算,每日热量消耗,减肥热量计算',
+      description: '在线计算基础代谢率(BMR)和每日总能量消耗(TDEE)，科学制定饮食计划。',
+    }
+  },
   // 生活常用工具
+  {
+    path: '/tools/daily/flip-clock',
+    component: () => import('@/components/Tools/Daily/FlipClock/FlipClock.vue'),
+    name: 'flipClock',
+    meta: {
+      title: "全屏翻页时钟",
+      keywords: '翻页时钟,全屏时钟,Flip Clock,在线时钟,桌面时钟',
+      description: '极简风格的全屏翻页时钟，支持12/24小时制切换，适合作为桌面时钟或屏保使用',
+    }
+  },
   {
     path: '/tools/daily/weather',
     component: () => import('@/components/Tools/Daily/Weather/index.vue'),
@@ -1769,6 +1873,102 @@ export const constantRoute = [
       description: '基于番茄工作法的专注时钟，支持自定义工作/休息时长，助您保持专注高效',
     }
   },
+  {
+    path: '/tools/image-color',
+    component: () => import('@/components/Tools/ImageColor/ImageColor.vue'),
+    name: 'imageColor',
+    meta: {
+      title: "图片主色调提取",
+      keywords: '图片颜色提取,图片配色,色彩分析,Color Palette,配色方案',
+      description: '上传图片自动提取主色调，生成配色方案，支持复制HEX和RGB颜色值',
+    }
+  },
+  {
+    path: '/tools/percentage',
+    component: () => import('@/components/Tools/Calculation/Percentage/Percentage.vue'),
+    name: 'percentage',
+    meta: {
+      title: "百分比计算器",
+      keywords: '百分比计算,百分数换算,增长率计算,占比计算',
+      description: '在线百分比计算工具，支持计算占比、数值计算、增长率等多种模式',
+    }
+  },
+  {
+    path: '/tools/calculation/discount',
+    component: () => import('@/components/Tools/Calculation/Discount/Discount.vue'),
+    name: 'discount',
+    meta: {
+      title: "折扣计算器",
+      keywords: '折扣计算,打折计算,优惠计算,省钱计算器',
+      description: '在线折扣计算器，快速计算打折后的价格和节省的金额，支持折扣率和减免金额两种模式。',
+    }
+  },
+  {
+    path: '/tools/design/glassmorphism',
+    component: () => import('@/components/Tools/Design/Glassmorphism/Glassmorphism.vue'),
+    name: 'glassmorphism',
+    meta: {
+      title: "CSS 玻璃拟态生成器",
+      keywords: 'Glassmorphism,玻璃拟态,CSS生成器,背景模糊,CSS3效果',
+      description: '在线生成 Glassmorphism 风格 CSS 代码，支持自定义模糊度、透明度等参数',
+    }
+  },
+  {
+    path: '/tools/image-to-base64',
+    component: () => import('@/components/Tools/ImageToBase64/ImageToBase64.vue'),
+    name: 'imageToBase64',
+    meta: {
+      title: "图片转 Base64",
+      keywords: '图片转Base64,Base64编码,DataURI,图片转换',
+      description: '在线将图片转换为 Base64 编码，支持一键复制 HTML 标签和 CSS 代码',
+    }
+  },
+  {
+    path: '/tools/design/gradient',
+    component: () => import('@/components/Tools/Design/Gradient/Gradient.vue'),
+    name: 'gradient',
+    meta: {
+      title: "CSS 渐变生成器",
+      keywords: 'CSS渐变,渐变生成器,Linear Gradient,Radial Gradient,背景渐变',
+      description: '在线生成精美的 CSS 线性渐变和径向渐变背景代码，支持多种颜色和方向设置',
+    }
+  },
+  {
+    path: '/tools/web/meta-tags',
+    component: () => import('@/components/Tools/Web/MetaTags/MetaTags.vue'),
+    name: 'metaTags',
+    meta: {
+      title: "Meta 标签生成器",
+      keywords: 'Meta标签,SEO优化,Open Graph,Twitter Cards,网页元数据',
+      description: '生成网页 SEO 及社交媒体分享所需的 Meta 标签，并实时预览分享效果',
+    }
+  },
+  {
+    path: '/tools/dev/sql-format',
+    component: () => import('@/components/Tools/Dev/SqlFormat/SqlFormat.vue'),
+    name: 'sqlFormat',
+    meta: {
+      title: "SQL格式化",
+      keywords: 'SQL格式化,SQL美化,SQL压缩,SQL Formatter,数据库工具',
+      description: '在线SQL代码格式化和美化工具，支持多种SQL方言，一键美化混乱的SQL语句。',
+    }
+  },
+  {
+    path: '/tools/web/info',
+    component: () => import('@/components/Tools/WebInfo/WebInfo.vue'),
+    name: 'webInfo',
+    meta: {
+      title: "网站信息获取",
+      keywords: '网站信息,Favicon获取,网站Logo,SEO信息',
+      description: '一键获取网站Favicon、Logo、标题、关键词和描述信息',
+    }
+  },
+  {
+    //重定向
+    path: '/:pathMatch(.*)*',
+    redirect: '/404',
+    name: 'Any'
+  }
 ]
 
 const router = createRouter({

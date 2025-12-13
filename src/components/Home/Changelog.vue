@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-12 12:00
- * @version Beta 2.4.3
- * @toolsCount 当前工具总数：179个
+ * @lastUpdate 2025-12-13 18:00
+ * @version Beta 2.4.8
+ * @toolsCount 当前工具总数：194个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -243,7 +243,7 @@ onUnmounted(() => {
           </a>
         </div>
         <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：179个 | 最后更新：2025-12-12 12:00
+          当前工具总数：194个 | 最后更新：2025-12-13 18:00
         </div>
       </div>
 
@@ -280,6 +280,221 @@ onUnmounted(() => {
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
 
+          <!-- Version 2.4.8 -->
+          <div class="timeline-item" id="v2.4.8">
+            <div class="version-tag">
+              <span class="version">2.4.8</span>
+              <span class="date">2025-12-13 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">实用开发与计算工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/sql-format" target="_blank"
+                              class="hover:text-blue-600 transition-colors">SQL格式化</router-link></strong>：在线SQL代码格式化和美化工具，支持多种SQL方言。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/discount" target="_blank"
+                              class="hover:text-blue-600 transition-colors">折扣计算器</router-link></strong>：快速计算打折后的价格和节省的金额，支持折扣率和减免金额。
+                        </li>
+                        <li><strong><router-link to="/tools/design/gradient" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 渐变生成器</router-link></strong>：在线生成精美的 CSS
+                          线性渐变和径向渐变背景代码。
+                        </li>
+                        <li><strong><router-link to="/tools/web/meta-tags" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Meta 标签生成器</router-link></strong>：生成网页 SEO
+                          及社交媒体分享所需的 Meta 标签。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.7 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.7</span>
+              <span class="date">2025-12-13 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">设计规范优化与新工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增健康工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/calculation/bmr" target="_blank"
+                              class="hover:text-blue-600 transition-colors">BMR
+                              基础代谢计算器</router-link></strong>：计算基础代谢率(BMR)和每日热量消耗(TDEE)，科学管理身材。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">设计规范优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>优化了<strong>在线图片压缩</strong>工具的页面布局和视觉风格，使其与整体 UI 规范保持一致。</li>
+                        <li>优化了<strong>全屏翻页时钟</strong>的默认展示效果，增加了卡片容器和全屏切换动画。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.6 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.6</span>
+              <span class="date">2025-12-13 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">视觉与图片工具上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/daily/flip-clock" target="_blank"
+                              class="hover:text-blue-600 transition-colors">全屏翻页时钟</router-link></strong>：极简风格的翻页时钟，支持
+                          12/24 小时制，适合作为桌面屏保。
+                        </li>
+                        <li><strong><router-link to="/tools/design/image-compressor" target="_blank"
+                              class="hover:text-blue-600 transition-colors">在线图片压缩</router-link></strong>：支持
+                          JPG/PNG/WEBP 格式图片压缩，可调节质量和尺寸，本地处理更安全。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>优化了<strong>打字雨</strong>游戏的游戏区域高度，适配不同屏幕尺寸，提升游戏体验。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.5 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.5</span>
+              <span class="date">2025-12-13 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">前端开发工具上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/gradient" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 渐变生成器</router-link></strong>：在线生成精美的 CSS
+                          线性渐变和径向渐变背景代码。
+                        </li>
+                        <li><strong><router-link to="/tools/web/meta-tags" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Meta 标签生成器</router-link></strong>：生成网页 SEO
+                          及社交媒体分享所需的 Meta 标签，支持实时预览。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.4 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.4</span>
+              <span class="date">2025-12-13 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发、设计与生活工具上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发与设计工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/glassmorphism" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 玻璃拟态生成器</router-link></strong>：在线生成
+                          Glassmorphism 风格 CSS 代码。
+                        </li>
+                        <li><strong><router-link to="/tools/image-to-base64" target="_blank"
+                              class="hover:text-blue-600 transition-colors">图片转 Base64</router-link></strong>：在线将图片转换为
+                          Base64 编码，支持一键复制。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/case-converter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">命名风格转换</router-link></strong>：支持
+                          Camel、Pascal、Snake、Kebab 等多种变量命名风格互转。
+                        </li>
+                        <li><strong><router-link to="/tools/text/lorem-ipsum" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Lorem Ipsum
+                              生成器</router-link></strong>：快速生成中文、英文占位符文本。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增生活工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/image-color" target="_blank"
+                              class="hover:text-blue-600 transition-colors">图片主色调提取</router-link></strong>：上传图片自动提取主色调，生成配色方案。
+                        </li>
+                        <li><strong><router-link to="/tools/percentage" target="_blank"
+                              class="hover:text-blue-600 transition-colors">百分比计算器</router-link></strong>：在线百分比计算工具，支持计算占比、数值计算、增长率等。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增测试工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/keyboard-test" target="_blank"
+                              class="hover:text-blue-600 transition-colors">键盘测试</router-link></strong>：在线检测键盘按键是否正常，支持全键位检测。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <!-- Version 2.4.3 -->
           <div class="timeline-item">
             <div class="version-tag">
@@ -297,7 +512,7 @@ onUnmounted(() => {
                     <div class="feature-title">新增生活常用工具</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/daily/decision-maker"
+                        <li><strong><router-link to="/tools/daily/decision-maker" target="_blank"
                               class="hover:text-blue-600 transition-colors">帮我决定</router-link></strong>：选择困难症福音，输入选项，让运气帮你做决定。
                         </li>
                       </ul>
@@ -307,7 +522,7 @@ onUnmounted(() => {
                     <div class="feature-title">新增潜能测试</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/psychology/color-test"
+                        <li><strong><router-link to="/tools/psychology/color-test" target="_blank"
                               class="hover:text-blue-600 transition-colors">色彩性格测试</router-link></strong>：基于哈特曼性格色彩密码，探索你的核心动力和性格优势。
                         </li>
                       </ul>
@@ -343,7 +558,7 @@ onUnmounted(() => {
                     <div class="feature-title">新增小游戏</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/games/memory-card"
+                        <li><strong><router-link to="/tools/games/memory-card" target="_blank"
                               class="hover:text-blue-600 transition-colors">记忆翻牌</router-link></strong>：考验记忆力的翻牌配对游戏，支持
                           4x4 和 6x6 两种难度。
                         </li>
@@ -380,10 +595,10 @@ onUnmounted(() => {
                     <div class="feature-title">新增摸鱼工具</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/games/woodfish"
+                        <li><strong><router-link to="/tools/games/woodfish" target="_blank"
                               class="hover:text-blue-600 transition-colors">电子木鱼</router-link></strong>：在线敲木鱼，积攒功德，净化心灵。
                         </li>
-                        <li><strong><router-link to="/tools/games/2048"
+                        <li><strong><router-link to="/tools/games/2048" target="_blank"
                               class="hover:text-blue-600 transition-colors">2048</router-link></strong>：经典的数字合成游戏，挑战合成2048。
                         </li>
                       </ul>
@@ -420,10 +635,10 @@ onUnmounted(() => {
                     <div class="feature-title">新增经典小游戏</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/games/snake"
+                        <li><strong><router-link to="/tools/games/snake" target="_blank"
                               class="hover:text-blue-600 transition-colors">贪吃蛇</router-link></strong>：经典怀旧游戏，控制小蛇吃食物变长，挑战反应速度与策略规划。
                         </li>
-                        <li><strong><router-link to="/tools/games/minesweeper"
+                        <li><strong><router-link to="/tools/games/minesweeper" target="_blank"
                               class="hover:text-blue-600 transition-colors">扫雷</router-link></strong>：Windows
                           经典再现，提供初级、中级、高级三种难度，支持右键插旗标记，锻炼逻辑推理能力。
                         </li>
@@ -452,11 +667,11 @@ onUnmounted(() => {
                     <div class="feature-title">新增打字雨游戏</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/games/typing-rain-cn"
+                        <li><strong><router-link to="/tools/games/typing-rain-cn" target="_blank"
                               class="hover:text-blue-600 transition-colors">打字雨
                               (中文版)</router-link></strong>：经典打字游戏，支持中文词库，锻炼拼音输入速度。
                         </li>
-                        <li><strong><router-link to="/tools/games/typing-rain-en"
+                        <li><strong><router-link to="/tools/games/typing-rain-en" target="_blank"
                               class="hover:text-blue-600 transition-colors">打字雨 (英文版)</router-link></strong>：Type the
                           falling words before they hit the ground! 锻炼英文打字速度。
                         </li>
@@ -487,10 +702,10 @@ onUnmounted(() => {
                     <div class="feature-title">新增实用工具</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/relationship"
+                        <li><strong><router-link to="/tools/relationship" target="_blank"
                               class="hover:text-blue-600 transition-colors">亲戚称呼计算器</router-link></strong>：解决过年走亲戚不知如何称呼的尴尬，支持互查，逢年过节必备神器。
                         </li>
-                        <li><strong><router-link to="/tools/base64"
+                        <li><strong><router-link to="/tools/base64" target="_blank"
                               class="hover:text-blue-600 transition-colors">Base64转换工具</router-link></strong>：支持文本与图片的Base64编码转换，支持UTF-8字符集与常见图片格式。
                         </li>
                       </ul>
@@ -590,19 +805,19 @@ onUnmounted(() => {
                     <div class="feature-title">新增5款效率计算器</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/calculation/mortgage"
+                        <li><strong><router-link to="/tools/calculation/mortgage" target="_blank"
                               class="hover:text-blue-600 transition-colors">房贷计算器</router-link></strong>：支持商业贷款、公积金贷款及组合贷款计算，提供等额本息与等额本金两种还款方式对比。
                         </li>
-                        <li><strong><router-link to="/tools/calculation/mortgage-rate"
+                        <li><strong><router-link to="/tools/calculation/mortgage-rate" target="_blank"
                               class="hover:text-blue-600 transition-colors">房贷利率调整计算器</router-link></strong>：快速计算LPR利率调整前后的月供变化与利息节省情况。
                         </li>
-                        <li><strong><router-link to="/tools/calculation/investment"
+                        <li><strong><router-link to="/tools/calculation/investment" target="_blank"
                               class="hover:text-blue-600 transition-colors">投资收益计算器</router-link></strong>：支持复利计算与定投收益预测，辅助制定长期理财规划。
                         </li>
-                        <li><strong><router-link to="/tools/calculation/social-insurance"
+                        <li><strong><router-link to="/tools/calculation/social-insurance" target="_blank"
                               class="hover:text-blue-600 transition-colors">五险一金计算器</router-link></strong>：依据2025最新政策，精准计算个人应缴社保公积金及税后收入。
                         </li>
-                        <li><strong><router-link to="/tools/calculation/temperature"
+                        <li><strong><router-link to="/tools/calculation/temperature" target="_blank"
                               class="hover:text-blue-600 transition-colors">温度转换器</router-link></strong>：支持摄氏度、华氏度、开尔文温标的实时双向转换。
                         </li>
                       </ul>
@@ -669,13 +884,13 @@ onUnmounted(() => {
                     <div class="feature-title">新增数据图表工具</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/radar"
+                        <li><strong><router-link to="/tools/radar" target="_blank"
                               class="hover:text-blue-600 transition-colors">雷达图</router-link></strong>：支持多维数据对比分析，适用于能力评估、绩效分析等场景。
                         </li>
-                        <li><strong><router-link to="/tools/funnel"
+                        <li><strong><router-link to="/tools/funnel" target="_blank"
                               class="hover:text-blue-600 transition-colors">漏斗图</router-link></strong>：支持转化率分析，适用于销售漏斗、用户行为路径等场景。
                         </li>
-                        <li><strong><router-link to="/tools/gauge"
+                        <li><strong><router-link to="/tools/gauge" target="_blank"
                               class="hover:text-blue-600 transition-colors">仪表盘</router-link></strong>：支持进度展示与完成率分析，适用于KPI监控、目标追踪等场景。
                         </li>
                       </ul>
@@ -4007,15 +4222,15 @@ body {
   /* Firefox */
   -webkit-overflow-scrolling: touch;
 }
-</style>
 
 /* Transitions */
 .fade-enter-active,
 .fade-leave-active {
-transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
-opacity: 0;
+  opacity: 0;
 }
+</style>

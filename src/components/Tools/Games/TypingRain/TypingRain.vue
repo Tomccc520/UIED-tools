@@ -25,7 +25,7 @@
         </div>
 
         <div ref="gameContainer"
-          class="typing-rain-container relative w-full overflow-y-auto bg-gray-900 flex flex-col items-center justify-center font-sans text-white select-none rounded-xl py-8 min-h-[600px]">
+          class="typing-rain-container relative w-full overflow-y-auto bg-gray-900 flex flex-col items-center justify-center font-sans text-white select-none rounded-xl py-8 min-h-[600px] h-[85vh]">
           <!-- 背景图层 -->
           <div
             class="absolute inset-0 bg-gradient-to-b from-gray-900 via-blue-900 to-purple-900 opacity-80 z-0 pointer-events-none rounded-xl">
@@ -35,7 +35,7 @@
           </div>
 
           <!-- 游戏区域 -->
-          <div class="relative w-full h-[600px] max-w-6xl z-10 flex flex-col">
+          <div class="relative w-full h-full max-w-6xl z-10 flex flex-col">
             <!-- 顶部信息栏 -->
             <div
               class="flex justify-between items-center p-6 text-xl font-bold tracking-wider shadow-md bg-black/20 backdrop-blur-sm rounded-b-xl mx-4">
@@ -137,6 +137,24 @@
                     }}
                   </p>
 
+                  <!-- 词库选择 -->
+                  <div class="mb-8">
+                    <label class="block text-gray-400 text-sm mb-3 uppercase tracking-wider font-semibold">
+                      {{ language === 'cn' ? '选择词库' : 'Select Vocabulary' }}
+                    </label>
+                    <div class="flex flex-wrap gap-2 justify-center">
+                      <button v-for="mode in wordModes" :key="mode.value"
+                        @click="currentWordMode = mode.value as WordMode"
+                        class="px-4 py-2 rounded-lg text-sm transition-all duration-200 border" :class="[
+                          currentWordMode === mode.value
+                            ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-500/30'
+                            : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10 hover:border-white/30 hover:text-white'
+                        ]">
+                        {{ mode.label }}
+                      </button>
+                    </div>
+                  </div>
+
                   <button @click="startGame"
                     class="group relative inline-flex items-center justify-center px-8 py-3 text-lg font-bold text-white transition-all duration-200 bg-blue-600 font-pj rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 hover:bg-blue-500 hover:scale-105 active:scale-95">
                     <span
@@ -191,12 +209,14 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { englishWords, chineseWords } from './wordData'
+import { englishWords, chineseWords, chineseIdioms, tangPoetry } from './wordData'
 
 const route = useRoute()
 
 // 游戏状态类型定义
 type GameStatus = 'start' | 'playing' | 'gameover'
+type WordMode = 'english' | 'chinese' | 'idiom' | 'poetry'
+
 interface Word {
   id: number
   text: string
@@ -210,6 +230,7 @@ interface Word {
 // 核心状态
 const language = ref<'cn' | 'en'>('en')
 const gameStatus = ref<GameStatus>('start')
+const currentWordMode = ref<WordMode>('english')
 const score = ref(0)
 const lives = ref(5)
 const maxLives = 5
@@ -219,6 +240,13 @@ const gameArea = ref<HTMLElement | null>(null)
 const gameContainer = ref<HTMLElement | null>(null)
 const inputField = ref<HTMLInputElement | null>(null)
 const isFullscreen = ref(false)
+
+const wordModes = [
+  { value: 'english', label: 'English' },
+  { value: 'chinese', label: '中文词汇' },
+  { value: 'idiom', label: '成语(4字)' },
+  { value: 'poetry', label: '诗词(5/7字)' }
+]
 
 // 统计数据
 const totalTyped = ref(0)
@@ -311,7 +339,15 @@ const scheduleNextSpawn = () => {
 }
 
 const spawnWord = () => {
-  const wordList = language.value === 'cn' ? chineseWords : englishWords
+  let wordList: string[] = []
+  switch (currentWordMode.value) {
+    case 'english': wordList = englishWords; break;
+    case 'chinese': wordList = chineseWords; break;
+    case 'idiom': wordList = chineseIdioms; break;
+    case 'poetry': wordList = tangPoetry; break;
+    default: wordList = englishWords;
+  }
+
   const text = wordList[Math.floor(Math.random() * wordList.length)]
 
   // 随机位置 (10% - 90%)
@@ -340,7 +376,7 @@ const gameLoop = () => {
   const deltaTime = (now - lastTime) / 16.67 // Normalize to ~60fps
   lastTime = now
 
-  const gameHeight = gameArea.value?.clientHeight || 600
+  const gameHeight = gameArea.value?.clientHeight || 800
 
   // 更新位置
   activeWords.value.forEach(word => {
@@ -442,8 +478,10 @@ const handleKeydown = (e: KeyboardEvent) => {
 watch(() => route.path, (path) => {
   if (path.includes('cn')) {
     language.value = 'cn'
+    currentWordMode.value = 'chinese'
   } else {
     language.value = 'en'
+    currentWordMode.value = 'english'
   }
   resetGame()
 }, { immediate: true })

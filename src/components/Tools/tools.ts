@@ -86,16 +86,6 @@ export function getToolsCate(): ToolCategory[] {
               tags: ['免费', '新品'],
               isNew: true
             }
-            {
-              id: 816,
-              title: '记忆翻牌',
-              logo: { type: 'svg', name: 'memoryCard' },
-              desc: '经典的记忆翻牌游戏，翻开卡片寻找相同的图案，考验你的瞬间记忆力！',
-              url: '/tools/games/memory-card',
-              cate: '摸鱼小游戏',
-              isNew: true,
-              tags: ['免费', '新品']
-            }
           ]
         },
         {
@@ -290,6 +280,16 @@ export function getToolsCate(): ToolCategory[] {
               releaseDate: '2024/12/03 00:00:00',
               tags: ['免费', '新品'],
               isNew: true
+            },
+            {
+              id: 603,
+              title: 'AI实时快讯',
+              logo: { type: 'svg', name: 'aiNews' },
+              desc: '实时展示最新AI科技资讯，及时了解人工智能领域的最新动态和发展趋势',
+              url: '/tools/ai-news',
+              cate: 'AI效率工具',
+              isNew: true,
+              tags: ['免费', '资讯']
             }
           ]
         }
@@ -342,6 +342,36 @@ export function getToolsCate(): ToolCategory[] {
               desc: '将JPG、PNG等格式图片转换为SVG矢量图，支持多种参数调整',
               url: '/tools/design/image-svg',
               logo: { type: 'svg', name: 'svg' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1103,
+              title: 'CSS 玻璃拟态生成器',
+              desc: '在线生成 Glassmorphism 风格 CSS 代码，支持自定义模糊度、透明度等参数',
+              url: '/tools/design/glassmorphism',
+              logo: { type: 'svg', name: 'glassmorphism' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1104,
+              title: 'CSS 渐变生成器',
+              desc: '在线生成精美的 CSS 线性渐变和径向渐变背景代码',
+              url: '/tools/design/gradient',
+              logo: { type: 'svg', name: 'gradient' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1105,
+              title: '在线图片压缩',
+              desc: '免费在线图片压缩工具，支持JPG/PNG/WEBP格式，可调节压缩质量和尺寸',
+              url: '/tools/design/image-compressor',
+              logo: { type: 'svg', name: 'compress' },
               cate: '在线工具',
               isNew: true,
               tags: ['免费', '新品']
@@ -763,6 +793,16 @@ export function getToolsCate(): ToolCategory[] {
               cate: '实用查询',
               isNew: true,
               tags: ['免费', '新品']
+            },
+            {
+              id: 817,
+              title: '百分比计算器',
+              logo: { type: 'svg', name: 'percentage' },
+              desc: '在线百分比计算工具，支持计算占比、数值计算、增长率等多种模式',
+              url: '/tools/percentage',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         }
@@ -879,6 +919,26 @@ export function getToolsCate(): ToolCategory[] {
               desc: '批量给图片添加文字或图片水印',
               url: '/tools/img-watermark',
               cate: '图片工具'
+            },
+            {
+              id: 522,
+              title: '图片主色调提取',
+              logo: { type: 'svg', name: 'imageColor' },
+              desc: '上传图片自动提取主色调，生成配色方案，支持复制HEX和RGB颜色值',
+              url: '/tools/image-color',
+              cate: '图片工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 523,
+              title: '图片转 Base64',
+              logo: { type: 'svg', name: 'imageToBase64' },
+              desc: '在线将图片转换为 Base64 编码，支持一键复制 HTML 标签和 CSS 代码',
+              url: '/tools/image-to-base64',
+              cate: '图片工具',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         },
@@ -1216,6 +1276,16 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/textedit',
               cateId: 11,
               cate: '文本处理'
+            },
+            {
+              id: 1137,
+              title: '乱数假文生成',
+              logo: { type: 'svg', name: 'loremIpsum' },
+              desc: '在线生成 Lorem Ipsum 或中文随机文本，用于排版测试',
+              url: '/tools/text/lorem-ipsum',
+              cateId: 11,
+              cate: '文本处理',
+              isNew: true
             }
           ]
         }
@@ -1456,6 +1526,80 @@ export function getToolsCate(): ToolCategory[] {
               cateId: 2,
               cate: '开发运维'
             },
+            {
+              id: 2114,
+              title: 'Cron表达式生成器',
+              logo: { type: 'svg', name: 'cron' },
+              desc: '可视化生成和解析 Cron 表达式',
+              url: '/tools/dev/cron',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true
+            },
+            {
+              id: 2115,
+              title: '变量命名转换',
+              logo: { type: 'svg', name: 'caseConverter' },
+              desc: '支持 Camel, Pascal, Snake, Kebab 等多种命名风格互转',
+              url: '/tools/dev/case-converter',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true
+            },
+            {
+              id: 2116,
+              title: '键盘按键测试',
+              logo: { type: 'svg', name: 'keyboard' },
+              desc: '在线键盘按键测试，查看 KeyCode 和按键信息',
+              url: '/tools/dev/keyboard-test',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true
+            },
+            {
+              id: 2118,
+              title: 'SQL格式化',
+              logo: { type: 'svg', name: 'sqlFormat' },
+              desc: '在线SQL代码格式化和美化工具，支持多种SQL方言',
+              url: '/tools/dev/sql-format',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 2119,
+              title: 'CSS 渐变生成器',
+              logo: { type: 'svg', name: 'gradient' },
+              desc: '在线生成精美的 CSS 线性渐变和径向渐变背景代码，支持多种颜色和方向设置',
+              url: '/tools/design/gradient',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 2120,
+              title: 'Meta 标签生成器',
+              logo: { type: 'svg', name: 'metaTags' },
+              desc: '生成网页 SEO 及社交媒体分享所需的 Meta 标签，并实时预览分享效果',
+              url: '/tools/web/meta-tags',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 2121,
+              title: '网站信息获取',
+              logo: { type: 'svg', name: 'webInfo' },
+              desc: '一键获取网站Favicon、Logo、标题、关键词和描述信息',
+              url: '/tools/web/info',
+              cateId: 2,
+              cate: '开发运维',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
             /* 暂时隐藏后端API测试工具
             {
               id: 224,
@@ -1529,6 +1673,16 @@ export function getToolsCate(): ToolCategory[] {
           title: '其他摸鱼',
           list: [
             {
+              id: 730,
+              title: '每日热榜',
+              logo: { type: 'svg', name: 'hotRanking' },
+              desc: '汇聚全网热点，实时更新各大平台热榜内容',
+              url: '/tools/hot-ranking',
+              cate: '其他摸鱼',
+              isNew: true,
+              tags: ['免费', '热门']
+            },
+            {
               id: 731,
               title: '星座运势',
               logo: { type: 'svg', name: 'horoscope' },
@@ -1551,6 +1705,15 @@ export function getToolsCate(): ToolCategory[] {
               logo: { type: 'svg', name: 'calendar' },
               desc: '查看每日摸鱼日历，了解距离各种假期的剩余时间，支持历史日期查询',
               url: '/tools/fish-calendar',
+              cate: '其他摸鱼',
+              isNew: true
+            },
+            {
+              id: 734,
+              title: '全屏翻页时钟',
+              logo: { type: 'svg', name: 'flipClock' },
+              desc: '极简风格的全屏翻页时钟，支持12/24小时制切换，适合作为桌面时钟',
+              url: '/tools/daily/flip-clock',
               cate: '其他摸鱼',
               isNew: true
             }
@@ -1619,6 +1782,36 @@ export function getToolsCate(): ToolCategory[] {
               cate: '摸鱼游戏',
               isNew: true,
               tags: ['免费', '益智']
+            },
+            {
+              id: 747,
+              title: '记忆翻牌',
+              logo: { type: 'svg', name: 'memoryCard' },
+              desc: '经典的记忆翻牌游戏，翻开卡片寻找相同的图案，考验你的瞬间记忆力！',
+              url: '/tools/games/memory-card',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '益智']
+            },
+            {
+              id: 748,
+              title: '反应速度测试',
+              logo: { type: 'svg', name: 'reactionTest' },
+              desc: '测试你的神经反射速度，看看你能有多快！',
+              url: '/tools/games/reaction-test',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '测试']
+            },
+            {
+              id: 749,
+              title: '五子棋',
+              logo: { type: 'svg', name: 'gomoku' },
+              desc: '经典的双人对弈游戏，五子连珠即可获胜',
+              url: '/tools/games/gomoku',
+              cate: '摸鱼游戏',
+              isNew: true,
+              tags: ['免费', '对战']
             }
           ]
         }
@@ -1833,6 +2026,27 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/calculation/mortgage',
               cateId: 3,
               cate: '数据换算'
+            },
+            {
+              id: 346,
+              title: 'BMR基础代谢计算器',
+              logo: { type: 'svg', name: 'bmr' },
+              desc: '计算您的基础代谢率(BMR)和每日热量消耗(TDEE)，科学管理身材',
+              url: '/tools/calculation/bmr',
+              cateId: 3,
+              cate: '数据换算',
+              isNew: true
+            },
+            {
+              id: 347,
+              title: '折扣计算器',
+              logo: { type: 'svg', name: 'discount' },
+              desc: '在线折扣计算器，快速计算打折后的价格和节省的金额',
+              url: '/tools/calculation/discount',
+              cateId: 3,
+              cate: '数据换算',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         },
@@ -1884,6 +2098,26 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/random-tools',
               cateId: 3,
               cate: '其他工具'
+            },
+            {
+              id: 336,
+              title: '呼吸冥想',
+              logo: { type: 'svg', name: 'breathing' },
+              desc: '跟随指引进行深呼吸练习，帮助你放松身心，缓解焦虑和压力',
+              url: '/tools/daily/breathing',
+              cateId: 3,
+              cate: '其他工具',
+              isNew: true
+            },
+            {
+              id: 337,
+              title: '屏幕测试',
+              logo: { type: 'svg', name: 'screenTest' },
+              desc: '在线屏幕测试工具，提供纯色背景检测屏幕坏点、漏光和色彩表现',
+              url: '/tools/daily/screen-test',
+              cateId: 3,
+              cate: '其他工具',
+              isNew: true
             }
           ]
         }
