@@ -375,6 +375,136 @@ export function getToolsCate(): ToolCategory[] {
               cate: '在线工具',
               isNew: true,
               tags: ['免费', '新品']
+            },
+            {
+              id: 1106,
+              title: '色彩对比度检测',
+              desc: '在线检测前景色和背景色的对比度，确保符合WCAG标准',
+              url: '/tools/design/contrast-checker',
+              logo: { type: 'svg', name: 'contrastChecker' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1107,
+              title: 'CSS 阴影生成器',
+              desc: '可视化调节 Box Shadow 属性，实时预览并生成CSS代码',
+              url: '/tools/design/box-shadow',
+              logo: { type: 'svg', name: 'boxShadow' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1108,
+              title: '黄金比例计算器',
+              desc: '快速计算设计的黄金分割比数值 (1:1.618)，让设计更具美感',
+              url: '/tools/design/golden-ratio',
+              logo: { type: 'svg', name: 'goldenRatio' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1109,
+              title: 'Blob 形状生成器',
+              desc: '生成独一无二的流体有机形状，支持导出 SVG 和 CSS',
+              url: '/tools/design/blob-maker',
+              logo: { type: 'svg', name: 'blobMaker' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1110,
+              title: 'CSS Clip-path 生成器',
+              desc: '在线可视化生成 CSS clip-path 代码，支持拖拽调整多边形顶点，提供多种常用形状预设。',
+              url: '/tools/design/clip-path',
+              logo: { type: 'svg', name: 'clipPath' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1111,
+              title: 'CSS 圆角生成器',
+              desc: '在线可视化生成 CSS border-radius 代码，支持 8 个值的复杂圆角设置。',
+              url: '/tools/design/border-radius',
+              logo: { type: 'svg', name: 'borderRadius' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1112,
+              title: 'CSS 滤镜生成器',
+              desc: '在线调节 CSS Filter 属性：模糊、亮度、对比度等，实时预览图片效果。',
+              url: '/tools/design/css-filter',
+              logo: { type: 'svg', name: 'cssFilter' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1113,
+              title: 'CSS 三角形生成器',
+              desc: '利用 CSS border 属性特性，快速生成各种方向和尺寸的三角形代码。',
+              url: '/tools/design/css-triangle',
+              logo: { type: 'svg', name: 'cssTriangle' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1114,
+              title: 'CSS 丝带生成器',
+              desc: '快速生成常见的角落丝带（Ribbon）样式，常用于标记“热门”、“新品”等状态。',
+              url: '/tools/design/css-ribbon',
+              logo: { type: 'svg', name: 'cssRibbon' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1115,
+              title: 'CSS 加载动画',
+              desc: '生成纯 CSS 实现的 Loading 旋转动画，可自定义大小、颜色和速度。',
+              url: '/tools/design/css-loader',
+              logo: { type: 'svg', name: 'cssLoader' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1116,
+              title: 'CSS Flexbox 生成器',
+              desc: '可视化调整 CSS Flexbox 布局属性，实时预览布局效果并生成代码。',
+              url: '/tools/design/css-flexbox',
+              logo: { type: 'svg', name: 'cssFlexbox' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1117,
+              title: 'CSS 文本阴影生成器',
+              desc: '在线可视化生成 CSS text-shadow 代码，支持偏移、模糊和颜色透明度调节。',
+              url: '/tools/design/css-text-shadow',
+              logo: { type: 'svg', name: 'cssTextShadow' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1118,
+              title: 'CSS 渐变文字生成器',
+              desc: '利用 background-clip: text 属性，快速生成炫酷的渐变色文字效果。',
+              url: '/tools/design/css-gradient-text',
+              logo: { type: 'svg', name: 'cssGradientText' },
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         },
@@ -433,6 +563,46 @@ export function getToolsCate(): ToolCategory[] {
               cateId: 2,
               cate: '设计规范',
               isNew: true
+            },
+            {
+              id: 1119,
+              title: 'Web端设计规范',
+              desc: '提供Web端设计的尺寸、布局和组件规范参考，助你打造专业的桌面端应用。',
+              url: '/tools/design/web-ui-spec',
+              logo: { type: 'svg', name: 'webUISpec' },
+              cate: '设计规范',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1120,
+              title: '字体排版规范',
+              desc: '基于模块化比例生成字体排版系统，建立清晰的视觉层级。',
+              url: '/tools/design/typography-spec',
+              logo: { type: 'svg', name: 'typographySpec' },
+              cate: '设计规范',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1121,
+              title: '色彩规范生成器',
+              desc: '输入品牌主色，自动生成完整的色阶板，适用于UI设计系统。',
+              url: '/tools/design/color-spec',
+              logo: { type: 'svg', name: 'colorSpec' },
+              cate: '设计规范',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 661,
+              title: '常用文档规范',
+              logo: { type: 'svg', name: 'docSpec' },
+              desc: '公文写作与文档排版的标准规范参考，助你打造专业的办公文档',
+              url: '/tools/doc/spec',
+              cate: '设计规范',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         },
@@ -458,6 +628,185 @@ export function getToolsCate(): ToolCategory[] {
               cate: '接单工具'
             }
             */
+          ]
+        }
+      ]
+    },
+    {
+      id: 10,
+      title: '剪辑工具',
+      icon: '',
+      list: [
+        {
+          id: 101,
+          title: '视频处理',
+          list: [
+            {
+              id: 1011,
+              title: '视频抽帧',
+              logo: { type: 'svg', name: 'videoFrame' },
+              desc: '在线提取视频画面，支持按时间点精确截图和批量导出',
+              url: '/tools/video/frame',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1012,
+              title: '视频提取音频',
+              logo: { type: 'svg', name: 'videoAudio' },
+              desc: '在线从视频中提取音频，支持导出为 MP3/WAV 格式',
+              url: '/tools/video/to-audio',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1013,
+              title: '视频转GIF',
+              logo: { type: 'svg', name: 'videoToGif' },
+              desc: '在线将视频转换为GIF动图，支持截取片段、调整尺寸和帧率',
+              url: '/tools/video/gif',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1015,
+              title: '摄像头录制',
+              logo: { type: 'svg', name: 'webcam' },
+              desc: '在线录制摄像头视频，支持高清录制和音频采集，本地处理更安全',
+              url: '/tools/video/webcam',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1016,
+              title: '视频加水印',
+              logo: { type: 'svg', name: 'videoWatermark' },
+              desc: '在线为视频添加文字或图片水印，支持拖拽调节位置，本地处理保护隐私',
+              url: '/tools/video/watermark',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1017,
+              title: '视频倍速处理',
+              logo: { type: 'svg', name: 'videoSpeed' },
+              desc: '在线调整视频播放速度（0.5x - 4.0x），支持导出处理后的视频，本地处理更安全',
+              url: '/tools/video/speed',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1018,
+              title: '视频旋转/翻转',
+              logo: { type: 'svg', name: 'videoRotate' },
+              desc: '在线旋转视频角度（90°/180°/270°）或进行水平/垂直翻转，本地处理保护隐私',
+              url: '/tools/video/rotate',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1014,
+              title: '在线屏幕录制',
+              logo: { type: 'svg', name: 'screenRecorder' },
+              desc: '免费在线屏幕录制工具，支持录制系统声音，本地录制更安全',
+              url: '/tools/screen-recorder',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1019,
+              title: '视频画面裁剪',
+              logo: { type: 'svg', name: 'imageCrop' },
+              desc: '在线裁剪视频画面区域，支持自由调整比例，本地处理保护隐私',
+              url: '/tools/video/crop',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1020,
+              title: '视频静音',
+              logo: { type: 'svg', name: 'videoAudio' },
+              desc: '一键移除视频中的音频轨道，快速制作静音视频，本地处理更安全',
+              url: '/tools/video/mute',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1021,
+              title: '视频时长剪辑',
+              logo: { type: 'svg', name: 'imageCrop' },
+              desc: '在线截取视频片段，精准控制开始和结束时间，本地处理保护隐私',
+              url: '/tools/video/trimmer',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
+          ]
+        },
+        {
+          id: 102,
+          title: '音频工具',
+          list: [
+            {
+              id: 1112,
+              title: '音频格式转换',
+              logo: { type: 'svg', name: 'audioConverter' },
+              desc: '在线音频格式转换工具，支持 WAV、WebM 等格式互转',
+              url: '/tools/audio/converter',
+              cate: '音频工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1113,
+              title: '音频剪辑',
+              logo: { type: 'svg', name: 'audioTrimmer' },
+              desc: '在线音频剪辑工具，支持可视化的波形剪辑，精确裁剪音频片段',
+              url: '/tools/audio/trimmer',
+              cate: '音频工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1111,
+              title: '在线录音',
+              logo: { type: 'svg', name: 'voiceRecorder' },
+              desc: '在线录音工具，支持波形可视化、暂停/继续录制，并可导出为 WebM 格式',
+              url: '/tools/audio/recorder',
+              cate: '音频工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1114,
+              title: '音频音量放大',
+              logo: { type: 'svg', name: 'videoAudio' },
+              desc: '在线调整音频音量，支持最大 300% 增益，本地处理保护隐私',
+              url: '/tools/audio/volume-booster',
+              cate: '音频工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1115,
+              title: '音频合并',
+              logo: { type: 'svg', name: 'audioTrimmer' }, // Reuse icon
+              desc: '免费在线合并多个音频文件，支持 WAV 等格式拼接，本地处理更安全',
+              url: '/tools/audio/merge',
+              cate: '音频工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            }
           ]
         }
       ]
@@ -656,6 +1005,94 @@ export function getToolsCate(): ToolCategory[] {
               desc: '在线字数统计工具，支持字符数、单词数、行数、段落数统计，实时计算阅读时间',
               url: '/tools/word-count',
               cate: '文档工具',
+              tags: ['免费', '热门']
+            },
+            {
+              id: 632,
+              title: 'Markdown 表格生成器',
+              logo: { type: 'svg', name: 'markdown' }, // Reusing markdown icon
+              desc: '可视化编辑表格，自动生成 Markdown 格式代码，支持对齐方式设置',
+              url: '/tools/doc/markdown-table',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 633,
+              title: '文本清洗工具',
+              logo: { type: 'svg', name: 'textEdit' }, // Using textEdit icon as placeholder or cleaner icon if available
+              desc: '一键去除空行、重复行、HTML标签，支持大小写转换和文本替换',
+              url: '/tools/doc/text-cleaner',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 634,
+              title: '数字转中文大写',
+              logo: { type: 'svg', name: 'numberToChinese' },
+              desc: '在线将数字转换为中文大写金额，适用于财务报销、合同填写等场景',
+              url: '/tools/doc/number-chinese',
+              cate: '文档工具',
+              tags: ['免费', '实用']
+            },
+            {
+              id: 635,
+              title: 'JSON 格式化工具',
+              logo: { type: 'svg', name: 'jsonFormat' },
+              desc: '在线 JSON 代码格式化、验证、压缩工具，支持错误检查和一键复制',
+              url: '/tools/dev/json-format',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 636,
+              title: '文本对比工具',
+              logo: { type: 'svg', name: 'diffChecker' },
+              desc: '在线比较两段文本或代码的差异，高亮显示新增和删除的内容',
+              url: '/tools/dev/diff-checker',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 637,
+              title: '二维码生成器',
+              logo: { type: 'svg', name: 'qrcodeGenerator' },
+              desc: '在线生成自定义二维码，支持设置颜色、尺寸、容错率，可下载 PNG 图片',
+              url: '/tools/media/qrcode-generator',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 638,
+              title: 'URL 编码/解码',
+              logo: { type: 'svg', name: 'urlEncoder' },
+              desc: '在线 URL 编码/解码工具，支持 UTF-8 编码，一键转换和复制',
+              url: '/tools/dev/url-encoder',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 639,
+              title: '时间戳转换',
+              logo: { type: 'svg', name: 'timestampConverter' },
+              desc: '在线 Unix 时间戳与北京时间相互转换工具，支持秒和毫秒单位',
+              url: '/tools/dev/timestamp-converter',
+              cate: '文档工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 640,
+              title: 'MD5 加密工具',
+              logo: { type: 'svg', name: 'md5' },
+              desc: '在线 MD5 加密工具，支持 32 位和 16 位加密，大小写可选，一键复制',
+              url: '/tools/dev/md5-encrypt',
+              cate: '文档工具',
               isNew: true,
               tags: ['免费', '新品']
             }
@@ -676,21 +1113,51 @@ export function getToolsCate(): ToolCategory[] {
               tags: ['免费', '新品']
             },
             {
-              id: 642,
-              title: '在线屏幕录制',
-              logo: { type: 'svg', name: 'screenRecorder' },
-              desc: '免费在线屏幕录制工具，支持录制系统声音，本地录制更安全',
-              url: '/tools/screen-recorder',
-              cate: '辅助工具',
-              isNew: true,
-              tags: ['免费', '新品']
-            },
-            {
               id: 643,
               title: '亲戚称呼计算器',
               logo: { type: 'svg', name: 'relationship' },
               desc: '中国亲戚关系称呼查询，支持互查，逢年过节必备神器',
               url: '/tools/relationship',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 644,
+              title: 'User Agent 解析',
+              logo: { type: 'svg', name: 'userAgent' },
+              desc: '查看您的浏览器 User Agent 字符串，解析操作系统、浏览器版本和设备类型',
+              url: '/tools/dev/user-agent',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 645,
+              title: '键盘键值码',
+              logo: { type: 'svg', name: 'keyCode' },
+              desc: '在线查看键盘按键的 KeyCode、Code 等详细信息，开发调试必备',
+              url: '/tools/dev/keycode',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 646,
+              title: 'URL 解析器',
+              logo: { type: 'svg', name: 'urlParser' },
+              desc: '将 URL 解析为协议、主机、路径、查询参数等组成部分',
+              url: '/tools/dev/url-parser',
+              cate: '辅助工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 647,
+              title: 'Cron 表达式',
+              logo: { type: 'svg', name: 'cron' },
+              desc: '可视化生成 Cron 表达式，支持 Quartz 和 Linux Crontab 格式',
+              url: '/tools/dev/cron',
               cate: '辅助工具',
               isNew: true,
               tags: ['免费', '新品']
@@ -2054,15 +2521,6 @@ export function getToolsCate(): ToolCategory[] {
           id: 33,
           title: '其他工具',
           list: [
-            {
-              id: 331,
-              title: '数字转金额大写',
-              logo: { type: 'svg', name: 'numberToChinese' },
-              desc: '在线数字转换成人民币大写金额',
-              url: '/tools/numbertochinese',
-              cateId: 3,
-              cate: '其他工具'
-            },
             {
               id: 332,
               title: '手持弹幕',

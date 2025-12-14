@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import { CopyDocument } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
-import useClipboard from 'vue-clipboard3';
 import { useRoute } from 'vue-router';
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue';
 
@@ -15,7 +14,6 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue';
  * @createDate 2025-12-13
  */
 
-const { toClipboard } = useClipboard();
 const route = useRoute();
 
 const blur = ref(10);
@@ -55,7 +53,7 @@ ${outline.value ? 'border: 1px solid rgba(255, 255, 255, 0.18);' : ''}`;
 
 const copyCode = async () => {
   try {
-    await toClipboard(cssCode.value);
+    await navigator.clipboard.writeText(cssCode.value);
     ElMessage.success('CSS 代码已复制');
   } catch (e) {
     ElMessage.error('复制失败');
@@ -66,7 +64,7 @@ const copyCode = async () => {
 <template>
   <div class="min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-4 md:p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
@@ -78,10 +76,12 @@ const copyCode = async () => {
 
         <div class="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8">
           <!-- 预览区 -->
-          <div class="flex-1 bg-cover bg-center rounded-xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 relative"
+          <div
+            class="flex-1 bg-cover bg-center rounded-xl overflow-hidden min-h-[400px] flex items-center justify-center p-8 relative"
             :style="{ backgroundImage: `url(${bgUrl})` }">
-            
-            <div class="absolute inset-0 bg-gradient-to-br from-pink-500/30 to-purple-600/30" :style="{ filter: `saturate(${saturation}%)` }"></div>
+
+            <div class="absolute inset-0 bg-gradient-to-br from-pink-500/30 to-purple-600/30"
+              :style="{ filter: `saturate(${saturation}%)` }"></div>
 
             <!-- Glass Card -->
             <div class="relative z-10 w-full max-w-md p-8 rounded-xl text-white" :style="glassStyle">
@@ -89,7 +89,8 @@ const copyCode = async () => {
               <p class="mb-6 opacity-90">
                 玻璃拟态（Glassmorphism）是一种设计风格，它通过背景模糊、半透明层和漂浮效果来模拟磨砂玻璃的质感。
               </p>
-              <button class="px-6 py-2 bg-white/20 hover:bg-white/30 transition-colors rounded-lg font-medium border border-white/30 backdrop-blur-sm">
+              <button
+                class="px-6 py-2 bg-white/20 hover:bg-white/30 transition-colors rounded-lg font-medium border border-white/30 backdrop-blur-sm">
                 Button
               </button>
             </div>
@@ -99,7 +100,7 @@ const copyCode = async () => {
           <div class="w-full lg:w-96 flex flex-col gap-6">
             <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
               <h3 class="font-bold text-gray-800 mb-4">参数设置</h3>
-              
+
               <div class="space-y-4">
                 <div>
                   <div class="flex justify-between mb-1">

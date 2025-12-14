@@ -36,6 +36,13 @@
                   </el-icon> 图标设计
                 </h3>
                 <div class="flex gap-2">
+                  <el-tooltip content="重置" placement="top">
+                    <el-button circle size="small" @click="resetConfig">
+                      <el-icon>
+                        <RefreshRight />
+                      </el-icon>
+                    </el-button>
+                  </el-tooltip>
                   <el-tooltip content="撤销" placement="top">
                     <el-button circle size="small" :disabled="historyIndex <= 0" @click="undo">
                       <el-icon>
@@ -51,6 +58,14 @@
                     </el-button>
                   </el-tooltip>
                 </div>
+              </div>
+
+              <!-- 快速预设 -->
+              <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+                <el-button size="small" round @click="applyPreset('ios')">iOS 风格</el-button>
+                <el-button size="small" round @click="applyPreset('android')">Android 风格</el-button>
+                <el-button size="small" round @click="applyPreset('circle')">圆形图标</el-button>
+                <el-button size="small" round @click="applyPreset('fill')">充满画布</el-button>
               </div>
 
               <!-- 上传区域 -->
@@ -228,7 +243,7 @@ import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { UploadFilled, Edit, Setting, Download, ArrowLeft, ArrowRight } from '@element-plus/icons-vue'
+import { UploadFilled, Edit, Setting, Download, ArrowLeft, ArrowRight, RefreshRight } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import JSZip from 'jszip'
 
@@ -396,6 +411,36 @@ const redo = () => {
     const state = JSON.parse(history.value[historyIndex.value])
     Object.assign(config, state)
   }
+}
+
+const resetConfig = () => {
+  config.image = null
+  config.backgroundColor = '#3b82f6'
+  config.transparentBg = false
+  config.scale = 80
+  config.radius = 20
+  saveHistory()
+}
+
+const applyPreset = (type: 'ios' | 'android' | 'circle' | 'fill') => {
+  if (type === 'ios') {
+    config.radius = 22
+    config.scale = 100
+    config.transparentBg = false
+  } else if (type === 'android') {
+    config.radius = 0
+    config.scale = 75
+    config.transparentBg = true
+  } else if (type === 'circle') {
+    config.radius = 50
+    config.scale = 65
+    config.transparentBg = false
+  } else if (type === 'fill') {
+    config.radius = 0
+    config.scale = 100
+    config.transparentBg = false
+  }
+  saveHistory()
 }
 
 // 2. 核心渲染引擎

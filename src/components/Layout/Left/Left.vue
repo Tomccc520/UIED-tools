@@ -440,6 +440,27 @@ onMounted(() => {
           </el-menu-item-group>
         </el-sub-menu>
 
+        <!-- 剪辑工具菜单 -->
+        <el-sub-menu index="video">
+          <template #title>
+            <div class="relative">
+              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14v-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <rect x="3" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            </div>
+            <span class="ml-2">剪辑工具</span>
+          </template>
+          <el-menu-item-group>
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '剪辑工具')?.list"
+              :key="category.id" :index="`video-${category.id}`" @click="handleMenuClick(`video-${category.id}`)">
+              {{ category.title }}
+            </el-menu-item>
+          </el-menu-item-group>
+        </el-sub-menu>
+
         <!-- 开发工具菜单 -->
         <el-sub-menu index="dev">
           <template #title>

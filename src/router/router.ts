@@ -329,6 +329,256 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/doc/markdown-table',
+    component: () => import('@/components/Tools/Doc/MarkdownTable/MarkdownTable.vue'),
+    name: 'markdownTable',
+    meta: {
+      title: "Markdown 表格生成器",
+      keywords: 'Markdown表格,表格生成器,Markdown Table Generator,在线表格制作',
+      description: '可视化编辑表格，自动生成 Markdown 格式代码，支持对齐方式设置。'
+    }
+  },
+  {
+    path: '/tools/doc/text-cleaner',
+    component: () => import('@/components/Tools/Doc/TextCleaner/TextCleaner.vue'),
+    name: 'textCleaner',
+    meta: {
+      title: "在线文本清洗工具",
+      keywords: '文本清洗,去除空行,去除重复行,去除HTML标签,文本处理',
+      description: '一键去除空行、重复行、HTML标签，支持大小写转换和文本替换，提高文本处理效率。'
+    }
+  },
+  {
+    path: '/tools/doc/number-chinese',
+    component: () => import('@/components/Tools/Doc/NumberToChinese/NumberToChinese.vue'),
+    name: 'numberToChinese',
+    meta: {
+      title: "数字转中文大写",
+      keywords: '数字转中文,人民币大写,大写金额,财务大写',
+      description: '在线将数字转换为中文大写金额，适用于财务报销、合同填写等场景。'
+    }
+  },
+  {
+    path: '/tools/dev/keycode',
+    component: () => import('@/components/Tools/Dev/KeyCode/KeyCode.vue'),
+    name: 'keyCode',
+    meta: {
+      title: "键盘键值码查看器",
+      keywords: 'keyCode,键盘码,键盘事件,Key Code,键盘测试',
+      description: '在线键盘键值码查看工具，实时显示键盘按键的 keyCode、key、code 等信息。'
+    }
+  },
+  {
+    path: '/tools/dev/user-agent',
+    component: () => import('@/components/Tools/Dev/UserAgent/UserAgent.vue'),
+    name: 'userAgent',
+    meta: {
+      title: "User Agent 解析",
+      keywords: 'User Agent,UA解析,浏览器信息,系统信息,设备检测',
+      description: '查看您的浏览器 User Agent 字符串，解析操作系统、浏览器版本和设备类型。'
+    }
+  },
+  {
+    path: '/tools/video/frame',
+    component: () => import('@/components/Tools/Video/VideoFrame/VideoFrame.vue'),
+    name: 'videoFrame',
+    meta: {
+      title: "视频抽帧",
+      keywords: '视频抽帧,视频截图,视频转图片,提取视频帧',
+      description: '在线提取视频画面，支持按时间点精确截图和批量导出。'
+    }
+  },
+  {
+    path: '/tools/video/audio',
+    component: () => import('@/components/Tools/Video/VideoToAudio/VideoToAudio.vue'),
+    name: 'videoToAudio',
+    meta: {
+      title: "视频提取音频",
+      keywords: '视频提取音频,视频转音频,视频转MP3,提取背景音乐',
+      description: '在线从视频中提取音频，支持导出为 WAV 格式。'
+    }
+  },
+  {
+    path: '/tools/video/mute',
+    component: () => import('@/components/Tools/Video/VideoMute/VideoMute.vue'),
+    name: 'videoMute',
+    meta: {
+      title: "视频静音",
+      keywords: '视频静音,移除音频,视频消音',
+      description: '一键移除视频中的音频轨道，快速制作静音视频，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/video/gif',
+    component: () => import('@/components/Tools/Video/VideoToGif/VideoToGif.vue'),
+    name: 'videoToGif',
+    meta: {
+      title: "视频转GIF",
+      keywords: '视频转GIF,在线转换,动图制作,视频片段截取',
+      description: '在线将视频转换为GIF动图，支持截取片段、调整尺寸和帧率。'
+    }
+  },
+  {
+    path: '/tools/video/webcam',
+    component: () => import('@/components/Tools/Video/WebcamRecorder/WebcamRecorder.vue'),
+    name: 'webcamRecorder',
+    meta: {
+      title: "摄像头录制",
+      keywords: '摄像头录制,在线录像,网页录像,Webcam录制,自拍录像',
+      description: '免费在线摄像头录制工具，支持高清录制和音频采集，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/video/watermark',
+    component: () => import('@/components/Tools/Video/VideoWatermark/VideoWatermark.vue'),
+    name: 'videoWatermark',
+    meta: {
+      title: "视频加水印",
+      keywords: '视频加水印,在线加水印,视频添加文字,视频添加图片,水印工具',
+      description: '免费在线视频加水印工具，支持添加文字和图片水印，支持拖拽调节位置，本地处理保护隐私。'
+    }
+  },
+  {
+    path: '/tools/video/speed',
+    component: () => import('@/components/Tools/Video/VideoSpeed/VideoSpeed.vue'),
+    name: 'videoSpeed',
+    meta: {
+      title: "视频倍速处理",
+      keywords: '视频倍速,视频加速,视频减速,慢放,快放,视频变速',
+      description: '在线视频倍速处理工具，支持0.5x到4.0x速度调整，支持导出处理后的视频，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/video/rotate',
+    component: () => import('@/components/Tools/Video/VideoFlip/VideoFlip.vue'),
+    name: 'videoFlip',
+    meta: {
+      title: "视频旋转/翻转",
+      keywords: '视频旋转,视频翻转,视频角度调整,在线视频旋转',
+      description: '在线旋转视频角度（90°/180°/270°）或进行水平/垂直翻转，本地处理保护隐私。'
+    }
+  },
+  {
+    path: '/tools/audio/converter',
+    component: () => import('@/components/Tools/Audio/AudioConverter/AudioConverter.vue'),
+    name: 'audioConverter',
+    meta: {
+      title: "音频格式转换",
+      keywords: '音频格式转换,MP3转换,WAV转换,音频转码,在线音频转换',
+      description: '在线音频格式转换工具，支持 WAV、WebM 等格式互转。'
+    }
+  },
+  {
+    path: '/tools/audio/trimmer',
+    component: () => import('@/components/Tools/Audio/AudioTrimmer/AudioTrimmer.vue'),
+    name: 'audioTrimmer',
+    meta: {
+      title: "音频剪辑",
+      keywords: '音频剪辑,音频裁剪,音频切割,在线音频编辑',
+      description: '在线音频剪辑工具，支持可视化的波形剪辑，精确裁剪音频片段。'
+    }
+  },
+  {
+    path: '/tools/audio/merge',
+    component: () => import('@/components/Tools/Audio/AudioMerge/AudioMerge.vue'),
+    name: 'audioMerge',
+    meta: {
+      title: "音频合并",
+      keywords: '音频合并,音频拼接,MP3合并,音乐拼接',
+      description: '免费在线合并多个音频文件，支持 WAV 等格式拼接，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/dev/url-parser',
+    component: () => import('@/components/Tools/Dev/UrlParser/UrlParser.vue'),
+    name: 'urlParser',
+    meta: {
+      title: "URL 解析器",
+      keywords: 'URL解析,URL参数,Host解析,Path解析,Query参数',
+      description: '将 URL 解析为协议、主机、路径、查询参数等组成部分，支持一键复制。'
+    }
+  },
+  {
+    path: '/tools/dev/cron',
+    component: () => import('@/components/Tools/Dev/Cron/Cron.vue'),
+    name: 'cron',
+    meta: {
+      title: "Cron 表达式生成器",
+      keywords: 'Cron表达式,Cron生成器,定时任务,Quartz,Crontab',
+      description: '可视化生成 Cron 表达式，支持 Quartz 和 Linux Crontab 格式，提供常用示例。'
+    }
+  },
+  {
+    path: '/tools/doc/spec',
+    component: () => import('@/components/Tools/Doc/DocSpec/DocSpec.vue'),
+    name: 'docSpec',
+    meta: {
+      title: "常用文档规范",
+      keywords: '文档规范,公文格式,A4纸尺寸,文档排版,办公规范',
+      description: '公文写作与文档排版的标准规范参考，包含A4纸张尺寸、页边距、字体字号等详细参数。'
+    }
+  },
+  {
+    path: '/tools/dev/json-format',
+    component: () => import('@/components/Tools/Dev/JsonFormat/JsonFormat.vue'),
+    name: 'jsonFormat',
+    meta: {
+      title: "JSON 格式化工具",
+      keywords: 'JSON格式化,JSON校验,JSON压缩,JSON美化,JSON工具',
+      description: '在线 JSON 代码格式化、验证、压缩工具，支持错误检查和一键复制。'
+    }
+  },
+  {
+    path: '/tools/dev/diff-checker',
+    component: () => import('@/components/Tools/Dev/DiffChecker/DiffChecker.vue'),
+    name: 'diffChecker',
+    meta: {
+      title: "文本对比工具",
+      keywords: '文本对比,代码对比,Diff Checker,内容差异比较',
+      description: '在线比较两段文本或代码的差异，高亮显示新增和删除的内容。'
+    }
+  },
+  {
+    path: '/tools/media/qrcode-generator',
+    component: () => import('@/components/Tools/Media/QrcodeGenerator/QrcodeGenerator.vue'),
+    name: 'qrcodeGenerator',
+    meta: {
+      title: "二维码生成器",
+      keywords: '二维码生成,在线二维码,QR Code Generator,自定义二维码',
+      description: '在线生成自定义二维码，支持设置颜色、尺寸、容错率，可下载 PNG 图片。'
+    }
+  },
+  {
+    path: '/tools/dev/url-encoder',
+    component: () => import('@/components/Tools/Dev/UrlEncoder/UrlEncoder.vue'),
+    name: 'urlEncoder',
+    meta: {
+      title: "URL 编码/解码",
+      keywords: 'URL编码,URL解码,UrlEncode,UrlDecode,网址编码',
+      description: '在线 URL 编码/解码工具，支持 UTF-8 编码，一键转换和复制。'
+    }
+  },
+  {
+    path: '/tools/dev/timestamp-converter',
+    component: () => import('@/components/Tools/Dev/TimestampConverter/TimestampConverter.vue'),
+    name: 'timestampConverter',
+    meta: {
+      title: "时间戳转换",
+      keywords: '时间戳转换,Unix时间戳,北京时间转换,Timestamp Converter',
+      description: '在线 Unix 时间戳与北京时间相互转换工具，支持秒和毫秒单位。'
+    }
+  },
+  {
+    path: '/tools/dev/md5-encrypt',
+    component: () => import('@/components/Tools/Dev/Md5Encrypt/Md5Encrypt.vue'),
+    name: 'md5Encrypt',
+    meta: {
+      title: "MD5 加密工具",
+      keywords: 'MD5加密,MD5在线加密,MD5生成器,32位MD5,16位MD5',
+      description: '在线 MD5 加密工具，支持 32 位和 16 位加密，大小写可选，一键复制结果。'
+    }
+  },
+  {
     path: '/tools/date-calculator',
     component: () => import('@/components/Tools/DateCalculator/index.vue'),
     name: 'dateCalculator',
@@ -852,16 +1102,6 @@ export const constantRoute = [
       description: '在线摩斯密码转换工具，支持中英文转换',
     }
   },
-  {
-    path: '/tools/numbertochinese',
-    component: () => import('@/components/Tools/NumberToChinese/NumberToChinese.vue'),
-    name: 'numbertochinese',
-    meta: {
-      title: "数字转中文",
-      keywords: '数字转中文,中文数字转换,大写数字',
-      description: '在线数字转中文工具，支持金额大写转换',
-    }
-  },
   // 文案工具
   {
     path: '/tools/copywriting/design-quotes',
@@ -1204,6 +1444,136 @@ export const constantRoute = [
       description: '一键生成 iOS、Android 和 Web App 所需的各种尺寸应用图标。支持自定义圆角、实时预览，并进行图标优化。'
     }
   },
+  {
+    path: '/tools/design/contrast-checker',
+    name: 'contrastChecker',
+    component: () => import('@/components/Tools/Design/ContrastChecker/ContrastChecker.vue'),
+    meta: {
+      title: '色彩对比度检测',
+      keywords: '色彩对比度,WCAG,无障碍设计,配色检查,对比度计算器',
+      description: '在线检测前景色和背景色的对比度，确保符合WCAG 2.0/2.1可访问性标准，提升设计可用性。'
+    }
+  },
+  {
+    path: '/tools/design/box-shadow',
+    name: 'boxShadow',
+    component: () => import('@/components/Tools/Design/BoxShadow/BoxShadow.vue'),
+    meta: {
+      title: 'CSS阴影生成器',
+      keywords: 'CSS阴影,Box Shadow,阴影生成器,CSS工具,样式生成',
+      description: '可视化调节Box Shadow属性，实时预览并生成CSS代码，支持内阴影、多层阴影效果。'
+    }
+  },
+  {
+    path: '/tools/design/golden-ratio',
+    name: 'goldenRatio',
+    component: () => import('@/components/Tools/Design/GoldenRatio/GoldenRatio.vue'),
+    meta: {
+      title: '黄金比例计算器',
+      keywords: '黄金比例,黄金分割,设计比例,排版工具,美学计算',
+      description: '快速计算设计的黄金分割比数值 (1:1.618)，辅助设计师进行版式布局和美学构图。'
+    }
+  },
+  {
+    path: '/tools/design/blob-maker',
+    name: 'blobMaker',
+    component: () => import('@/components/Tools/Design/BlobMaker/BlobMaker.vue'),
+    meta: {
+      title: 'Blob 形状生成器',
+      keywords: 'Blob生成器,流体形状,SVG生成器,有机形状,设计素材',
+      description: '生成独一无二的流体有机形状，支持导出 SVG 和 CSS，适用于网页背景和装饰元素。'
+    }
+  },
+  {
+      path: '/tools/design/clip-path',
+      name: 'clipPathMaker',
+      component: () => import('@/components/Tools/Design/ClipPathMaker/ClipPathMaker.vue'),
+      meta: {
+        title: 'CSS Clip-path 生成器',
+        keywords: 'Clip-path,CSS剪裁,多边形生成器,CSS图形,Web设计工具',
+        description: '在线可视化生成 CSS clip-path 代码，支持拖拽调整多边形顶点，提供多种常用形状预设。'
+      }
+    },
+    {
+      path: '/tools/design/border-radius',
+      name: 'borderRadius',
+      component: () => import('@/components/Tools/Design/BorderRadius/BorderRadius.vue'),
+      meta: {
+        title: 'CSS 圆角生成器',
+        keywords: 'Border-radius,CSS圆角,CSS图形,Web设计工具',
+        description: '在线可视化生成 CSS border-radius 代码，支持 8 个值的复杂圆角设置，轻松制作有机形状。'
+      }
+    },
+    {
+      path: '/tools/design/css-filter',
+      name: 'cssFilter',
+      component: () => import('@/components/Tools/Design/CssFilter/CssFilter.vue'),
+      meta: {
+        title: 'CSS 滤镜生成器',
+        keywords: 'CSS Filter,CSS滤镜,图像处理,Web设计工具',
+        description: '在线调节 CSS Filter 属性：模糊、亮度、对比度等，实时预览图片效果。'
+      }
+    },
+    {
+      path: '/tools/design/css-triangle',
+      name: 'cssTriangle',
+      component: () => import('@/components/Tools/Design/CssTriangle/CssTriangle.vue'),
+      meta: {
+        title: 'CSS 三角形生成器',
+        keywords: 'CSS Triangle,CSS三角形,CSS图形,Web设计工具',
+        description: '利用 CSS border 属性特性，快速生成各种方向和尺寸的三角形代码。'
+      }
+    },
+    {
+      path: '/tools/design/css-ribbon',
+      name: 'cssRibbon',
+      component: () => import('@/components/Tools/Design/CssRibbon/CssRibbon.vue'),
+      meta: {
+        title: 'CSS 丝带生成器',
+        keywords: 'CSS Ribbon,CSS丝带,CSS Badge,Web设计工具',
+        description: '快速生成常见的角落丝带（Ribbon）样式，常用于标记“热门”、“新品”等状态。'
+      }
+    },
+    {
+      path: '/tools/design/css-loader',
+      name: 'cssLoader',
+      component: () => import('@/components/Tools/Design/CssLoader/CssLoader.vue'),
+      meta: {
+        title: 'CSS 加载动画',
+        keywords: 'CSS Loader,CSS Spinner,CSS Loading,Web设计工具',
+        description: '生成纯 CSS 实现的 Loading 旋转动画，可自定义大小、颜色和速度。'
+      }
+    },
+    {
+      path: '/tools/design/css-flexbox',
+      name: 'cssFlexbox',
+      component: () => import('@/components/Tools/Design/CssFlexbox/CssFlexbox.vue'),
+      meta: {
+        title: 'CSS Flexbox 生成器',
+        keywords: 'CSS Flexbox,Flex布局,Flex Generator,Web设计工具',
+        description: '可视化调整 CSS Flexbox 布局属性，实时预览布局效果并生成代码。'
+      }
+    },
+    {
+      path: '/tools/design/css-text-shadow',
+      name: 'cssTextShadow',
+      component: () => import('@/components/Tools/Design/CssTextShadow/CssTextShadow.vue'),
+      meta: {
+        title: 'CSS 文本阴影生成器',
+        keywords: 'CSS Text Shadow,文本阴影,Web设计工具',
+        description: '在线可视化生成 CSS text-shadow 代码，支持偏移、模糊和颜色透明度调节。'
+      }
+    },
+    {
+      path: '/tools/design/css-gradient-text',
+      name: 'cssGradientText',
+      component: () => import('@/components/Tools/Design/CssGradientText/CssGradientText.vue'),
+      meta: {
+        title: 'CSS 渐变文字生成器',
+        keywords: 'CSS Gradient Text,渐变文字,Background Clip,Web设计工具',
+        description: '利用 background-clip: text 属性，快速生成炫酷的渐变色文字效果。'
+      }
+    },
   {
     path: '/tools/wallpaper/anime',
     component: () => import('@/components/Tools/Wallpaper/AnimeWallpaper.vue'),
@@ -1961,6 +2331,106 @@ export const constantRoute = [
       title: "网站信息获取",
       keywords: '网站信息,Favicon获取,网站Logo,SEO信息',
       description: '一键获取网站Favicon、Logo、标题、关键词和描述信息',
+    }
+  },
+  {
+    path: '/tools/design/web-ui-spec',
+    name: 'webUISpec',
+    component: () => import('@/components/Tools/Design/WebUISpec/WebUISpec.vue'),
+    meta: {
+      title: 'Web端设计规范',
+      keywords: 'Web UI Spec,设计规范,布局规范,字体规范,组件规范',
+      description: '提供Web端设计的尺寸、布局和组件规范参考，助你打造专业的桌面端应用。'
+    }
+  },
+  {
+    path: '/tools/design/typography-spec',
+    name: 'typographySpec',
+    component: () => import('@/components/Tools/Design/TypographySpec/TypographySpec.vue'),
+    meta: {
+      title: '字体排版规范',
+      keywords: 'Typography Spec,字体规范,排版系统,模块化比例',
+      description: '基于模块化比例生成字体排版系统，建立清晰的视觉层级。'
+    }
+  },
+  {
+    path: '/tools/design/color-spec',
+    name: 'colorSpec',
+    component: () => import('@/components/Tools/Design/ColorSpec/ColorSpec.vue'),
+    meta: {
+      title: '色彩规范生成器',
+      keywords: 'Color Spec,色彩规范,配色方案,调色板生成',
+      description: '输入品牌主色，自动生成完整的色阶板，适用于UI设计系统。'
+    }
+  },
+  {
+    path: '/tools/audio/recorder',
+    component: () => import('@/components/Tools/Audio/VoiceRecorder/VoiceRecorder.vue'),
+    name: 'voiceRecorder',
+    meta: {
+      title: "在线录音",
+      keywords: '在线录音,录音机,网页录音,语音录制',
+      description: '免费在线录音工具，支持波形可视化、暂停/继续录制，并可导出为 WebM 格式。'
+    }
+  },
+  {
+    path: '/tools/audio/converter',
+    component: () => import('@/components/Tools/Audio/AudioConverter/AudioConverter.vue'),
+    name: 'audioConverter',
+    meta: {
+      title: "音频格式转换",
+      keywords: '音频格式转换,MP3转换,WAV转换,音频转码,在线音频转换',
+      description: '免费在线音频格式转换工具，支持MP3、WAV、AAC、OGG等多种音频格式互转，本地处理保护隐私。'
+    }
+  },
+  {
+    path: '/tools/video/rotate',
+    component: () => import('@/components/Tools/Video/VideoRotate/VideoRotate.vue'),
+    name: 'videoRotate',
+    meta: {
+      title: "视频旋转/翻转",
+      keywords: '视频旋转,视频翻转,视频镜像,视频角度调整',
+      description: '在线旋转视频角度（90°/180°/270°）或进行水平/垂直翻转，本地处理保护隐私。'
+    }
+  },
+  {
+    path: '/tools/video/crop',
+    component: () => import('@/components/Tools/Video/VideoCrop/VideoCrop.vue'),
+    name: 'videoCrop',
+    meta: {
+      title: "视频画面裁剪",
+      keywords: '视频裁剪,视频画面裁剪,视频区域裁剪,视频尺寸裁剪',
+      description: '在线裁剪视频画面区域，支持自由调整比例，本地处理保护隐私。'
+    }
+  },
+  {
+    path: '/tools/video/trimmer',
+    component: () => import('@/components/Tools/Video/VideoTrimmer/VideoTrimmer.vue'),
+    name: 'videoTrimmer',
+    meta: {
+      title: "视频时长剪辑",
+      keywords: '视频剪辑,视频截取,视频切割,视频片段',
+      description: '在线截取视频片段，精准控制开始和结束时间，本地处理保护隐私。'
+    }
+  },
+  {
+    path: '/tools/video/to-audio',
+    component: () => import('@/components/Tools/Video/VideoToAudio/VideoToAudio.vue'),
+    name: 'videoToAudio',
+    meta: {
+      title: "视频提取音频",
+      keywords: '视频转音频,提取音频,视频转MP3,视频转WAV',
+      description: '从视频中提取高品质音频，支持 MP4, WebM, MOV 等格式，本地处理保护隐私。'
+    }
+  },
+  {
+    path: '/tools/audio/volume-booster',
+    component: () => import('@/components/Tools/Audio/VolumeBooster/VolumeBooster.vue'),
+    name: 'volumeBooster',
+    meta: {
+      title: "音频音量放大",
+      keywords: '音频音量放大,声音放大,音频增益,音量调节',
+      description: '在线调整音频音量，支持最大 300% 增益，本地处理保护隐私。'
     }
   },
   {

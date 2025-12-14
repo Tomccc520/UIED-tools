@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-13 18:00
- * @version Beta 2.4.8
- * @toolsCount 当前工具总数：194个
+ * @lastUpdate 2025-12-14 20:00
+ * @version Beta 2.5.8
+ * @toolsCount 当前工具总数：223个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -23,6 +23,15 @@ const showMobileToc = ref(false);
 const showBackToTop = ref(false);
 const tocListRef = ref<HTMLElement | null>(null);
 const tocItemRefs = ref<Record<string, HTMLElement>>({});
+
+const headerLinks = [
+  { name: 'AI学习平台', url: 'https://www.uied.cn/' },
+  { name: 'AI免费工具', url: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜', url: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', url: 'https://hao.uied.cn/ai' },
+  { name: 'AI交流群', url: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
+  { name: 'AI知识库', url: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
+]
 
 const scrollToTop = () => {
   window.scrollTo({
@@ -242,8 +251,22 @@ onUnmounted(() => {
             UIED技术团队
           </a>
         </div>
-        <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：194个 | 最后更新：2025-12-13 18:00
+
+        <!-- 快捷导航链接 -->
+        <div class="flex flex-wrap items-center gap-3 mt-4">
+          <a v-for="link in headerLinks" :key="link.name" :href="link.url" target="_blank" rel="noopener noreferrer"
+            class="flex items-center text-gray-600 hover:text-blue-600 transition-all bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm text-sm group">
+            <span class="font-medium">{{ link.name }}</span>
+            <svg
+              class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity transform -translate-x-1 group-hover:translate-x-0"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
+
+        <div class="text-gray-400 text-xs mt-4">
+          当前工具总数：221个 | 最后更新：2025-12-14 19:00
         </div>
       </div>
 
@@ -279,6 +302,406 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.5.9 -->
+          <div class="timeline-item" id="v2.5.9">
+            <div class="version-tag">
+              <span class="version">2.5.9</span>
+              <span class="date">2025-12-14 21:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">多媒体工具扩充与修复</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增与优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video/trimmer" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频时长剪辑</router-link></strong>：新增视频片段截取功能，支持双向滑块精确选择。
+                        </li>
+                        <li><strong><router-link to="/tools/video/rotate" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频旋转/翻转</router-link></strong>：新增视频旋转和镜像翻转工具，解决拍摄方向问题。
+                        </li>
+                        <li><strong><router-link to="/tools/video/crop" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频画面裁剪</router-link></strong>：优化裁剪工具体验，增加处理进度显示。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/merge" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频合并</router-link></strong>：UI
+                          全面升级，新增时长计算、拖拽上传和实时进度条。
+                        </li>
+                        <li><strong><router-link to="/tools/video/to-audio" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频提取音频</router-link></strong>：UI
+                          升级，优化格式支持和预览体验。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.8 -->
+          <div class="timeline-item" id="v2.5.8">
+            <div class="version-tag">
+              <span class="version">2.5.8</span>
+              <span class="date">2025-12-14 20:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">多媒体剪辑功能增强</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增剪辑工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video/crop" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频画面裁剪</router-link></strong>：在线裁剪视频画面区域，支持自由调整比例。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/volume-booster" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频音量放大</router-link></strong>：在线调整音频音量，支持最大
+                          300% 增益。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/recorder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">在线录音</router-link></strong>：免费在线录音工具，支持波形可视化与WebM导出。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.7 -->
+          <div class="timeline-item" id="v2.5.7">
+            <div class="version-tag">
+              <span class="version">2.5.7</span>
+              <span class="date">2025-12-14 19:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">音频处理工具上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增音频工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/audio/converter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频格式转换</router-link></strong>：在线音频格式转换工具，支持
+                          MP3、WAV、AAC、OGG 等格式互转。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/trimmer" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频剪辑</router-link></strong>：在线音频剪辑工具，支持可视化的波形剪辑，精确裁剪音频片段。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.6 -->
+          <div class="timeline-item" id="v2.5.6">
+            <div class="version-tag">
+              <span class="version">2.5.6</span>
+              <span class="date">2025-12-14 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">优化</el-tag>
+                <span class="text-gray-700">视频工具体验优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">功能优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>全面优化视频工具系列的交互体验，增加详细的版权信息和功能注释。</li>
+                        <li>优化代码结构，提升工具运行稳定性。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.5 -->
+          <div class="timeline-item" id="v2.5.5">
+            <div class="version-tag">
+              <span class="version">2.5.5</span>
+              <span class="date">2025-12-14 17:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">剪辑工具分类上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增剪辑工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video/frame" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频抽帧工具</router-link></strong>：在线提取视频画面，支持按时间点精确截图和批量导出，本地处理保护隐私。
+                        </li>
+                        <li><strong><router-link to="/tools/video/audio" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频提取音频</router-link></strong>：在线从视频中提取高质量音频，支持导出为
+                          WAV 格式。
+                        </li>
+                        <li><strong><router-link to="/tools/video/gif" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频转GIF</router-link></strong>：在线将视频转换为GIF动图，支持截取片段、调整尺寸和帧率。
+                        </li>
+                        <li><strong><router-link to="/tools/video/webcam" target="_blank"
+                              class="hover:text-blue-600 transition-colors">摄像头录制</router-link></strong>：在线录制摄像头视频，支持高清录制和音频采集，本地处理更安全。
+                        </li>
+                        <li><strong><router-link to="/tools/video/watermark" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频加水印</router-link></strong>：在线为视频添加文字或图片水印，支持拖拽调节位置，本地处理保护隐私。
+                        </li>
+                        <li><strong><router-link to="/tools/video/speed" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频倍速处理</router-link></strong>：在线调整视频播放速度（0.5x
+                          - 4.0x），支持导出处理后的视频，本地处理更安全。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.4 -->
+          <div class="timeline-item" id="v2.5.4">
+            <div class="version-tag">
+              <span class="version">2.5.4</span>
+              <span class="date">2025-12-14 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发者辅助工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/url-parser" target="_blank"
+                              class="hover:text-blue-600 transition-colors">URL 解析器</router-link></strong>：将 URL
+                          解析为协议、主机、路径、查询参数等组成部分。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/cron" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Cron 表达式生成器</router-link></strong>：可视化生成
+                          Cron 表达式，支持 Quartz 和 Linux Crontab 格式。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.3 -->
+          <div class="timeline-item" id="v2.5.3">
+            <div class="version-tag">
+              <span class="version">2.5.3</span>
+              <span class="date">2025-12-14 15:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发者辅助工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增辅助工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/keycode" target="_blank"
+                              class="hover:text-blue-600 transition-colors">键盘键值码查看器</router-link></strong>：在线查看键盘按键的
+                          KeyCode、Code 等详细信息，开发调试必备。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/user-agent" target="_blank"
+                              class="hover:text-blue-600 transition-colors">User Agent 解析</router-link></strong>：查看您的浏览器
+                          User Agent 字符串，解析操作系统、浏览器版本和设备类型。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.2 -->
+          <div class="timeline-item" id="v2.5.2">
+            <div class="version-tag">
+              <span class="version">2.5.2</span>
+              <span class="date">2025-12-14 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">办公规范工具更新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增办公规范工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/doc/spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">常用文档规范</router-link></strong>：提供公文写作与文档排版的标准规范参考，包含A4纸张尺寸、页边距、字体字号等详细参数。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.1 -->
+          <div class="timeline-item" id="v2.5.1">
+            <div class="version-tag">
+              <span class="version">2.5.1</span>
+              <span class="date">2025-12-14 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发者工具箱扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发辅助工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/json-format" target="_blank"
+                              class="hover:text-blue-600 transition-colors">JSON 格式化工具</router-link></strong>：在线 JSON
+                          代码格式化、验证、压缩工具，支持错误检查和一键复制。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/diff-checker" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本对比工具</router-link></strong>：在线比较两段文本或代码的差异，高亮显示新增和删除的内容。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/url-encoder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">URL 编码/解码</router-link></strong>：在线 URL
+                          Encode / Decode 工具，支持 UTF-8 编码，自动处理特殊字符。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/timestamp-converter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">时间戳转换</router-link></strong>：在线 Unix
+                          时间戳与北京时间相互转换工具，支持秒和毫秒单位。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/md5-encrypt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">MD5 加密工具</router-link></strong>：在线 MD5
+                          加密工具，支持 32 位和 16 位加密，大小写可选。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增媒体工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/media/qrcode-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">二维码生成器</router-link></strong>：在线生成自定义二维码，支持设置颜色、尺寸、容错率，可下载
+                          PNG 图片。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.0 -->
+          <div class="timeline-item" id="v2.5.0">
+            <div class="version-tag">
+              <span class="version">2.5.0</span>
+              <span class="date">2025-12-14 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">设计与文档工具更新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增设计规范工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/web-ui-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Web端设计规范</router-link></strong>：提供Web端常用布局尺寸、栅格系统、文字排版等设计规范参考。
+                        </li>
+                        <li><strong><router-link to="/tools/design/typography-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">字体排版规范</router-link></strong>：提供Web端常用字体家族、字号层级、行高比例等排版规范。
+                        </li>
+                        <li><strong><router-link to="/tools/design/color-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">色彩规范生成器</router-link></strong>：基于主色调自动生成完整的色彩系统，包含明暗色阶和辅助色。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增文档处理工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/doc/markdown-table" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown
+                              表格生成器</router-link></strong>：可视化编辑表格，自动生成 Markdown 格式代码。
+                        </li>
+                        <li><strong><router-link to="/tools/doc/text-cleaner" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本清洗工具</router-link></strong>：一键去除空行、重复行、HTML标签，支持大小写转换。
+                        </li>
+                        <li><strong><router-link to="/tools/doc/number-chinese" target="_blank"
+                              class="hover:text-blue-600 transition-colors">数字转中文大写</router-link></strong>：在线将数字转换为中文大写金额，适用于财务报销等场景。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增常用设计工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/css-flexbox" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS Flexbox 生成器</router-link></strong>：可视化调整
+                          Flexbox 布局属性，生成 CSS 代码。
+                        </li>
+                        <li><strong><router-link to="/tools/design/css-text-shadow" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 文本阴影生成器</router-link></strong>：在线可视化生成
+                          CSS text-shadow 代码。
+                        </li>
+                        <li><strong><router-link to="/tools/design/css-gradient-text" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS
+                              渐变文字生成器</router-link></strong>：快速生成炫酷的渐变色文字效果。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.4.8 -->
           <div class="timeline-item" id="v2.4.8">
