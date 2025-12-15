@@ -235,17 +235,6 @@ export function getToolsCate(): ToolCategory[] {
               releaseDate: '2024/2/7 00:00:00',
               tags: ['免费', '新品'],
               isNew: true
-            },
-            {
-              id: 408,
-              title: 'AI智能抠图',
-              logo: { type: 'svg', name: 'imageRemoveBg' },
-              desc: '一键移除图片背景，生成透明PNG，完全在本地处理，保护您的隐私',
-              url: '/tools/ai/remove-bg',
-              cate: 'AI图像工具',
-              releaseDate: '2025/12/15 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
             }
           ]
         },

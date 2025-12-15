@@ -392,10 +392,6 @@ onUnmounted(() => {
                     <div class="feature-title">新增AI工具</div>
                     <div class="feature-desc">
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
-                        <li><strong><router-link to="/tools/ai/remove-bg" target="_blank"
-                              class="hover:text-blue-600 transition-colors">AI智能抠图</router-link></strong>：基于 AI
-                          模型的图片背景移除工具，支持本地处理，保护隐私。
-                        </li>
                         <li><strong><router-link to="/tools/ai/article-generator" target="_blank"
                               class="hover:text-blue-600 transition-colors">AI文章生成</router-link></strong>：智能生成高质量文章，支持多种风格和用途。
                         </li>

@@ -109,16 +109,6 @@ export const constantRoute = [
     }
   },
   {
-    path: '/tools/ai/remove-bg',
-    component: () => import('@/components/Tools/AI/BackgroundRemover.vue'),
-    name: 'aiRemoveBg',
-    meta: {
-      title: "AI智能抠图",
-      keywords: 'AI抠图,在线抠图,背景移除,透明背景,图片去底',
-      description: '免费在线AI智能抠图工具，一键移除图片背景生成透明PNG，本地处理保护隐私',
-    }
-  },
-  {
     path: '/tools/ai/article-generator',
     component: () => import('@/components/Tools/AI/Writing/AIArticleGenerator.vue'),
     name: 'aiArticleGenerator',
