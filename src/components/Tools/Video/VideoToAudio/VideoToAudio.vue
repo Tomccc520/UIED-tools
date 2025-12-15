@@ -65,7 +65,7 @@ const loadVideo = (file: File) => {
   videoFile.value = file
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
   if (resultAudioUrl.value) URL.revokeObjectURL(resultAudioUrl.value)
-
+  
   videoUrl.value = URL.createObjectURL(file)
   resultAudioUrl.value = ''
   progress.value = 0
@@ -127,33 +127,33 @@ const audioBufferToWav = (buffer: AudioBuffer): Blob => {
 
 const processVideo = async () => {
   if (!videoFile.value) return
-
+  
   isProcessing.value = true
   statusText.value = '正在提取音频...'
   progress.value = 10
-
+  
   try {
     const arrayBuffer = await videoFile.value.arrayBuffer()
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-
+    
     statusText.value = '正在解码音频轨道...'
     progress.value = 30
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-
+    
     statusText.value = '正在生成文件...'
     progress.value = 80
-
+    
     let blob: Blob | null = null
-
+    
     // Currently we only support WAV export reliably without external libs (ffmpeg.wasm)
     // For WebM we would need MediaRecorder which is real-time and slow for this
     blob = audioBufferToWav(audioBuffer)
-
+    
     resultAudioUrl.value = URL.createObjectURL(blob)
     progress.value = 100
     statusText.value = '提取完成'
     ElMessage.success('提取成功')
-
+    
   } catch (error) {
     console.error(error)
     ElMessage.error('提取失败，视频可能没有音频轨道或格式不支持')
@@ -189,10 +189,11 @@ onUnmounted(() => {
         </div>
 
         <!-- Upload Area -->
-        <div
-          class="border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
+        <div class="border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
           :class="[isDragOver ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50']"
-          @click="fileInput?.click()" @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false"
+          @click="fileInput?.click()"
+          @dragover.prevent="isDragOver = true"
+          @dragleave.prevent="isDragOver = false"
           @drop.prevent="handleDrop">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
           <div class="text-6xl mb-4 text-blue-500 transition-transform group-hover:scale-110 duration-300">🎼</div>
@@ -202,64 +203,55 @@ onUnmounted(() => {
 
         <!-- Editor Area -->
         <div v-if="videoUrl" class="max-w-3xl mx-auto space-y-6 animate-fade-in">
-          <div
-            class="bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center shadow-lg ring-1 ring-gray-900/5">
+          <div class="bg-black rounded-xl overflow-hidden aspect-video flex items-center justify-center shadow-lg ring-1 ring-gray-900/5">
             <video :src="videoUrl" controls class="max-w-full max-h-[400px]"></video>
           </div>
-
+          
           <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-            <div class="flex items-center justify-between mb-4">
-              <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
-                  📹
+             <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-3">
+                   <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                      📹
+                   </div>
+                   <div>
+                      <h3 class="font-bold text-gray-800">{{ videoFile?.name }}</h3>
+                      <p class="text-xs text-gray-500">{{ (videoFile?.size ? (videoFile.size / 1024 / 1024).toFixed(2) : 0) }} MB</p>
+                   </div>
                 </div>
-                <div>
-                  <h3 class="font-bold text-gray-800">{{ videoFile?.name }}</h3>
-                  <p class="text-xs text-gray-500">{{ (videoFile?.size ? (videoFile.size / 1024 / 1024).toFixed(2) : 0)
-                    }} MB</p>
+                <button @click="fileInput?.click()" class="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline">
+                   更换视频
+                </button>
+             </div>
+
+             <!-- Processing Status -->
+             <div v-if="isProcessing" class="mb-4">
+                <div class="flex justify-between text-xs font-medium text-gray-600 mb-1">
+                   <span>{{ statusText }}</span>
+                   <span>{{ progress }}%</span>
                 </div>
-              </div>
-              <button @click="fileInput?.click()"
-                class="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline">
-                更换视频
-              </button>
-            </div>
+                <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                   <div class="bg-blue-600 h-2 rounded-full transition-all duration-300" :style="{ width: `${progress}%` }"></div>
+                </div>
+             </div>
 
-            <!-- Processing Status -->
-            <div v-if="isProcessing" class="mb-4">
-              <div class="flex justify-between text-xs font-medium text-gray-600 mb-1">
-                <span>{{ statusText }}</span>
-                <span>{{ progress }}%</span>
-              </div>
-              <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                <div class="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                  :style="{ width: `${progress}%` }"></div>
-              </div>
-            </div>
-
-            <button @click="processVideo" :disabled="isProcessing"
-              class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-bold hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center">
-              <span v-if="!isProcessing" class="mr-2">🎵</span>
-              {{ isProcessing ? '处理中...' : '开始提取音频 (WAV)' }}
-            </button>
+             <button @click="processVideo" :disabled="isProcessing"
+               class="w-full py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-bold hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none flex items-center justify-center">
+               <span v-if="!isProcessing" class="mr-2">🎵</span>
+               {{ isProcessing ? '处理中...' : '开始提取音频 (WAV)' }}
+             </button>
           </div>
 
-          <div v-if="resultAudioUrl"
-            class="bg-green-50 border border-green-100 rounded-xl p-8 text-center animate-fade-in shadow-sm">
-            <div
-              class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+          <div v-if="resultAudioUrl" class="bg-green-50 border border-green-100 rounded-xl p-8 text-center animate-fade-in shadow-sm">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
               ✓
             </div>
             <h3 class="text-xl text-gray-800 font-bold mb-6">提取成功！</h3>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-              <audio :src="resultAudioUrl" controls class="w-full"></audio>
+               <audio :src="resultAudioUrl" controls class="w-full"></audio>
             </div>
             <button @click="downloadResult"
               class="px-8 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center mx-auto">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-              </svg>
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
               下载音频文件
             </button>
           </div>

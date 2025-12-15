@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-14 20:00
- * @version Beta 2.5.8
- * @toolsCount 当前工具总数：223个
+ * @lastUpdate 2025-12-15 14:00
+ * @version Beta 2.6.1
+ * @toolsCount 当前工具总数：240个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -266,7 +266,7 @@ onUnmounted(() => {
         </div>
 
         <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：221个 | 最后更新：2025-12-14 19:00
+          当前工具总数：240个 | 最后更新：2025-12-15 14:00
         </div>
       </div>
 
@@ -302,6 +302,118 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.6.1 -->
+          <div class="timeline-item" id="v2.6.1">
+            <div class="version-tag">
+              <span class="version">2.6.1</span>
+              <span class="date">2025-12-15 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI写作工具大规模扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增13个AI写作工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/book-review" target="_blank"
+                              class="hover:text-blue-600 transition-colors">读后感/读书笔记</router-link></strong>：智能生成高质量读后感和读书笔记，支持多种书籍类型。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/literature-review" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文献综述</router-link></strong>：智能生成专业文献综述，支持多种学术领域。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/training-experience" target="_blank"
+                              class="hover:text-blue-600 transition-colors">培训心得</router-link></strong>：智能生成培训心得体会，总结学习收获和感悟。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/work-report-ppt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作汇报PPT</router-link></strong>：智能生成工作汇报PPT大纲和内容脚本，助力高效汇报。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/speech-draft" target="_blank"
+                              class="hover:text-blue-600 transition-colors">演讲稿</router-link></strong>：智能生成精彩演讲稿，支持多种场合和风格。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/novel-plot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小说剧情创作</router-link></strong>：智能生成小说剧情大纲、角色设定和故事梗概。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/debriefing-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">述职报告</router-link></strong>：智能生成个人述职报告，突出工作业绩和职业亮点。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/essay-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">作文一键写作</router-link></strong>：智能生成各类作文，支持不同年级和题材要求。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/xiaohongshu-note" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书笔记生成</router-link></strong>：智能生成小红书风格笔记，包含Emoji和种草文案。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/xiaohongshu-title" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书爆款标题</router-link></strong>：智能生成吸引眼球的小红书爆款标题，提升点击率。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/xiaohongshu-rewrite" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书笔记改写</router-link></strong>：一键将普通文本改写为小红书风格笔记，增加吸引力。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/essay-contest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">征文</router-link></strong>：智能生成各类征文稿件，紧扣主题，文采斐然。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/spokesperson-speech" target="_blank"
+                              class="hover:text-blue-600 transition-colors">发言稿</router-link></strong>：智能生成各类会议、活动发言稿，得体大方。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">工具总数更新</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>工具总数从227个增加到240个，AI写作工具分类已达15个。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.6.0 -->
+          <div class="timeline-item" id="v2.6.0">
+            <div class="version-tag">
+              <span class="version">2.6.0</span>
+              <span class="date">2025-12-15 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI工具箱扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增AI工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/remove-bg" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI智能抠图</router-link></strong>：基于 AI
+                          模型的图片背景移除工具，支持本地处理，保护隐私。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI文章生成</router-link></strong>：智能生成高质量文章，支持多种风格和用途。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">分类优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增<strong>AI写作工具</strong>分类，整合写作类AI应用。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.5.9 -->
           <div class="timeline-item" id="v2.5.9">

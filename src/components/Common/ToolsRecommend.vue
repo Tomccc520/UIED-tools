@@ -56,7 +56,7 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-blue-500 transition-colors">{{ tool.title
-                }}</div>
+              }}</div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg"
@@ -93,7 +93,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <div class="text-sm font-medium text-gray-800 group-hover:text-red-500 transition-colors">{{ tool.title
-                  }}</div>
+                }}</div>
                 <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg"
@@ -108,7 +108,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <div class="text-sm font-medium text-gray-800 group-hover:text-red-500 transition-colors">{{ tool.title
-                  }}</div>
+                }}</div>
                 <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg"
@@ -145,7 +145,7 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-green-500 transition-colors">{{ tool.title
-                }}
+              }}
               </div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
@@ -181,7 +181,7 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-purple-500 transition-colors">{{ tool.title
-                }}
+              }}
               </div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>

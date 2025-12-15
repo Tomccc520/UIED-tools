@@ -262,49 +262,47 @@ onUnmounted(() => {
         <!-- Editor Area -->
         <div v-else class="max-w-4xl mx-auto">
           <!-- Waveform Visualization -->
-          <div
-            class="bg-gray-900 rounded-lg mb-6 relative h-48 flex items-center justify-center overflow-hidden select-none group">
+          <div class="bg-gray-900 rounded-lg mb-6 relative h-48 flex items-center justify-center overflow-hidden select-none group">
             <!-- Canvas Layer -->
             <canvas ref="waveformCanvas" class="w-full h-full absolute inset-0 z-0"></canvas>
-
+            
             <!-- Simulated Layer (Fallback) -->
             <div v-if="waveform.length > 0" class="flex items-end gap-1 h-32 w-full px-4 absolute z-0 opacity-80">
-              <div v-for="(h, i) in waveform" :key="i" class="flex-1 bg-blue-500 rounded-t"
-                :style="{ height: `${h * 100}%` }"></div>
+              <div v-for="(h, i) in waveform" :key="i" 
+                class="flex-1 bg-blue-500 rounded-t"
+                :style="{ height: `${h * 100}%` }"
+              ></div>
             </div>
-
+            
             <!-- Progress Cursor -->
             <div class="absolute top-0 bottom-0 w-0.5 bg-red-500 z-20 transition-all duration-75"
-              :style="{ left: `${(currentTime / duration) * 100}%` }">
+              :style="{ left: `${(currentTime / duration) * 100}%` }"
+            >
               <div class="w-2 h-2 bg-red-500 rounded-full -ml-[3px] -mt-1 shadow-sm"></div>
             </div>
-
+            
             <!-- Selection Overlay (Dimmed Outside) -->
             <div class="absolute inset-0 z-10 pointer-events-none">
-              <!-- Left Dim -->
-              <div class="absolute left-0 top-0 bottom-0 bg-black/60 backdrop-blur-[1px] border-r-2 border-yellow-400"
-                :style="{ width: `${(startTime / duration) * 100}%` }">
-                <div
-                  class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-8 bg-yellow-400 rounded flex items-center justify-center cursor-ew-resize pointer-events-auto hover:scale-110 transition-transform shadow-lg">
-                  <div class="w-0.5 h-4 bg-black/20"></div>
-                </div>
-              </div>
-
-              <!-- Right Dim -->
-              <div class="absolute right-0 top-0 bottom-0 bg-black/60 backdrop-blur-[1px] border-l-2 border-yellow-400"
-                :style="{ width: `${((duration - endTime) / duration) * 100}%` }">
-                <div
-                  class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-8 bg-yellow-400 rounded flex items-center justify-center cursor-ew-resize pointer-events-auto hover:scale-110 transition-transform shadow-lg">
-                  <div class="w-0.5 h-4 bg-black/20"></div>
-                </div>
-              </div>
+               <!-- Left Dim -->
+               <div class="absolute left-0 top-0 bottom-0 bg-black/60 backdrop-blur-[1px] border-r-2 border-yellow-400"
+                 :style="{ width: `${(startTime / duration) * 100}%` }">
+                 <div class="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-4 h-8 bg-yellow-400 rounded flex items-center justify-center cursor-ew-resize pointer-events-auto hover:scale-110 transition-transform shadow-lg">
+                   <div class="w-0.5 h-4 bg-black/20"></div>
+                 </div>
+               </div>
+               
+               <!-- Right Dim -->
+               <div class="absolute right-0 top-0 bottom-0 bg-black/60 backdrop-blur-[1px] border-l-2 border-yellow-400"
+                 :style="{ width: `${((duration - endTime) / duration) * 100}%` }">
+                 <div class="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-8 bg-yellow-400 rounded flex items-center justify-center cursor-ew-resize pointer-events-auto hover:scale-110 transition-transform shadow-lg">
+                   <div class="w-0.5 h-4 bg-black/20"></div>
+                 </div>
+               </div>
             </div>
-
+            
             <!-- Time Markers -->
-            <div class="absolute bottom-2 left-2 text-xs text-gray-400 bg-black/50 px-1 rounded">{{
-              formatTime(startTime) }}</div>
-            <div class="absolute bottom-2 right-2 text-xs text-gray-400 bg-black/50 px-1 rounded">{{ formatTime(endTime)
-              }}</div>
+            <div class="absolute bottom-2 left-2 text-xs text-gray-400 bg-black/50 px-1 rounded">{{ formatTime(startTime) }}</div>
+            <div class="absolute bottom-2 right-2 text-xs text-gray-400 bg-black/50 px-1 rounded">{{ formatTime(endTime) }}</div>
           </div>
 
           <!-- Controls -->

@@ -62,14 +62,14 @@ const handleFileChange = (event: Event) => {
 const processVideo = async () => {
   if (!videoRef.value) return
   const video = videoRef.value
-
+  
   isProcessing.value = true
   statusText.value = '准备处理...'
   progress.value = 0
 
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
-
+  
   if (!ctx) {
     ElMessage.error('无法创建 Canvas')
     isProcessing.value = false
@@ -81,7 +81,7 @@ const processVideo = async () => {
 
   // Setup MediaRecorder
   const canvasStream = canvas.captureStream(30)
-
+  
   // Capture Audio
   try {
     // @ts-ignore
@@ -92,15 +92,15 @@ const processVideo = async () => {
         canvasStream.addTrack(audioTracks[0])
       }
     } else {
-      // Fallback via AudioContext
-      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const source = audioCtx.createMediaElementSource(video)
-      const dest = audioCtx.createMediaStreamDestination()
-      source.connect(dest)
-      source.connect(audioCtx.destination)
-      if (dest.stream.getAudioTracks().length > 0) {
-        canvasStream.addTrack(dest.stream.getAudioTracks()[0])
-      }
+       // Fallback via AudioContext
+       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+       const source = audioCtx.createMediaElementSource(video)
+       const dest = audioCtx.createMediaStreamDestination()
+       source.connect(dest)
+       source.connect(audioCtx.destination)
+       if (dest.stream.getAudioTracks().length > 0) {
+         canvasStream.addTrack(dest.stream.getAudioTracks()[0])
+       }
     }
   } catch (e) {
     console.warn('Audio capture failed:', e)
@@ -131,9 +131,9 @@ const processVideo = async () => {
   const originalTime = video.currentTime
   video.currentTime = 0
   video.playbackRate = settings.speed // Ensure speed is applied
-
+  
   await new Promise(r => setTimeout(r, 100))
-
+  
   video.play()
   statusText.value = '正在变速录制...'
 
@@ -191,28 +191,24 @@ onUnmounted(() => {
           <div class="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative">
             <video ref="videoRef" :src="videoUrl" controls class="max-w-full max-h-[400px]"></video>
           </div>
-
+          
           <!-- Speed Control -->
           <div class="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
             <div class="flex items-center justify-between mb-4">
               <span class="font-bold text-gray-700">播放速度: {{ settings.speed }}x</span>
               <div class="space-x-2">
-                <button @click="settings.speed = 0.5"
-                  class="px-3 py-1 text-sm border rounded hover:bg-gray-50">0.5x</button>
-                <button @click="settings.speed = 1.0"
-                  class="px-3 py-1 text-sm border rounded hover:bg-gray-50">1.0x</button>
-                <button @click="settings.speed = 1.5"
-                  class="px-3 py-1 text-sm border rounded hover:bg-gray-50">1.5x</button>
-                <button @click="settings.speed = 2.0"
-                  class="px-3 py-1 text-sm border rounded hover:bg-gray-50">2.0x</button>
+                <button @click="settings.speed = 0.5" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">0.5x</button>
+                <button @click="settings.speed = 1.0" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">1.0x</button>
+                <button @click="settings.speed = 1.5" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">1.5x</button>
+                <button @click="settings.speed = 2.0" class="px-3 py-1 text-sm border rounded hover:bg-gray-50">2.0x</button>
               </div>
             </div>
             <input type="range" v-model.number="settings.speed" min="0.25" max="4" step="0.25"
               class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
           </div>
-
+          
           <div class="flex items-center justify-between bg-gray-50 p-6 rounded-xl">
-            <div class="text-gray-700">
+             <div class="text-gray-700">
               <span class="font-bold">文件名:</span> {{ videoFile?.name }}
             </div>
             <div class="space-x-4">
@@ -224,11 +220,9 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <div v-if="resultVideoUrl"
-            class="bg-green-50 border border-green-100 rounded-xl p-6 text-center animate-fade-in">
+          <div v-if="resultVideoUrl" class="bg-green-50 border border-green-100 rounded-xl p-6 text-center animate-fade-in">
             <h3 class="text-green-800 font-bold mb-4">处理成功</h3>
-            <video :src="resultVideoUrl" controls
-              class="max-w-full max-h-[300px] mx-auto mb-4 bg-black rounded"></video>
+            <video :src="resultVideoUrl" controls class="max-w-full max-h-[300px] mx-auto mb-4 bg-black rounded"></video>
             <button @click="downloadVideo"
               class="px-8 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md">
               下载视频

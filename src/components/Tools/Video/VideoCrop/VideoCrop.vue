@@ -400,12 +400,11 @@ onUnmounted(() => {
                 <div v-else class="text-gray-500 flex flex-col items-center p-6 w-full">
                   <div v-if="isProcessing" class="w-full max-w-xs">
                     <div class="flex justify-between text-xs font-medium text-blue-400 mb-2">
-                      <span>{{ statusText }}</span>
-                      <span>{{ progress }}%</span>
+                       <span>{{ statusText }}</span>
+                       <span>{{ progress }}%</span>
                     </div>
                     <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden mb-4">
-                      <div class="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        :style="{ width: `${progress}%` }"></div>
+                       <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" :style="{ width: `${progress}%` }"></div>
                     </div>
                   </div>
                   <div v-else class="text-center">

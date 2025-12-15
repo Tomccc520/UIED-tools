@@ -235,6 +235,17 @@ export function getToolsCate(): ToolCategory[] {
               releaseDate: '2024/2/7 00:00:00',
               tags: ['免费', '新品'],
               isNew: true
+            },
+            {
+              id: 408,
+              title: 'AI智能抠图',
+              logo: { type: 'svg', name: 'imageRemoveBg' },
+              desc: '一键移除图片背景，生成透明PNG，完全在本地处理，保护您的隐私',
+              url: '/tools/ai/remove-bg',
+              cate: 'AI图像工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
             }
           ]
         },
@@ -290,6 +301,221 @@ export function getToolsCate(): ToolCategory[] {
               cate: 'AI效率工具',
               isNew: true,
               tags: ['免费', '资讯']
+            }
+          ]
+        },
+        {
+          id: 8,
+          title: 'AI写作工具',
+          list: [
+            {
+              id: 701,
+              title: 'AI文章生成',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成高质量文章，支持多种风格和用途，助您高效创作',
+              url: '/tools/ai/article-generator',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 702,
+              title: 'AI工作总结',
+              logo: { type: 'svg', name: 'aiArticle' }, // Reusing icon for now
+              desc: '智能生成专业的工作总结，包含工作成果、问题分析和未来规划',
+              url: '/tools/ai/work-summary',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 703,
+              title: 'AI实习总结',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成高质量的实习总结报告，记录成长点滴，助力职场起步',
+              url: '/tools/ai/intern-summary',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 704,
+              title: 'AI实践报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成社会实践报告，记录实践过程，总结实践经验',
+              url: '/tools/ai/practice-report',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 705,
+              title: 'AI分析报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成专业的数据分析、市场分析或问题分析报告，提供深度洞察',
+              url: '/tools/ai/analysis-report',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 706,
+              title: 'AI周报总结',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成结构化周报，清晰展示工作进度，提升沟通效率',
+              url: '/tools/ai/weekly-summary',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 707,
+              title: '读后感/读书笔记',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成高质量读后感和读书笔记，支持多种书籍类型',
+              url: '/tools/ai/book-review',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 708,
+              title: '文献综述',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成专业文献综述，支持多种学术领域',
+              url: '/tools/ai/literature-review',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 709,
+              title: '培训心得',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成培训心得体会，总结学习收获和感悟',
+              url: '/tools/ai/training-experience',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 710,
+              title: '工作汇报PPT',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成工作汇报PPT大纲和内容脚本，助力高效汇报',
+              url: '/tools/ai/work-report-ppt',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 711,
+              title: '演讲稿',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成精彩演讲稿，支持多种场合和风格',
+              url: '/tools/ai/speech-draft',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 712,
+              title: '小说剧情创作',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成小说剧情大纲、角色设定和故事梗概',
+              url: '/tools/ai/novel-plot',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 713,
+              title: '述职报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成个人述职报告，突出工作业绩和职业亮点',
+              url: '/tools/ai/debriefing-report',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 714,
+              title: '作文一键写作',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成各类作文，支持不同年级和题材要求',
+              url: '/tools/ai/essay-writing',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 715,
+              title: '小红书笔记生成',
+              logo: { type: 'svg', name: 'xiaohongshu' },
+              desc: '智能生成小红书风格笔记，包含Emoji和种草文案',
+              url: '/tools/ai/xiaohongshu-note',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 716,
+              title: '小红书爆款标题',
+              logo: { type: 'svg', name: 'xiaohongshu' },
+              desc: '智能生成吸引眼球的小红书爆款标题，提升点击率',
+              url: '/tools/ai/xiaohongshu-title',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 717,
+              title: '小红书笔记改写',
+              logo: { type: 'svg', name: 'xiaohongshu' },
+              desc: '一键将普通文本改写为小红书风格笔记，增加吸引力',
+              url: '/tools/ai/xiaohongshu-rewrite',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 718,
+              title: '征文',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成各类征文稿件，紧扣主题，文采斐然',
+              url: '/tools/ai/essay-contest',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 719,
+              title: '发言稿',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成各类会议、活动发言稿，得体大方',
+              url: '/tools/ai/spokesperson-speech',
+              cate: 'AI写作工具',
+              releaseDate: '2025/12/15 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
             }
           ]
         }

@@ -109,6 +109,206 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/ai/remove-bg',
+    component: () => import('@/components/Tools/AI/BackgroundRemover.vue'),
+    name: 'aiRemoveBg',
+    meta: {
+      title: "AI智能抠图",
+      keywords: 'AI抠图,在线抠图,背景移除,透明背景,图片去底',
+      description: '免费在线AI智能抠图工具，一键移除图片背景生成透明PNG，本地处理保护隐私',
+    }
+  },
+  {
+    path: '/tools/ai/article-generator',
+    component: () => import('@/components/Tools/AI/Writing/AIArticleGenerator.vue'),
+    name: 'aiArticleGenerator',
+    meta: {
+      title: "AI文章生成",
+      keywords: 'AI写作,文章生成,智能写作,文案生成,AI创作',
+      description: '免费在线AI文章生成工具，智能生成高质量文章，支持多种风格和用途',
+    }
+  },
+  {
+    path: '/tools/ai/work-summary',
+    component: () => import('@/components/Tools/AI/Writing/AIWorkSummary.vue'),
+    name: 'aiWorkSummary',
+    meta: {
+      title: "AI工作总结",
+      keywords: 'AI工作总结,工作汇报,月度总结,季度总结,年度总结',
+      description: '免费在线AI工作总结生成工具，智能生成专业的工作总结，包含工作成果、问题分析和未来规划',
+    }
+  },
+  {
+    path: '/tools/ai/intern-summary',
+    component: () => import('@/components/Tools/AI/Writing/InternSummary.vue'),
+    name: 'internSummary',
+    meta: {
+      title: "实习总结",
+      keywords: '实习总结,实习报告,实习心得,实习感悟,实习周记',
+      description: '免费在线AI实习总结生成工具，智能生成高质量的实习总结报告，记录成长点滴，助力职场起步',
+    }
+  },
+  {
+    path: '/tools/ai/practice-report',
+    component: () => import('@/components/Tools/AI/Writing/PracticeReport.vue'),
+    name: 'practiceReport',
+    meta: {
+      title: "实践报告",
+      keywords: '实践报告,社会实践,调研报告,志愿服务,实践心得',
+      description: '免费在线AI实践报告生成工具，智能生成社会实践报告，记录实践过程，总结实践经验',
+    }
+  },
+  {
+    path: '/tools/ai/analysis-report',
+    component: () => import('@/components/Tools/AI/Writing/AnalysisReport.vue'),
+    name: 'analysisReport',
+    meta: {
+      title: "分析报告",
+      keywords: '分析报告,数据分析,市场分析,问题分析,商业报告',
+      description: '免费在线AI分析报告生成工具，智能生成专业的数据分析、市场分析或问题分析报告，提供深度洞察',
+    }
+  },
+  {
+    path: '/tools/ai/weekly-summary',
+    component: () => import('@/components/Tools/AI/Writing/WeeklySummary.vue'),
+    name: 'weeklySummary',
+    meta: {
+      title: "周报总结",
+      keywords: '周报,工作周报,周总结,下周计划,工作汇报',
+      description: '免费在线AI周报总结生成工具，智能生成结构化周报，清晰展示工作进度，提升沟通效率',
+    }
+  },
+  {
+    path: '/tools/ai/book-review',
+    component: () => import('@/components/Tools/AI/Writing/BookReview.vue'),
+    name: 'bookReview',
+    meta: {
+      title: "读后感/读书笔记",
+      keywords: '读后感,读书笔记,书评,阅读心得,读书感悟',
+      description: '免费在线AI读后感生成工具，智能生成高质量读后感和读书笔记，支持多种书籍类型'
+    }
+  },
+  {
+    path: '/tools/ai/literature-review',
+    component: () => import('@/components/Tools/AI/Writing/LiteratureReview.vue'),
+    name: 'literatureReview',
+    meta: {
+      title: "文献综述",
+      keywords: '文献综述,学术综述,研究综述,文献分析,学术研究',
+      description: '免费在线AI文献综述生成工具，智能生成专业文献综述，支持多种学术领域'
+    }
+  },
+  {
+    path: '/tools/ai/training-experience',
+    component: () => import('@/components/Tools/AI/Writing/TrainingExperience.vue'),
+    name: 'trainingExperience',
+    meta: {
+      title: "培训心得",
+      keywords: '培训心得,培训总结,学习心得,培训感悟,学习收获',
+      description: '免费在线AI培训心得生成工具，智能生成培训心得体会，总结学习收获和感悟'
+    }
+  },
+  {
+    path: '/tools/ai/work-report-ppt',
+    component: () => import('@/components/Tools/AI/Writing/WorkReportPPT.vue'),
+    name: 'workReportPPT',
+    meta: {
+      title: "工作汇报PPT",
+      keywords: '工作汇报PPT,PPT大纲,汇报演示,PPT脚本,演讲PPT',
+      description: '免费在线AI工作汇报PPT生成工具，智能生成工作汇报PPT大纲和内容脚本，助力高效汇报'
+    }
+  },
+  {
+    path: '/tools/ai/speech-draft',
+    component: () => import('@/components/Tools/AI/Writing/SpeechDraft.vue'),
+    name: 'speechDraft',
+    meta: {
+      title: "演讲稿",
+      keywords: '演讲稿,致辞,发言稿,演讲词,公开演讲',
+      description: '免费在线AI演讲稿生成工具，智能生成精彩演讲稿，支持多种场合和风格'
+    }
+  },
+  {
+    path: '/tools/ai/novel-plot',
+    component: () => import('@/components/Tools/AI/Writing/NovelPlot.vue'),
+    name: 'novelPlot',
+    meta: {
+      title: "小说剧情创作",
+      keywords: '小说大纲,剧情生成,故事梗概,角色设定,小说创作',
+      description: '免费在线AI小说剧情创作工具，智能生成小说剧情大纲、角色设定和故事梗概'
+    }
+  },
+  {
+    path: '/tools/ai/debriefing-report',
+    component: () => import('@/components/Tools/AI/Writing/DebriefingReport.vue'),
+    name: 'debriefingReport',
+    meta: {
+      title: "述职报告",
+      keywords: '述职报告,个人述职,年度述职,晋升述职,工作汇报',
+      description: '免费在线AI述职报告生成工具，智能生成个人述职报告，突出工作业绩和职业亮点'
+    }
+  },
+  {
+    path: '/tools/ai/essay-writing',
+    component: () => import('@/components/Tools/AI/Writing/EssayWriting.vue'),
+    name: 'essayWriting',
+    meta: {
+      title: "作文一键写作",
+      keywords: '作文生成,学生作文,作文写作,话题作文,命题作文',
+      description: '免费在线AI作文生成工具，智能生成各类作文，支持不同年级和题材要求'
+    }
+  },
+  {
+    path: '/tools/ai/xiaohongshu-note',
+    component: () => import('@/components/Tools/AI/Writing/XiaohongshuNote.vue'),
+    name: 'xiaohongshuNote',
+    meta: {
+      title: "小红书笔记生成",
+      keywords: '小红书笔记,种草文案,爆款笔记,小红书文案,社交媒体文案',
+      description: '免费在线AI小红书笔记生成工具，智能生成小红书风格笔记，包含Emoji和种草文案'
+    }
+  },
+  {
+    path: '/tools/ai/xiaohongshu-title',
+    component: () => import('@/components/Tools/AI/Writing/XiaohongshuTitle.vue'),
+    name: 'xiaohongshuTitle',
+    meta: {
+      title: "小红书爆款标题",
+      keywords: '小红书标题,爆款标题,点击率,标题生成,吸引人标题',
+      description: '免费在线AI小红书爆款标题生成工具，智能生成吸引眼球的小红书爆款标题，提升点击率'
+    }
+  },
+  {
+    path: '/tools/ai/xiaohongshu-rewrite',
+    component: () => import('@/components/Tools/AI/Writing/XiaohongshuRewrite.vue'),
+    name: 'xiaohongshuRewrite',
+    meta: {
+      title: "小红书笔记改写",
+      keywords: '笔记改写,文案润色,风格转换,小红书风格,内容优化',
+      description: '免费在线AI小红书笔记改写工具，一键将普通文本改写为小红书风格笔记，增加吸引力'
+    }
+  },
+  {
+    path: '/tools/ai/essay-contest',
+    component: () => import('@/components/Tools/AI/Writing/EssayContest.vue'),
+    name: 'essayContest',
+    meta: {
+      title: "征文",
+      keywords: '征文写作,参赛征文,主题征文,征文稿件,文学创作',
+      description: '免费在线AI征文生成工具，智能生成各类征文稿件，紧扣主题，文采斐然'
+    }
+  },
+  {
+    path: '/tools/ai/spokesperson-speech',
+    component: () => import('@/components/Tools/AI/Writing/SpokespersonSpeech.vue'),
+    name: 'spokespersonSpeech',
+    meta: {
+      title: "发言稿",
+      keywords: '会议发言,活动发言,领导发言,嘉宾发言,致辞',
+      description: '免费在线AI发言稿生成工具，智能生成各类会议、活动发言稿，得体大方'
+    }
+  },
+  {
     path: '/tools/image-to-webp',
     component: () => import('@/components/Tools/ImageToWebp/ImageToWebp.vue'),
     name: 'imageToWebp',

@@ -146,8 +146,14 @@ export default defineConfig({
 
   // 开发服务器配置
   server: {
-    host: true,
+    host: '0.0.0.0',
     port: 5173,
+    open: true,
+    // 配置响应头，支持 SharedArrayBuffer (提升 WASM 性能)
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
     proxy: {
       // 翻译接口代理配置
       '/api/translate': {
@@ -601,14 +607,6 @@ export default defineConfig({
       strict: false,
       // 允许的文件类型
       allow: ['..']
-    }
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: [],
-    deps: {
-      inline: ['@vue/test-utils']
     }
   }
 })

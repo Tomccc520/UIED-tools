@@ -177,7 +177,7 @@ const processAudio = async () => {
   isProcessing.value = true
   statusText.value = '正在解码音频...'
   progress.value = 0
-
+  
   try {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
     const decodedBuffers: AudioBuffer[] = []
@@ -192,12 +192,12 @@ const processAudio = async () => {
     }
 
     statusText.value = '正在合并...'
-
+    
     // Calculate total length and channels
     const totalLength = decodedBuffers.reduce((acc, buf) => acc + buf.length, 0)
     const numberOfChannels = Math.max(...decodedBuffers.map(buf => buf.numberOfChannels))
     const sampleRate = decodedBuffers[0].sampleRate
-
+    
     const outputBuffer = audioContext.createBuffer(numberOfChannels, totalLength, sampleRate)
 
     let offset = 0
@@ -205,22 +205,22 @@ const processAudio = async () => {
       for (let channel = 0; channel < numberOfChannels; channel++) {
         const outputData = outputBuffer.getChannelData(channel)
         if (channel < buf.numberOfChannels) {
-          outputData.set(buf.getChannelData(channel), offset)
+           outputData.set(buf.getChannelData(channel), offset)
         } else {
-          if (buf.numberOfChannels === 1) {
-            outputData.set(buf.getChannelData(0), offset)
-          }
+           if (buf.numberOfChannels === 1) {
+             outputData.set(buf.getChannelData(0), offset)
+           }
         }
       }
       offset += buf.length
     }
-
+    
     progress.value = 80
     statusText.value = '正在导出...'
-
+    
     const blob = audioBufferToWav(outputBuffer)
     resultAudioUrl.value = URL.createObjectURL(blob)
-
+    
     progress.value = 100
     statusText.value = '合并完成！'
     ElMessage.success('合并成功')
@@ -258,13 +258,13 @@ onUnmounted(() => {
         </div>
 
         <!-- Upload Area -->
-        <div
-          class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
+        <div class="border-2 border-dashed rounded-xl p-8 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
           :class="[isDragOver ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-300 hover:border-blue-400 hover:bg-gray-50']"
-          @click="fileInput?.click()" @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false"
+          @click="fileInput?.click()"
+          @dragover.prevent="isDragOver = true"
+          @dragleave.prevent="isDragOver = false"
           @drop.prevent="handleDrop">
-          <input type="file" ref="fileInput" class="hidden" accept="audio/*,video/*" multiple
-            @change="handleFileChange" />
+          <input type="file" ref="fileInput" class="hidden" accept="audio/*,video/*" multiple @change="handleFileChange" />
           <div class="text-5xl mb-4 text-blue-500 transition-transform group-hover:scale-110 duration-300">🎵</div>
           <p class="font-bold text-lg text-gray-700 mb-2">点击或拖拽音频文件到这里</p>
           <p class="text-sm text-gray-500">支持批量上传，可调整顺序</p>
@@ -278,18 +278,16 @@ onUnmounted(() => {
                 <span class="w-2 h-6 bg-blue-500 rounded-full mr-2"></span>
                 已添加文件 ({{ audioList.length }})
               </h3>
-              <span
-                class="text-sm font-medium text-gray-600 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">
+              <span class="text-sm font-medium text-gray-600 bg-white px-3 py-1 rounded-full border border-gray-200 shadow-sm">
                 预计总时长: {{ formatTime(totalDuration) }}
               </span>
             </div>
-
+            
             <ul class="space-y-3">
               <li v-for="(item, index) in audioList" :key="item.id"
                 class="bg-white p-4 rounded-xl border border-gray-100 flex items-center justify-between shadow-sm hover:shadow-md transition-shadow group">
                 <div class="flex items-center overflow-hidden flex-1 mr-4">
-                  <span
-                    class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-sm font-bold mr-4 flex-shrink-0 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                  <span class="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-sm font-bold mr-4 flex-shrink-0 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                     {{ index + 1 }}
                   </span>
                   <div class="flex flex-col min-w-0">
@@ -301,55 +299,40 @@ onUnmounted(() => {
                     </div>
                   </div>
                 </div>
-
+                
                 <div class="flex items-center space-x-1 flex-shrink-0">
                   <button @click="moveUp(index)" :disabled="index === 0"
-                    class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                    title="上移">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
-                    </svg>
+                    class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors" title="上移">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
                   </button>
                   <button @click="moveDown(index)" :disabled="index === audioList.length - 1"
-                    class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-                    title="下移">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                    </svg>
+                    class="p-2 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-30 disabled:hover:bg-transparent transition-colors" title="下移">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                   </button>
                   <div class="w-px h-6 bg-gray-200 mx-1"></div>
-                  <button @click="removeAudio(index)"
-                    class="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                    title="删除">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                      </path>
-                    </svg>
+                  <button @click="removeAudio(index)" class="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="删除">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                   </button>
                 </div>
               </li>
             </ul>
           </div>
-
+          
           <!-- Processing Status -->
           <div v-if="isProcessing" class="bg-blue-50 rounded-xl p-6 border border-blue-100 text-center animate-fade-in">
-            <div class="flex items-center justify-between mb-2 text-sm text-blue-800 font-medium">
-              <span>{{ statusText }}</span>
-              <span>{{ progress }}%</span>
-            </div>
-            <div class="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden">
-              <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                :style="{ width: `${progress}%` }"></div>
-            </div>
+             <div class="flex items-center justify-between mb-2 text-sm text-blue-800 font-medium">
+                <span>{{ statusText }}</span>
+                <span>{{ progress }}%</span>
+             </div>
+             <div class="w-full bg-blue-200 rounded-full h-2.5 overflow-hidden">
+                <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300" :style="{ width: `${progress}%` }"></div>
+             </div>
           </div>
 
           <div class="flex justify-center pt-4">
             <button @click="processAudio" :disabled="isProcessing || audioList.length < 2"
               class="group relative px-8 py-4 bg-gradient-to-r from-blue-600 to-blue-500 text-white rounded-xl font-bold hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:shadow-none min-w-[200px] overflow-hidden">
-              <div
-                class="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full">
-              </div>
+              <div class="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -translate-x-full"></div>
               <span class="relative flex items-center justify-center">
                 <span v-if="!isProcessing" class="mr-2">⚡</span>
                 {{ isProcessing ? '处理中...' : '开始合并音频' }}
@@ -357,22 +340,17 @@ onUnmounted(() => {
             </button>
           </div>
 
-          <div v-if="resultAudioUrl"
-            class="bg-green-50 border border-green-100 rounded-xl p-8 text-center animate-fade-in shadow-sm">
-            <div
-              class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
+          <div v-if="resultAudioUrl" class="bg-green-50 border border-green-100 rounded-xl p-8 text-center animate-fade-in shadow-sm">
+            <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
               ✓
             </div>
             <h3 class="text-xl text-gray-800 font-bold mb-6">合并完成！</h3>
             <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 mb-6">
-              <audio :src="resultAudioUrl" controls class="w-full"></audio>
+               <audio :src="resultAudioUrl" controls class="w-full"></audio>
             </div>
             <button @click="downloadResult"
               class="px-8 py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center mx-auto">
-              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-              </svg>
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
               下载合并后的音频
             </button>
           </div>
