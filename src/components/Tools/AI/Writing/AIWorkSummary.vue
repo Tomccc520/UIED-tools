@@ -69,8 +69,13 @@
                   <el-select v-model="form.type" placeholder="选择总结类型" class="w-full" size="large">
                     <el-option label="月度总结" value="monthly" />
                     <el-option label="季度总结" value="quarterly" />
+                    <el-option label="年中总结" value="mid_year" />
                     <el-option label="年度总结" value="annual" />
                     <el-option label="项目总结" value="project" />
+                    <el-option label="转正总结" value="probation" />
+                    <el-option label="晋升总结" value="promotion" />
+                    <el-option label="考核总结" value="performance" />
+                    <el-option label="培训总结" value="training" />
                   </el-select>
                 </div>
 
@@ -212,7 +217,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -227,6 +232,12 @@ const form = reactive({
   problems: '',
   plans: '',
   type: 'monthly'
+})
+
+onMounted(() => {
+  if (route.query.type) {
+    form.type = route.query.type as string
+  }
 })
 
 const isGenerating = ref(false)
@@ -260,7 +271,7 @@ ${form.plans ? `下一步计划：${form.plans}` : ''}
 4. 语气积极向上
 5. 请使用Markdown格式输出，包含合适的标题层级
 6. 必须符合SEO优化标准，内容结构清晰，便于搜索引擎抓取
-7. 标题请使用标准 Markdown 格式（如 # 标题），严禁在标题行使用 ** 加粗符号`
+7. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号`
 
     await generateAIWriting({
       prompt,
@@ -345,8 +356,13 @@ const getTypeLabel = (type: string) => {
   const map: Record<string, string> = {
     monthly: '月度',
     quarterly: '季度',
+    mid_year: '年中',
     annual: '年度',
-    project: '项目'
+    project: '项目',
+    probation: '转正',
+    promotion: '晋升',
+    performance: '考核',
+    training: '培训'
   }
   return map[type] || '工作'
 }
@@ -460,5 +476,19 @@ const save = (text: string, html: string) => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

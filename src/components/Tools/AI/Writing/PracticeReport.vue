@@ -246,7 +246,7 @@ ${form.result ? `成果/感悟：${form.result}` : ''}
 4. 语言学术性与生动性相结合
 5. 请使用Markdown格式输出，使用合适的标题层级
 6. 必须符合SEO优化标准，内容结构清晰，便于搜索引擎抓取
-7. 标题请使用标准 Markdown 格式（如 # 标题），严禁在标题行使用 ** 加粗符号`
+7. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号`
 
     await generateAIWriting({
       prompt,
@@ -440,5 +440,19 @@ const save = (text: string, html: string) => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

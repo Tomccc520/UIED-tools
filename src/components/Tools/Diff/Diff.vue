@@ -18,7 +18,7 @@ import { ref } from '@vue/runtime-core'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { CodeDiff } from "v-code-diff"
+import { CodeDiff } from 'v-code-diff'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()

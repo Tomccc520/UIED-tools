@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-15 14:00
- * @version Beta 2.6.1
- * @toolsCount 当前工具总数：240个
+ * @lastUpdate 2025-12-16 20:30
+ * @version Beta 2.7.3
+ * @toolsCount 当前工具总数：307个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -266,7 +266,7 @@ onUnmounted(() => {
         </div>
 
         <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：240个 | 最后更新：2025-12-15 14:00
+          当前工具总数：281个 | 最后更新：2025-12-16 20:00
         </div>
       </div>
 
@@ -302,6 +302,195 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.7.1 -->
+          <div class="timeline-item" id="v2.7.1">
+            <div class="version-tag">
+              <span class="version">2.7.1</span>
+              <span class="date">2025-12-16 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI办公工具矩阵进一步完善</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增11个AI办公工具</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">持续丰富办公场景，覆盖更多细分需求。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/office/work-report?type=daily" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作日报</router-link></strong>：快速生成今日工作总结、问题反馈和明日计划。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/work-report?type=weekly" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作周报</router-link></strong>：系统梳理本周工作进展，规划下周重点。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/meeting-minutes" target="_blank"
+                              class="hover:text-blue-600 transition-colors">会议记录润色</router-link></strong>：智能整理和润色会议记录，生成专业纪要。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/competitor-speech" target="_blank"
+                              class="hover:text-blue-600 transition-colors">竟聘演讲稿</router-link></strong>：生成专业、有感染力的岗位竞聘演讲稿。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/design-concept" target="_blank"
+                              class="hover:text-blue-600 transition-colors">设计理念</router-link></strong>：生成独特、有深度的设计理念阐述。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/resignation-letter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">离职申请</router-link></strong>：生成得体、专业的辞职报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/questionnaire-design" target="_blank"
+                              class="hover:text-blue-600 transition-colors">问卷设计</router-link></strong>：智能生成科学、合理的调查问卷。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-polishing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">通稿润色改写</router-link></strong>：智能改写文本，优化语言表达。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/tender-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">标书撰写</router-link></strong>：辅助撰写投标文件核心内容。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/cover-letter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">求职信</router-link></strong>：生成真诚、得体的求职信。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/interview-outline" target="_blank"
+                              class="hover:text-blue-600 transition-colors">访谈提纲</router-link></strong>：设计专业的访谈提纲，确保访谈高效深入。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.0 -->
+          <div class="timeline-item" id="v2.7.0">
+            <div class="version-tag">
+              <span class="version">2.7.0</span>
+              <span class="date">2025-12-16 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">新增AI办公工具分类，助力高效办公</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">全新上线「AI办公工具」分类</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">整合常用办公场景，提供一站式AI办公解决方案。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/office/contract-template" target="_blank"
+                              class="hover:text-blue-600 transition-colors">合同模版</router-link></strong>：智能生成各类常用合同，规避法律风险。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/meeting-minutes" target="_blank"
+                              class="hover:text-blue-600 transition-colors">润色会议纪要</router-link></strong>：智能整理会议记录，生成专业纪要。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/okr-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">OKR制定</router-link></strong>：智能协助制定目标与关键结果。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/code-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">写代码</router-link></strong>：智能生成高质量代码片段。</li>
+                        <li><strong><router-link to="/tools/ai/office/resume-creation" target="_blank"
+                              class="hover:text-blue-600 transition-colors">简历制作</router-link></strong>：智能生成专业简历，提升求职成功率。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/job-description" target="_blank"
+                              class="hover:text-blue-600 transition-colors">招聘JD</router-link></strong>：智能生成吸引人的职位描述。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/lawsuit-document" target="_blank"
+                              class="hover:text-blue-600 transition-colors">起诉书</router-link></strong>：智能辅助起草法律文书。</li>
+                        <li><strong><router-link to="/tools/ai/office/work-reflections" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作感想</router-link></strong>：记录工作感悟，总结经验。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/application-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">申请报告</router-link></strong>：智能生成各类规范的申请报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/resignation-letter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">辞职报告</router-link></strong>：智能生成得体的辞职信。</li>
+                        <li><strong><router-link to="/tools/ai/office/training-scheme" target="_blank"
+                              class="hover:text-blue-600 transition-colors">培训方案</router-link></strong>：智能设计员工培训计划。</li>
+                        <li><strong><router-link to="/tools/ai/office/notice-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">通知撰写</router-link></strong>：智能生成各类办公通知。</li>
+                        <li><strong><router-link to="/tools/ai/work-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">多样化总结</router-link></strong>：新增转正、晋升、考核、培训等多种总结类型。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/work-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">多维度计划</router-link></strong>：新增部门计划、个人计划等多种计划类型。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.6.2 -->
+          <div class="timeline-item" id="v2.6.2">
+            <div class="version-tag">
+              <span class="version">2.6.2</span>
+              <span class="date">2025-12-16 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI写作工具持续扩充与优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增11个AI写作工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/literature-recommend" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文献推荐</router-link></strong>：智能推荐相关领域的高质量文献，助力学术研究。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/self-reflection" target="_blank"
+                              class="hover:text-blue-600 transition-colors">检讨书</router-link></strong>：智能生成态度诚恳的检讨书。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/project-proposal" target="_blank"
+                              class="hover:text-blue-600 transition-colors">项目策划方案</router-link></strong>：生成包含背景、目标、实施计划的完整策划案。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/speech-script" target="_blank"
+                              class="hover:text-blue-600 transition-colors">讲话稿</router-link></strong>：生成各类场合的致辞和讲话稿。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/short-video-title" target="_blank"
+                              class="hover:text-blue-600 transition-colors">短视频标题</router-link></strong>：生成吸引眼球的短视频爆款标题。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/short-video-script" target="_blank"
+                              class="hover:text-blue-600 transition-colors">短视频剧本</router-link></strong>：生成专业的分镜头脚本。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">长文/报告摘要</router-link></strong>：智能提炼核心观点，生成精准摘要。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/opening-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">开题报告</router-link></strong>：生成标准规范的学术论文开题报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-outline" target="_blank"
+                              class="hover:text-blue-600 transition-colors">长文/报告大纲</router-link></strong>：生成逻辑清晰的文章/报告大纲。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-polishing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文章降重润色</router-link></strong>：智能改写降重，优化语言表达。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/graduation-thesis" target="_blank"
+                              class="hover:text-blue-600 transition-colors">毕业长文/报告</router-link></strong>：辅助生成毕业论文初稿。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>优化AI生成内容的标题层级，默认使用三级标题，提升阅读体验。</li>
+                        <li>修复生成按钮的加载动画效果。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.6.1 -->
           <div class="timeline-item" id="v2.6.1">

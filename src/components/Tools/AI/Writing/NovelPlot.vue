@@ -248,7 +248,7 @@ ${form.characters ? `主要角色：${form.characters}` : ''}
 2. 构建合理的世界观和冲突
 3. 语言生动，具有画面感
 4. 请使用Markdown格式输出，包含合适的标题层级
-5. 标题请使用标准 Markdown 格式（如 # 标题），严禁在标题行使用 ** 加粗符号`
+5. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号`
 
     await generateAIWriting({
       prompt,
@@ -429,5 +429,19 @@ const save = (text: string, html: string) => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

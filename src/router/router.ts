@@ -299,6 +299,236 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/ai/literature-recommend',
+    component: () => import('@/components/Tools/AI/Writing/LiteratureRecommend.vue'),
+    name: 'aiLiteratureRecommend',
+    meta: {
+      title: "文献推荐",
+      keywords: 'AI文献推荐,论文文献,学术资料,参考文献,文献检索',
+      description: '智能推荐相关领域的高质量文献，助力学术研究和论文写作',
+    }
+  },
+  {
+    path: '/tools/ai/self-reflection',
+    component: () => import('@/components/Tools/AI/Writing/SelfReflection.vue'),
+    name: 'aiSelfReflection',
+    meta: {
+      title: "检讨书",
+      keywords: 'AI检讨书,自动写检讨,反省书,道歉信,检讨生成器',
+      description: '智能生成态度诚恳、深刻反省的检讨书，助您表达歉意和改进决心',
+    }
+  },
+  {
+    path: '/tools/ai/project-proposal',
+    component: () => import('@/components/Tools/AI/Writing/ProjectProposal.vue'),
+    name: 'aiProjectProposal',
+    meta: {
+      title: "项目策划方案",
+      keywords: 'AI策划方案,项目计划书,活动策划,商业计划书,方案生成',
+      description: '智能生成专业的项目策划方案，包含背景、目标、实施计划和预算预估',
+    }
+  },
+  {
+    path: '/tools/ai/speech-script',
+    component: () => import('@/components/Tools/AI/Writing/SpeechScript.vue'),
+    name: 'aiSpeechScript',
+    meta: {
+      title: "讲话稿",
+      keywords: 'AI讲话稿,致辞,领导讲话,会议发言,庆典致辞',
+      description: '智能生成各类场合的领导讲话稿、致辞，得体大方，富有感染力',
+    }
+  },
+  {
+    path: '/tools/ai/short-video-title',
+    component: () => import('@/components/Tools/AI/Writing/ShortVideoTitle.vue'),
+    name: 'aiShortVideoTitle',
+    meta: {
+      title: "短视频标题",
+      keywords: 'AI短视频标题,爆款标题,抖音标题,快手标题,标题生成器',
+      description: '智能生成吸引眼球的短视频爆款标题，提升播放量和点击率',
+    }
+  },
+  {
+    path: '/tools/ai/short-video-script',
+    component: () => import('@/components/Tools/AI/Writing/ShortVideoScript.vue'),
+    name: 'aiShortVideoScript',
+    meta: {
+      title: "短视频剧本",
+      keywords: 'AI短视频脚本,分镜头脚本,抖音剧本,短剧剧本,脚本生成',
+      description: '智能生成专业的分镜头脚本，包含画面、台词、运镜和音效指导',
+    }
+  },
+  {
+    path: '/tools/ai/office/custom-summary',
+    component: () => import('@/components/Tools/AI/Office/CustomSummary.vue'),
+    name: 'aiCustomSummary',
+    meta: {
+      title: "自定义总结",
+      keywords: 'AI总结,自定义总结,工作总结,活动总结,智能总结',
+      description: '灵活生成各类总结文档，支持自定义主题和结构，满足个性化需求',
+    }
+  },
+  {
+    path: '/tools/ai/office/resume-creation',
+    component: () => import('@/components/Tools/AI/Office/ResumeCreation.vue'),
+    name: 'aiResumeCreation',
+    meta: {
+      title: "简历制作",
+      keywords: 'AI简历,简历制作,简历优化,求职简历,智能简历',
+      description: '智能生成专业简历，优化工作经历和技能描述，提升求职成功率',
+    }
+  },
+  {
+    path: '/tools/ai/office/work-plan',
+    component: () => import('@/components/Tools/AI/Office/WorkPlan.vue'),
+    name: 'aiWorkPlan',
+    meta: {
+      title: "工作方案",
+      keywords: 'AI工作方案,项目方案,实施方案,工作计划,策划方案',
+      description: '智能生成详细的工作实施方案，明确目标、步骤和资源配置',
+    }
+  },
+  {
+    path: '/tools/ai/office/holiday-notice',
+    component: () => import('@/components/Tools/AI/Office/HolidayNotice.vue'),
+    name: 'aiHolidayNotice',
+    meta: {
+      title: "放假通知",
+      keywords: 'AI放假通知,放假安排,行政通知,节日通知,公司通知',
+      description: '智能生成规范、温馨的放假通知，包含放假时间、调休安排和注意事项',
+    }
+  },
+  {
+    path: '/tools/ai/office/notice-writing',
+    component: () => import('@/components/Tools/AI/Office/NoticeWriting.vue'),
+    name: 'aiNoticeWriting',
+    meta: {
+      title: "通知撰写",
+      keywords: 'AI通知,公文写作,行政通知,会议通知,通告',
+      description: '智能生成各类办公通知、会议通知、行政通告，格式规范，用词精准',
+    }
+  },
+  {
+    path: '/tools/ai/office/work-report',
+    component: () => import('@/components/Tools/AI/Office/WorkReport.vue'),
+    name: 'aiWorkReport',
+    meta: {
+      title: "工作汇报",
+      keywords: 'AI工作汇报,日报,周报,月报,汇报材料',
+      description: '智能生成条理清晰、重点突出的工作汇报，展示工作成果和价值',
+    }
+  },
+  {
+    path: '/tools/ai/office/competitor-speech',
+    component: () => import('@/components/Tools/AI/Office/CompetitorSpeech.vue'),
+    name: 'aiCompetitorSpeech',
+    meta: {
+      title: "竟聘演讲稿",
+      keywords: 'AI演讲稿,竞聘演讲,岗位竞聘,就职演说,竞聘报告',
+      description: '智能生成专业、有感染力的岗位竞聘演讲稿，助您脱颖而出',
+    }
+  },
+  {
+    path: '/tools/ai/office/design-concept',
+    component: () => import('@/components/Tools/AI/Office/DesignConcept.vue'),
+    name: 'aiDesignConcept',
+    meta: {
+      title: "设计理念",
+      keywords: 'AI设计理念,设计说明,设计思路,创意阐述,作品介绍',
+      description: '智能生成独特、有深度的设计理念阐述，提升设计作品的价值感',
+    }
+  },
+  {
+    path: '/tools/ai/office/questionnaire-design',
+    component: () => import('@/components/Tools/AI/Office/QuestionnaireDesign.vue'),
+    name: 'aiQuestionnaireDesign',
+    meta: {
+      title: "问卷设计",
+      keywords: 'AI问卷设计,调查问卷,问卷生成,调研问题,问卷结构',
+      description: '智能生成科学、合理的调查问卷，提高数据收集的有效性',
+    }
+  },
+  {
+    path: '/tools/ai/office/tender-writing',
+    component: () => import('@/components/Tools/AI/Office/TenderWriting.vue'),
+    name: 'aiTenderWriting',
+    meta: {
+      title: "标书撰写",
+      keywords: 'AI标书,投标文件,技术方案,商务标,投标方案',
+      description: '智能辅助撰写投标文件，包含技术方案、商务标和实施计划等核心内容',
+    }
+  },
+  {
+    path: '/tools/ai/office/cover-letter',
+    component: () => import('@/components/Tools/AI/Office/CoverLetter.vue'),
+    name: 'aiCoverLetter',
+    meta: {
+      title: "求职信",
+      keywords: 'AI求职信,自荐信,求职邮件,求职文书,Cover Letter',
+      description: '智能生成真诚、得体的求职信，向招聘方展示您的热情和能力',
+    }
+  },
+  {
+    path: '/tools/ai/office/interview-outline',
+    component: () => import('@/components/Tools/AI/Office/InterviewOutline.vue'),
+    name: 'aiInterviewOutline',
+    meta: {
+      title: "访谈提纲",
+      keywords: 'AI访谈提纲,采访提纲,调研访谈,用户访谈,面试提纲',
+      description: '智能设计专业的访谈提纲，确保访谈过程高效、深入',
+    }
+  },
+  {
+    path: '/tools/ai/article-summary',
+    component: () => import('@/components/Tools/AI/Writing/ArticleSummary.vue'),
+    name: 'aiArticleSummary',
+    meta: {
+      title: "长文/报告摘要",
+      keywords: 'AI摘要生成,文章总结,报告提炼,内容概括,摘要提取',
+      description: '智能提炼长文和报告的核心观点，快速生成精准摘要，提高阅读效率',
+    }
+  },
+  {
+    path: '/tools/ai/opening-report',
+    component: () => import('@/components/Tools/AI/Writing/OpeningReport.vue'),
+    name: 'aiOpeningReport',
+    meta: {
+      title: "开题报告",
+      keywords: 'AI开题报告,论文开题,毕业设计,开题答辩,研究计划',
+      description: '智能生成标准规范的开题报告，包含选题意义、研究现状、内容方法和进度安排',
+    }
+  },
+  {
+    path: '/tools/ai/article-outline',
+    component: () => import('@/components/Tools/AI/Writing/ArticleOutline.vue'),
+    name: 'aiArticleOutline',
+    meta: {
+      title: "长文/报告大纲",
+      keywords: 'AI写作大纲,文章结构,写作提纲,报告框架,大纲生成',
+      description: '智能生成逻辑清晰、结构严谨的文章/报告大纲，理清写作思路',
+    }
+  },
+  {
+    path: '/tools/ai/article-polishing',
+    component: () => import('@/components/Tools/AI/Writing/ArticlePolishing.vue'),
+    name: 'aiArticlePolishing',
+    meta: {
+      title: "文章降重润色",
+      keywords: 'AI降重,文章润色,改写工具,论文去重,语言优化',
+      description: '智能改写文本，降低查重率，优化语言表达，提升文章质量',
+    }
+  },
+  {
+    path: '/tools/ai/graduation-thesis',
+    component: () => import('@/components/Tools/AI/Writing/GraduationThesis.vue'),
+    name: 'aiGraduationThesis',
+    meta: {
+      title: "毕业长文/报告",
+      keywords: 'AI毕业论文,论文生成,学术写作,毕业设计,论文初稿',
+      description: '智能辅助生成毕业论文初稿，包含摘要、正文和参考文献，助力学术写作',
+    }
+  },
+  {
     path: '/tools/image-to-webp',
     component: () => import('@/components/Tools/ImageToWebp/ImageToWebp.vue'),
     name: 'imageToWebp',
@@ -847,6 +1077,106 @@ export const constantRoute = [
       title: "Excel转CSV",
       keywords: 'Excel转CSV,XLSX转CSV,在线Excel转换',
       description: '在线将Excel文件转换为CSV格式，支持自定义分隔符，本地处理更安全。',
+    }
+  },
+  {
+    path: '/tools/ai/office/work-reflections',
+    component: () => import('@/components/Tools/AI/Office/WorkReflections.vue'),
+    name: 'aiWorkReflections',
+    meta: {
+      title: "工作感想",
+      keywords: 'AI工作感想,工作心得,经验总结,职业感悟,工作反思',
+      description: '记录工作中的所思所感，总结经验，提升职业认知',
+    }
+  },
+  {
+    path: '/tools/ai/office/application-report',
+    component: () => import('@/components/Tools/AI/Office/ApplicationReport.vue'),
+    name: 'aiApplicationReport',
+    meta: {
+      title: "申请报告",
+      keywords: 'AI申请报告,物资申请,调岗申请,加薪申请,请示报告',
+      description: '智能生成各类申请报告，如物资申请、调岗申请等，格式规范',
+    }
+  },
+  {
+    path: '/tools/ai/office/resignation-letter',
+    component: () => import('@/components/Tools/AI/Office/ResignationLetter.vue'),
+    name: 'aiResignationLetter',
+    meta: {
+      title: "辞职报告",
+      keywords: 'AI辞职信,辞职报告,离职申请,辞职书,离职信',
+      description: '智能生成得体、专业的辞职报告，保持良好职业形象',
+    }
+  },
+  {
+    path: '/tools/ai/office/training-scheme',
+    component: () => import('@/components/Tools/AI/Office/TrainingScheme.vue'),
+    name: 'aiTrainingScheme',
+    meta: {
+      title: "培训方案",
+      keywords: 'AI培训方案,员工培训,培训计划,课程设计,培训考核',
+      description: '智能设计员工培训方案，包含课程设置、讲师安排和考核方式',
+    }
+  },
+  {
+    path: '/tools/ai/office/contract-template',
+    component: () => import('@/components/Tools/AI/Office/ContractTemplate.vue'),
+    name: 'aiContractTemplate',
+    meta: {
+      title: "合同模版",
+      keywords: 'AI合同,合同模版,协议模版,电子合同,法律文书',
+      description: '智能生成各类常用合同模版，条款清晰，规避法律风险',
+    }
+  },
+  {
+    path: '/tools/ai/office/meeting-minutes',
+    component: () => import('@/components/Tools/AI/Office/MeetingMinutes.vue'),
+    name: 'aiMeetingMinutes',
+    meta: {
+      title: "润色会议纪要",
+      keywords: 'AI会议纪要,会议记录,纪要润色,会议总结,会议摘要',
+      description: '智能整理和润色会议记录，生成结构清晰、重点突出的会议纪要',
+    }
+  },
+  {
+    path: '/tools/ai/office/okr-generator',
+    component: () => import('@/components/Tools/AI/Office/OKRGenerator.vue'),
+    name: 'aiOKRGenerator',
+    meta: {
+      title: "OKR制定",
+      keywords: 'AI OKR,目标管理,关键结果,OKR制定,绩效考核',
+      description: '智能协助制定目标与关键结果（OKR），确保目标聚焦且可衡量',
+    }
+  },
+  {
+    path: '/tools/ai/office/code-generator',
+    component: () => import('@/components/Tools/AI/Office/CodeGenerator.vue'),
+    name: 'aiCodeGenerator',
+    meta: {
+      title: "写代码",
+      keywords: 'AI写代码,代码生成,编程助手,代码片段,脚本生成',
+      description: '智能生成高质量代码片段、函数或完整脚本，支持多种编程语言',
+    }
+  },
+  {
+    path: '/tools/ai/office/job-description',
+    component: () => import('@/components/Tools/AI/Office/JobDescription.vue'),
+    name: 'aiJobDescription',
+    meta: {
+      title: "招聘JD",
+      keywords: 'AI JD,职位描述,招聘需求,岗位职责,任职要求',
+      description: '智能生成专业、吸引人的职位描述（JD），提高招聘效率',
+    }
+  },
+  {
+    path: '/tools/ai/office/lawsuit-document',
+    component: () => import('@/components/Tools/AI/Office/LawsuitDocument.vue'),
+    name: 'aiLawsuitDocument',
+    meta: {
+      title: "起诉书",
+      keywords: 'AI起诉书,法律文书,民事起诉状,诉讼文书,法律助手',
+      description: '智能辅助起草起诉书，格式规范，逻辑严密（仅供参考）',
     }
   },
   //工具

@@ -233,7 +233,7 @@ const generateArticle = async () => {
   try {
     isGenerating.value = true
     resultText.value = ''
-    
+
     // 估算字数：演讲语速一般为200字/分钟
     const estimatedWords = form.duration * 200
 
@@ -250,7 +250,7 @@ ${form.audience ? `听众对象：${form.audience}` : ''}
 4. 语言口语化，适合朗读和演讲，符合${getStyleLabel(form.style)}的风格
 5. 字数控制在${estimatedWords}字左右
 6. 请使用Markdown格式输出，包含合适的标题层级
-7. 标题请使用标准 Markdown 格式（如 # 标题），严禁在标题行使用 ** 加粗符号`
+7. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号`
 
     await generateAIWriting({
       prompt,
@@ -420,5 +420,19 @@ const save = (text: string, html: string) => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

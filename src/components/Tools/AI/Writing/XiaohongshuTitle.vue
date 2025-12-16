@@ -194,7 +194,7 @@ ${form.audience ? `目标受众：${form.audience}` : ''}
 3. 运用悬念、数字、痛点、共鸣等爆款标题技巧
 4. 风格多样，包含疑问句、感叹句、对比句等
 5. 请使用Markdown格式输出列表，每个标题占一行
-6. 标题请使用标准 Markdown 格式（如 # 标题），严禁在标题行使用 ** 加粗符号`
+6. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号`
 
     await generateAIWriting({
       prompt,
@@ -330,5 +330,19 @@ const save = (text: string, html: string) => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

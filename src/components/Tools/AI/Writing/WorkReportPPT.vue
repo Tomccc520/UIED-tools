@@ -254,7 +254,7 @@ PPT页数：约${form.pages}页
    - 设计建议（可选，如建议配图类型）
 3. 语言简练有力，符合${getStyleLabel(form.style)}的风格
 4. 请使用Markdown格式输出，使用二级标题（##）区分每一页PPT
-5. 标题请使用标准 Markdown 格式（如 # 标题），严禁在标题行使用 ** 加粗符号`
+5. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号`
 
     await generateAIWriting({
       prompt,
@@ -423,5 +423,19 @@ const save = (text: string, html: string) => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

@@ -256,7 +256,7 @@ ${form.points ? `发言要点：${form.points}` : ''}
 4. 语言符合${getStyleLabel(form.style)}的风格，适合口语表达
 5. 字数控制在${estimatedWords}字左右
 6. 请使用Markdown格式输出，包含合适的标题层级
-7. 标题请使用标准 Markdown 格式（如 # 标题），严禁在标题行使用 ** 加粗符号`
+7. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号`
 
     await generateAIWriting({
       prompt,
@@ -426,5 +426,19 @@ const save = (text: string, html: string) => {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
 }
 </style>

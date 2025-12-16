@@ -4,7 +4,7 @@
  */
 
 // 判断当前是否为开发环境
-const isDev = process.env.NODE_ENV === 'development'
+const isDev = import.meta.env.MODE === 'development'
 
 /**
  * 开发环境日志输出
