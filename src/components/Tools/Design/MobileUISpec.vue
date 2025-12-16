@@ -19,44 +19,7 @@
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">移动端UI设计规范</span>
             </div>
           </h2>
-          <p class="text-gray-500 text-sm mt-6">Mobile UI Design Guidelines</p>
-
-          <!-- 开发中提示 -->
-          <div class="mt-4 inline-block bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-medium">
-            <span class="flex items-center">
-              <svg class="w-4 h-4 mr-2 animate-spin" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 4.75V6.25" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                  stroke-linejoin="round"></path>
-                <path d="M17.1266 6.87347L16.0659 7.93413" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round"></path>
-                <path d="M19.25 12L17.75 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                  stroke-linejoin="round"></path>
-                <path d="M17.1266 17.1265L16.0659 16.0659" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round"></path>
-                <path d="M12 19.25V17.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                  stroke-linejoin="round"></path>
-                <path d="M7.9342 16.0659L6.87354 17.1265" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round"></path>
-                <path d="M6.25 12L4.75 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-                  stroke-linejoin="round"></path>
-                <path d="M7.9342 7.93413L6.87354 6.87347" stroke="currentColor" stroke-width="1.5"
-                  stroke-linecap="round" stroke-linejoin="round"></path>
-              </svg>
-              正在开发内容中，敬请期待！目前页面还有错乱！
-            </span>
-          </div>
-
-          <!-- 温馨提示 -->
-          <div class="mt-6 bg-yellow-50 rounded-lg p-4 max-w-2xl mx-auto">
-            <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
-                viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p class="text-sm text-gray-600">本工具提供 iOS 和 Android 平台的详细UI设计规范，帮助设计师快速掌握不同平台的设计标准。</p>
-            </div>
-          </div>
+          <p class="text-gray-500 text-sm mt-6">提供 iOS 和 Android 平台的详细UI设计规范，帮助设计师快速掌握不同平台的设计标准</p>
         </div>
 
         <!-- 平台选择 -->
@@ -330,7 +293,7 @@
                                 <!-- 设备屏幕 -->
                                 <div class="device-screen">
                                   <!-- 状态栏区域 -->
-                                  <div class="area status-bar" data-label="状态栏: {{currentDevice.statusBar}}pt">
+                                  <div class="area status-bar" :data-label="`状态栏: ${currentDevice.statusBar}pt`">
                                     <div class="area-icon">
                                       <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
@@ -343,7 +306,7 @@
                                   </div>
 
                                   <!-- 导航栏区域 -->
-                                  <div class="area nav-bar" data-label="导航栏: {{currentDevice.navBar}}pt">
+                                  <div class="area nav-bar" :data-label="`导航栏: ${currentDevice.navBar}pt`">
                                     <div class="area-icon">
                                       <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none"
                                         xmlns="http://www.w3.org/2000/svg">
@@ -430,7 +393,7 @@
                                   </div>
 
                                   <!-- 标签栏区域 -->
-                                  <div class="area tab-bar" data-label="标签栏: {{currentDevice.tabBar}}pt">
+                                  <div class="area tab-bar" :data-label="`标签栏: ${currentDevice.tabBar}pt`">
                                     <div class="tab-icons">
                                       <div class="tab-icon"></div>
                                       <div class="tab-icon"></div>
@@ -450,7 +413,7 @@
 
                                   <!-- Home指示器 -->
                                   <div v-if="currentDevice.homeIndicator > 0" class="area home-indicator"
-                                    data-label="主屏指示器: {{currentDevice.homeIndicator}}pt">
+                                    :data-label="`主屏指示器: ${currentDevice.homeIndicator}pt`">
                                     <div class="home-indicator-bar"></div>
                                     <div class="area-icon">
                                       <svg class="w-4 h-4 text-blue-500" viewBox="0 0 24 24" fill="none"
@@ -465,14 +428,14 @@
 
                               <!-- 边距标识 -->
                               <div class="margin-indicators">
-                                <div class="margin-indicator left" data-label="{{currentDevice.margin}}pt"></div>
-                                <div class="margin-indicator right" data-label="{{currentDevice.margin}}pt"></div>
+                                <div class="margin-indicator left" :data-label="`${currentDevice.margin}pt`"></div>
+                                <div class="margin-indicator right" :data-label="`${currentDevice.margin}pt`"></div>
                               </div>
 
                               <!-- 屏幕尺寸标识 -->
                               <div class="screen-dimensions">
-                                <div class="dimension width" data-label="宽度: {{currentDevice.width}}pt"></div>
-                                <div class="dimension height" data-label="高度: {{currentDevice.height}}pt"></div>
+                                <div class="dimension width" :data-label="`宽度: ${currentDevice.width}pt`"></div>
+                                <div class="dimension height" :data-label="`高度: ${currentDevice.height}pt`"></div>
                               </div>
                             </div>
                           </div>
@@ -492,47 +455,20 @@
                     <!-- 设备信息表格 -->
                     <div class="mb-6">
                       <h5 class="text-lg font-medium mb-3 pb-1 border-b border-gray-100">设备尺寸规范</h5>
-                      <div class="device-spec-table">
-                        <div class="device-spec-row">
-                          <div class="spec-label">屏幕尺寸</div>
-                          <div class="spec-value">{{ currentDevice.width }} × {{ currentDevice.height }}pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">状态栏高度</div>
-                          <div class="spec-value">{{ currentDevice.statusBar }}pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">导航栏高度</div>
-                          <div class="spec-value">{{ currentDevice.navBar }}pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">标签栏高度</div>
-                          <div class="spec-value">{{ currentDevice.tabBar }}pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">主屏指示器高度</div>
-                          <div class="spec-value">{{ currentDevice.homeIndicator }}pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">页面边距</div>
-                          <div class="spec-value">{{ currentDevice.margin }}pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">设计风格高度</div>
-                          <div class="spec-value">60pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">设计内容高度</div>
-                          <div class="spec-value">80pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">内容区域高度</div>
-                          <div class="spec-value">{{ currentDevice.height - currentDevice.statusBar -
-                            currentDevice.navBar - currentDevice.tabBar - currentDevice.homeIndicator - 140 }}pt</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">标签栏图标尺寸</div>
-                          <div class="spec-value">24 × 24pt</div>
+                      <div class="device-spec-table space-y-2">
+                        <div v-for="(spec, index) in currentDeviceSpecs" :key="index"
+                          class="device-spec-row group flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                          <div class="spec-label text-sm text-gray-500">{{ spec.label }}</div>
+                          <div class="spec-value font-mono text-sm font-medium text-gray-800 flex items-center gap-2">
+                            {{ spec.value }}
+                            <el-button type="primary" link size="small"
+                              class="opacity-0 group-hover:opacity-100 transition-opacity"
+                              @click="copyToClipboard(spec.value)">
+                              <el-icon>
+                                <CopyDocument />
+                              </el-icon>
+                            </el-button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1015,7 +951,8 @@
                             <div class="w-4 h-4 bg-blue-100 rounded-full flex items-center justify-center">
                               <svg class="w-3 h-3 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M15 19l-7-7 7-7"></path>
+                                  d="M15 19l-7-7 7-7">
+                                </path>
                               </svg>
                             </div>
                             <div class="ml-1 h-px w-10 bg-blue-200 relative">
@@ -1110,7 +1047,8 @@
                               class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-1">
                               <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                  d="M5 13l4 4L19 7"></path>
+                                  d="M5 13l4 4L19 7">
+                                </path>
                               </svg>
                             </div>
                             <div class="text-xs text-gray-700">操作成功</div>
@@ -1460,44 +1398,20 @@
 
                     <div class="mb-6">
                       <h5 class="text-lg font-medium mb-3 pb-1 border-b border-gray-100">设备信息</h5>
-                      <div class="device-spec-table">
-                        <div class="device-spec-row">
-                          <div class="spec-label">设备名称</div>
-                          <div class="spec-value">{{ currentAndroidDevice.name }}</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">屏幕尺寸</div>
-                          <div class="spec-value">{{ currentAndroidDevice.width }} × {{ currentAndroidDevice.height }}dp
+                      <div class="device-spec-table space-y-2">
+                        <div v-for="(spec, index) in currentAndroidSpecs" :key="index"
+                          class="device-spec-row group flex items-center justify-between p-2 rounded hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                          <div class="spec-label text-sm text-gray-500">{{ spec.label }}</div>
+                          <div class="spec-value font-mono text-sm font-medium text-gray-800 flex items-center gap-2">
+                            {{ spec.value }}
+                            <el-button type="primary" link size="small"
+                              class="opacity-0 group-hover:opacity-100 transition-opacity"
+                              @click="copyToClipboard(spec.value)">
+                              <el-icon>
+                                <CopyDocument />
+                              </el-icon>
+                            </el-button>
                           </div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">状态栏高度</div>
-                          <div class="spec-value">{{ currentAndroidDevice.statusBar }}dp</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">应用栏高度</div>
-                          <div class="spec-value">{{ currentAndroidDevice.appBar }}dp</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">导航栏高度</div>
-                          <div class="spec-value">{{ currentAndroidDevice.navBar }}dp</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">页面边距</div>
-                          <div class="spec-value">{{ currentAndroidDevice.margin }}dp</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">设计风格高度</div>
-                          <div class="spec-value">60dp</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">设计内容高度</div>
-                          <div class="spec-value">80dp</div>
-                        </div>
-                        <div class="device-spec-row">
-                          <div class="spec-label">内容区域高度</div>
-                          <div class="spec-value">{{ currentAndroidDevice.height - currentAndroidDevice.statusBar -
-                            currentAndroidDevice.appBar - currentAndroidDevice.navBar - 140 }}dp</div>
                         </div>
                       </div>
                     </div>
@@ -1810,6 +1724,184 @@
               </div>
             </div>
 
+            <!-- Dark Mode Colors Section -->
+            <div class="spec-card mb-6">
+              <div class="card-header">
+                <h4>深色模式配色 (Dark Mode Colors)</h4>
+              </div>
+              <div class="card-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h5 class="text-lg font-medium mb-3">系统背景色 (System Backgrounds)</h5>
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between p-2 rounded border border-gray-200 bg-white">
+                        <span class="text-sm font-medium text-gray-900">Primary</span>
+                        <div class="flex gap-2 text-xs">
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-white border border-gray-200 rounded"></div>
+                            <span class="mt-1 text-gray-500">Light</span>
+                          </div>
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-black border border-gray-700 rounded"></div>
+                            <span class="mt-1 text-gray-500">Dark</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between p-2 rounded border border-gray-200 bg-gray-50">
+                        <span class="text-sm font-medium text-gray-900">Secondary</span>
+                        <div class="flex gap-2 text-xs">
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-gray-100 border border-gray-200 rounded"></div>
+                            <span class="mt-1 text-gray-500">Light</span>
+                          </div>
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-[#1c1c1e] border border-gray-700 rounded"></div>
+                            <span class="mt-1 text-gray-500">Dark</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between p-2 rounded border border-gray-200 bg-gray-100">
+                        <span class="text-sm font-medium text-gray-900">Tertiary</span>
+                        <div class="flex gap-2 text-xs">
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-white border border-gray-200 rounded"></div>
+                            <span class="mt-1 text-gray-500">Light</span>
+                          </div>
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-[#2c2c2e] border border-gray-700 rounded"></div>
+                            <span class="mt-1 text-gray-500">Dark</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h5 class="text-lg font-medium mb-3">系统填充色 (System Fills)</h5>
+                    <div class="space-y-2">
+                      <div class="flex items-center justify-between p-2 rounded border border-gray-200">
+                        <span class="text-sm font-medium text-gray-900">Fill</span>
+                        <div class="flex gap-2 text-xs">
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-[rgba(120,120,128,0.2)] rounded"></div>
+                            <span class="mt-1 text-gray-500">Light</span>
+                          </div>
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-[rgba(120,120,128,0.36)] rounded"></div>
+                            <span class="mt-1 text-gray-500">Dark</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="flex items-center justify-between p-2 rounded border border-gray-200">
+                        <span class="text-sm font-medium text-gray-900">Secondary Fill</span>
+                        <div class="flex gap-2 text-xs">
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-[rgba(120,120,128,0.16)] rounded"></div>
+                            <span class="mt-1 text-gray-500">Light</span>
+                          </div>
+                          <div class="flex flex-col items-center">
+                            <div class="w-8 h-8 bg-[rgba(120,120,128,0.32)] rounded"></div>
+                            <span class="mt-1 text-gray-500">Dark</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Dynamic Type Sizes Section -->
+            <div class="spec-card mb-6">
+              <div class="card-header">
+                <h4>动态字体尺寸 (Dynamic Type Sizes)</h4>
+              </div>
+              <div class="card-content">
+                <p class="text-sm text-gray-600 mb-4">
+                  iOS Dynamic Type 允许用户选择偏好的内容大小。设计时应支持这些变化以确保可访问性。以下是默认 (Large) 设置下的尺寸。
+                </p>
+                <div class="overflow-x-auto">
+                  <table class="w-full text-left text-sm">
+                    <thead>
+                      <tr class="bg-gray-50 border-b border-gray-200">
+                        <th class="p-2 font-medium">Style</th>
+                        <th class="p-2 font-medium">Weight</th>
+                        <th class="p-2 font-medium">Size (pt)</th>
+                        <th class="p-2 font-medium">Leading (pt)</th>
+                      </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                      <tr>
+                        <td class="p-2">Large Title</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">34</td>
+                        <td class="p-2">41</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Title 1</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">28</td>
+                        <td class="p-2">34</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Title 2</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">22</td>
+                        <td class="p-2">28</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Title 3</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">20</td>
+                        <td class="p-2">25</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Headline</td>
+                        <td class="p-2">Semibold</td>
+                        <td class="p-2">17</td>
+                        <td class="p-2">22</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Body</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">17</td>
+                        <td class="p-2">22</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Callout</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">16</td>
+                        <td class="p-2">21</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Subhead</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">15</td>
+                        <td class="p-2">20</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Footnote</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">13</td>
+                        <td class="p-2">18</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Caption 1</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">12</td>
+                        <td class="p-2">16</td>
+                      </tr>
+                      <tr>
+                        <td class="p-2">Caption 2</td>
+                        <td class="p-2">Regular</td>
+                        <td class="p-2">11</td>
+                        <td class="p-2">13</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
             <div class="spec-card">
               <div class="card-header">
                 <h4>交互模式</h4>
@@ -1862,7 +1954,8 @@
                         <div class="w-16 h-16 rounded-lg bg-gray-300 opacity-60 absolute"
                           style="transform: translate(8px, 8px);"></div>
                         <div class="w-16 h-16 rounded-lg bg-gray-300 absolute"
-                          style="transform: translate(16px, 16px);"></div>
+                          style="transform: translate(16px, 16px);">
+                        </div>
                         <svg class="w-8 h-8 text-gray-500 absolute" style="transform: translate(20px, 20px);"
                           fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -2028,23 +2121,175 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useHead } from '@unhead/vue'
+import { ElMessage } from 'element-plus'
+import { CopyDocument } from '@element-plus/icons-vue'
+
+// SEO
+useHead({
+  title: '移动端 UI 设计规范 - iOS/Android 尺寸参考 - UIED Tools',
+  meta: [
+    { name: 'description', content: '最新的 iOS (iPhone 17/16/15) 和 Android 设计规范，包括屏幕尺寸、状态栏高度、导航栏高度、安全区域等详细数据。' },
+    { name: 'keywords', content: 'iOS设计规范,Android设计规范,iPhone尺寸,UI设计指南,移动端适配,设计尺寸,iPhone 17 Pro Max尺寸' }
+  ]
+})
+
+// 复制功能
+const copyToClipboard = (text: string) => {
+  navigator.clipboard.writeText(text).then(() => {
+    ElMessage.success({
+      message: `已复制: ${text}`,
+      duration: 1500
+    })
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
 
 // 平台选择状态
 const selectedPlatform = ref('ios')
 
 // 设备尺寸选择
-const selectedDeviceSize = ref('iphone14pro')
+const selectedDeviceSize = ref('iphone17promax')
 
 // iOS设备尺寸数据
 const iosDevices = ref([
   {
-    id: 'iphone14pro',
-    name: 'iPhone 14 Pro',
-    width: 390,
-    height: 844,
+    id: 'iphone17promax',
+    name: 'iPhone 17 Pro Max',
+    width: 440,
+    height: 956,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 20,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone17pro',
+    name: 'iPhone 17 Pro',
+    width: 402,
+    height: 874,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 16,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone17plus',
+    name: 'iPhone 17 Plus',
+    width: 430,
+    height: 932,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 20,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone17',
+    name: 'iPhone 17',
+    width: 393,
+    height: 852,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 16,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone16promax',
+    name: 'iPhone 16 Pro Max',
+    width: 440,
+    height: 956,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49, // 或 50，通常是 49/83
+    homeIndicator: 34,
+    margin: 20,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone16pro',
+    name: 'iPhone 16 Pro',
+    width: 402,
+    height: 874,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 16,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone16plus',
+    name: 'iPhone 16 Plus',
+    width: 430,
+    height: 932,
     statusBar: 47,
     navBar: 44,
-    tabBar: 50,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 20,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone16',
+    name: 'iPhone 16',
+    width: 393,
+    height: 852,
+    statusBar: 47, // 灵动岛
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 16,
+    iconSize: 24,
+    ppi: 460
+  },
+  {
+    id: 'iphone15promax',
+    name: 'iPhone 15 Pro Max',
+    width: 430,
+    height: 932,
+    statusBar: 59, // 灵动岛
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 16,
+    iconSize: 24
+  },
+  {
+    id: 'iphone15pro',
+    name: 'iPhone 15 Pro',
+    width: 393,
+    height: 852,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49,
+    homeIndicator: 34,
+    margin: 16,
+    iconSize: 24
+  },
+  {
+    id: 'iphone14pro',
+    name: 'iPhone 14 Pro',
+    width: 393,
+    height: 852,
+    statusBar: 59,
+    navBar: 44,
+    tabBar: 49,
     homeIndicator: 34,
     margin: 16,
     iconSize: 24
@@ -2066,28 +2311,16 @@ const iosDevices = ref([
     name: 'iPhone 14 Pro Max',
     width: 430,
     height: 932,
-    statusBar: 47,
+    statusBar: 59,
     navBar: 44,
-    tabBar: 50,
+    tabBar: 49,
     homeIndicator: 34,
     margin: 16,
     iconSize: 24
   },
   {
     id: 'iphonese',
-    name: 'iPhone SE',
-    width: 375,
-    height: 667,
-    statusBar: 20,
-    navBar: 44,
-    tabBar: 49,
-    homeIndicator: 0,
-    margin: 16,
-    iconSize: 24
-  },
-  {
-    id: 'iphone8',
-    name: 'iPhone 8',
+    name: 'iPhone SE 3',
     width: 375,
     height: 667,
     statusBar: 20,
@@ -2143,6 +2376,39 @@ const currentAndroidDevice = computed(() => {
   return androidDevices.value.find(d => d.id === selectedDeviceSize.value) || androidDevices.value[0]
 })
 
+// iOS 规格列表
+const currentDeviceSpecs = computed(() => {
+  const d = currentDevice.value
+  return [
+    { label: '屏幕尺寸', value: `${d.width} × ${d.height}pt` },
+    { label: '状态栏高度', value: `${d.statusBar}pt` },
+    { label: '导航栏高度', value: `${d.navBar}pt` },
+    { label: '标签栏高度', value: `${d.tabBar}pt` },
+    { label: '主屏指示器高度', value: `${d.homeIndicator}pt` },
+    { label: '页面边距', value: `${d.margin}pt` },
+    { label: '设计风格高度', value: '60pt' },
+    { label: '设计内容高度', value: '80pt' },
+    { label: '内容区域高度', value: `${d.height - d.statusBar - d.navBar - d.tabBar - d.homeIndicator - 140}pt` },
+    { label: '标签栏图标尺寸', value: `${d.iconSize} × ${d.iconSize}pt` }
+  ]
+})
+
+// Android 规格列表
+const currentAndroidSpecs = computed(() => {
+  const d = currentAndroidDevice.value
+  return [
+    { label: '设备名称', value: d.name },
+    { label: '屏幕尺寸', value: `${d.width} × ${d.height}dp` },
+    { label: '状态栏高度', value: `${d.statusBar}dp` },
+    { label: '应用栏高度', value: `${d.appBar}dp` },
+    { label: '导航栏高度', value: `${d.navBar}dp` },
+    { label: '页面边距', value: `${d.margin}dp` },
+    { label: '设计风格高度', value: '60dp' },
+    { label: '设计内容高度', value: '80dp' },
+    { label: '内容区域高度', value: `${d.height - d.statusBar - d.appBar - d.navBar - 140}dp` }
+  ]
+})
+
 // 计算设备实际缩放比例，使其符合真实尺寸比例
 const deviceDimensions = computed(() => {
   const isIOS = selectedPlatform.value === 'ios';
@@ -2170,7 +2436,7 @@ const deviceStyle = computed(() => {
 // 重置设备选择当平台切换时
 watch(selectedPlatform, () => {
   if (selectedPlatform.value === 'ios') {
-    selectedDeviceSize.value = 'iphone14pro';
+    selectedDeviceSize.value = 'iphone17promax';
   } else if (selectedPlatform.value === 'android') {
     selectedDeviceSize.value = 'pixel6';
   }
@@ -2181,6 +2447,184 @@ watch(selectedPlatform, () => {
 /* 基础容器样式 */
 .design-spec-content {
   margin-bottom: 2rem;
+}
+
+/* 设备选择器画廊样式 */
+.devices-gallery {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 4px 4px 12px 4px;
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scroll-behavior: smooth;
+}
+
+.devices-gallery::-webkit-scrollbar {
+  height: 6px;
+}
+
+.devices-gallery::-webkit-scrollbar-thumb {
+  background-color: #e5e7eb;
+  border-radius: 3px;
+}
+
+.device-card {
+  flex: 0 0 auto;
+  width: 100px;
+  background-color: white;
+  border: 1px solid #f3f4f6;
+  border-radius: 10px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  user-select: none;
+}
+
+.device-card:hover {
+  border-color: #d1d5db;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.device-card.active-device-card {
+  border-color: #6C54FF;
+  background-color: #f5f3ff;
+  box-shadow: 0 0 0 1px #6C54FF;
+}
+
+.device-visual {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 90px;
+  width: 100%;
+}
+
+.device-outline {
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  background-color: white;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s;
+}
+
+.active-device-card .device-outline {
+  border-color: #818cf8;
+  box-shadow: 0 4px 8px rgba(108, 84, 255, 0.15);
+}
+
+.device-outline.android {
+  border-radius: 4px;
+}
+
+.device-screen {
+  width: 100%;
+  height: 100%;
+  background-color: #f9fafb;
+  position: relative;
+}
+
+.device-notch {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 10%;
+  background-color: #1f2937;
+  border-bottom-left-radius: 6px;
+  border-bottom-right-radius: 6px;
+  z-index: 2;
+}
+
+.device-status-bar {
+  height: 12%;
+  width: 100%;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.device-content {
+  padding: 4px;
+}
+
+.content-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mini-block {
+  height: 4px;
+  background-color: #e5e7eb;
+  border-radius: 2px;
+  width: 100%;
+}
+
+.mini-block:nth-child(2) {
+  width: 70%;
+}
+
+.device-home-indicator {
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 40%;
+  height: 2px;
+  background-color: #9ca3af;
+  border-radius: 1px;
+}
+
+.device-info {
+  text-align: center;
+  width: 100%;
+}
+
+.device-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.device-specs {
+  font-size: 9px;
+  color: #6b7280;
+}
+
+.selection-indicator {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 18px;
+  height: 18px;
+  background-color: #6C54FF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  border: 2px solid white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.check-icon {
+  width: 10px;
+  height: 10px;
 }
 
 /* 平台选择按钮 */
@@ -6086,6 +6530,166 @@ table tr:last-child td {
   border-radius: 3px;
 }
 
-/* 继续已有样式 */
-/* ... existing code */
+/* 设备选择器优化样式 */
+.devices-gallery {
+  display: flex;
+  overflow-x: auto;
+  gap: 12px;
+  padding: 4px 4px 12px 4px;
+  /* 增加底部内边距，给滚动条留空间 */
+  margin-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scroll-behavior: smooth;
+  /* 平滑滚动 */
+}
+
+.devices-gallery::-webkit-scrollbar {
+  height: 4px;
+  /* 滚动条高度更小 */
+}
+
+.devices-gallery::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.devices-gallery::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.devices-gallery::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.device-card {
+  flex: 0 0 auto;
+  width: 100px;
+  /* 进一步缩小卡片宽度 */
+  background-color: white;
+  border: 1px solid #f3f4f6;
+  /* 更轻的边框 */
+  border-radius: 10px;
+  padding: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  user-select: none;
+  /* 防止文本被选中 */
+}
+
+.device-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  /* 更柔和的阴影 */
+  border-color: #bfdbfe;
+}
+
+.active-device-card {
+  border-color: #3b82f6;
+  background-color: #f0f7ff;
+  /* 更亮的背景色 */
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  /* 更柔和的高亮 */
+}
+
+.device-visual {
+  height: 70px;
+  /* 缩小视觉区域高度 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 6px;
+  opacity: 0.8;
+  /* 默认稍微透明 */
+  transition: opacity 0.2s;
+}
+
+.active-device-card .device-visual {
+  opacity: 1;
+  /* 选中时不透明 */
+}
+
+.device-card:hover .device-visual {
+  opacity: 1;
+}
+
+.device-outline {
+  background-color: white;
+  border: 1.5px solid #4b5563;
+  /* 边框变细 */
+  border-radius: 10px;
+  position: relative;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  transform: scale(0.5);
+  /* 进一步缩小 */
+  transform-origin: center;
+}
+
+.active-device-card .device-outline {
+  border-color: #2563eb;
+  background-color: #fff;
+}
+
+.device-info {
+  text-align: center;
+  width: 100%;
+}
+
+.device-name {
+  font-size: 11px;
+  /* 字体变小 */
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.device-specs {
+  font-size: 9px;
+  /* 字体变小 */
+  color: #9ca3af;
+  transform: scale(0.9);
+  /* 稍微缩小以适应 */
+}
+
+.active-device-card .device-name {
+  color: #2563eb;
+}
+
+.active-device-card .device-specs {
+  color: #60a5fa;
+}
+
+.selection-indicator {
+  position: absolute;
+  top: -6px;
+  /* 调整位置 */
+  right: -6px;
+  width: 16px;
+  height: 16px;
+  background-color: #3b82f6;
+  border: 2px solid white;
+  /* 增加白色描边 */
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  z-index: 10;
+}
+
+.check-icon {
+  width: 10px;
+  height: 10px;
+}
 </style>

@@ -52,7 +52,7 @@
             <div class="flex items-center gap-4">
               <h2 class="text-lg font-medium">已选择的页面</h2>
               <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                共 {{ pdfPages.length }} 页，已标记删除 {{ pdfPages.filter(p => p.deleted).length }} 页
+                共 {{ pdfPages.length }} 页，已标记删除 {{pdfPages.filter(p => p.deleted).length}} 页
               </span>
             </div>
             <div class="flex space-x-3">
@@ -204,6 +204,9 @@
 
       <!-- 工具推荐 -->
       <ToolsRecommend :currentPath="route.path" />
+
+      <!-- 使用说明 -->
+      <UsageGuide :steps="guideSteps" :notes="guideNotes" />
     </div>
   </div>
 </template>
@@ -217,6 +220,7 @@ import draggable from 'vuedraggable'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
 
 const route = useRoute()
 
@@ -224,6 +228,18 @@ const info = reactive({
   title: "免费在线删除PDF页面工具",
   subtitle: "选择删除PDF中的页面，可同时修改页面顺序、旋转页面，本地处理更安全"
 })
+
+const guideSteps = [
+  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为200MB。' },
+  { title: '选择页面', description: '鼠标悬停在页面预览图上，点击“标记删除”按钮即可删除该页面。您也可以拖拽调整页面顺序。' },
+  { title: '保存并下载', description: '完成编辑后，点击“保存PDF”按钮，系统将自动生成并下载新的PDF文件。' }
+]
+
+const guideNotes = [
+  '删除的页面在保存前可以点击“恢复页面”撤销删除。',
+  '支持批量旋转页面，方便调整文档方向。',
+  '所有文件处理均在本地浏览器完成，不会上传到服务器，确保您的文件安全。'
+]
 
 // 功能特点
 const features = [
@@ -493,7 +509,7 @@ const savePDF = async () => {
     await Promise.all(copyPromises)
 
     const pdfBytes = await newPdf.save()
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+    const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     const fileName = currentFile.value?.name.replace('.pdf', '') || 'document'

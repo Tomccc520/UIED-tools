@@ -89,6 +89,7 @@ export interface NewsItem {
   source: string;
   description?: string;
   category: string;
+  cover?: string;
 }
 
 class RSSNewsService {

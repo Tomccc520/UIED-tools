@@ -8,7 +8,8 @@
 </script>
 
 <template>
-  <footer class="bg-white border-t border-gray-100 rounded-xl" role="contentinfo" aria-label="页面底部">
+  <footer class="bg-white border-t border-gray-100 rounded-xl" role="contentinfo" aria-label="页面底部" itemscope
+    itemtype="http://schema.org/WPFooter">
     <div class="max-w-7xl mx-auto py-2 sm:py-4 px-2 sm:px-3">
       <div class="flex flex-col items-center justify-center space-y-3">
         <!-- Logo和标题 -->
@@ -69,6 +70,37 @@
                 工具快捷入口
               </h2>
               <div class="flex flex-col space-y-3">
+                <!-- 设计工具 -->
+                <div class="flex items-center gap-4">
+                  <span class="text-sm text-gray-400 shrink-0">设计：</span>
+                  <div class="flex flex-wrap gap-3">
+                    <a href="/tools/design/contrast-checker"
+                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      色彩对比度
+                    </a>
+                    <span class="text-gray-300">·</span>
+                    <a href="/tools/design/box-shadow"
+                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      CSS阴影
+                    </a>
+                    <span class="text-gray-300">·</span>
+                    <a href="/tools/design/golden-ratio"
+                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      黄金比例
+                    </a>
+                    <span class="text-gray-300">·</span>
+                    <a href="/tools/design/blob-maker"
+                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      Blob生成器
+                    </a>
+                    <span class="text-gray-300">·</span>
+                    <a href="/tools/design/glassmorphism"
+                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      玻璃拟态
+                    </a>
+                  </div>
+                </div>
+
                 <!-- 图像工具 -->
                 <div class="flex items-center gap-4">
                   <span class="text-sm text-gray-400 shrink-0">图像：</span>

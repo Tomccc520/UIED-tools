@@ -21,7 +21,8 @@ export function seoperender(options?: SeoOptions) {
     '/tools/img-cut',
     '/tools/img-format',
     '/tools/img-to-pdf',
-    '/tools/pdf-to-images'
+    '/tools/pdf-to-images',
+    '/tools/ai/prompt-reverse'
   ];
 
   return vitePluginSeoPrerender({

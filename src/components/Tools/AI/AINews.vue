@@ -1,6 +1,8 @@
 <!--
 * @file AINews.vue
 * @description AI实时快讯页面，展示最新科技资讯
+* @copyright Tomda (https://www.tomda.top)
+* @copyright UIED技术团队 (https://fsuied.com)
 * @author UIED技术团队
 * @createDate 2024-03-20
 -->

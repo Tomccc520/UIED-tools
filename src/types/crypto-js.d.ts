@@ -23,6 +23,7 @@ declare module 'crypto-js' {
 
   namespace CryptoJS {
     function HmacSHA256(message: string, key: string): WordArray;
+    function MD5(message: string): WordArray;
 
     const enc: {
       Base64: Encoder;

@@ -15,7 +15,7 @@
 
 <template>
   <div class="tool-icon">
-    <template v-if="typeof icon === 'object' && icon.type === 'svg' && icon.name">
+    <template v-if="typeof icon === 'object' && icon.type === 'svg' && icon.name && toolIcons[icon.name]">
       <div class="icon-wrapper" v-html="toolIcons[icon.name].content" />
     </template>
     <template v-else-if="typeof icon === 'string'">

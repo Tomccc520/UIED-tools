@@ -40,3 +40,4 @@ pnpm-debug.log*
 
 public/sitemap.txt
 UIED-Tools/
+*.zip

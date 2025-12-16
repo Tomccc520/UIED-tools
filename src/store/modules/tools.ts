@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { getToolsCate } from '../../components/Tools/tools'
+import { getWebInfo } from '../../api/webinfo'
 
 export interface Tool {
   id: number
@@ -160,6 +161,21 @@ export const useToolsStore = defineStore('tools', {
         // 热门工具（广告）
         ...adTools
       ]
+    },
+    async getWebInfo(params: any) {
+      try {
+        const res: any = await getWebInfo(params)
+        if (res.code == 200) {
+          this.webInfo = res.data
+        } else {
+          // 处理错误，或者清空 webInfo
+          console.error('Web info fetch failed:', res.message)
+          this.webInfo = {} // 或者 null
+        }
+      } catch (error) {
+        console.error('Web info fetch error:', error)
+        this.webInfo = {}
+      }
     },
     async getToolCate() {
       try {
