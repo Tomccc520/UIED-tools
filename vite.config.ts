@@ -53,6 +53,7 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 // 环境变量配置
 const isProd = process.env.NODE_ENV === 'production'
 const BASE_API = isProd ? '' : ''  // 移除生产环境的基础URL
+const enableCoep = process.env.VITE_ENABLE_COEP === 'true'
 
 export default defineConfig({
   plugins: [
@@ -72,7 +73,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      'vue': 'vue/dist/vue.esm-bundler.js'
+      'vue': 'vue/dist/vue.esm-bundler.js',
+      'v-code-diff': path.resolve(__dirname, 'node_modules/v-code-diff/dist/v3/index.es.js')
     },
     // 添加 .mjs 扩展名支持
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue']
@@ -146,8 +148,14 @@ export default defineConfig({
 
   // 开发服务器配置
   server: {
-    host: true,
+    host: '0.0.0.0',
     port: 5173,
+    open: true,
+    // 配置响应头，支持 SharedArrayBuffer (提升 WASM 性能)
+    headers: enableCoep ? {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    } : {},
     proxy: {
       // 翻译接口代理配置
       '/api/translate': {
@@ -601,14 +609,6 @@ export default defineConfig({
       strict: false,
       // 允许的文件类型
       allow: ['..']
-    }
-  },
-  test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: [],
-    deps: {
-      inline: ['@vue/test-utils']
     }
   }
 })

@@ -573,10 +573,12 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   color: #515151;
+  border-radius: 8px;
 }
 
 .menu-icon-btn:hover {
   color: #6C54FF;
+  background-color: #f0edff;
   transform: translateY(-1px);
 }
 

@@ -46,7 +46,7 @@
         </div>
 
         <!-- 主要功能区域 -->
-        <div class="grid grid-cols-1 gap-8">
+        <div class="grid grid-cols-1 gap-8 opacity-50 pointer-events-none select-none grayscale filter">
           <!-- 上传区域 -->
           <div
             class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
@@ -95,8 +95,12 @@
                   <div class="text-sm text-gray-600 mb-2">自定义颜色</div>
                   <input type="color" v-model="customColor" class="w-full h-10 rounded cursor-pointer" />
                 </div>
+                <div class="flex-1">
+                  <div class="text-sm text-gray-600 mb-2">容差值 ({{ tolerance }})</div>
+                  <el-slider v-model="tolerance" :min="1" :max="100" :step="1" />
+                </div>
                 <button @click="selectColor(customColor)"
-                  class="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-200">
+                  class="px-4 py-2 rounded bg-blue-500 text-white hover:bg-blue-600 transition-colors duration-200 h-10 self-end">
                   应用
                 </button>
               </div>
@@ -235,6 +239,7 @@ const currentImage = ref<string>('')
 const processedImageUrl = ref<string>('')
 const selectedColor = ref('#FFFFFF')
 const customColor = ref('#FFFFFF')
+const tolerance = ref(30)
 const isProcessing = ref(false)
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -344,7 +349,7 @@ const processImage = async () => {
     const targetColor = hexToRgb(selectedColor.value)
 
     // 替换背景色
-    const tolerance = 30 // 容差值
+    // const tolerance = 30 // 容差值
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i]
       const g = data[i + 1]
@@ -358,7 +363,7 @@ const processImage = async () => {
       )
 
       // 如果颜色接近背景色，则替换
-      if (diff < tolerance) {
+      if (diff < tolerance.value) {
         data[i] = targetColor.r
         data[i + 1] = targetColor.g
         data[i + 2] = targetColor.b

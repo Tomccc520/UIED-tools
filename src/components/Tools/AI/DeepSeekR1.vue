@@ -18,10 +18,10 @@
   <div class="min-h-screen">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-none border border-gray-100">
         <!-- 页面标题 -->
         <div class="mb-6">
-          <div class="max-w-4xl mx-auto">
+          <div class="max-w-6xl mx-auto">
             <div class="flex flex-col items-center text-center">
               <!-- Logo -->
               <div class="w-12 h-12 mb-4 hidden md:block">
@@ -40,17 +40,23 @@
                     target="_blank" class="text-blue-500 hover:text-blue-600">硅基流动x华为云联合SiliconFlow</a> 平台，支持多模型智能对话</p>
                 <!-- 链接导航 -->
                 <div class="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 mt-3">
-                  <a href="https://www.uied.cn/collection/deepseek" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">DeepSeek学习教程</a>
+                  <a href="https://www.uied.cn/" target="_blank"
+                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI学习平台</a>
                   <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="https://www.uied.cn/circle/deepseek" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">DeepSeek常见问题</a>
+                  <a href="https://uiedtool.com/" target="_blank"
+                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI免费工具</a>
                   <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="https://www.uied.cn/circle/84986.html" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">DeepSeek交流群</a>
+                  <a href="https://hot.uied.cn/" target="_blank"
+                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI资讯热榜</a>
                   <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="/changelog" class="text-xs md:text-sm text-blue-500 hover:text-blue-600"
-                    target="_blank">DeepSeek更新记录</a>
+                  <a href="https://hao.uied.cn/ai" target="_blank"
+                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI工具导航</a>
+                  <span class="text-gray-300 hidden md:inline">|</span>
+                  <a href="https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink" target="_blank"
+                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI交流群</a>
+                  <span class="text-gray-300 hidden md:inline">|</span>
+                  <a href="https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink"
+                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600" target="_blank">AI知识库</a>
                 </div>
                 <!-- 状态提示 -->
                 <div class="flex flex-col md:flex-row justify-center items-center gap-2 mt-3">
@@ -89,10 +95,10 @@
           </div>
 
           <div ref="chatContainer"
-            class="h-[calc(100vh-400px)] md:h-[600px] overflow-y-auto p-4 space-y-6 bg-white rounded-xl border border-gray-100 scroll-smooth">
+            class="h-[calc(100vh-300px)] md:h-[700px] overflow-y-auto p-4 space-y-6 bg-white rounded-xl border border-gray-100 scroll-smooth">
             <!-- 对话消息 -->
             <template v-for="(message, index) in messages" :key="index">
-              <div v-if="message.role !== 'system'" class="message-container"
+              <div v-if="message.role !== 'system'" class="message-container max-w-6xl mx-auto"
                 :class="[message.role === 'user' ? 'user' : 'assistant']">
                 <!-- 头像 -->
                 <div class="flex-shrink-0" :class="message.role === 'user' ? 'ml-4' : 'mr-4'">
@@ -177,7 +183,7 @@
         </div>
 
         <!-- 输入区域 -->
-        <div class="relative bg-white rounded-xl border border-gray-100 p-3 md:p-4">
+        <div class="relative bg-white rounded-xl border border-gray-100 p-3 md:p-4 max-w-6xl mx-auto">
           <div class="flex items-start space-x-2 md:space-x-4">
             <div class="flex-shrink-0 hidden md:block">
               <div class="w-8 h-8 md:w-10 md:h-10 rounded-full bg-blue-500 flex items-center justify-center text-white">
@@ -379,6 +385,18 @@ import 'highlight.js/styles/github.css'
 import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import html2canvas from 'html2canvas'
+import { useHead } from '@vueuse/head'
+
+// SEO Meta Tags
+useHead({
+  title: 'DeepSeek R1 AI助手 - UIED免费AI工具',
+  meta: [
+    { name: 'description', content: '免费使用DeepSeek R1 AI助手，基于SiliconFlow平台，支持多模型智能对话、代码生成、文章写作等功能。UIED技术团队开发。' },
+    { name: 'keywords', content: 'DeepSeek R1,AI对话,免费AI工具,AI助手,代码生成,智能写作,UIED' },
+    { name: 'author', content: 'UIED技术团队' },
+    { name: 'copyright', content: 'UIED技术团队 (https://fsuied.com)' }
+  ]
+})
 
 // 组件配置信息
 const info = {
@@ -391,6 +409,7 @@ interface Message {
   role: string
   content: string
   reasoning_content?: string
+  thinking_time?: string
 }
 
 // 系统提示和欢迎消息
@@ -554,6 +573,8 @@ const isVerified = ref(Boolean(localStorage.getItem('deepseek_verified')))
 const showVerifyDialog = ref(false)
 const verifyPassword = ref('')
 const maxFreeUsage = ref(10)  // 修改为10次免费使用机会
+const route = useRoute()
+const router = useRouter()
 
 // 添加验证密码的方法
 const verifyAccess = () => {
@@ -567,6 +588,78 @@ const verifyAccess = () => {
     ElMessage.error('密码错误，请关注公众号获取正确的密码')
   }
 }
+
+// 切换推理内容显示状态
+const toggleReasoning = (index: number) => {
+  reasoningVisible.value[index] = !reasoningVisible.value[index]
+}
+
+// 重新生成消息
+const regenerateMessage = async (index: number) => {
+  if (loading.value) return
+
+  // 获取上一个用户消息
+  const userMessageIndex = index - 1
+  if (userMessageIndex < 0) return
+
+  // 删除当前及之后的消息
+  messages.value.splice(index)
+
+  // 重新发送请求
+  await handleSend()
+}
+
+// 格式化并复制消息
+const copyFormattedMessage = (content: string) => {
+  copyMessage(content)
+}
+
+// 跳转到提示词页面
+const gotoPrompt = () => {
+  router.push('/tools/ai/deepseek-prompt')
+}
+
+// 跳转到导航页面
+const gotoNav = () => {
+  router.push('/tools/ai/deepseek-nav')
+}
+
+// 处理思考开关切换
+const handleReasoningToggle = () => {
+  showReasoning.value = !showReasoning.value
+  localStorage.setItem('deepseek-reasoning', String(showReasoning.value))
+}
+
+// 快捷提示词
+const quickPrompts = [
+  {
+    category: '代码开发',
+    prompts: [
+      '帮我写一个Vue3的倒计时组件',
+      '解释这段代码的运行原理',
+      '优化这个SQL查询语句',
+      '如何解决跨域请求问题？'
+    ]
+  },
+  {
+    category: '内容创作',
+    prompts: [
+      '帮我写一篇关于AI发展的文章大纲',
+      '优化这段文案，使其更具吸引力',
+      '写一个产品发布会的开场白',
+      '给这个项目起几个好听的名字'
+    ]
+  },
+  {
+    category: '知识问答',
+    prompts: [
+      '解释一下量子纠缠',
+      '介绍一下深度学习的发展历史',
+      '如何制定个人理财计划？',
+      '分析一下当前AI行业的发展趋势'
+    ]
+  }
+]
 
 // 修改发送消息函数
 const handleSend = async () => {
@@ -624,11 +717,15 @@ const handleSend = async () => {
     let responseText = ''
     let reasoningText = ''
 
+    // 记录思考开始时间
+    const startTime = Date.now()
+
     // 添加助手消息占位
     messages.value.push({
       role: 'assistant',
       content: '',
-      reasoning_content: ''
+      reasoning_content: '',
+      thinking_time: '0.0'
     })
 
     const currentIndex = messages.value.length - 1
@@ -699,6 +796,10 @@ const handleSend = async () => {
               reasoningText += choice.delta.reasoning_content
               reasoningContent.value = reasoningText
               messages.value[currentIndex].reasoning_content = reasoningText
+
+              // 更新思考时间
+              const thinkingTime = ((Date.now() - startTime) / 1000).toFixed(1)
+              messages.value[currentIndex].thinking_time = thinkingTime
             }
 
             // 处理回复内容
@@ -930,30 +1031,6 @@ const handleKeyPress = (e: KeyboardEvent) => {
   }
 }
 
-// SEO基础标签
-const updateSEOTags = () => {
-  // 标题
-  document.title = `DeepSeek R1 AI助手 - 智能对话与深度思考`
-
-  // 描述
-  let metaDescription = document.querySelector('meta[name="description"]')
-  if (!metaDescription) {
-    metaDescription = document.createElement('meta')
-    metaDescription.setAttribute('name', 'description')
-    document.head.appendChild(metaDescription)
-  }
-  metaDescription.setAttribute('content', 'DeepSeek R1 AI助手提供智能对话服务，支持多轮对话、深度思考、代码生成等功能。基于最新的DeepSeek R1模型，为您带来更专业的AI对话体验。')
-
-  // 关键词
-  let metaKeywords = document.querySelector('meta[name="keywords"]')
-  if (!metaKeywords) {
-    metaKeywords = document.createElement('meta')
-    metaKeywords.setAttribute('name', 'keywords')
-    document.head.appendChild(metaKeywords)
-  }
-  metaKeywords.setAttribute('content', 'DeepSeek R1,AI助手,智能对话,深度思考,代码生成,AI模型')
-}
-
 onMounted(() => {
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)
@@ -988,7 +1065,8 @@ onMounted(() => {
   // 配置自定义渲染器
   const renderer = new marked.Renderer();
 
-  renderer.code = function (code: string, lang?: string) {
+  renderer.code = function ({ text, lang }: { text: string, lang?: string }) {
+    const code = text
     const language = lang || 'plaintext';
     const id = 'code-block-' + Math.random().toString(36).substr(2, 9);
 
@@ -999,1078 +1077,382 @@ onMounted(() => {
 
       // 添加行号
       const lines = highlighted.split('\n');
-      const numberedLines = lines.map((line, index) =>
-        `<div class="code-line"><span class="line-number">${index + 1}</span><span class="line-content">${line}</span></div>`
-      ).join('');
+      const lineNumbers = lines.map((_, i) => `<span class="line-number">${i + 1}</span>`).join('\n');
 
-      return `<div class="code-block bg-[#f6f8fa] rounded-lg border border-gray-200" id="${id}">
-        <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-          <span class="text-xs font-medium text-gray-600">${language}</span>
-          <button class="copy-code-btn px-2 py-1 text-xs text-gray-500 hover:text-gray-700 bg-white/80 backdrop-blur rounded border border-gray-200 hover:bg-gray-50 transition-colors" onclick="(() => {
-            const codeBlock = document.getElementById('${id}');
-            if (codeBlock) {
-              const codeLines = Array.from(codeBlock.querySelectorAll('.line-content'));
-              const codeContent = codeLines.map(line => {
-                const lineText = line.innerHTML
-                  .replace(/<span class=\\"hljs-[^"]*\\">/g, '')
-                  .replace(/<\\/span>/g, '');
-                return lineText;
-              }).join('\\n');
-              navigator.clipboard.writeText(codeContent).then(() => {
-                const btn = codeBlock.querySelector('.copy-code-btn');
-                if (btn) {
-                  btn.textContent = '已复制';
-                  setTimeout(() => btn.textContent = '复制代码', 2000);
-                }
-              });
-            }
-          })()">
-            复制代码
+      return `<div class="code-block-wrapper">
+        <div class="code-header">
+          <span class="code-lang">${language}</span>
+          <button class="copy-btn" onclick="copyCode('${id}')">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            复制
           </button>
         </div>
-        <div class="overflow-x-auto">
-          <pre class="p-4 m-0"><code class="language-${language}">${numberedLines}</code></pre>
+        <div class="code-content">
+          <div class="line-numbers" aria-hidden="true">${lineNumbers}</div>
+          <pre><code class="hljs language-${language}" id="${id}">${highlighted}</code></pre>
         </div>
       </div>`;
     } catch (e) {
-      console.error('代码高亮失败:', e);
-      return `<div class="code-block bg-[#f6f8fa] rounded-lg border border-gray-200" id="${id}">
-        <div class="flex items-center justify-between px-4 py-2 border-b border-gray-200">
-          <span class="text-xs font-medium text-gray-600">${language}</span>
-          <button class="copy-code-btn px-2 py-1 text-xs text-gray-500 hover:text-gray-700 bg-white/80 backdrop-blur rounded border border-gray-200 hover:bg-gray-50 transition-colors" onclick="(() => {
-            const codeBlock = document.getElementById('${id}');
-            if (codeBlock) {
-              const codeLines = Array.from(codeBlock.querySelectorAll('.line-content'));
-              const codeContent = codeLines.map(line => {
-                const lineText = line.innerHTML
-                  .replace(/<span class=\\"hljs-[^"]*\\">/g, '')
-                  .replace(/<\\/span>/g, '');
-                return lineText;
-              }).join('\\n');
-              navigator.clipboard.writeText(codeContent).then(() => {
-                const btn = codeBlock.querySelector('.copy-code-btn');
-                if (btn) {
-                  btn.textContent = '已复制';
-                  setTimeout(() => btn.textContent = '复制代码', 2000);
-                }
-              });
-            }
-          })()">
-            复制代码
-          </button>
-        </div>
-        <div class="overflow-x-auto">
-          <pre class="p-4 m-0"><code class="language-${language}">${numberedLines}</code></pre>
-        </div>
-      </div>`;
+      return `<pre><code class="hljs language-${language}">${code}</code></pre>`;
     }
   };
 
-  markedOptions.renderer = renderer;
-  marked.setOptions(markedOptions);
+  marked.use({ renderer });
 
-  // 设置 marked 选项
-  marked.setOptions(markedOptions);
-
-  // 添加路由离开前的处理
-  const unwatch = router.beforeEach(async (to, from, next) => {
-    // 如果是从 DeepSeek 页面离开
-    if (from.path === route.path) {
-      // 如果有正在进行的对话,显示确认框
-      if (messages.value.length > 2 && loading.value) {
-        try {
-          await ElMessageBox.confirm(
-            '当前有对话正在进行,确定要离开吗?',
-            '提示',
-            {
-              confirmButtonText: '确定',
-              cancelButtonText: '取消',
-              type: 'warning'
-            }
-          )
-          // 用户确认离开
-          handlePageLeave()
-          next()
-        } catch {
-          // 用户取消,停留在当前页面
-          next(false)
-        }
-      } else {
-        // 没有进行中的对话,直接离开并刷新
-        handlePageLeave()
-        next()
-      }
-    } else {
-      next()
-    }
-  })
-
-  // 组件卸载时清理路由守卫
-  onUnmounted(() => {
-    unwatch()
-  })
-
-  try {
-    // 初始化SEO标签
-    updateSEOTags()
-  } catch (error) {
-    console.error('SEO标签设置失败:', error)
-  }
-
-  // 设置 marked 选项
-  marked.setOptions(markedOptions);
-
-  // 添加代码复制功能
-  const setupCodeCopy = () => {
-    nextTick(() => {
-      const codeBlocks = document.querySelectorAll('.code-block');
-      codeBlocks.forEach(block => {
-        const copyBtn = block.querySelector('.copy-code-btn');
-        const codeElement = block.querySelector('code');
-
-        copyBtn?.addEventListener('click', async () => {
-          if (codeElement) {
-            try {
-              const code = codeElement.textContent || '';
-              await navigator.clipboard.writeText(code);
-              ElMessage.success('代码已复制到剪贴板');
-            } catch (err) {
-              console.error('复制失败:', err);
-              ElMessage.error('复制失败，请手动复制');
-            }
-          }
-        });
-      });
-    });
-  };
-
-  // 监听消息变化，重新设置代码复制功能
-  watch(() => messages.value, () => {
-    setupCodeCopy();
-  }, { deep: true });
-
-  // 组件挂载时初始化代码复制功能
-  onMounted(() => {
-    setupCodeCopy();
-  });
-
-  // 修改复制代码的处理函数
-  const copyCode = async (event: Event) => {
-    const button = event.target as HTMLElement
-    const codeBlock = button.closest('.code-block')
-    if (!codeBlock) return
-
-    try {
-      // 获取代码内容
-      const codeElement = codeBlock.querySelector('code')
-      if (!codeElement) return
-
-      // 获取纯文本内容
-      const codeText = codeElement.textContent || ''
-
-      // 复制到剪贴板
-      await navigator.clipboard.writeText(codeText)
-
-      // 更新按钮状态
-      const originalText = button.textContent || ''
-      button.textContent = '已复制'
-      button.classList.add('bg-green-50', 'text-green-600', 'border-green-200')
-
-      // 2秒后恢复按钮状态
-      setTimeout(() => {
-        button.textContent = originalText
-        button.classList.remove('bg-green-50', 'text-green-600', 'border-green-200')
-      }, 2000)
-
-      // 显示成功提示
-      ElMessage.success('代码已复制到剪贴板')
-    } catch (err) {
-      console.error('复制失败:', err)
-      ElMessage.error('复制失败，请手动复制')
-    }
-  }
-
-  // 组件挂载时初始化代码复制功能
-  onMounted(() => {
-    document.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement
-      if (target.classList.contains('copy-code-btn')) {
-        copyCode(e)
-      }
-    })
-  })
-
-  // 初始化深度思考模式
-  const savedReasoning = localStorage.getItem('deepseek-reasoning');
-  if (savedReasoning !== null) {
-    showReasoning.value = savedReasoning === 'true';
-  }
-
-  // 添加代码复制事件监听
-  document.addEventListener('click', handleCodeCopy);
-})
-
-// 添加页面离开时的清理函数
-const handlePageLeave = () => {
-  // 停止所有正在进行的请求
-  if (controller.value) {
-    controller.value.abort()
-    controller.value = null
-  }
-
-  // 清理状态
-  loading.value = false
-  isThinking.value = false
-  messages.value = [{
-    role: 'system',
-    content: systemPrompt
-  }]
-  currentMessage.value = ''
-
-  // 添加一个延时刷新,确保路由跳转完成后再刷新
-  setTimeout(() => {
-    window.location.reload()
-  }, 100)
-}
-
-// 监听思考模式变化
-watch(showReasoning, (newValue) => {
-  console.log('思考模式:', newValue ? '开启' : '关闭')
-})
-
-// 修改 Markdown 渲染配置
-const renderMarkdown = (content: string) => {
-  if (!content) return '';
-
-  const renderer = new marked.Renderer();
-
-  // 修复代码块渲染的类型问题
-  renderer.code = function ({ text, lang, escaped }: marked.Code) {
-    const language = lang || 'plaintext';
-    const code = escaped ? text : text
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-
-    return `
-      <div class="code-block relative group">
-        <div class="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          <button class="copy-code-btn px-2 py-1 text-xs bg-white text-gray-600 rounded border border-gray-200 hover:bg-gray-50">
-            复制代码
-          </button>
-        </div>
-        <pre class="!mt-0"><code class="language-${language}">${code}</code></pre>
-      </div>
-    `;
-  };
-
-  // 修复链接渲染器
-  renderer.link = function ({ href, title, text }: marked.Link) {
-    const titleAttr = title ? ` title="${title}"` : '';
-    return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer" class="text-blue-500 hover:text-blue-600 hover:underline">${text}</a>`;
-  };
-
-  // 修复图片渲染器
-  renderer.image = function ({ href, title, text }: marked.Image) {
-    const titleAttr = title ? ` title="${title}"` : '';
-    return `<img src="${href}" alt="${text}"${titleAttr} class="max-w-full h-auto rounded-lg my-4" loading="lazy">`;
-  };
-
-  marked.setOptions({
-    gfm: true,
-    breaks: true,
-    renderer
-  });
-
-  try {
-    const rendered = marked(content);
-    return `<div class="message-content">${rendered}</div>`;
-  } catch (err) {
-    console.error('Markdown渲染出错:', err);
-    return String(content);
-  }
-};
-
-// 添加格式化复制消息的方法
-const copyFormattedMessage = async (content: string) => {
-  try {
-    // 移除 Markdown 标记，保留纯文本内容
-    const plainText = content
-      .replace(/#{1,6}\s/g, '') // 移除标题标记
-      .replace(/\*\*/g, '') // 移除加粗标记
-      .replace(/\n+/g, '\n') // 合并多个换行
-      .trim();
-
-    await navigator.clipboard.writeText(plainText);
-    ElMessage.success('复制成功');
-  } catch (err) {
-    console.error('复制失败:', err);
-    ElMessage.error('复制失败');
-  }
-};
-
-// 修改快捷提示词数据
-const quickPrompts = [
-  {
-    category: '智能问答',
-    prompts: [
-      '请帮我总结这段内容的要点',
-      '请解释一下这个概念的含义',
-      '这个问题有什么解决方案',
-      '请分析一下这个现象的原因',
-      '如何评价这个观点的合理性'
-    ]
-  },
-  {
-    category: '文本优化',
-    prompts: [
-      '请帮我润色这段文字',
-      '如何让这段话更有说服力',
-      '用更专业的方式表达这个意思',
-      '把这段话改写得更通俗易懂',
-      '优化这段文字的逻辑性'
-    ]
-  },
-  {
-    category: '创意写作',
-    prompts: [
-      '为这个产品写个吸引人的广告语',
-      '写一段富有画面感的场景描写',
-      '用比喻的方式描述这个事物',
-      '为这个主题写个有趣的开场白',
-      '写一段能激发灵感的文字'
-    ]
-  },
-  {
-    category: '代码助手',
-    prompts: [
-      '解释这段代码的功能和原理',
-      '优化这段代码的性能',
-      '添加必要的代码注释',
-      '检查代码中的潜在问题',
-      '提供更好的代码实现方案'
-    ]
-  }
-]
-
-// 切换推理内容显示
-const toggleReasoning = (index: number) => {
-  reasoningVisible.value[index] = !reasoningVisible.value[index]
-}
-
-// 监听消息列表变化，为新消息设置默认展开状态
-watch(messages, (newMessages) => {
-  newMessages.forEach((_, index) => {
-    if (!(index in reasoningVisible.value)) {
-      reasoningVisible.value[index] = true
-    }
-  })
-}, { deep: true })
-
-// 添加监听消息变化的滚动处理
-watch(messages, () => {
-  nextTick(() => {
-    if (chatContainer.value) {
-      const container = chatContainer.value
-      container.scrollTop = container.scrollHeight
-    }
-  })
-}, { deep: true })
-
-// 获取路由实例
-const route = useRoute()
-const router = useRouter()
-
-// 修改路由监听和清理逻辑
-const handleRouteChange = async () => {
-  try {
-    // 停止所有正在进行的请求
-    if (controller.value) {
-      controller.value.abort()
-      controller.value = null
-    }
-
-    // 清理消息状态
-    loading.value = false
-    isThinking.value = false
-
-    // 如果存在 value 参数，清除它
-    if (route.query.value) {
-      await router.replace({
-        path: route.path,
-        query: {},
-        force: true // 强制更新
-      })
-    }
-  } catch (err) {
-    console.error('路由参数清理失败:', err)
-  }
-}
-
-// 添加思考时间计算
-const thinkingStartTime = ref<number>(0);
-const thinkingTime = ref<number>(0);
-
-// 修改重新生成函数
-const regenerateResponse = async () => {
-  if (messages.value.length < 2) {
-    ElMessage.warning('没有可重新生成的回复');
-    return;
-  }
-
-  // 保存最后一条用户消息
-  const lastUserMessage = messages.value.slice(-2)[0];
-
-  // 移除最后一条助手回复
-  messages.value.pop();
-
-  // 重新开始计时
-  thinkingStartTime.value = Date.now();
-
-  try {
-    // 使用 handleSendMessage 而不是 sendMessage
-    await handleSendMessage(lastUserMessage.content);
-    thinkingTime.value = (Date.now() - thinkingStartTime.value) / 1000;
-  } catch (error) {
-    console.error('重新生成失败:', error);
-    ElMessage.error('重新生成失败，请重试');
-  }
-};
-
-// 添加代码复制功能
-const setupCodeCopy = () => {
-  document.addEventListener('click', async (e) => {
-    const target = e.target as HTMLElement;
-    if (target.classList.contains('copy-code-btn')) {
-      const codeBlock = target.closest('.code-block');
-      if (!codeBlock) return;
-
-      const code = codeBlock.querySelector('code');
-      if (!code) return;
-
-      try {
-        await navigator.clipboard.writeText(code.textContent || '');
-        // 临时改变按钮文字
-        const originalText = target.textContent;
-        target.textContent = '已复制';
-        target.classList.add('bg-green-50', 'text-green-600', 'border-green-200');
-
-        setTimeout(() => {
-          target.textContent = originalText;
-          target.classList.remove('bg-green-50', 'text-green-600', 'border-green-200');
-        }, 2000);
-      } catch (err) {
-        console.error('复制失败:', err);
+  // 全局暴露复制函数
+  (window as any).copyCode = (id: string) => {
+    const codeElement = document.getElementById(id);
+    if (codeElement) {
+      const code = codeElement.textContent || '';
+      navigator.clipboard.writeText(code).then(() => {
+        ElMessage.success('代码已复制');
+      }).catch(() => {
         ElMessage.error('复制失败');
-      }
+      });
     }
-  });
-};
+  };
+})
 
-// 在组件挂载时设置代码复制功能
-onMounted(() => {
-  setupCodeCopy();
-});
-
-// 处理深度思考模式切换
-const handleReasoningToggle = () => {
-  showReasoning.value = !showReasoning.value
-  // 保存到本地存储
-  localStorage.setItem('deepseek-reasoning', String(showReasoning.value))
-  ElMessage.success(showReasoning.value ? '已开启深度思考模式' : '已关闭深度思考模式')
-
-  // 如果正在加载中，更新当前请求的思考模式
-  if (controller.value) {
-    controller.value.abort() // 中断当前请求
-    handleSend() // 使用新的思考模式重新发送
-  }
-}
-
-const gotoPrompt = () => {
-  window.open('/tools/ai/deepseek-prompt', '_blank')
-}
-
-const gotoNav = () => {
-  window.open('/tools/ai/deepseek-nav', '_blank')
-}
-
-// 修改代码复制处理
-const handleCodeCopy = async (e: Event) => {
-  const target = e.target as HTMLElement;
-  if (!target.classList.contains('copy-code-btn')) return;
-
-  const codeBlock = target.closest('.code-block');
-  if (!codeBlock) return;
-
-  const code = codeBlock.querySelector('code');
-  if (!code) return;
-
+const renderMarkdown = (content: string) => {
   try {
-    const plainText = code.textContent || '';
-    await navigator.clipboard.writeText(plainText);
-
-    // 更新按钮状态
-    const originalText = target.textContent || '复制代码';
-    target.textContent = '已复制';
-    target.classList.add('bg-green-50', 'text-green-600', 'border-green-200');
-
-    setTimeout(() => {
-      target.textContent = originalText;
-      target.classList.remove('bg-green-50', 'text-green-600', 'border-green-200');
-    }, 2000);
-  } catch (err) {
-    console.error('复制失败:', err);
-    target.textContent = '复制失败';
-    target.classList.add('bg-red-50', 'text-red-600', 'border-red-200');
-
-    setTimeout(() => {
-      target.textContent = '复制代码';
-      target.classList.remove('bg-red-50', 'text-red-600', 'border-red-200');
-    }, 2000);
+    return marked(content || '')
+  } catch (e) {
+    console.error('Markdown渲染错误:', e)
+    return content
   }
-};
+}
 
-// 组件卸载时清理
 onBeforeUnmount(() => {
-  document.removeEventListener('click', handleCodeCopy);
-});
-
+  document.removeEventListener('keypress', handleKeyPress)
+  // 清理全局函数
+  delete (window as any).copyCode
+})
 </script>
 
 <style scoped>
+/* 隐藏滚动条但保留滚动功能 */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 消息动画 */
 .message-container {
-  display: flex;
-  align-items: flex-start;
-  padding: 1rem;
-  margin-bottom: 1rem;
-  max-width: 100%;
-  word-break: break-word;
+  @apply flex w-full opacity-0 translate-y-4 animate-fade-in-up;
 }
 
 .message-container.user {
-  flex-direction: row-reverse;
-  background-color: #f8fafc;
-  border-radius: 0.5rem;
-  margin-left: auto;
-  width: fit-content;
-  max-width: 85%;
+  @apply flex-row-reverse;
 }
 
-.message-container.assistant {
-  background-color: #ffffff;
-  width: fit-content;
-  max-width: 85%;
-}
-
-.reasoning-content {
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background-color: #f8fafc;
-  border-radius: 0.5rem;
-  border: 1px solid #e2e8f0;
-}
-
-.reasoning-content .text-sm {
-  color: #64748b;
-  /* 设置推理过程文字为灰色 */
-}
-
-.markdown-body {
-  font-size: 14px;
-  line-height: 1.6;
-  word-wrap: break-word;
-}
-
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
-.markdown-body h4,
-.markdown-body h5,
-.markdown-body h6 {
-  margin-top: 24px;
-  margin-bottom: 16px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.markdown-body h1 {
-  font-size: 2em;
-}
-
-.markdown-body h2 {
-  font-size: 1.5em;
-}
-
-.markdown-body h3 {
-  font-size: 1.25em;
-}
-
-.markdown-body h4 {
-  font-size: 1em;
-}
-
-.markdown-body h5 {
-  font-size: 0.875em;
-}
-
-.markdown-body h6 {
-  font-size: 0.85em;
-}
-
-.markdown-body p {
-  margin-top: 0;
-  margin-bottom: 16px;
-}
-
-.markdown-body ul,
-.markdown-body ol {
-  margin-top: 0;
-  margin-bottom: 16px;
-  padding-left: 2em;
-}
-
-.markdown-body ul {
-  list-style-type: disc;
-}
-
-.markdown-body ol {
-  list-style-type: decimal;
-}
-
-.markdown-body li {
-  margin: 0.25em 0;
-}
-
-.markdown-body blockquote {
-  margin: 0 0 16px;
-  padding: 0 1em;
-  color: #6a737d;
-  border-left: 0.25em solid #dfe2e5;
-}
-
-.markdown-body code {
-  padding: 0.2em 0.4em;
-  margin: 0;
-  font-size: 85%;
-  background-color: rgba(27, 31, 35, 0.05);
-  border-radius: 3px;
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-}
-
-.markdown-body pre {
-  margin-top: 0;
-  margin-bottom: 16px;
-  padding: 16px;
-  overflow: auto;
-  font-size: 85%;
-  line-height: 1.45;
-  background-color: #f6f8fa;
-  border-radius: 3px;
-}
-
-.markdown-body pre code {
-  padding: 0;
-  margin: 0;
-  font-size: 100%;
-  word-break: normal;
-  white-space: pre;
-  background: transparent;
-  border: 0;
-}
-
-.markdown-body table {
-  display: block;
-  width: 100%;
-  overflow: auto;
-  margin-top: 0;
-  margin-bottom: 16px;
-  border-spacing: 0;
-  border-collapse: collapse;
-}
-
-.markdown-body table th,
-.markdown-body table td {
-  padding: 6px 13px;
-  border: 1px solid #dfe2e5;
-}
-
-.markdown-body table tr {
-  background-color: #fff;
-  border-top: 1px solid #c6cbd1;
-}
-
-.markdown-body table tr:nth-child(2n) {
-  background-color: #f6f8fa;
-}
-
-.markdown-body img {
-  max-width: 100%;
-  box-sizing: content-box;
-  background-color: #fff;
-}
-
-.markdown-body hr {
-  height: 0.25em;
-  padding: 0;
-  margin: 24px 0;
-  background-color: #e1e4e8;
-  border: 0;
-}
-
-.markdown-body a {
-  color: #0366d6;
-  text-decoration: none;
-}
-
-.markdown-body a:hover {
-  text-decoration: underline;
-}
-
-.markdown-body blockquote {
-  margin: 1em 0;
-  padding: 0.8em 1em;
-  border-left: 4px solid #3b82f6;
-  background-color: #f8fafc;
-  color: #4b5563;
-  border-radius: 0.375rem;
-}
-
-.markdown-body code {
-  background-color: #f1f5f9;
-  padding: 0.2em 0.4em;
-  border-radius: 0.25em;
-  font-family: ui-monospace, monospace;
-  font-size: 0.9em;
-  color: #0f172a;
-}
-
-.markdown-body pre {
-  background-color: #f8fafc;
-  padding: 1em;
-  border-radius: 0.5em;
-  overflow-x: auto;
-  border: 1px solid #e2e8f0;
-  margin: 1.2em 0;
-}
-
-.markdown-body pre code {
-  background-color: transparent;
-  padding: 0;
-  border-radius: 0;
-  color: #334155;
-  font-size: 0.9em;
-  line-height: 1.7;
-}
-
-.markdown-body table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
-}
-
-.markdown-body th,
-.markdown-body td {
-  padding: 0.75em;
-  border: 1px solid #e5e7eb;
-}
-
-.markdown-body th {
-  background-color: #f8fafc;
-  font-weight: 600;
-  color: #1e3a8a;
-}
-
-.markdown-body a {
-  color: #3b82f6;
-  text-decoration: none;
-  transition: color 0.2s;
-}
-
-.markdown-body a:hover {
-  color: #2563eb;
-  text-decoration: underline;
-}
-
-.markdown-body img {
-  max-width: 100%;
-  height: auto;
-  border-radius: 0.5rem;
-  margin: 1.2em 0;
-}
-</style>
-
-<style>
-/* 基础 Markdown 样式 */
-.markdown-body {
-  font-size: 16px;
-  line-height: 1.6;
-}
-
-.markdown-body h1,
-.markdown-body h2,
-.markdown-body h3,
-.markdown-body h4 {
-  margin-top: 24px;
-  margin-bottom: 16px;
-  font-weight: 600;
-}
-
-.markdown-body p {
-  margin: 16px 0;
-}
-
-.markdown-body pre {
-  margin: 16px 0;
-  padding: 16px;
-  background-color: #f6f8fa;
-  border-radius: 6px;
-}
-
-.markdown-body code {
-  padding: 0.2em 0.4em;
-  background-color: rgba(175, 184, 193, 0.2);
-  border-radius: 6px;
-}
-
-.markdown-body pre code {
-  padding: 0;
-  background-color: transparent;
-}
-
-.markdown-body ul,
-.markdown-body ol {
-  padding-left: 2em;
-  margin: 16px 0;
-}
-
-.markdown-body blockquote {
-  padding: 0 1em;
-  color: #57606a;
-  border-left: 0.25em solid #d0d7de;
-  margin: 16px 0;
-}
-</style>
-
-<style>
-/* 对话内容样式 */
-.chat-message {
-  padding: 16px 0;
-  border-bottom: 1px solid #e1e4e8;
-}
-
-.chat-message.user {
-  background-color: #f6f8fa;
-}
-
-.chat-message.assistant {
-  background-color: #ffffff;
-}
-
-.message-content {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #24292e;
-}
-
-/* Markdown 样式 */
-.message-content p {
-  margin: 8px 0;
-}
-
-.message-content pre {
-  margin: 8px 0;
-  padding: 16px;
-  background-color: #f6f8fa;
-  border-radius: 6px;
-  overflow-x: auto;
-}
-
-.message-content code {
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-  font-size: 13px;
-  padding: 0.2em 0.4em;
-  background-color: rgba(175, 184, 193, 0.2);
-  border-radius: 6px;
-}
-
-.message-content pre code {
-  padding: 0;
-  background-color: transparent;
-  white-space: pre;
-}
-
-.message-content ul,
-.message-content ol {
-  margin: 8px 0;
-  padding-left: 24px;
-}
-
-.message-content blockquote {
-  margin: 8px 0;
-  padding-left: 16px;
-  color: #57606a;
-  border-left: 3px solid #d0d7de;
-}
-</style>
-
-<style>
-/* 添加代码块样式 */
-.code-block {
-  margin: 1rem 0;
-  background-color: #f6f8fa;
-  border-radius: 6px;
-  border: 1px solid #d0d7de;
-}
-
-.code-block pre {
-  margin: 0;
-  padding: 1rem;
-  overflow-x: auto;
-}
-
-.code-block code {
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-  font-size: 13px;
-  line-height: 1.5;
-}
-</style>
-
-<style>
-/* 基础样式 */
-.message-content {
-  font-size: 14px;
-  line-height: 1.6;
-  color: #24292e;
-}
-
-/* Markdown 样式 */
-.message-content {
-  p {
-    margin: 8px 0;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4 {
-    margin-top: 24px;
-    margin-bottom: 16px;
-    font-weight: 600;
-    line-height: 1.25;
-  }
-
-  h1 {
-    font-size: 2em;
-  }
-
-  h2 {
-    font-size: 1.5em;
-  }
-
-  h3 {
-    font-size: 1.25em;
-  }
-
-  h4 {
-    font-size: 1em;
-  }
-
-  ul,
-  ol {
-    margin: 8px 0;
-    padding-left: 24px;
-  }
-
-  blockquote {
-    margin: 8px 0;
-    padding-left: 16px;
-    color: #57606a;
-    border-left: 3px solid #d0d7de;
-  }
-
-  code {
-    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-    font-size: 13px;
-    padding: 0.2em 0.4em;
-    background-color: rgba(175, 184, 193, 0.2);
-    border-radius: 6px;
-  }
-
-  pre {
-    margin: 8px 0;
-    padding: 16px;
-    background-color: #f6f8fa;
-    border-radius: 6px;
-    overflow-x: auto;
-
-    code {
-      padding: 0;
-      background-color: transparent;
-      white-space: pre;
-    }
-  }
-}
-
-/* 代码块样式 */
-.code-block {
-  position: relative;
-  margin: 1rem 0;
-  background-color: #f6f8fa;
-  border-radius: 6px;
-  border: 1px solid #d0d7de;
-
-  pre {
-    margin: 0;
-    padding: 1rem;
-  }
-
-  .copy-code-btn {
-    position: absolute;
-    right: 0.5rem;
-    top: 0.5rem;
+@keyframes fadeInUp {
+  from {
     opacity: 0;
-    transition: opacity 0.2s;
+    transform: translateY(10px);
   }
 
-  &:hover .copy-code-btn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.3s ease-out forwards;
+}
+
+/* 思考过程样式 */
+.reasoning-content {
+  @apply mb-3 bg-blue-50/50 rounded-lg border border-blue-100 overflow-hidden;
+}
+
+.reasoning-header {
+  @apply flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-blue-50 transition-colors select-none;
+}
+
+/* 打字机光标效果 */
+.typing-cursor::after {
+  content: '|';
+  animation: blink 1s infinite;
+}
+
+@keyframes blink {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
+  50% {
+    opacity: 0;
+  }
 }
 
-/* 打字机动画 */
-.typing-dot {
-  width: 4px;
-  height: 4px;
-  margin: 0 1px;
-  background-color: #6b7280;
-  border-radius: 50%;
-  display: inline-block;
-  animation: typing 1s infinite ease-in-out;
+/* 深度思考加载动画 */
+.thinking-dots {
+  display: flex;
+  column-gap: 0.25rem;
 }
 
-.typing-dot:nth-child(1) {
+.thinking-dot {
+  width: 0.375rem;
+  height: 0.375rem;
+  background-color: #60a5fa;
+  border-radius: 9999px;
+  animation: bounce 1s infinite;
+}
+
+@keyframes bounce {
+
+  0%,
+  100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}
+
+.thinking-dot:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.thinking-dot:nth-child(3) {
   animation-delay: 0.2s;
 }
 
+/* 打字机加载动画 */
+.typing-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #9ca3af;
+  border-radius: 9999px;
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: .5;
+  }
+}
+
 .typing-dot:nth-child(2) {
-  animation-delay: 0.3s;
+  animation-delay: 0.2s;
 }
 
 .typing-dot:nth-child(3) {
   animation-delay: 0.4s;
 }
+</style>
 
-@keyframes typing {
+<style>
+/* Markdown 内容样式 */
+.markdown-body {
+  @apply text-gray-800 text-base leading-relaxed break-words;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
 
-  0%,
-  100% {
-    transform: translateY(0);
+.markdown-body p {
+  @apply mb-3 last:mb-0;
+}
+
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  @apply font-bold text-gray-900 mt-6 mb-3 first:mt-0;
+}
+
+.markdown-body h1 {
+  @apply text-2xl border-b border-gray-200 pb-2;
+}
+
+.markdown-body h2 {
+  @apply text-xl border-b border-gray-200 pb-2;
+}
+
+.markdown-body h3 {
+  @apply text-lg;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  @apply pl-6 mb-4;
+}
+
+.markdown-body ul {
+  @apply list-disc;
+}
+
+.markdown-body ol {
+  @apply list-decimal;
+}
+
+.markdown-body li {
+  @apply mb-1;
+}
+
+.markdown-body blockquote {
+  @apply border-l-4 border-blue-200 bg-blue-50 py-2 px-4 my-4 rounded-r text-gray-600 italic;
+}
+
+.markdown-body code {
+  @apply bg-gray-100 px-1.5 py-0.5 rounded text-sm font-mono text-pink-600;
+}
+
+.markdown-body pre {
+  @apply bg-[#282c34] rounded-lg my-4 overflow-hidden shadow-sm border border-gray-200 p-0 !important;
+}
+
+.markdown-body pre code {
+  @apply bg-transparent p-0 text-gray-100 block overflow-x-auto text-sm font-mono leading-relaxed;
+}
+
+.markdown-body a {
+  @apply text-blue-600 hover:text-blue-800 hover:underline transition-colors;
+}
+
+.markdown-body table {
+  @apply w-full border-collapse my-4 text-sm;
+}
+
+.markdown-body th,
+.markdown-body td {
+  @apply border border-gray-200 px-4 py-2;
+}
+
+.markdown-body th {
+  @apply bg-gray-50 font-bold text-gray-700;
+}
+
+.markdown-body hr {
+  @apply my-6 border-gray-200;
+}
+
+/* 代码块样式优化 */
+.code-block-wrapper {
+  @apply my-4 rounded-lg overflow-hidden border border-gray-700 bg-[#282c34] shadow-md;
+}
+
+.code-header {
+  @apply flex justify-between items-center px-4 py-2 bg-[#21252b] border-b border-gray-700 text-xs text-gray-400 select-none;
+}
+
+.code-lang {
+  @apply font-mono uppercase font-bold tracking-wider text-blue-400;
+}
+
+.copy-btn {
+  @apply flex items-center gap-1 text-gray-400 hover:text-white transition-colors cursor-pointer bg-transparent border-none outline-none;
+}
+
+.code-content {
+  position: relative;
+  display: flex;
+  overflow-x: auto;
+  max-height: 500px;
+  overflow-y: auto;
+  background-color: #282c34;
+  scrollbar-width: thin;
+  scrollbar-color: #4b5563 transparent;
+}
+
+.code-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.code-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.code-content::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border-radius: 4px;
+}
+
+.line-numbers {
+  @apply hidden md:flex flex-col text-right px-3 py-4 text-gray-500 border-r border-gray-700 bg-[#282c34] select-none font-mono text-sm leading-relaxed sticky left-0 z-10 min-w-[3rem];
+}
+
+.line-number {
+  @apply block h-6 leading-6;
+}
+
+.markdown-body pre {
+  @apply m-0 p-4 !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  flex: 1;
+  overflow: visible !important;
+}
+
+.markdown-body pre code {
+  @apply p-0 bg-transparent text-gray-200 font-mono text-sm leading-6 whitespace-pre;
+  tab-size: 2;
+}
+
+/* 滚动条样式 */
+.code-content::-webkit-scrollbar {
+  height: 8px;
+  width: 8px;
+}
+
+.code-content::-webkit-scrollbar-track {
+  background: #282c34;
+}
+
+.code-content::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.code-content::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .line-numbers {
+    display: none;
   }
 
-  50% {
-    transform: translateY(-4px);
+  .markdown-body pre {
+    padding: 1rem !important;
   }
+}
+
+/* 提示词弹窗样式 */
+.prompt-popover {
+  @apply rounded-xl shadow-xl border border-gray-100 !important;
+}
+
+/* 模型选择下拉框样式 */
+.model-select-dropdown {
+  @apply rounded-xl shadow-xl border border-gray-100 !important;
+}
+
+.el-select-dropdown__item {
+  @apply px-3 py-2 !important;
+}
+
+.el-select-dropdown__item.selected {
+  @apply text-blue-600 font-medium bg-blue-50 !important;
 }
 </style>

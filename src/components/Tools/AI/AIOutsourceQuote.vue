@@ -170,7 +170,7 @@
                   <div class="ml-2 px-2 py-1 bg-blue-50 rounded-full">
                     <span class="text-xs text-blue-500">{{ modelType === 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B' ?
                       '推荐模型' : ''
-                    }}</span>
+                      }}</span>
                   </div>
                 </label>
                 <div class="space-y-4">
