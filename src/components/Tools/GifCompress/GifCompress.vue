@@ -108,12 +108,12 @@
                         <div class="grid grid-cols-2 gap-4 mt-4">
                           <div>
                             <label class="text-xs text-gray-500 mb-1 block">宽度 (px)</label>
-                            <el-input-number v-model="customDimensions.width" :min="1" :max="originalDimensions.width"
+                            <el-input-number v-model="customDimensions.width" :min="1" :max="Math.max(originalDimensions.width, 1)"
                               size="small" class="!w-full" @change="handleDimensionChange('width')" :controls="false" />
                           </div>
                           <div>
                             <label class="text-xs text-gray-500 mb-1 block">高度 (px)</label>
-                            <el-input-number v-model="customDimensions.height" :min="1" :max="originalDimensions.height"
+                            <el-input-number v-model="customDimensions.height" :min="1" :max="Math.max(originalDimensions.height, 1)"
                               size="small" class="!w-full" @change="handleDimensionChange('height')"
                               :controls="false" />
                           </div>

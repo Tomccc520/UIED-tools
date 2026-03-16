@@ -2,6 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GifCompress from './GifCompress.vue'
 
+// Mock 路由与 SEO 依赖，避免测试环境缺少注入上下文
+vi.mock('vue-router', () => {
+  return {
+    useRoute: () => ({ path: '/tools/gif-compress' })
+  }
+})
+
+vi.mock('@vueuse/head', () => {
+  return {
+    useHead: vi.fn()
+  }
+})
+
 // Mock URL APIs
 global.URL.createObjectURL = vi.fn(() => 'blob:mock-url')
 global.URL.revokeObjectURL = vi.fn()
@@ -57,7 +70,15 @@ describe('GifCompress.vue', () => {
   let wrapper: any
 
   beforeEach(() => {
-    wrapper = mount(GifCompress)
+    wrapper = mount(GifCompress, {
+      global: {
+        stubs: {
+          'router-link': {
+            template: '<a><slot /></a>'
+          }
+        }
+      }
+    })
   })
 
   it('renders correctly', () => {

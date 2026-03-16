@@ -149,7 +149,7 @@ export default defineConfig({
   // 开发服务器配置
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 5179,
     open: true,
     // 配置响应头，支持 SharedArrayBuffer (提升 WASM 性能)
     headers: enableCoep ? {
@@ -217,7 +217,7 @@ export default defineConfig({
         }
       },
 
-      // 爱情公寓台词接口代理配置
+      // 爱情公寓台词
       '/api/aqgy': {
         target: 'https://api.tangdouz.com',
         changeOrigin: true,
@@ -227,6 +227,31 @@ export default defineConfig({
           'Origin': 'https://api.tangdouz.com',
           'Referer': 'https://api.tangdouz.com/'
         }
+      },
+
+
+      // 摸鱼倒数日接口代理
+      '/api/dailyhot': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
+      },
+      '/api/countdownday': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
+      },
+      // 抖音视频接口代理
+      '/api/video/douyin': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
+      },
+      // 小红书图片接口代理
+      '/api/xhhimg': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
       },
 
       // 聚合热榜接口代理配置
@@ -249,17 +274,6 @@ export default defineConfig({
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': 'YOUR_API_KEY'
-        }
-      },
-
-      // 热榜聚合接口代理配置
-      '/api/dailyhot': {
-        target: 'https://api.pearktrue.cn',
-        changeOrigin: true,
-        rewrite: (path) => path,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
         }
       },
 
@@ -610,5 +624,10 @@ export default defineConfig({
       // 允许的文件类型
       allow: ['..']
     }
+  },
+
+  // 单元测试配置
+  test: {
+    environment: 'jsdom'
   }
 })

@@ -8,157 +8,182 @@
  * @createDate 2025-03-21
  */
 
-// 导入需要的组件和接口
 import { ref } from 'vue'
-import { Promotion } from '@element-plus/icons-vue'
 
-// 广告数据
-const bannerList = ref([
+/**
+ * 广告项数据类型
+ */
+interface BannerItem {
+  id: number
+  link: string
+  gradient: string
+  text: string
+  badge: string
+}
+
+/**
+ * 横幅广告数据
+ */
+const bannerList = ref<BannerItem[]>([
   {
     id: 1,
-    link: 'https://fsuied.com/website-scmz.html',
-    gradient: 'linear-gradient(to right, rgb(99, 102, 241) 0%, rgb(224, 231, 255) 35%, rgb(237, 242, 255) 45%, rgb(139, 92, 246) 100%)',
-    text: '无需代码 会打字就能轻松建网站',
-    badge: '推荐'
+    link: 'https://fsuied.com',
+    gradient: 'linear-gradient(to right,#6366f1,#e0e7ff,#edf2ff,#8b5cf6)',
+    badge: '推荐',
+    text: '一人企业Vibe Coding社区！'
   },
   {
     id: 2,
     link: 'https://nf.video/mbx1u6/?gid=18',
-    gradient: 'linear-gradient(to right, rgb(236, 72, 153) 0%, rgb(251, 231, 239) 35%, rgb(253, 242, 248) 45%, rgb(244, 114, 182) 100%)',
-    text: 'GPT-5.2重回巅峰 智能对话',
-    badge: '热门'
+    gradient: 'linear-gradient(to right,#ec4899,#fbe7ef,#fdf2f8,#f472b6)',
+    badge: '热门',
+    text: 'GPT-5.4重回巅峰 智能对话'
   },
   {
     id: 3,
     link: 'https://www.trae.com.cn/?utm_source=advertising&utm_medium=uied_ug_cpa&utm_term=hw_trae_uied',
-    gradient: 'linear-gradient(to right, rgb(168, 85, 247) 0%, rgb(243, 232, 255) 35%, rgb(245, 243, 255) 45%, rgb(192, 132, 252) 100%)',
-    text: '免费AI编程工具 Trae - 智能编码助手',
-    badge: '新品'
+    gradient: 'linear-gradient(to right,#a855f7,#f3e8ff,#f5f3ff,#c084fc)',
+    badge: '新品',
+    text: '免费AI编程工具 Trae - 智能编码助手'
   },
   {
     id: 4,
-    link: 'https://www.aippt.cn/?utm_type=Navweb&utm_source=bbdh&utm_page=aippt&utm_plan=ppt&utm_unit=AIPPT&utm_keyword=40471047',
-    gradient: 'linear-gradient(to right, rgb(16, 185, 129) 0%, rgb(209, 250, 229) 35%, rgb(236, 253, 245) 45%, rgb(52, 211, 153) 100%)',
-    text: '免费AI生成PPT - 一键生成演示文稿',
-    badge: '高效'
+    link: 'https://yuanbao.paluai.com/uied',
+    gradient: 'linear-gradient(to right,#ffc800,#ffed99,#fff8cc,#ffaa00)',
+    badge: '新品',
+    text: '腾讯元宝 智能对话新体验'
   },
   {
     id: 5,
-    link: 'https://universalbus.cn/?s=lPLG02aydo',
-    gradient: 'linear-gradient(to right, rgb(249, 115, 22) 0%, rgb(255, 237, 213) 35%, rgb(255, 247, 237) 45%, rgb(251, 146, 60) 100%)',
-    text: 'Adobe 正版全家桶可用AI',
-    badge: '特惠'
+    link: 'https://www.aippt.cn/?utm_type=Navweb&utm_source=bbdh&utm_page=aippt&utm_plan=ppt&utm_unit=AIPPT&utm_keyword=40471047',
+    gradient: 'linear-gradient(to right,#10b981,#d1fae5,#ecfdf5,#34d399)',
+    badge: '高效',
+    text: '免费AI生成PPT - 一键生成演示文稿'
   },
   {
     id: 6,
     link: 'https://universalbus.cn/?s=lPLG02aydo',
-    gradient: 'linear-gradient(to right, rgb(14, 165, 233) 0%, rgb(224, 242, 254) 35%, rgb(240, 249, 255) 45%, rgb(56, 189, 248) 100%)',
-    text: 'Gemini3 可用 nanobanana',
-    badge: '新品'
+    gradient: 'linear-gradient(to right,#f97316,#ffedd5,#fff7ed,#fb923c)',
+    badge: '特惠',
+    text: 'Adobe 正版全家桶可用AI'
+  },
+  {
+    id: 7,
+    link: 'https://universalbus.cn/?s=lPLG02aydo',
+    gradient: 'linear-gradient(to right,#0ea5e9,#e0f2fe,#f0f9ff,#38bdf8)',
+    badge: '新品',
+    text: 'Gemini3 可用 nanobanana'
   }
 ])
+
+/**
+ * 获取广告项的行内样式
+ * @param item 广告项
+ * @returns 行内样式对象
+ */
+const getSlideStyle = (item: BannerItem) => {
+  return { backgroundImage: item.gradient }
+}
 </script>
 
 <template>
-  <div class="banner-wrapper">
-    <div class="banner-container">
-      <!-- 轮播广告 -->
-      <el-carousel height="48px" :interval="4000" :arrow="false" indicator-position="none" class="banner-carousel">
-        <el-carousel-item v-for="item in bannerList" :key="item.id">
-          <a :href="item.link" target="_blank" class="banner-link" :style="{ backgroundImage: item.gradient }">
-            <div class="banner-content">
-              <span v-if="item.badge" class="banner-badge">{{ item.badge }}</span>
-              <span class="banner-text">{{ item.text }}</span>
-              <el-icon class="arrow-icon">
-                <Promotion />
-              </el-icon>
-            </div>
-          </a>
-        </el-carousel-item>
-      </el-carousel>
-    </div>
+  <div class="uied-banner-carousel">
+    <a
+      v-for="item in bannerList"
+      :key="item.id"
+      class="uied-banner-slide"
+      :href="item.link"
+      target="_blank"
+      rel="noopener noreferrer"
+      :style="getSlideStyle(item)"
+    >
+      <span class="uied-banner-content">
+        <span class="uied-banner-badge">{{ item.badge }}</span>
+        <span class="uied-banner-text">{{ item.text }}</span>
+      </span>
+    </a>
   </div>
 </template>
 
 <style scoped>
-.banner-wrapper {
-  padding: 0 0 16px 0;
+.uied-banner-carousel {
   width: 100%;
-}
-
-.banner-container {
-  border-radius: 12px;
-  overflow: hidden;
   height: 48px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
   position: relative;
-  transition: all 0.3s ease;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.banner-container:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-  transform: translateY(-1px);
-}
-
-.banner-link {
+.uied-banner-slide {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
   text-decoration: none;
-  position: relative;
-  background-size: 200% 100%;
-  animation: gradientMove 6s ease infinite;
+  background-size: cover;
+  background-position: center;
+  padding: 0 8px;
+  opacity: 0;
+  visibility: hidden;
+  animation: banner 28s infinite;
 }
 
-@keyframes gradientMove {
+.uied-banner-slide:nth-child(1) { animation-delay: 0s; }
+.uied-banner-slide:nth-child(2) { animation-delay: 4s; }
+.uied-banner-slide:nth-child(3) { animation-delay: 8s; }
+.uied-banner-slide:nth-child(4) { animation-delay: 12s; }
+.uied-banner-slide:nth-child(5) { animation-delay: 16s; }
+.uied-banner-slide:nth-child(6) { animation-delay: 20s; }
+.uied-banner-slide:nth-child(7) { animation-delay: 24s; }
+
+@keyframes banner {
   0% {
-    background-position: 0% 50%;
+    opacity: 0;
+    visibility: hidden;
   }
 
-  50% {
-    background-position: 100% 50%;
+  3% {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  20% {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  23% {
+    opacity: 0;
+    visibility: hidden;
   }
 
   100% {
-    background-position: 0% 50%;
+    opacity: 0;
+    visibility: hidden;
   }
 }
 
-.banner-content {
+.uied-banner-content {
   display: flex;
   align-items: center;
   gap: 8px;
+  padding: 0 40px;
 }
 
-.banner-badge {
+.uied-banner-badge {
   background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(4px);
   padding: 2px 8px;
-  border-radius: 4px;
   font-size: 12px;
-  color: #333;
-  font-weight: bold;
-  border: 1px solid rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+  color: #1f2937;
 }
 
-.banner-text {
+.uied-banner-text {
   font-size: 15px;
   font-weight: 600;
-  color: #000;
-  letter-spacing: 0.5px;
-}
-
-.arrow-icon {
-  font-size: 16px;
-  color: #333;
-  opacity: 0.9;
-  margin-left: 4px;
-}
-
-/* 自定义轮播图样式 */
-:deep(.el-carousel__item) {
-  background: transparent;
+  color: #111827;
+  white-space: nowrap;
 }
 </style>
