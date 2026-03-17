@@ -1,19 +1,7 @@
-import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router'
-import DesignIcon from '@/components/Tools/Design/DesignIcon.vue'
-import DesignImageSvg from '@/components/Tools/Design/DesignImageSvg.vue'
-import XunfeiSpark from '@/components/Tools/AI/XunfeiSpark.vue'
-import XiaoHongShu from '@/components/Tools/AI/XiaoHongShu.vue'
-import AIPromptEditor from '@/components/Tools/AI/AIPromptEditor.vue'
-import AIDesignCover from '@/components/Tools/AI/AIDesignCover.vue'
-import AIOutsourceQuote from '@/components/Tools/AI/AIOutsourceQuote.vue'
-import AIRanking from '@/components/Tools/AI/AIRanking.vue'
+import { RouteRecordRaw } from 'vue-router'
 // import webinfo_ip_analysis from '../components/Tools/IPAnalysis/IPAnalysis.vue'
 // import webinfo_ip_batch from '../components/Tools/IPBatch/IPBatch.vue'
 // import webinfo_ip_gps from '../components/Tools/IPGPS/IPGps.vue'
-import BackendTest from '../components/Tools/BackendTest/BackendTest.vue'
-
-// 根据环境变量判断使用的 base 路径
-const base = import.meta.env.PROD ? '/' : '/'
 
 export const constantRoute: RouteRecordRaw[] = [
   //首页
@@ -2167,7 +2155,7 @@ export const constantRoute: RouteRecordRaw[] = [
   },
   {
     path: '/tools/design/icon',
-    component: DesignIcon,
+    component: () => import('@/components/Tools/Design/DesignIcon.vue'),
     name: 'designIcon',
     meta: {
       title: '免费图标下载-设计师图标工具，提供常用设计图标下载',
@@ -2187,7 +2175,7 @@ export const constantRoute: RouteRecordRaw[] = [
   },
   {
     path: '/tools/design/image-svg',
-    component: DesignImageSvg,
+    component: () => import('@/components/Tools/Design/DesignImageSvg.vue'),
     name: 'designImageSvg',
     meta: {
       title: '免费图片转SVG工具-快速将JPG/PNG转换为矢量图形',
@@ -2536,7 +2524,7 @@ export const constantRoute: RouteRecordRaw[] = [
   },
   {
     path: '/tools/ai/prompt-editor',
-    component: AIPromptEditor,
+    component: () => import('@/components/Tools/AI/AIPromptEditor.vue'),
     name: 'aiPromptEditor',
     meta: {
       title: "AIGC提示词编辑器",
@@ -2556,7 +2544,7 @@ export const constantRoute: RouteRecordRaw[] = [
   },
   {
     path: '/tools/ai-outsource-quote',
-    component: AIOutsourceQuote,
+    component: () => import('@/components/Tools/AI/AIOutsourceQuote.vue'),
     name: 'aiOutsourceQuote',
     meta: {
       title: "AI外包报价生成器",
@@ -3211,14 +3199,3 @@ export const constantRoute: RouteRecordRaw[] = [
     name: 'Any'
   }
 ]
-
-const router = createRouter({
-  history: createWebHistory(base),
-  routes: constantRoute,
-  // 滚动行为
-  scrollBehavior(to, from, savedPosition) {
-    return { top: 0 }
-  }
-})
-
-export default router

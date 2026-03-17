@@ -55,8 +55,32 @@ const isProd = process.env.NODE_ENV === 'production'
 const BASE_API = isProd ? '' : ''  // 移除生产环境的基础URL
 const enableCoep = process.env.VITE_ENABLE_COEP === 'true'
 
+/**
+ * 修复第三方样式中的历史拼写错误
+ * 对 tui-image-editor 的构建 CSS 做定向替换，消除 backbround-color 告警
+ */
+const fixTuiImageEditorCssTypo = () => ({
+  name: 'fix-tui-image-editor-css-typo',
+  enforce: 'pre' as const,
+  transform(code: string, id: string) {
+    if (!id.includes('tui-image-editor/dist/tui-image-editor.css')) {
+      return null
+    }
+
+    if (!code.includes('backbround-color')) {
+      return null
+    }
+
+    return {
+      code: code.replaceAll('backbround-color', 'background-color'),
+      map: null
+    }
+  }
+})
+
 export default defineConfig({
   plugins: [
+    fixTuiImageEditorCssTypo(),
     vue(),
     // 添加Node.js polyfills
     nodePolyfills({
@@ -104,6 +128,27 @@ export default defineConfig({
 
   // 构建配置
   build: {
+    modulePreload: {
+      /**
+       * 入口预加载瘦身
+       * 首屏仅保留核心运行依赖，重型能力包改为路由触发后再加载
+       */
+      resolveDependencies: (_url, deps, context) => {
+        if (context.hostType !== 'html') {
+          return deps
+        }
+
+        const lazyPrefixes = [
+          'assets/vendor-editor-',
+          'assets/vendor-image-',
+          'assets/vendor-pdf-',
+          'assets/vendor-charts-',
+          'assets/vendor-diff-'
+        ]
+
+        return deps.filter((dep) => !lazyPrefixes.some((prefix) => dep.includes(prefix)))
+      }
+    },
     outDir: 'dist',
     assetsDir: 'assets',
     // 使用 terser 进行更安全的代码压缩
@@ -170,6 +215,10 @@ export default defineConfig({
 
           if (id.includes('@kangc/v-md-editor') || id.includes('prismjs')) {
             return 'vendor-editor-markdown'
+          }
+
+          if (id.includes('v-code-diff') || id.includes('/node_modules/diff/')) {
+            return 'vendor-diff'
           }
 
           if (id.includes('fabric') || id.includes('cropperjs') || id.includes('tui-image-editor') || id.includes('gifuct-js')) {
