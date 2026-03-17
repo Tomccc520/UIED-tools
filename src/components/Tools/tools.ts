@@ -187,17 +187,6 @@ const toolsCategories: ToolCategory[] = [
               isNew: true
             },
             {
-              id: 913,
-              title: '半年工作总结',
-              logo: { type: 'svg', name: 'aiArticle' },
-              desc: '对半年度工作进行系统梳理和总结，展望下半年工作重点',
-              url: '/tools/ai/work-summary?type=mid_year',
-              cate: 'AI办公工具',
-              releaseDate: '2025/12/16 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
               id: 914,
               title: '部门计划',
               logo: { type: 'svg', name: 'aiArticle' },
@@ -396,17 +385,6 @@ const toolsCategories: ToolCategory[] = [
               isNew: true
             },
             {
-              id: 933,
-              title: '会议记录润色',
-              logo: { type: 'svg', name: 'aiArticle' },
-              desc: '智能整理和润色会议记录，生成结构清晰、重点突出的会议纪要',
-              url: '/tools/ai/office/meeting-minutes',
-              cate: 'AI办公工具',
-              releaseDate: '2025/12/16 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
               id: 934,
               title: '竟聘演讲稿',
               logo: { type: 'svg', name: 'aiArticle' },
@@ -429,33 +407,11 @@ const toolsCategories: ToolCategory[] = [
               isNew: true
             },
             {
-              id: 936,
-              title: '离职申请',
-              logo: { type: 'svg', name: 'aiArticle' },
-              desc: '智能生成得体、专业的辞职报告，保持良好职业形象',
-              url: '/tools/ai/office/resignation-letter',
-              cate: 'AI办公工具',
-              releaseDate: '2025/12/16 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
               id: 937,
               title: '问卷设计',
               logo: { type: 'svg', name: 'aiArticle' },
               desc: '智能生成科学、合理的调查问卷，提高数据收集的有效性',
               url: '/tools/ai/office/questionnaire-design',
-              cate: 'AI办公工具',
-              releaseDate: '2025/12/16 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
-              id: 938,
-              title: '通稿润色改写',
-              logo: { type: 'svg', name: 'aiArticle' },
-              desc: '智能改写文本，降低查重率，优化语言表达，提升文章质量',
-              url: '/tools/ai/article-polishing',
               cate: 'AI办公工具',
               releaseDate: '2025/12/16 00:00:00',
               tags: ['免费', '新品'],
@@ -1136,17 +1092,6 @@ const toolsCategories: ToolCategory[] = [
               isNew: true
             },
             {
-              id: 702,
-              title: 'AI工作总结',
-              logo: { type: 'svg', name: 'aiArticle' }, // Reusing icon for now
-              desc: '智能生成专业的工作总结，包含工作成果、问题分析和未来规划',
-              url: '/tools/ai/work-summary',
-              cate: 'AI写作工具',
-              releaseDate: '2025/12/15 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
               id: 703,
               title: 'AI实习总结',
               logo: { type: 'svg', name: 'aiArticle' },
@@ -1246,17 +1191,6 @@ const toolsCategories: ToolCategory[] = [
               isNew: true
             },
             {
-              id: 713,
-              title: '述职报告',
-              logo: { type: 'svg', name: 'aiArticle' },
-              desc: '智能生成个人述职报告，突出工作业绩和职业亮点',
-              url: '/tools/ai/debriefing-report',
-              cate: 'AI写作工具',
-              releaseDate: '2025/12/15 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
               id: 714,
               title: '作文一键写作',
               logo: { type: 'svg', name: 'aiArticle' },
@@ -1339,17 +1273,6 @@ const toolsCategories: ToolCategory[] = [
               logo: { type: 'svg', name: 'aiArticle' },
               desc: '智能生成态度诚恳、深刻反省的检讨书，助您表达歉意和改进决心',
               url: '/tools/ai/self-reflection',
-              cate: 'AI写作工具',
-              releaseDate: '2025/12/16 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
-              id: 722,
-              title: '项目策划方案',
-              logo: { type: 'svg', name: 'aiArticle' },
-              desc: '智能生成专业的项目策划方案，包含背景、目标、实施计划和预算预估',
-              url: '/tools/ai/project-proposal',
               cate: 'AI写作工具',
               releaseDate: '2025/12/16 00:00:00',
               tags: ['免费', '新品'],
@@ -3166,16 +3089,6 @@ const toolsCategories: ToolCategory[] = [
               cate: '开发运维'
             },
             {
-              id: 2114,
-              title: 'Cron表达式生成器',
-              logo: { type: 'svg', name: 'cron' },
-              desc: '可视化生成和解析 Cron 表达式',
-              url: '/tools/dev/cron',
-              cateId: 2,
-              cate: '开发运维',
-              isNew: true
-            },
-            {
               id: 2115,
               title: '变量命名转换',
               logo: { type: 'svg', name: 'caseConverter' },
@@ -3201,17 +3114,6 @@ const toolsCategories: ToolCategory[] = [
               logo: { type: 'svg', name: 'sqlFormat' },
               desc: '在线SQL代码格式化和美化工具，支持多种SQL方言',
               url: '/tools/dev/sql-format',
-              cateId: 2,
-              cate: '开发运维',
-              isNew: true,
-              tags: ['免费', '新品']
-            },
-            {
-              id: 2119,
-              title: 'CSS 渐变生成器',
-              logo: { type: 'svg', name: 'gradient' },
-              desc: '在线生成精美的 CSS 线性渐变和径向渐变背景代码，支持多种颜色和方向设置',
-              url: '/tools/design/gradient',
               cateId: 2,
               cate: '开发运维',
               isNew: true,
@@ -3772,6 +3674,8 @@ export function getToolsCate(): ToolCategory[] {
 export function toolsList() {
   let list = [] as Tool[]
   let toolsCate = getToolsCate()
+  // 使用 URL 去重，避免同一路径工具在搜索和推荐中重复出现
+  const seenToolUrls = new Set<string>()
 
   // 递归处理嵌套的工具列表
   const processTools = (tools: any[]) => {
@@ -3779,7 +3683,11 @@ export function toolsList() {
       if (Array.isArray(tool.list)) {
         processTools(tool.list)
       } else {
-        list.push(tool)
+        const toolUrl = tool.url || `id:${tool.id}`
+        if (!seenToolUrls.has(toolUrl)) {
+          seenToolUrls.add(toolUrl)
+          list.push(tool)
+        }
       }
     }
   }

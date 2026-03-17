@@ -1086,22 +1086,12 @@ export const constantRoute: RouteRecordRaw[] = [
   },
   {
     path: '/tools/video/audio',
-    component: () => import('@/components/Tools/Video/VideoToAudio/VideoToAudio.vue'),
-    name: 'videoToAudio',
+    redirect: '/tools/video/to-audio',
+    name: 'videoToAudioLegacy',
     meta: {
       title: "视频提取音频",
       keywords: '视频提取音频,视频转音频,视频转MP3,提取背景音乐',
       description: '在线从视频中提取音频，支持导出为 WAV 格式。'
-    }
-  },
-  {
-    path: '/tools/design/font-copyright',
-    component: () => import('@/components/Tools/Design/FontCopyright.vue'),
-    name: 'fontCopyright',
-    meta: {
-      title: "字体版权查询",
-      keywords: '字体版权,商用字体,免费字体,字体查询',
-      description: '查询字体版权信息，确认是否可以免费商用，避免版权纠纷。'
     }
   },
   {
@@ -1165,26 +1155,6 @@ export const constantRoute: RouteRecordRaw[] = [
     }
   },
   {
-    path: '/tools/video/rotate',
-    component: () => import('@/components/Tools/Video/VideoFlip/VideoFlip.vue'),
-    name: 'videoFlip',
-    meta: {
-      title: "视频旋转/翻转",
-      keywords: '视频旋转,视频翻转,视频角度调整,在线视频旋转',
-      description: '在线旋转视频角度（90°/180°/270°）或进行水平/垂直翻转，本地处理保护隐私。'
-    }
-  },
-  {
-    path: '/tools/audio/converter',
-    component: () => import('@/components/Tools/Audio/AudioConverter/AudioConverter.vue'),
-    name: 'audioConverter',
-    meta: {
-      title: "音频格式转换",
-      keywords: '音频格式转换,MP3转换,WAV转换,音频转码,在线音频转换',
-      description: '在线音频格式转换工具，支持 WAV、WebM 等格式互转。'
-    }
-  },
-  {
     path: '/tools/audio/trimmer',
     component: () => import('@/components/Tools/Audio/AudioTrimmer/AudioTrimmer.vue'),
     name: 'audioTrimmer',
@@ -1212,16 +1182,6 @@ export const constantRoute: RouteRecordRaw[] = [
       title: "URL 解析器",
       keywords: 'URL解析,URL参数,Host解析,Path解析,Query参数',
       description: '将 URL 解析为协议、主机、路径、查询参数等组成部分，支持一键复制。'
-    }
-  },
-  {
-    path: '/tools/dev/cron',
-    component: () => import('@/components/Tools/Dev/Cron/Cron.vue'),
-    name: 'cron',
-    meta: {
-      title: "Cron 表达式生成器",
-      keywords: 'Cron表达式,Cron生成器,定时任务,Quartz,Crontab',
-      description: '可视化生成 Cron 表达式，支持 Quartz 和 Linux Crontab 格式，提供常用示例。'
     }
   },
   {
@@ -1881,26 +1841,6 @@ export const constantRoute: RouteRecordRaw[] = [
       title: "EQ情商测试（简洁版）",
       keywords: 'EQ测试,情商测试,情绪智力,心理测试',
       description: '测试你的情商水平，了解你的情绪管理和人际交往能力',
-    }
-  },
-  {
-    path: '/tools/psychology/eq-test',
-    component: () => import('@/components/Tools/Psychology/EQTest.vue'),
-    name: 'eqTest',
-    meta: {
-      title: "国际标准情商(EQ)测试",
-      keywords: 'EQ测试,情商测试,情绪管理,社交能力',
-      description: '评估你的情绪感知、控制和社交能力，了解你的情商水平',
-    }
-  },
-  {
-    path: '/tools/psychology/left-right-brain',
-    component: () => import('@/components/Tools/Psychology/LeftRightBrain.vue'),
-    name: 'leftRightBrain',
-    meta: {
-      title: "左右脑优势测试",
-      keywords: '左右脑测试,大脑优势,思维偏好,逻辑与直觉',
-      description: '了解你是理性逻辑的左脑型，还是感性创意的右脑型',
     }
   },
   {
