@@ -1,9 +1,7 @@
 <script setup>
-import { ref, onMounted, nextTick } from 'vue'
-import 'tui-image-editor/dist/tui-image-editor.css'
+import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 // import 'tui-color-picker/dist/tui-color-picker.css'
 import { base64ToBlod } from '@/utils/file'
-import ImageEditor from 'tui-image-editor'
 
 // 中文菜单
 const locale_zh = {
@@ -181,15 +179,51 @@ const props = defineProps({
 const emit = defineEmits()
 const instance = ref()
 
+let imageEditorConstructor = null
+let imageEditorAssetsPromise = null
+
+/**
+ * 按需加载图片编辑器依赖
+ * 将 tui-image-editor 及其样式从首屏链路中移出，仅在打开该工具时加载
+ */
+const ensureImageEditorAssets = async () => {
+  if (!imageEditorAssetsPromise) {
+    imageEditorAssetsPromise = (async () => {
+      const [{ default: ImageEditor }] = await Promise.all([
+        import('tui-image-editor'),
+        import('tui-image-editor/dist/tui-image-editor.css')
+      ])
+      imageEditorConstructor = ImageEditor
+      return ImageEditor
+    })()
+  }
+
+  return imageEditorAssetsPromise
+}
+
 onMounted(() => {
-  nextTick(() => {
-    init() // 页面创建完成后调用
+  nextTick(async () => {
+    await init() // 页面创建完成后调用
   })
 })
 
+onBeforeUnmount(() => {
+  if (instance.value && typeof instance.value.destroy === 'function') {
+    instance.value.destroy()
+  }
+})
 
-const init = () => {
-  instance.value = new ImageEditor(document.querySelector('#tui-image-editor'), {
+
+/**
+ * 初始化图片编辑器实例
+ * 在资源加载完成后创建实例，避免空构造或样式缺失
+ */
+const init = async () => {
+  const ImageEditor = imageEditorConstructor || await ensureImageEditorAssets()
+  const mountNode = document.querySelector('#tui-image-editor')
+  if (!mountNode) return
+
+  instance.value = new ImageEditor(mountNode, {
     includeUI: {
       loadImage: {
         path: props.imgUrl,
@@ -211,6 +245,8 @@ const init = () => {
 
 // 保存图片，并上传
 const save = () => {
+  if (!instance.value) return
+
   // base64 文件
   const base64String = instance.value.toDataURL()
   //转换blod

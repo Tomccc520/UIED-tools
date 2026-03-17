@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { reactive, ref, shallowRef, onBeforeUnmount } from 'vue'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import html2canvas from "html2canvas";
-import '@wangeditor/editor/dist/css/style.css' // 引入富文本 css
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue'  //富文本组件
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import AsyncWangEditor from '@/components/Common/AsyncWangEditor.vue'
+import AsyncWangToolbar from '@/components/Common/AsyncWangToolbar.vue'
 // import { copy } from '@/utils/string'
 const info = reactive({
   title: "文本转图片",
@@ -54,7 +51,15 @@ const handleCreated = (editor) => {
   editorRef.value = editor // 记录 editor 实例，重要！
 }
 
-const goDown = () => {
+/**
+ * 导出文本图片
+ * 点击保存时再按需加载 html2canvas，避免该依赖进入页面初始解析链路
+ */
+const goDown = async () => {
+  if (!poster.value) return
+
+  const { default: html2canvas } = await import('html2canvas')
+
   html2canvas(poster.value, {
     backgroundColor: info.convasBackgroundColor,//海报的背景颜色
     useCORS: true, // 允许跨域
@@ -164,8 +169,8 @@ const faq = [
           <div class="bg-gray-50 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">编辑内容</div>
             <div class="border bg-white rounded-lg overflow-hidden">
-              <Toolbar class="border-b" :editor="editorRef" :defaultConfig="toolbarConfig" :mode="info.mode" />
-              <Editor v-model="valueHtml" :defaultConfig="editorConfig" :mode="info.mode" @onCreated="handleCreated"
+              <AsyncWangToolbar class="border-b" :editor="editorRef" :defaultConfig="toolbarConfig" :mode="info.mode" />
+              <AsyncWangEditor v-model="valueHtml" :defaultConfig="editorConfig" :mode="info.mode" @onCreated="handleCreated"
                 class="min-h-[300px]" />
               <div ref="poster" class="absolute top-0 -z-10" v-html="valueHtml"></div>
             </div>
