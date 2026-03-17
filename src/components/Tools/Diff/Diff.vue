@@ -14,11 +14,9 @@
 -->
 
 <script setup lang="ts">
-import { ref } from '@vue/runtime-core'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { ref } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { CodeDiff } from 'v-code-diff'
+import AsyncCodeDiff from '@/components/Common/AsyncCodeDiff.vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -115,7 +113,7 @@ const faqs = [
           <!-- 对比结果 -->
           <div class="mt-8 border rounded-lg p-6 bg-gray-50">
             <h4 class="text-base font-medium text-gray-700 mb-4">对比结果</h4>
-            <code-diff :old-string="leftTxt" :new-string="rightTxt" output-format="side-by-side"
+            <AsyncCodeDiff :old-string="leftTxt" :new-string="rightTxt" output-format="side-by-side"
               :show-line-numbers="true" :diff-style="'char'" :trim-space="false" :show-space="true" />
           </div>
         </div>

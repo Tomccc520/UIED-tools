@@ -16,8 +16,6 @@ import pinia from './store'
 import { setupMdEditor } from './plugins/v-md-editor'
 //default-passive-events
 import 'default-passive-events'
-//echarts
-import * as echarts from 'echarts'
 // 导入调试工具
 import { debugLog, isDev } from './utils/debug'
 
@@ -29,8 +27,6 @@ app.use(ElementPlus, {
   locale: zhCn
 })
 setupMdEditor(app)
-//全局挂载echarts
-app.config.globalProperties.$echarts = echarts
 
 // 路由守卫，动态更新页面标题和 meta 信息
 router.beforeEach((to, from, next) => {
