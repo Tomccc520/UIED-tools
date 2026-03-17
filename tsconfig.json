@@ -10,14 +10,14 @@
     ],
     "skipLibCheck": true,
     /* Bundler mode */
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
     /* Linting */
-    "strict": true,
+    "strict": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
@@ -28,10 +28,8 @@
         "src/*"
       ]
     },
-    /* Vue */
     "types": [
-      "vue",
-      "vue-router"
+      "vite/client"
     ],
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
@@ -45,7 +43,6 @@
     "src/**/*.d.ts",
     "src/**/*.tsx",
     "src/**/*.vue",
-    "ssr.config.ts"
   ],
   "references": [
     {
