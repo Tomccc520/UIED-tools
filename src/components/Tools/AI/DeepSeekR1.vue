@@ -380,13 +380,46 @@ import { ref, onMounted, nextTick, computed, watch, onUnmounted, onBeforeUnmount
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { marked } from 'marked'
 import axios from 'axios'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github.css'
 import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import html2canvas from 'html2canvas'
 import { useHead } from '@vueuse/head'
 import { wechatVerifyConfig } from '@/utils/verify'
+
+type HighlightCore = typeof import('highlight.js')['default']
+let highlightCore: HighlightCore | null = null
+let highlightStyleLoaded = false
+
+/**
+ * 转义 HTML 特殊字符
+ * 作为高亮模块未就绪时的兜底输出，避免代码片段被当作 HTML 解析
+ */
+const escapeHtml = (code: string) => {
+  return code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * 按需加载代码高亮依赖
+ * 仅在 DeepSeek 对话页加载 highlight.js，减少通用路由体积
+ */
+const ensureHighlightCore = async () => {
+  if (!highlightCore) {
+    const module = await import('highlight.js')
+    highlightCore = module.default
+  }
+
+  if (!highlightStyleLoaded) {
+    await import('highlight.js/styles/github.css')
+    highlightStyleLoaded = true
+  }
+
+  return highlightCore
+}
 
 // SEO Meta Tags
 useHead({
@@ -1032,7 +1065,8 @@ const handleKeyPress = (e: KeyboardEvent) => {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const hljs = await ensureHighlightCore()
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)
   // 在 onMounted 中初始化所有推理内容为展开状态
@@ -1047,22 +1081,6 @@ onMounted(() => {
     languages: ['javascript', 'typescript', 'python', 'java', 'html', 'css', 'bash', 'json']
   })
 
-  // 使用兼容的方式设置代码高亮
-  const markedOptions = {
-    breaks: true,
-    gfm: true,
-    langPrefix: 'hljs language-',
-    highlight: function (code: string, lang?: string) {
-      const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
-      try {
-        return hljs.highlight(code, { language }).value;
-      } catch (err) {
-        console.error('代码高亮错误:', err);
-        return code;
-      }
-    }
-  };
-
   // 配置自定义渲染器
   const renderer = new marked.Renderer();
 
@@ -1074,7 +1092,7 @@ onMounted(() => {
     try {
       const highlighted = lang && hljs.getLanguage(lang)
         ? hljs.highlight(code, { language }).value
-        : code;
+        : escapeHtml(code);
 
       // 添加行号
       const lines = highlighted.split('\n');
@@ -1096,7 +1114,7 @@ onMounted(() => {
         </div>
       </div>`;
     } catch (e) {
-      return `<pre><code class="hljs language-${language}">${code}</code></pre>`;
+      return `<pre><code class="hljs language-${language}">${escapeHtml(code)}</code></pre>`;
     }
   };
 

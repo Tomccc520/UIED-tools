@@ -413,8 +413,6 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import { marked } from 'marked'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/atom-one-light.css'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { ElMessage, ElSelect, ElOption, ElMessageBox, ElDialog, ElSwitch, ElInput, ElSlider, ElTooltip } from 'element-plus'
 import { v4 as uuidv4 } from 'uuid'
@@ -465,6 +463,41 @@ const isVerified = ref(Boolean(localStorage.getItem('aichat_verified')))
 const showVerifyDialog = ref(false)
 const verifyPassword = ref('')
 const maxFreeUsage = ref(5)
+
+type HighlightCore = typeof import('highlight.js')['default']
+let highlightCore: HighlightCore | null = null
+let highlightStyleLoaded = false
+
+/**
+ * 转义 HTML 特殊字符
+ * 在高亮模块未加载时作为回退渲染，避免代码内容被浏览器当作标签解析
+ */
+const escapeHtml = (code: string) => {
+  return code
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * 按需加载代码高亮模块
+ * 仅在 AI 对话页需要渲染代码块时加载 highlight.js 与主题样式
+ */
+const ensureHighlightCore = async () => {
+  if (!highlightCore) {
+    const module = await import('highlight.js')
+    highlightCore = module.default
+  }
+
+  if (!highlightStyleLoaded) {
+    await import('highlight.js/styles/atom-one-light.css')
+    highlightStyleLoaded = true
+  }
+
+  return highlightCore
+}
 
 const verifyAccess = () => {
   if (verifyPassword.value.toLowerCase() === 'uied2025') {
@@ -909,7 +942,8 @@ const sendMessage = async () => {
             saveHistory()
 
             // Highlight code blocks
-            nextTick(() => {
+            nextTick(async () => {
+              const hljs = await ensureHighlightCore()
               document.querySelectorAll('pre code').forEach((block) => {
                 hljs.highlightElement(block as HTMLElement)
               })
@@ -948,12 +982,16 @@ const sendMessage = async () => {
 // Initialize
 const renderer = new marked.Renderer()
 renderer.code = ({ text, lang }: { text: string, lang?: string }) => {
-  const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext'
+  const language = lang && highlightCore?.getLanguage(lang) ? lang : 'plaintext'
   try {
-    const highlighted = hljs.highlight(text, { language }).value
+    if (!highlightCore) {
+      return `<pre><code class="hljs language-${language}">${escapeHtml(text)}</code></pre>`
+    }
+
+    const highlighted = highlightCore.highlight(text, { language }).value
     return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
   } catch {
-    return `<pre><code class="hljs language-${language}">${text}</code></pre>`
+    return `<pre><code class="hljs language-${language}">${escapeHtml(text)}</code></pre>`
   }
 }
 
@@ -965,6 +1003,7 @@ marked.use({
 onMounted(async () => {
   loadHistory()
   loadSettings()
+  await ensureHighlightCore()
   await fetchModels()
 })
 </script>

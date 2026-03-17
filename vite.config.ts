@@ -133,10 +133,52 @@ export default defineConfig({
       // 确保 Vue 相关的包能够正确被引用
       external: [],
       output: {
-        // 解决代码分割问题
-        manualChunks: {
-          'vendor-vue': ['vue', '@vue/runtime-core', '@vue/reactivity', '@vue/shared'],
-          'vendor-element-plus': ['element-plus']
+        /**
+         * 自定义分包策略
+         * 将高体积依赖按能力域拆分，降低主包体积并提升首屏加载稳定性
+         */
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+
+          if (id.includes('vue') || id.includes('@vue/')) {
+            return 'vendor-vue'
+          }
+
+          if (id.includes('element-plus')) {
+            return 'vendor-element-plus'
+          }
+
+          if (id.includes('pdfjs-dist') || id.includes('pdf-lib') || id.includes('jspdf') || id.includes('html2pdf.js')) {
+            return 'vendor-pdf'
+          }
+
+          if (id.includes('xlsx') || id.includes('jszip')) {
+            return 'vendor-sheet'
+          }
+
+          if (id.includes('@wangeditor')) {
+            return 'vendor-editor-wangeditor'
+          }
+
+          if (id.includes('vue-codemirror') || id.includes('@codemirror')) {
+            return 'vendor-editor-codemirror'
+          }
+
+          if (id.includes('highlight.js')) {
+            return 'vendor-editor-highlight'
+          }
+
+          if (id.includes('@kangc/v-md-editor') || id.includes('prismjs')) {
+            return 'vendor-editor-markdown'
+          }
+
+          if (id.includes('fabric') || id.includes('cropperjs') || id.includes('tui-image-editor') || id.includes('gifuct-js')) {
+            return 'vendor-image'
+          }
+
+          if (id.includes('echarts')) {
+            return 'vendor-charts'
+          }
         }
       }
     },
