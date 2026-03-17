@@ -35,8 +35,15 @@
               <h3 class="text-base font-medium text-gray-700">HTML代码</h3>
             </div>
             <div class="border rounded-lg overflow-hidden bg-white">
-              <codemirror v-model="info.code" placeholder="请输入需要格式化的HTML代码..." :style="{ height: '400px' }"
-                :autofocus="true" :indent-with-tab="true" :tabSize="2" />
+              <AsyncCodemirror
+                v-model="info.code"
+                placeholder="请输入需要格式化的HTML代码..."
+                :height="400"
+                :autofocus="true"
+                :indent-with-tab="true"
+                :tab-size="2"
+                :extensions="info.extensions"
+              />
             </div>
           </div>
 
@@ -127,16 +134,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from '@vue/runtime-core'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { reactive } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import AsyncCodemirror from '@/components/Common/AsyncCodemirror.vue'
 import { useRoute } from 'vue-router'
 import { copy } from '@/utils/string'
-import { Codemirror } from "vue-codemirror"
-import '@codemirror/search'
-import '@codemirror/state'
-import '@codemirror/commands'
 import * as prettier from "prettier/standalone"
 import * as parserHtml from 'prettier/plugins/html'
 import { ElMessage } from 'element-plus'
@@ -146,6 +148,7 @@ const route = useRoute()
 const info = reactive({
   title: "HTML格式化工具",
   code: '',
+  extensions: [] as unknown[],
   isParseErr: false,
   parseErr: '',
 })
