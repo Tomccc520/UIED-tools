@@ -22,7 +22,7 @@ import { useToolsStore } from '@/store/modules/tools'
 import { useRoute } from "vue-router"
 import HotSearch from '@/components/HotSearch/HotSearch.vue'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
-import { Tool, ToolCategory } from '@/store/modules/tools'
+import type { Tool, ToolCategory } from '@/types/tools'
 
 // 初始化 store 和路由
 const toolsStore = useToolsStore()

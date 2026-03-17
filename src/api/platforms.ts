@@ -1,4 +1,3 @@
-// 定义热榜项目接口
 import zhihuIcon from '@/assets/zhihu.svg'
 import bilibiliIcon from '@/assets/bilibili.svg'
 import juejinIcon from '@/assets/juejin.svg'
@@ -54,6 +53,16 @@ const transformData = (data: any): HotItem[] => {
 
   // 获取数据数组
   let responseData = data.data;
+
+  // 如果 data 是字符串，尝试解析
+  if (typeof responseData === 'string') {
+    try {
+      responseData = JSON.parse(responseData);
+    } catch (e) {
+      console.warn('解析data字符串失败:', e);
+      return [];
+    }
+  }
 
   // 处理可能的嵌套数据结构
   if (responseData && typeof responseData === 'object' && !Array.isArray(responseData)) {
@@ -158,7 +167,7 @@ export const categories: Category[] = [
 
 // 平台配置
 export const officialAPIs: PlatformAPI[] = [
-  // 设计热榜
+  // 设计热榜 (保持不变)
   {
     name: '每日学习',
     id: 'learn_hot',
@@ -289,14 +298,95 @@ export const officialAPIs: PlatformAPI[] = [
     category: '新闻资讯',
     transform: transformData
   },
+  {
+    name: '新浪新闻',
+    id: 'sina_news',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=新浪新闻',
+    category: '新闻资讯',
+    transform: transformData
+  },
+  {
+    name: '新浪网',
+    id: 'sina',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=新浪网',
+    category: '新闻资讯',
+    transform: transformData
+  },
 
   // 科技资讯
+  {
+    name: '36氪',
+    id: '36kr',
+    type: '热榜',
+    icon: kr36Icon,
+    endpoint: '/api/dailyhot/?title=36氪',
+    category: '科技资讯',
+    transform: transformData
+  },
   {
     name: 'IT之家',
     id: 'ithome_hot',
     type: '热榜',
     icon: ithomeIcon,
     endpoint: '/api/dailyhot/?title=IT之家',
+    category: '科技资讯',
+    transform: transformData
+  },
+  {
+    name: '酷安',
+    id: 'coolapk',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=酷安',
+    category: '科技资讯',
+    transform: transformData
+  },
+  {
+    name: '数字尾巴',
+    id: 'dgtle',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=数字尾巴',
+    category: '科技资讯',
+    transform: transformData
+  },
+  {
+    name: '极客公园',
+    id: 'geekpark',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=极客公园',
+    category: '科技资讯',
+    transform: transformData
+  },
+  {
+    name: '果壳',
+    id: 'guokr',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=果壳',
+    category: '科技资讯',
+    transform: transformData
+  },
+  {
+    name: '虎嗅',
+    id: 'huxiu',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=虎嗅',
+    category: '科技资讯',
+    transform: transformData
+  },
+  {
+    name: '爱范儿',
+    id: 'ifanr',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=爱范儿',
     category: '科技资讯',
     transform: transformData
   },
@@ -308,6 +398,51 @@ export const officialAPIs: PlatformAPI[] = [
     type: '热榜',
     icon: juejinIcon,
     endpoint: '/api/dailyhot/?title=稀土掘金',
+    category: '技术社区',
+    transform: transformData
+  },
+  {
+    name: '51CTO',
+    id: '51cto',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=51CTO',
+    category: '技术社区',
+    transform: transformData
+  },
+  {
+    name: '吾爱破解',
+    id: '52pojie',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=吾爱破解',
+    category: '技术社区',
+    transform: transformData
+  },
+  {
+    name: 'CSDN',
+    id: 'csdn',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=CSDN',
+    category: '技术社区',
+    transform: transformData
+  },
+  {
+    name: 'HelloGitHub',
+    id: 'hellogithub',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=HelloGitHub',
+    category: '技术社区',
+    transform: transformData
+  },
+  {
+    name: '水木社区',
+    id: 'newsmth',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=水木社区',
     category: '技术社区',
     transform: transformData
   },
@@ -367,6 +502,87 @@ export const officialAPIs: PlatformAPI[] = [
     category: '兴趣社区',
     transform: transformData
   },
+  {
+    name: '原神',
+    id: 'genshin',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=原神',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: '崩坏3',
+    id: 'honkai3',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=崩坏3',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: '虎扑',
+    id: 'hupu',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=虎扑',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: '英雄联盟',
+    id: 'lol',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=英雄联盟',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: '米游社 · 崩坏3',
+    id: 'miyoushe_honkai3',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=米游社 · 崩坏3',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: 'NGA',
+    id: 'nga',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=NGA',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: '什么值得买',
+    id: 'smzdm',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=什么值得买',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: '崩坏：星穹铁道',
+    id: 'starrail',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=崩坏：星穹铁道',
+    category: '兴趣社区',
+    transform: transformData
+  },
+  {
+    name: '游研社',
+    id: 'yystv',
+    type: '热榜',
+    icon: uiedIcon,
+    endpoint: '/api/dailyhot/?title=游研社',
+    category: '兴趣社区',
+    transform: transformData
+  },
 
   // 专业社区
   {
@@ -404,6 +620,15 @@ export const officialAPIs: PlatformAPI[] = [
     type: '热榜',
     icon: historyIcon,
     endpoint: '/api/dailyhot/?title=历史上的今天',
+    category: '实用工具',
+    transform: transformData
+  },
+  {
+    name: 'IT之家「喜加一」',
+    id: 'ithome_plus',
+    type: '喜加一',
+    icon: ithomeIcon,
+    endpoint: '/api/dailyhot/?title=IT之家「喜加一」',
     category: '实用工具',
     transform: transformData
   }

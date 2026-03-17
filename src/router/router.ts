@@ -15,7 +15,7 @@ import BackendTest from '../components/Tools/BackendTest/BackendTest.vue'
 // 根据环境变量判断使用的 base 路径
 const base = import.meta.env.PROD ? '/' : '/'
 
-export const constantRoute = [
+export const constantRoute: RouteRecordRaw[] = [
   //首页
   {
     path: '/',
@@ -150,13 +150,8 @@ export const constantRoute = [
   },
   {
     path: '/tools/ai/analysis-report',
-    component: () => import('@/components/Tools/AI/Writing/AnalysisReport.vue'),
-    name: 'analysisReport',
-    meta: {
-      title: "分析报告",
-      keywords: '分析报告,数据分析,市场分析,问题分析,商业报告',
-      description: '免费在线AI分析报告生成工具，智能生成专业的数据分析、市场分析或问题分析报告，提供深度洞察',
-    }
+    redirect: '/tools/ai/analysis/analysis-report',
+    name: 'analysisReportRedirect'
   },
   {
     path: '/tools/ai/weekly-summary',
@@ -379,6 +374,166 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/ai/analysis/research-report',
+    component: () => import('@/components/Tools/AI/Analysis/ResearchReport.vue'),
+    name: 'aiResearchReport',
+    meta: {
+      title: "研究报告",
+      keywords: 'AI研究报告,深度研究,学术研究,商业研究,报告生成',
+      description: '智能生成深度研究报告，涵盖研究背景、方法、结果与结论，助力学术与商业研究',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/analysis-report',
+    component: () => import('@/components/Tools/AI/Analysis/AnalysisReport.vue'),
+    name: 'aiAnalysisReportNew',
+    meta: {
+      title: "分析报告",
+      keywords: 'AI分析报告,数据分析,问题分析,趋势分析,深度洞察',
+      description: '智能生成各类分析报告，深度剖析问题成因、现状与趋势，提供专业见解',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/activity-plan',
+    component: () => import('@/components/Tools/AI/Analysis/ActivityPlan.vue'),
+    name: 'aiActivityPlan',
+    meta: {
+      title: "活动方案",
+      keywords: 'AI活动策划,活动方案,活动计划,创意策划,执行方案',
+      description: '智能生成创意活动方案，包含流程设计、预算规划与执行细节，确保活动精彩呈现',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/business-plan',
+    component: () => import('@/components/Tools/AI/Analysis/BusinessPlan.vue'),
+    name: 'aiBusinessPlan',
+    meta: {
+      title: "商业计划书",
+      keywords: 'AI商业计划书,BP写作,创业计划,融资计划,项目计划',
+      description: '智能撰写专业商业计划书，涵盖市场分析、商业模式、运营策略与财务预测，助力融资成功',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/survey-report',
+    component: () => import('@/components/Tools/AI/Analysis/SurveyReport.vue'),
+    name: 'aiSurveyReport',
+    meta: {
+      title: "调研报告",
+      keywords: 'AI调研报告,市场调研,用户调研,实地调研,数据分析',
+      description: '智能生成实地调研报告，整理调研数据，提炼核心发现，支持决策制定',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/industry-report',
+    component: () => import('@/components/Tools/AI/Analysis/IndustryReport.vue'),
+    name: 'aiIndustryReport',
+    meta: {
+      title: "行业报告",
+      keywords: 'AI行业报告,行业分析,市场趋势,竞争格局,产业研究',
+      description: '智能生成行业深度分析报告，洞察市场规模、竞争格局与未来趋势',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/feasibility-study',
+    component: () => import('@/components/Tools/AI/Analysis/FeasibilityStudy.vue'),
+    name: 'aiFeasibilityStudy',
+    meta: {
+      title: "可行性研究报告",
+      keywords: '可行性研究报告,项目可行性,投资分析,效益评估,风险分析',
+      description: '智能生成专业的可行性研究报告，包含市场分析、建设方案、投资估算和效益分析',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/project-application',
+    component: () => import('@/components/Tools/AI/Analysis/ProjectApplication.vue'),
+    name: 'aiProjectApplication',
+    meta: {
+      title: "立项申请报告",
+      keywords: '立项申请报告,项目立项,立项建议书,项目申请,立项审批',
+      description: '智能生成项目立项申请报告，阐述项目必要性、可行性和实施计划，助力项目审批',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/pest',
+    component: () => import('@/components/Tools/AI/Analysis/PestAnalysis.vue'),
+    name: 'aiPEST',
+    meta: {
+      title: "PEST分析",
+      keywords: 'PEST分析,宏观环境分析,政策分析,经济分析,社会分析,技术分析',
+      description: '智能进行PEST分析，深度解读政治、经济、社会和技术环境对项目或企业的影响',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/swot',
+    component: () => import('@/components/Tools/AI/Analysis/SwotAnalysis.vue'),
+    name: 'aiSWOT',
+    meta: {
+      title: "SWOT分析",
+      keywords: 'SWOT分析,战略分析,优势劣势,机会威胁,企业战略',
+      description: '智能进行SWOT分析，全面评估优势、劣势、机会和威胁，制定科学的发展战略',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/transport-plan',
+    component: () => import('@/components/Tools/AI/Analysis/TransportPlan.vue'),
+    name: 'aiTransportPlan',
+    meta: {
+      title: "运输方案",
+      keywords: '运输方案,物流方案,运输计划,配送方案,物流规划',
+      description: '智能生成高效的运输方案，规划最佳路线、运输方式和成本预算，提升物流效率',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/situation-report',
+    component: () => import('@/components/Tools/AI/Analysis/SituationReport.vue'),
+    name: 'aiSituationReport',
+    meta: {
+      title: "情况报告",
+      keywords: '情况报告,情况说明,突发事件报告,工作情况,调查报告',
+      description: '智能生成各类情况报告，客观陈述事实经过，分析原因并提出处理建议',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/seven-s',
+    component: () => import('@/components/Tools/AI/Analysis/BostonAnalysis.vue'),
+    name: 'aiSevenS',
+    meta: {
+      title: "波士顿7S分析",
+      keywords: '7S分析,麦肯锡7S,组织分析,企业管理,战略实施',
+      description: '智能进行麦肯锡7S模型分析，从战略、结构、制度等七个维度全面诊断企业组织状况',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/marketing-4p',
+    component: () => import('@/components/Tools/AI/Analysis/Marketing4p.vue'),
+    name: 'aiMarketing4P',
+    meta: {
+      title: "4P营销分析",
+      keywords: '4P营销,营销策略,产品价格,渠道推广,市场营销',
+      description: '智能进行4P营销理论分析，制定产品、价格、渠道和推广策略，提升市场竞争力',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/industry-consultant',
+    component: () => import('@/components/Tools/AI/Analysis/IndustryConsultant.vue'),
+    name: 'aiIndustryConsultant',
+    meta: {
+      title: "产业顾问",
+      keywords: '产业顾问,产业分析,行业咨询,产业规划,专家建议',
+      description: '智能扮演资深产业顾问，提供专业的行业洞察、发展建议和决策支持',
+    }
+  },
+  {
+    path: '/tools/ai/analysis/startup-ideas',
+    component: () => import('@/components/Tools/AI/Analysis/InnovationIdea.vue'),
+    name: 'aiStartupIdeas',
+    meta: {
+      title: "创新创业金点子",
+      keywords: '创业点子,创新思维,商业创意,创业项目,创业灵感',
+      description: '智能生成创新创业金点子，结合市场趋势和资源优势，提供具有潜力的商业创意',
+    }
+  },
+  {
     path: '/tools/ai/office/work-plan',
     component: () => import('@/components/Tools/AI/Office/WorkPlan.vue'),
     name: 'aiWorkPlan',
@@ -528,6 +683,127 @@ export const constantRoute = [
       description: '智能辅助生成毕业论文初稿，包含摘要、正文和参考文献，助力学术写作',
     }
   },
+  // AI学生助手
+  {
+    path: '/tools/ai/student/internship-comments',
+    component: () => import('@/components/Tools/AI/Student/InternshipComments.vue'),
+    name: 'aiInternshipComments',
+    meta: {
+      title: "实习评语",
+      keywords: 'AI实习评语,实习评价,学生评语,AI写作',
+      description: '免费在线AI实习评语生成工具，智能生成专业的实习评价内容',
+    }
+  },
+  {
+    path: '/tools/ai/student/research-report',
+    component: () => import('@/components/Tools/AI/Student/ResearchReport.vue'),
+    name: 'aiStudentResearchReport',
+    meta: {
+      title: "研究报告",
+      keywords: 'AI研究报告,课题研究,学术报告,AI写作',
+      description: '免费在线AI研究报告生成工具，智能生成高质量的研究报告内容',
+    }
+  },
+  {
+    path: '/tools/ai/student/internship-weekly',
+    component: () => import('@/components/Tools/AI/Student/InternshipWeekly.vue'),
+    name: 'aiInternshipWeekly',
+    meta: {
+      title: "实习周记",
+      keywords: 'AI实习周记,实习日志,周记生成,AI写作',
+      description: '免费在线AI实习周记生成工具，智能记录实习期间的工作内容和感悟',
+    }
+  },
+  {
+    path: '/tools/ai/student/internship-summary',
+    component: () => import('@/components/Tools/AI/Student/InternshipSummary.vue'),
+    name: 'aiStudentInternshipSummary',
+    meta: {
+      title: "实习总结",
+      keywords: 'AI实习总结,实习汇报,总结报告,AI写作',
+      description: '免费在线AI实习总结生成工具，智能生成结构完整的实习总结报告',
+    }
+  },
+  {
+    path: '/tools/ai/student/social-practice',
+    component: () => import('@/components/Tools/AI/Student/SocialPractice.vue'),
+    name: 'aiSocialPractice',
+    meta: {
+      title: "暑假社会实践心得",
+      keywords: 'AI社会实践,实践心得,暑假实践,AI写作',
+      description: '免费在线AI社会实践心得生成工具，智能生成深刻的实践感悟和体会',
+    }
+  },
+  {
+    path: '/tools/ai/student/practice-report',
+    component: () => import('@/components/Tools/AI/Student/PracticeReport.vue'),
+    name: 'aiStudentPracticeReport',
+    meta: {
+      title: "实践报告",
+      keywords: 'AI实践报告,社会实践,项目报告,AI写作',
+      description: '免费在线AI实践报告生成工具，智能生成规范的实践活动报告',
+    }
+  },
+  {
+    path: '/tools/ai/student/analysis-report',
+    component: () => import('@/components/Tools/AI/Student/AnalysisReport.vue'),
+    name: 'aiStudentAnalysisReport',
+    meta: {
+      title: "分析报告",
+      keywords: 'AI分析报告,案例分析,SWOT分析,AI写作',
+      description: '免费在线AI分析报告生成工具，智能生成各类深度分析报告',
+    }
+  },
+  {
+    path: '/tools/ai/student/interview-guide',
+    component: () => import('@/components/Tools/AI/Student/InterviewGuide.vue'),
+    name: 'aiInterviewGuide',
+    meta: {
+      title: "面试指南",
+      keywords: 'AI面试指南,面试技巧,面试问题,AI写作',
+      description: '免费在线AI面试指南生成工具，智能提供针对性的面试建议和问答',
+    }
+  },
+  {
+    path: '/tools/ai/student/internship-experience',
+    component: () => import('@/components/Tools/AI/Student/InternshipExperience.vue'),
+    name: 'aiInternshipExperience',
+    meta: {
+      title: "实习体验报告",
+      keywords: 'AI实习体验,实习感受,职场体验,AI写作',
+      description: '免费在线AI实习体验报告生成工具，智能生成真实的实习生活体验记录',
+    }
+  },
+  {
+    path: '/tools/ai/student/internship-report',
+    component: () => import('@/components/Tools/AI/Student/InternshipReport.vue'),
+    name: 'aiStudentInternshipReport',
+    meta: {
+      title: "实习报告",
+      keywords: 'AI实习报告,实习结业,实习证明,AI写作',
+      description: '免费在线AI实习报告生成工具，智能生成符合要求的正式实习报告',
+    }
+  },
+  {
+    path: '/tools/ai/student/resume-creation',
+    component: () => import('@/components/Tools/AI/Student/ResumeCreation.vue'),
+    name: 'aiStudentResumeCreation',
+    meta: {
+      title: "简历制作",
+      keywords: 'AI简历,简历生成,求职简历,AI写作',
+      description: '免费在线AI简历内容生成工具，智能生成专业的简历各模块内容',
+    }
+  },
+  {
+    path: '/tools/ai/student/activity-plan',
+    component: () => import('@/components/Tools/AI/Student/ActivityPlan.vue'),
+    name: 'aiStudentActivityPlan',
+    meta: {
+      title: "活动方案",
+      keywords: 'AI活动方案,校园活动,策划书,AI写作',
+      description: '免费在线AI活动方案生成工具，智能生成创意十足的活动策划方案',
+    }
+  },
   {
     path: '/tools/image-to-webp',
     component: () => import('@/components/Tools/ImageToWebp/ImageToWebp.vue'),
@@ -623,7 +899,7 @@ export const constantRoute = [
     component: () => import('@/components/Tools/PdfMerge/index.vue'),
     name: 'pdfMerge',
     meta: {
-      title: "免费在线PDF合并工具",
+      title: "PDF合并",
       keywords: 'PDF合并,PDF合并工具,在线PDF合并,免费PDF合并,PDF文件合并,合并PDF',
       description: '免费在线PDF合并工具，支持多个PDF文件合并，无需上传至云端，本地处理更安全。支持调整合并顺序。'
     }
@@ -633,7 +909,7 @@ export const constantRoute = [
     component: () => import('@/components/Tools/PdfSplit/index.vue'),
     name: 'pdfSplit',
     meta: {
-      title: '免费在线PDF分割工具',
+      title: 'PDF分割',
       keywords: 'PDF分割,PDF拆分,PDF分页,在线PDF分割,免费PDF分割,PDF提取页面',
       description: '免费在线PDF分割工具，支持将PDF拆分为单页，提取指定页面，批量处理多个文件，本地处理更安全。'
     }
@@ -663,7 +939,7 @@ export const constantRoute = [
     component: () => import('@/components/Tools/PdfCompress/index.vue'),
     name: 'pdfCompress',
     meta: {
-      title: "免费PDF压缩工具",
+      title: "PDF压缩",
       keywords: 'PDF压缩,PDF文件压缩,在线PDF压缩,免费PDF压缩,缩小PDF',
       description: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传，保持良好画质。'
     }
@@ -715,7 +991,7 @@ export const constantRoute = [
     meta: {
       title: "PDF文本提取",
       keywords: 'PDF文本提取,PDF转TXT,PDF复制文本,PDF文字识别,提取PDF内容',
-      description: '免费在线提取PDF文件中的文本内容，支持复制和导出TXT，本地处理更安全。'
+     description: '免费在线提取PDF文件中的文本内容，支持复制和导出TXT，本地处理更安全。'
     }
   },
   {
@@ -816,6 +1092,26 @@ export const constantRoute = [
       title: "视频提取音频",
       keywords: '视频提取音频,视频转音频,视频转MP3,提取背景音乐',
       description: '在线从视频中提取音频，支持导出为 WAV 格式。'
+    }
+  },
+  {
+    path: '/tools/design/font-copyright',
+    component: () => import('@/components/Tools/Design/FontCopyright.vue'),
+    name: 'fontCopyright',
+    meta: {
+      title: "字体版权查询",
+      keywords: '字体版权,商用字体,免费字体,字体查询',
+      description: '查询字体版权信息，确认是否可以免费商用，避免版权纠纷。'
+    }
+  },
+  {
+    path: '/tools/life/countdown',
+    component: () => import('@/components/Tools/Life/CountdownDay.vue'),
+    name: 'countdownDay',
+    meta: {
+      title: "摸鱼倒数日",
+      keywords: '摸鱼,倒数日,节假日,下班倒计时,周末倒计时',
+      description: '工作再忙，也别忘了期待假期。实时查看距离周末和节假日还有多久。'
     }
   },
   {
@@ -960,13 +1256,8 @@ export const constantRoute = [
   },
   {
     path: '/tools/media/qrcode-generator',
-    component: () => import('@/components/Tools/Media/QrcodeGenerator/QrcodeGenerator.vue'),
-    name: 'qrcodeGenerator',
-    meta: {
-      title: "二维码生成器",
-      keywords: '二维码生成,在线二维码,QR Code Generator,自定义二维码',
-      description: '在线生成自定义二维码，支持设置颜色、尺寸、容错率，可下载 PNG 图片。'
-    }
+    redirect: '/tools/qrcode',
+    name: 'qrcodeGeneratorRedirect'
   },
   {
     path: '/tools/dev/url-encoder',
@@ -1863,6 +2154,16 @@ export const constantRoute = [
     }
   },
   {
+    path: '/tools/design/font-copyright',
+    component: () => import('@/components/Tools/Design/FontCopyright.vue'),
+    name: 'fontCopyright',
+    meta: {
+      title: "字体版权查询",
+      keywords: '字体版权查询,商用字体查询,免费商用字体,字体侵权检测',
+      description: '免费在线字体版权查询工具，快速查询字体是否可以免费商用，避免版权纠纷',
+    }
+  },
+  {
     path: '/tools/design/ui-spec',
     component: () => import('@/components/Tools/Design/UiSpec.vue'),
     name: 'uiSpec',
@@ -2368,7 +2669,7 @@ export const constantRoute = [
     name: 'AINews',
     component: () => import('@/components/Tools/AI/AINews.vue'),
     meta: {
-      title: 'AI实时快讯 - UIED-Tools',
+      title: 'AI实时快讯',
       keywords: 'AI新闻,科技资讯,AI快讯,人工智能新闻',
       description: '实时展示最新AI科技资讯，及时了解人工智能领域的最新动态和发展趋势。'
     }
@@ -2699,6 +3000,16 @@ export const constantRoute = [
       title: "天气查询",
       keywords: '天气查询,天气预报,实时天气,全球天气',
       description: '免费天气预报查询，支持全球城市，提供实时温度、湿度、风速等详细气象信息',
+    }
+  },
+  {
+    path: '/tools/daily/car-price',
+    component: () => import('@/components/Tools/Life/CarPrice.vue'),
+    name: 'carPrice',
+    meta: {
+      title: "车辆价格查询",
+      keywords: '车辆价格查询,汽车报价,新车价格,经销商报价,汽车配置',
+      description: '快速查询车辆指导价、经销商报价及配置信息',
     }
   },
   {

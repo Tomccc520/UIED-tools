@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-16 20:30
- * @version Beta 2.7.3
- * @toolsCount 当前工具总数：307个
+ * @lastUpdate 2025-12-20 16:00
+ * @version Beta 2.7.7
+ * @toolsCount 当前工具总数：331个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -266,7 +266,7 @@ onUnmounted(() => {
         </div>
 
         <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：281个 | 最后更新：2025-12-16 20:00
+          当前工具总数：329个 | 最后更新：2025-12-20 20:00
         </div>
       </div>
 
@@ -303,6 +303,213 @@ onUnmounted(() => {
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
 
+          <!-- Version 2.7.8 -->
+          <div class="timeline-item" id="v2.7.8">
+            <div class="version-tag">
+              <span class="version">2.7.8</span>
+              <span class="date">2025-12-20 20:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">热榜数据修复与系统优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">功能修复与优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>今日热榜</strong>：修复即梦AI和Nano-Banana数据获取异常问题（修正为Tag获取）；优化视觉设计，移除卡片阴影，提升阅读体验。</li>
+                        <li><strong>系统维护</strong>：移除已失效的抖音/小红书下载工具，精简路由配置，提升系统稳定性。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.6 -->
+          <div class="timeline-item" id="v2.7.6">
+            <div class="version-tag">
+              <span class="version">2.7.6</span>
+              <span class="date">2025-12-20 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">热榜聚合接口升级与工具优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">今日热榜 - 聚合接口升级</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">新增39个平台支持，覆盖科技、社区、游戏等多领域。</p>
+                      <p class="text-sm text-gray-500">
+                        包括：36氪、51CTO、吾爱破解、AcFun、酷安、CSDN、数字尾巴、极客公园、原神、果壳、HelloGitHub、虎扑、虎嗅、爱范儿、英雄联盟、NGA、什么值得买等。</p>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">工具优化与修复</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/font-copyright" target="_blank"
+                              class="hover:text-blue-600 transition-colors">字体版权查询</router-link></strong>：优化结果展示，支持列表式查看详细版权信息，增加使用说明。
+                        </li>
+                        <li><strong><router-link to="/tools/daily/car-price" target="_blank"
+                              class="hover:text-blue-600 transition-colors">车辆价格查询</router-link></strong>：修复API数据展示问题，增加空状态提示和使用说明。
+                        </li>
+                        <li><strong>工具推荐</strong>：优化相关工具推荐逻辑，提升匹配准确度。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.5 -->
+          <div class="timeline-item" id="v2.7.5">
+            <div class="version-tag">
+              <span class="version">2.7.5</span>
+              <span class="date">2025-12-19 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">新增AI学生助手分类与工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增AI学生助手分类</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">上线12款专为学生打造的AI辅助工具，覆盖实习、报告、求职等场景。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/student/internship-comments" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习评语</router-link></strong>：智能生成专业的实习评价内容。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/research-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">研究报告</router-link></strong>：辅助撰写深度研究报告。</li>
+                        <li><strong><router-link to="/tools/ai/student/internship-weekly" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习周记</router-link></strong>：快速记录实习周记心得。</li>
+                        <li><strong><router-link to="/tools/ai/student/internship-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习总结</router-link></strong>：一键生成高质量实习总结。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/social-practice-insight" target="_blank"
+                              class="hover:text-blue-600 transition-colors">暑假社会实践心得</router-link></strong>：分享社会实践感悟与收获。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/practice-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实践报告</router-link></strong>：规范化撰写社会实践报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">分析报告</router-link></strong>：提供多维度数据分析报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/interview-guide" target="_blank"
+                              class="hover:text-blue-600 transition-colors">面试指南</router-link></strong>：提供AI模拟面试与技巧指导。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/internship-experience" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习体验报告</router-link></strong>：记录真实的实习工作体验。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/internship-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习报告</router-link></strong>：生成标准格式的实习报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/resume-creation" target="_blank"
+                              class="hover:text-blue-600 transition-colors">简历制作</router-link></strong>：AI辅助优化简历内容与排版。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/activity-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">活动方案</router-link></strong>：创意生成校园活动策划方案。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">热门推荐更新</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600">新增Adobe全家桶与Gemini3相关热门工具推荐。</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.2 -->
+          <div class="timeline-item" id="v2.7.2">
+            <div class="version-tag">
+              <span class="version">2.7.2</span>
+              <span class="date">2025-12-17 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI分析报告工具矩阵扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增16个AI分析工具</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">深度覆盖商业分析、市场研究和战略规划场景。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/analysis/feasibility-study" target="_blank"
+                              class="hover:text-blue-600 transition-colors">可行性研究报告</router-link></strong>：智能生成包含市场、技术、经济维度的专业可行性报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/project-application" target="_blank"
+                              class="hover:text-blue-600 transition-colors">立项申请报告</router-link></strong>：生成规范的项目立项申请，助力项目快速获批。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/business-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">商业计划书</router-link></strong>：智能撰写专业商业计划书，涵盖市场分析、商业模式与财务预测。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">行业研究报告</router-link></strong>：深度分析行业现状、竞争格局与发展趋势，提供决策支持。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/research-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">调研报告</router-link></strong>：生成基于实地考察或数据收集的专业调研报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">竞品分析报告</router-link></strong>：多维度对比竞品优劣势，输出差异化竞争策略。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/survey-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">问卷调查报告</router-link></strong>：智能分析问卷数据，生成可视化的调查结论与建议。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/activity-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">活动策划方案</router-link></strong>：生成创意十足且执行性强的活动策划全案。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/pest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PEST分析</router-link></strong>：从政治、经济、社会、技术四个维度深度剖析宏观环境。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/swot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">SWOT分析</router-link></strong>：全面评估优势、劣势、机会与威胁，制定科学战略。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/transport-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">运输方案</router-link></strong>：智能规划最佳运输路线与方式，优化物流成本。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/situation-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">情况报告</router-link></strong>：客观陈述事实经过，分析原因并提出处理建议。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/seven-s" target="_blank"
+                              class="hover:text-blue-600 transition-colors">波士顿7S分析</router-link></strong>：基于麦肯锡7S模型，全方位诊断企业组织效能。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/marketing-4p" target="_blank"
+                              class="hover:text-blue-600 transition-colors">4P营销分析</router-link></strong>：制定产品、价格、渠道、推广的组合营销策略。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-consultant" target="_blank"
+                              class="hover:text-blue-600 transition-colors">产业顾问</router-link></strong>：扮演资深专家，提供行业深度洞察与发展建议。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/startup-ideas" target="_blank"
+                              class="hover:text-blue-600 transition-colors">创新创业金点子</router-link></strong>：结合市场趋势，激发具有商业潜力的创业灵感。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <!-- Version 2.7.1 -->
           <div class="timeline-item" id="v2.7.1">
             <div class="version-tag">
@@ -317,10 +524,16 @@ onUnmounted(() => {
               <div class="card-content">
                 <ul class="feature-list">
                   <li>
-                    <div class="feature-title">新增11个AI办公工具</div>
+                    <div class="feature-title">新增13个AI办公工具</div>
                     <div class="feature-desc">
                       <p class="text-sm text-gray-600 mb-2">持续丰富办公场景，覆盖更多细分需求。</p>
                       <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/office/custom-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">自定义总结</router-link></strong>：灵活生成各类总结文档，支持自定义主题和结构。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/holiday-notice" target="_blank"
+                              class="hover:text-blue-600 transition-colors">放假通知</router-link></strong>：智能生成规范、温馨的放假通知。
+                        </li>
                         <li><strong><router-link to="/tools/ai/office/work-report?type=daily" target="_blank"
                               class="hover:text-blue-600 transition-colors">工作日报</router-link></strong>：快速生成今日工作总结、问题反馈和明日计划。
                         </li>

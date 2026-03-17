@@ -39,9 +39,9 @@ export function toEchartsData(data) {
 
 /**
  * 转换成echarts使用的数据 - 适用于饼图
- * 
- * @param data 
- * @returns 
+ *
+ * @param data
+ * @returns
  */
 export function toEchartsPieData(data) {
   let tmpArr: Array<Object> = []
@@ -62,8 +62,8 @@ export function toEchartsPieData(data) {
 /**
  * 数据格式转换 - 根据type转换格式
  * 对象格式{name: '', value: ''};  列格式： nameArr = [], valueArr = []
- * @param data 
- * @returns 
+ * @param data
+ * @returns
  */
 export function tranObjAndColumn(data, type = 'toObj') {
   let returnData = [] as any[];
@@ -130,23 +130,23 @@ export default EchartsUtils
 
 /**
 
-1: { 
-  cells: { 
-    0: { text: 'testingtesttestetst' }, 
-    2: { text: 'testing' }, 
-  }, 
-}, 
-2: { 
-  cells: { 
-    0: { text: 'render', style: 0 }, 
-    1: { text: 'Hello' }, 
-    2: { text: 'haha', merge: [1, 1] }, 
-  } 
-}, 
-8: { 
-  cells: { 
-    8: { text: 'border test', style: 0 }, 
-  } 
-} 
+1: {
+  cells: {
+    0: { text: 'testingtesttestetst' },
+    2: { text: 'testing' },
+  },
+},
+2: {
+  cells: {
+    0: { text: 'render', style: 0 },
+    1: { text: 'Hello' },
+    2: { text: 'haha', merge: [1, 1] },
+  }
+},
+8: {
+  cells: {
+    8: { text: 'border test', style: 0 },
+  }
+}
 
  */

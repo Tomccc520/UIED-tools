@@ -10,15 +10,15 @@
 <template>
   <footer class="bg-white border-t border-gray-100 rounded-xl" role="contentinfo" aria-label="页面底部" itemscope
     itemtype="http://schema.org/WPFooter">
-    <div class="max-w-7xl mx-auto py-2 sm:py-4 px-2 sm:px-3">
-      <div class="flex flex-col items-center justify-center space-y-3">
+    <div class="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6">
+      <div class="flex flex-col items-center justify-center space-y-6">
         <!-- Logo和标题 -->
-        <router-link class="logo-container group" to="/" aria-label="返回首页">
-          <div class="flex items-center">
+        <router-link class="logo-container group" to="/" aria-label="返回首页" title="UIED Tools 首页">
+          <div class="flex items-center gap-3">
             <div class="logo-wrapper flex items-center" aria-hidden="true">
               <svg width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg"
                 xmlns:xlink="http://www.w3.org/1999/xlink" class="logo-svg">
-                <title>logo-3</title>
+                <title>UIED Tools Logo</title>
                 <defs>
                   <polygon id="path-9z3bcfbp2n-1" points="4.24080877e-17 0 51 0 51 49 4.24080877e-17 49"></polygon>
                 </defs>
@@ -56,171 +56,154 @@
                 </g>
               </svg>
             </div>
-            <div class="tools-text font-bold ml-2" aria-label="UIED Tools">Tools</div>
+            <div class="tools-text font-bold" aria-label="UIED Tools">Tools</div>
           </div>
         </router-link>
 
         <!-- 主要内容区域 -->
-        <div class="w-full max-w-5xl mx-auto grid grid-cols-1 gap-6">
+        <div class="w-full max-w-6xl mx-auto grid grid-cols-1 gap-6">
           <!-- 快捷链接区域 -->
           <nav class="grid grid-cols-1 md:grid-cols-2 gap-6" aria-label="底部导航">
             <!-- 工具快捷入口 -->
             <section class="w-full" aria-labelledby="quick-tools">
-              <h2 id="quick-tools" class="text-base font-medium text-gray-600 mb-4">
+              <h2 id="quick-tools" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
                 工具快捷入口
               </h2>
-              <div class="flex flex-col space-y-3">
+              <div class="flex flex-col space-y-4">
                 <!-- 设计工具 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">设计：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">设计：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="/tools/design/contrast-checker"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       色彩对比度
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/design/box-shadow"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       CSS阴影
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/design/golden-ratio"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       黄金比例
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/design/blob-maker"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       Blob生成器
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/design/glassmorphism"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       玻璃拟态
                     </a>
                   </div>
                 </div>
 
                 <!-- 图像工具 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">图像：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">图像：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="/tools/image-compress"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       图片压缩
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/qrcode"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       二维码生成
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/img-cut"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       图片切割
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/signimage"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       图片处理
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/gif-compress"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       GIF压缩
                     </a>
                   </div>
                 </div>
 
                 <!-- PDF工具 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">PDF：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">PDF：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="/tools/img-to-pdf"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       图片转PDF
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/pdf-to-images"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       PDF转图片
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/pdf-merge"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       PDF合并
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/pdf-split"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       PDF分割
                     </a>
                   </div>
                 </div>
 
                 <!-- 文本工具 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">文本：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">文本：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="/tools/diff"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       文本对比
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/markdown"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       Markdown编辑
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/wordcount"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       字数统计
                     </a>
                   </div>
                 </div>
 
                 <!-- 开发工具 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">开发：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">开发：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="/tools/json"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       JSON转换
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/reg"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       正则测试
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/timetran"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       时间戳
                     </a>
                   </div>
                 </div>
 
                 <!-- 文案工具 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">文案：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">文案：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="/tools/copywriting/kfc"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       疯狂星期四
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/copywriting/daily-poem"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       今日诗词
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/copywriting/dog-diary"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       舔狗日记
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="/tools/copywriting/moments"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       朋友圈文案
                     </a>
                   </div>
@@ -230,89 +213,118 @@
 
             <!-- 友情链接 -->
             <section class="w-full" aria-labelledby="friend-links">
-              <h2 id="friend-links" class="text-base font-medium text-gray-600 mb-4">
+              <h2 id="friend-links" class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
+                <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
                 友情链接
               </h2>
-              <div class="space-y-4">
+              <div class="space-y-6">
                 <!-- AI相关链接 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">AI：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">AI：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="https://www.uied.cn/category/aigc/ai" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       AI文章
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://hot.uied.cn/ai-realtime" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       AI资讯
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://hao.uied.cn/ai" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       AI工具
                     </a>
-                    <span class="text-gray-300">·</span>
+                    <a href="https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink" target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      AI知识库
+                    </a>
                     <a href="https://www.uied.cn/wechat" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AI交流
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      AI交流群
+                    </a>
+                  </div>
+                </div>
+
+                <!-- 学习教程 -->
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0 mt-1">教程：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
+                    <a href="https://www.uied.cn/category/wenzhang/ui-wenzhang" target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      UI文章
+                    </a>
+                    <a href="https://www.uied.cn/category/wenzhang/pingmian-wenzhang" target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      平面文章
+                    </a>
+                    <a href="https://www.uied.cn/category/wenzhang/ganhuo" target="_blank" rel="noopener noreferrer"
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      设计干货
+                    </a>
+                    <a href="https://www.uied.cn/category/wenzhang/tool" target="_blank" rel="noopener noreferrer"
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      效率工具
+                    </a>
+                    <a href="https://www.uied.cn/category/aigc/ai" target="_blank" rel="noopener noreferrer"
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      AI文章
+                    </a>
+                    <a href="https://www.uied.cn/category/code/kaiyuan" target="_blank" rel="noopener noreferrer"
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      开源项目
                     </a>
                   </div>
                 </div>
 
                 <!-- 设计相关链接 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">设计：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0 mt-1">设计：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="https://www.uied.cn/category/wenzhang/ui-wenzhang" target="_blank"
                       rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       设计文章
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://hao.uied.cn/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       设计导航
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://uiedtool.com/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       设计工具
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://hot.uied.cn/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       设计资讯
                     </a>
                   </div>
                 </div>
 
                 <!-- 其他友情链接 -->
-                <div class="flex items-center gap-4">
-                  <span class="text-sm text-gray-400 shrink-0">其他：</span>
-                  <div class="flex flex-wrap gap-3">
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
+                  <span class="text-sm font-medium text-gray-900 shrink-0 mt-1">其他：</span>
+                  <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a href="https://uied.cn" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       AIGC学习网站
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://fsuied.com" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       UIED技术团队
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://www.88sheji.cn/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-blue-500 transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       拜拜导航
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://www.tomda.top/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-blue-500 transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       Tomda
                     </a>
-                    <span class="text-gray-300">·</span>
                     <a href="https://fsuied.com/contact.html" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-600 hover:text-blue-500 transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                       申请友链
                     </a>
                   </div>
@@ -322,30 +334,32 @@
 
             <!-- 官方媒体 -->
             <section class="w-full" aria-labelledby="official-media">
-              <h2 id="official-media" class="text-base font-medium text-gray-600 mb-4">
+              <h2 id="official-media" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
                 官方媒体
               </h2>
-              <div class="flex flex-wrap gap-3">
+              <div class="flex flex-wrap gap-x-6 gap-y-3">
                 <a href="https://www.zhihu.com/org/uiedyong-hu-ti-yan-jiao-liu-xue-xi" target="_blank"
                   rel="noopener noreferrer"
-                  class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
                   知乎
                 </a>
-                <span class="text-gray-300">·</span>
                 <a href="https://www.xiaohongshu.com/user/profile/5dc2ccb0000000000100ba83" target="_blank"
                   rel="noopener noreferrer"
-                  class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
                   小红书
                 </a>
-                <span class="text-gray-300">·</span>
                 <a href="https://weibo.com/u/7542146005" target="_blank" rel="noopener noreferrer"
-                  class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
                   微博
                 </a>
-                <span class="text-gray-300">·</span>
                 <a href="https://space.bilibili.com/3493135908866790?spm_id_from=333.1007.0.0" target="_blank"
                   rel="noopener noreferrer"
-                  class="text-sm text-gray-600 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
                   B站
                 </a>
               </div>
@@ -354,46 +368,47 @@
         </div>
 
         <!-- 底部信息 -->
-        <div class="w-full flex flex-col items-center text-sm text-gray-500 border-t border-gray-100 pt-6 space-y-3">
-          <div class="w-full max-w-5xl flex flex-col sm:flex-row justify-between items-center gap-4">
+        <div class="w-full flex flex-col items-center text-sm text-gray-500 border-t border-gray-100 pt-8 space-y-4">
+          <div class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-6">
             <!-- 左侧信息 -->
-            <div class="flex flex-col space-y-2 text-center sm:text-left">
-              <div>
-                <span itemprop="name">UIED-Tools</span>是由
+            <div class="flex flex-col space-y-3 text-center md:text-left">
+              <div class="leading-relaxed">
+                <span itemprop="name" class="font-medium text-gray-700">UIED-Tools</span> 是由
                 <a href="https://fsuied.com" target="_blank" rel="noopener noreferrer"
                   class="text-[#6C54FF] hover:text-[#5842cc] transition-colors font-medium" itemprop="creator">
                   UIED技术团队
                 </a>
                 设计开发的在线工具平台
               </div>
-              <div class="flex items-center justify-center sm:justify-start gap-1">
+              <div class="flex items-center justify-center md:justify-start gap-2 text-gray-400">
                 <span>技术支持：</span>
                 <a href="https://www.tomda.top/" target="_blank" rel="noopener noreferrer"
-                  class="text-[#6C54FF] hover:text-[#5842cc] transition-colors font-medium">
+                  class="text-gray-500 hover:text-[#6C54FF] transition-colors">
                   Tomda
                 </a>
                 <span>&</span>
                 <a href="https://fsuied.com" target="_blank" rel="noopener noreferrer"
-                  class="text-[#6C54FF] hover:text-[#5842cc] transition-colors font-medium">
+                  class="text-gray-500 hover:text-[#6C54FF] transition-colors">
                   UIED技术团队
                 </a>
               </div>
             </div>
 
             <!-- 右侧信息 -->
-            <div class="flex flex-col items-center sm:items-end space-y-2">
-              <div class="text-gray-400" itemprop="copyrightNotice">© 2025 UIED-Tools. All rights reserved.</div>
-              <div class="flex flex-wrap items-center justify-center gap-2 text-sm text-gray-400">
+            <div class="flex flex-col items-center md:items-end space-y-3">
+              <div class="text-gray-400" itemprop="copyrightNotice">
+                <meta itemprop="copyrightYear" content="2025">
+                © 2025 UIED-Tools. All rights reserved.
+              </div>
+              <div class="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
                 <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"
-                  class="hover:text-blue-600 transition-colors whitespace-nowrap">
+                  class="hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                   粤ICP备2022056875号
                 </a>
-                <span class="text-gray-300">·</span>
                 <a href="/sitemap.xml" target="_blank" rel="noopener noreferrer"
-                  class="hover:text-blue-600 transition-colors whitespace-nowrap">
+                  class="hover:text-[#6C54FF] transition-colors whitespace-nowrap">
                   网站地图
                 </a>
-
               </div>
             </div>
           </div>

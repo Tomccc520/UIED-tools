@@ -200,11 +200,16 @@
 
 <script setup lang="ts">
 import { getHotTools, getNewTools, getUtilityTools, getRelatedTools } from '@/components/Tools/tools'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 
 // Props定义
 const props = defineProps<{
-  currentPath: string  // 当前页面路径,用于获取相关工具
+  currentPath?: string  // 当前页面路径,用于获取相关工具
 }>()
+
+const route = useRoute()
+const currentPath = computed(() => props.currentPath || route.path)
 
 // 工具点击处理函数
 const handleToolClick = (tool: any) => {
@@ -222,6 +227,6 @@ const newTools = getNewTools(8)  // 新品工具: 随机8个
 const utilityTools = getUtilityTools(8)  // 实用工具: 随机8个
 
 // 获取相关工具: 优先获取同类工具,如果不足则用其他工具补充,总共8个
-const allRelatedTools = getRelatedTools(props.currentPath, 8, 8)
+const allRelatedTools = getRelatedTools(currentPath.value, 8, 8)
 const relatedTools = allRelatedTools.slice(0, 8)
 </script>

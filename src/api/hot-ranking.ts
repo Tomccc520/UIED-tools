@@ -105,11 +105,31 @@ export class HotRankingAPI {
 
   // 转换 pearktrue API 数据格式
   private transformPearktrueData(data: any): HotItem[] {
-    if (!data || !Array.isArray(data.data)) {
-      throw new Error('数据格式错误');
+    if (!data) {
+      throw new Error('数据为空');
     }
 
-    return data.data.map((item: any) => ({
+    let list = data.data;
+    // 如果是字符串，尝试解析
+    if (typeof list === 'string') {
+      try {
+        list = JSON.parse(list);
+      } catch (e) {
+        console.error('解析data字符串失败', e);
+        list = [];
+      }
+    }
+
+    if (!Array.isArray(list)) {
+      // 兼容某些API返回直接就是数组的情况（虽然根据文档是在data字段下）
+      if (Array.isArray(data)) {
+        list = data;
+      } else {
+        throw new Error('数据格式错误');
+      }
+    }
+
+    return list.map((item: any) => ({
       title: item.title || '',
       url: item.url || '',
       hot: item.hot || '',
