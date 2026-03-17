@@ -412,12 +412,12 @@
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
-import { marked } from 'marked'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { ElMessage, ElSelect, ElOption, ElMessageBox, ElDialog, ElSwitch, ElInput, ElSlider, ElTooltip } from 'element-plus'
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
 import uiedLogo from '@/assets/uiedlogo.png'
+import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 
 // Types
 interface Message {
@@ -467,6 +467,10 @@ const maxFreeUsage = ref(5)
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
 let highlightStyleLoaded = false
+type MarkedCore = typeof import('marked').marked
+let markedCore: MarkedCore | null = null
+let markedConfigured = false
+const markedReady = ref(false)
 
 /**
  * 转义 HTML 特殊字符
@@ -497,6 +501,46 @@ const ensureHighlightCore = async () => {
   }
 
   return highlightCore
+}
+
+/**
+ * 按需加载并配置 Markdown 渲染器
+ * 首次进入对话页时再加载 marked，并注册代码块渲染逻辑，避免主包静态引入
+ */
+const ensureMarkedCore = async () => {
+  if (!markedCore) {
+    const runtime = await ensureMarkedRuntime()
+    markedCore = runtime.marked
+  }
+
+  if (!markedConfigured && markedCore) {
+    const renderer = new markedCore.Renderer()
+    renderer.code = ({ text, lang }: { text: string, lang?: string }) => {
+      const language = lang && highlightCore?.getLanguage(lang) ? lang : 'plaintext'
+      try {
+        if (!highlightCore) {
+          return `<pre><code class="hljs language-${language}">${escapeHtml(text)}</code></pre>`
+        }
+
+        const highlighted = highlightCore.highlight(text, { language }).value
+        return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
+      } catch {
+        return `<pre><code class="hljs language-${language}">${escapeHtml(text)}</code></pre>`
+      }
+    }
+
+    markedCore.use({
+      renderer,
+      breaks: true
+    })
+    markedConfigured = true
+  }
+
+  if (!markedReady.value) {
+    markedReady.value = true
+  }
+
+  return markedCore
 }
 
 const verifyAccess = () => {
@@ -801,8 +845,14 @@ const scrollToBottom = () => {
 }
 
 const renderMarkdown = (content: string) => {
+  const ready = markedReady.value
+  if (!ready || !markedCore) {
+    void ensureMarkedCore()
+    return content
+  }
+
   try {
-    return marked.parse(content)
+    return markedCore.parse(content) as string
   } catch (e) {
     return content
   }
@@ -979,31 +1029,11 @@ const sendMessage = async () => {
   }
 }
 
-// Initialize
-const renderer = new marked.Renderer()
-renderer.code = ({ text, lang }: { text: string, lang?: string }) => {
-  const language = lang && highlightCore?.getLanguage(lang) ? lang : 'plaintext'
-  try {
-    if (!highlightCore) {
-      return `<pre><code class="hljs language-${language}">${escapeHtml(text)}</code></pre>`
-    }
-
-    const highlighted = highlightCore.highlight(text, { language }).value
-    return `<pre><code class="hljs language-${language}">${highlighted}</code></pre>`
-  } catch {
-    return `<pre><code class="hljs language-${language}">${escapeHtml(text)}</code></pre>`
-  }
-}
-
-marked.use({
-  renderer,
-  breaks: true
-})
-
 onMounted(async () => {
   loadHistory()
   loadSettings()
   await ensureHighlightCore()
+  void ensureMarkedCore()
   await fetchModels()
 })
 </script>

@@ -201,25 +201,49 @@ import { Search, Delete, Link as LinkIcon, ArrowRight, Close, Loading, User, Cha
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
 import logoImg from '@/assets/uiedlogo.png'
-import { marked } from 'marked'
+import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 import { debugLog, debugError, isDev } from '@/utils/debug'
 
 // 测试logo是否正确加载 - 仅在开发环境
 isDev && debugLog('Logo 路径:', logoImg)
 
-// 配置 marked
-const renderer = new marked.Renderer()
-// @ts-ignore - 忽略TypeScript类型错误，运行时能正常工作
-renderer.link = function (href, title, text) {
-  const titleAttr = title ? ` title="${title}"` : ''
-  return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`
-}
+type MarkedCore = typeof import('marked').marked
+let markedCore: MarkedCore | null = null
+let markedConfigured = false
+const markedReady = ref(false)
 
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-  renderer
-})
+/**
+ * 按需加载并配置搜索面板 Markdown 渲染器
+ * 首次使用时加载 marked，统一设置换行与外链行为
+ */
+const ensureSearchMarkedCore = async () => {
+  if (!markedCore) {
+    const runtime = await ensureMarkedRuntime()
+    markedCore = runtime.marked
+  }
+
+  if (!markedConfigured && markedCore) {
+    const renderer = new markedCore.Renderer()
+    // @ts-ignore - 忽略TypeScript类型错误，运行时能正常工作
+    renderer.link = function (href, title, text) {
+      const titleAttr = title ? ` title="${title}"` : ''
+      return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`
+    }
+
+    markedCore.setOptions({
+      breaks: true,
+      gfm: true,
+      renderer
+    })
+    markedConfigured = true
+  }
+
+  if (!markedReady.value) {
+    markedReady.value = true
+  }
+
+  return markedCore
+}
 
 // 定义组件的props
 const props = defineProps<{
@@ -268,8 +292,15 @@ const chatHistory = ref<Array<{
 
 // 添加 markdown 渲染函数
 const renderMarkdown = (content: string) => {
+  const ready = markedReady.value
   if (!content) return ''
-  return marked(content)
+
+  if (!ready || !markedCore) {
+    void ensureSearchMarkedCore()
+    return content
+  }
+
+  return markedCore.parse(content) as string
 }
 
 // 更新显示内容的函数
@@ -521,6 +552,7 @@ const handleClear = () => {
 
 // 组件挂载时加载搜索历史
 onMounted(() => {
+  void ensureSearchMarkedCore()
   loadSearchHistory()
 
   // 调试logo图片 - 仅在开发环境

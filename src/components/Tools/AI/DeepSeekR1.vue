@@ -378,17 +378,21 @@
 <script setup lang="ts">
 import { ref, onMounted, nextTick, computed, watch, onUnmounted, onBeforeUnmount } from '@vue/runtime-core'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { marked } from 'marked'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import html2canvas from 'html2canvas'
 import { useHead } from '@vueuse/head'
 import { wechatVerifyConfig } from '@/utils/verify'
+import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
 let highlightStyleLoaded = false
+type MarkedCore = typeof import('marked').marked
+let markedCore: MarkedCore | null = null
+let markedConfigured = false
+const markedReady = ref(false)
 
 /**
  * 转义 HTML 特殊字符
@@ -419,6 +423,62 @@ const ensureHighlightCore = async () => {
   }
 
   return highlightCore
+}
+
+/**
+ * 按需加载并配置 Markdown 渲染器
+ * 仅在 DeepSeek 对话页加载 marked，并注入代码块渲染与复制按钮结构
+ */
+const ensureMarkedCore = async () => {
+  if (!markedCore) {
+    const runtime = await ensureMarkedRuntime()
+    markedCore = runtime.marked
+  }
+
+  if (!markedConfigured && markedCore) {
+    const renderer = new markedCore.Renderer()
+    renderer.code = function ({ text, lang }: { text: string, lang?: string }) {
+      const code = text
+      const language = lang || 'plaintext'
+      const id = 'code-block-' + Math.random().toString(36).substr(2, 9)
+
+      try {
+        const highlighted = lang && highlightCore?.getLanguage(lang)
+          ? highlightCore.highlight(code, { language }).value
+          : escapeHtml(code)
+
+        const lines = highlighted.split('\n')
+        const lineNumbers = lines.map((_, i) => `<span class="line-number">${i + 1}</span>`).join('\n')
+
+        return `<div class="code-block-wrapper">
+        <div class="code-header">
+          <span class="code-lang">${language}</span>
+          <button class="copy-btn" onclick="copyCode('${id}')">
+            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+            </svg>
+            复制
+          </button>
+        </div>
+        <div class="code-content">
+          <div class="line-numbers" aria-hidden="true">${lineNumbers}</div>
+          <pre><code class="hljs language-${language}" id="${id}">${highlighted}</code></pre>
+        </div>
+      </div>`
+      } catch (e) {
+        return `<pre><code class="hljs language-${language}">${escapeHtml(code)}</code></pre>`
+      }
+    }
+
+    markedCore.use({ renderer })
+    markedConfigured = true
+  }
+
+  if (!markedReady.value) {
+    markedReady.value = true
+  }
+
+  return markedCore
 }
 
 // SEO Meta Tags
@@ -1030,8 +1090,10 @@ const copyMessage = async (content: any) => {
       contentStr = String(content);
     }
 
-    const tempElement = document.createElement('div');
-    tempElement.innerHTML = await marked(contentStr);
+    const marked = await ensureMarkedCore()
+    const parsedHtml = await marked.parse(contentStr)
+    const tempElement = document.createElement('div')
+    tempElement.innerHTML = parsedHtml as string
     const plainText = tempElement.textContent || tempElement.innerText || contentStr;
 
     await navigator.clipboard.writeText(plainText);
@@ -1080,48 +1142,10 @@ onMounted(async () => {
     cssSelector: 'pre code',
     languages: ['javascript', 'typescript', 'python', 'java', 'html', 'css', 'bash', 'json']
   })
-
-  // 配置自定义渲染器
-  const renderer = new marked.Renderer();
-
-  renderer.code = function ({ text, lang }: { text: string, lang?: string }) {
-    const code = text
-    const language = lang || 'plaintext';
-    const id = 'code-block-' + Math.random().toString(36).substr(2, 9);
-
-    try {
-      const highlighted = lang && hljs.getLanguage(lang)
-        ? hljs.highlight(code, { language }).value
-        : escapeHtml(code);
-
-      // 添加行号
-      const lines = highlighted.split('\n');
-      const lineNumbers = lines.map((_, i) => `<span class="line-number">${i + 1}</span>`).join('\n');
-
-      return `<div class="code-block-wrapper">
-        <div class="code-header">
-          <span class="code-lang">${language}</span>
-          <button class="copy-btn" onclick="copyCode('${id}')">
-            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-            </svg>
-            复制
-          </button>
-        </div>
-        <div class="code-content">
-          <div class="line-numbers" aria-hidden="true">${lineNumbers}</div>
-          <pre><code class="hljs language-${language}" id="${id}">${highlighted}</code></pre>
-        </div>
-      </div>`;
-    } catch (e) {
-      return `<pre><code class="hljs language-${language}">${escapeHtml(code)}</code></pre>`;
-    }
-  };
-
-  marked.use({ renderer });
+  await ensureMarkedCore()
 
   // 全局暴露复制函数
-  (window as any).copyCode = (id: string) => {
+  ;(window as any).copyCode = (id: string) => {
     const codeElement = document.getElementById(id);
     if (codeElement) {
       const code = codeElement.textContent || '';
@@ -1135,8 +1159,14 @@ onMounted(async () => {
 })
 
 const renderMarkdown = (content: string) => {
+  const ready = markedReady.value
+  if (!ready || !markedCore) {
+    void ensureMarkedCore()
+    return content
+  }
+
   try {
-    return marked(content || '')
+    return markedCore.parse(content || '') as string
   } catch (e) {
     console.error('Markdown渲染错误:', e)
     return content
