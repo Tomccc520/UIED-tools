@@ -151,11 +151,11 @@
           </div>
         </div>
         <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4">使用说明</h3>
-            <ul class="space-y-2 list-disc list-inside text-gray-600 text-sm">
-                <li>输入申请事项和理由，AI将生成格式规范、理由充分的申请报告。</li>
-                <li>适用于物资采购、人事调动、费用报销等多种场景。</li>
-            </ul>
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">使用说明</h3>
+          <ul class="space-y-2 list-disc list-inside text-gray-600 text-sm">
+            <li>输入申请事项和理由，AI将生成格式规范、理由充分的申请报告。</li>
+            <li>适用于物资采购、人事调动、费用报销等多种场景。</li>
+          </ul>
         </div>
       </div>
     </div>

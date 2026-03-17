@@ -1,11 +1,10 @@
 <!--
- * @file PdfWatermark.vue
- * @description PDF添加水印工具组件，支持自定义文字水印
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-26
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -37,6 +36,7 @@
               </div>
               <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
               <p class="text-sm text-gray-400">单个文件最大 100MB</p>
+              <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
         </div>
@@ -176,18 +176,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { PDFDocument } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { ElMessage } from 'element-plus'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
-// 设置 PDF.js worker
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 const route = useRoute()
 
@@ -294,27 +292,44 @@ const handleDrop = (e: DragEvent) => {
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
     const droppedFile = droppedFiles[0]
-    if (droppedFile.type === 'application/pdf') {
-      handleFile(droppedFile)
-    } else {
-      ElMessage.error('请上传PDF文件')
+    const err = getPdfFileError(droppedFile, 100)
+    if (err) {
+      ElMessage.error(err)
+      return
     }
+    handleFile(droppedFile)
   }
 }
 
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    handleFile(target.files[0])
+    const f = target.files[0]
+    const err = getPdfFileError(f, 100)
+    if (err) {
+      ElMessage.error(err)
+      target.value = ''
+      return
+    }
+    handleFile(f)
+    target.value = ''
   }
 }
 
+/**
+ * 处理选择的PDF文件并加载预览
+ * @param f 选择的PDF文件
+ */
 const handleFile = async (f: File) => {
   file.value = f
   currentPage.value = 1
   await loadPdfPreview(f)
 }
 
+/**
+ * 加载PDF预览并渲染当前页
+ * @param f PDF文件
+ */
 const loadPdfPreview = async (f: File) => {
   rendering.value = true
   try {
@@ -330,6 +345,10 @@ const loadPdfPreview = async (f: File) => {
   }
 }
 
+/**
+ * 渲染指定页到预览画布
+ * @param pageNum 页码
+ */
 const renderPage = async (pageNum: number) => {
   if (!pdfDoc.value || !pdfPreviewCanvas.value) return
 
@@ -355,6 +374,10 @@ const renderPage = async (pageNum: number) => {
   }
 }
 
+/**
+ * 切换预览页
+ * @param delta 页码增量
+ */
 const changePage = async (delta: number) => {
   const newPage = currentPage.value + delta
   if (newPage >= 1 && newPage <= totalPages.value) {
@@ -363,6 +386,9 @@ const changePage = async (delta: number) => {
   }
 }
 
+/**
+ * 清空当前文件与预览状态
+ */
 const clearFile = () => {
   file.value = null
   pdfDoc.value = null
@@ -371,7 +397,12 @@ const clearFile = () => {
   }
 }
 
-// Create a canvas with the watermark
+/**
+ * 创建包含水印的画布
+ * @param width 画布宽度
+ * @param height 画布高度
+ * @returns 生成的画布
+ */
 const createWatermarkCanvas = (width: number, height: number) => {
   const canvas = document.createElement('canvas')
   canvas.width = width
@@ -401,6 +432,9 @@ const createWatermarkCanvas = (width: number, height: number) => {
   return canvas
 }
 
+/**
+ * 为PDF添加水印并触发下载
+ */
 const processWatermark = async () => {
   if (!file.value) return
 

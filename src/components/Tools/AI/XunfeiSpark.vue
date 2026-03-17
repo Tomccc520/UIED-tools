@@ -532,6 +532,23 @@ const deleteMessage = (index: number) => {
   ElMessage.success('消息已删除')
 }
 
+const saveChat = () => {
+  if (messages.value.length === 0) {
+    ElMessage.warning('暂无对话可保存')
+    return
+  }
+  const content = messages.value
+    .map(message => `${message.role === 'user' ? '用户' : '助手'}：${message.content}`)
+    .join('\n\n')
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `xunfei-chat-${Date.now()}.txt`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
 onMounted(() => {
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)

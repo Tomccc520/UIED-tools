@@ -1,25 +1,11 @@
 <!--
- * @file PdfToImages.vue
- * @description PDF转图片工具组件，支持PDF文件转换为高质量图片
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-
- *
- * 功能特性：
- * 1. 支持拖拽和点击上传PDF
- * 2. 支持批量转换和单页下载
- * 3. 支持普通(150dpi)和高清(300dpi)两种质量
- * 4. 本地转换，无需上传服务器
- * 5. 支持大文件处理(最大500MB)
- *
- * 主要组件：
- * - 文件上传区域
- * - 转换质量控制
- * - 文件列表展示
- * - 转换进度显示
- * - 常见问题解答
- -->
+ * @createDate 2026.1.27
+ */
+-->
 
 <template>
   <div class="min-h-screen">
@@ -257,6 +243,7 @@ import { ElMessage } from 'element-plus'
 // @ts-ignore
 import JSZip from 'jszip'
 import * as pdfjsLib from 'pdfjs-dist'
+import { setupPdfWorker, getPdfFileError } from '@/utils/pdf'
 import { Document, Upload, Delete } from '@element-plus/icons-vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -304,12 +291,9 @@ const handleFileChange = (event: Event) => {
 
   // 验证文件
   for (const file of newFiles) {
-    if (file.size > 500 * 1024 * 1024) {
-      ElMessage.error(`文件 ${file.name} 超过500MB限制`)
-      continue
-    }
-    if (!file.type.includes('pdf')) {
-      ElMessage.error(`文件 ${file.name} 不是PDF格式`)
+    const err = getPdfFileError(file, 500)
+    if (err) {
+      ElMessage.error(`文件 ${file.name} ${err}`)
       continue
     }
     files.value.push(file)
@@ -410,10 +394,7 @@ onMounted(async () => {
   //   }
   // }) as EventListener)
 
-  // 动态加载 PDF Worker
-  // @ts-ignore
-  const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.js')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default
+  setupPdfWorker()
 })
 
 /**

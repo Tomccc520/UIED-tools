@@ -1,11 +1,10 @@
 <!--
- * @file PdfRotate.vue
- * @description PDF页面旋转工具组件，支持批量旋转、单独旋转页面，调整页面顺序、删除页面
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-27
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -36,7 +35,7 @@
                 </svg>
               </div>
               <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
-              <p class="text-sm text-gray-400">单个文件最大 200MB</p>
+              <p class="text-sm text-gray-400">单个文件最大 {{ maxFileSizeMB }}MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
@@ -44,6 +43,13 @@
 
         <!-- 文件预览和操作区域 -->
         <div v-if="currentFile" class="mt-6">
+          <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 mb-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="text-sm font-medium text-gray-700 truncate">{{ currentFile.name }}</span>
+              <span class="text-xs text-gray-500">{{ formatFileSize(currentFile.size) }}</span>
+            </div>
+            <span class="text-xs text-gray-500">共 {{ pageCount }} 页</span>
+          </div>
           <!-- 操作按钮 -->
           <div class="flex justify-between items-center mb-6">
             <div class="flex items-center gap-4">
@@ -198,11 +204,9 @@ import VueDraggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 import * as pdfjsLib from 'pdfjs-dist'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 
-// 设置 PDF.js worker
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 const route = useRoute()
 
@@ -221,12 +225,13 @@ interface Page {
 }
 
 const info = reactive({
-  title: "免费在线PDF页面旋转工具",
+  title: "PDF页面旋转",
   subtitle: "可批量旋转、单独旋转页面，同时可调整页面顺序、删除页面"
 })
 
+const maxFileSizeMB = 200
 const guideSteps = [
-  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为200MB。' },
+  { title: '上传PDF文件', description: `点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为${maxFileSizeMB}MB。` },
   { title: '旋转页面', description: '点击页面右上角的旋转按钮单独旋转，或使用上方工具栏批量旋转所有页面。' },
   { title: '保存并下载', description: '调整完成后，点击“保存并下载”按钮，系统将自动生成新的PDF文件。' }
 ]
@@ -298,11 +303,6 @@ const handleDrop = (e: DragEvent) => {
   if (!droppedFiles || droppedFiles.length === 0) return
 
   const file = droppedFiles[0]
-  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf')) {
-    ElMessage.error('只能上传PDF文件')
-    return
-  }
-
   handleFile(file)
 }
 
@@ -325,8 +325,9 @@ const handleFileInputChange = (event: Event) => {
 
 // 处理文件
 const handleFile = async (file: File) => {
-  if (file.size > 200 * 1024 * 1024) {
-    ElMessage.error('文件大小不能超过200MB')
+  const err = getPdfFileError(file, maxFileSizeMB)
+  if (err) {
+    ElMessage.error(err)
     return
   }
 

@@ -1,44 +1,6 @@
-import { toolIcons } from './icons'
+import type { Tool, ToolCategory, ToolsReqData } from '@/types/tools'
 
-// 基础工具接口
-interface BaseTool {
-  id: number
-  title: string
-}
-
-// 具体工具接口
-interface Tool extends BaseTool {
-  logo: string | { type: 'svg', name: keyof typeof toolIcons }
-  desc: string
-  url: string
-  cateId?: number
-  cate: string
-  isExternal?: boolean
-  releaseDate?: string
-  tags?: string[]
-  icon?: string
-  isNew?: boolean
-}
-
-// 工具子分类接口
-interface ToolSubCategory extends BaseTool {
-  list: Tool[]
-}
-
-// 工具分类接口
-interface ToolCategory extends BaseTool {
-  icon: string
-  list: ToolSubCategory[]
-}
-
-interface ToolsReqData {
-  cateId: number
-  title: string
-}
-
-//获取tools分类与对应的工具
-export function getToolsCate(): ToolCategory[] {
-  return [
+const toolsCategories: ToolCategory[] = [
     {
       id: 0,
       title: 'AI工具箱',
@@ -633,7 +595,326 @@ export function getToolsCate(): ToolCategory[] {
             }
           ]
         },
-
+        {
+          id: 10,
+          title: 'AI分析报告',
+          list: [
+            {
+              id: 1101,
+              title: '研究报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成深度研究报告，涵盖研究背景、方法、结果与结论，助力学术与商业研究',
+              url: '/tools/ai/analysis/research-report',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/16 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1102,
+              title: '分析报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成各类分析报告，深度剖析问题成因、现状与趋势，提供专业见解',
+              url: '/tools/ai/analysis/analysis-report',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/16 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1103,
+              title: '活动方案',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成创意活动方案，包含流程设计、预算规划与执行细节，确保活动精彩呈现',
+              url: '/tools/ai/analysis/activity-plan',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/16 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1104,
+              title: '商业计划书写作',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能撰写专业商业计划书，涵盖市场分析、商业模式、运营策略与财务预测，助力融资成功',
+              url: '/tools/ai/analysis/business-plan',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/16 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1105,
+              title: '调研报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成实地调研报告，整理调研数据，提炼核心发现，支持决策制定',
+              url: '/tools/ai/analysis/survey-report',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/16 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1106,
+              title: '行业报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成行业深度分析报告，洞察市场规模、竞争格局与未来趋势',
+              url: '/tools/ai/analysis/industry-report',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/16 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1107,
+              title: '可行性研究报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成专业的可行性研究报告，包含市场分析、建设方案、投资估算和效益分析',
+              url: '/tools/ai/analysis/feasibility-study',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1108,
+              title: '立项申请报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成项目立项申请报告，阐述项目必要性、可行性和实施计划，助力项目审批',
+              url: '/tools/ai/analysis/project-application',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1109,
+              title: 'PEST分析',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能进行PEST分析，深度解读政治、经济、社会和技术环境对项目或企业的影响',
+              url: '/tools/ai/analysis/pest',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1110,
+              title: 'SWOT分析',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能进行SWOT分析，全面评估优势、劣势、机会和威胁，制定科学的发展战略',
+              url: '/tools/ai/analysis/swot',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1111,
+              title: '运输方案',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成高效的运输方案，规划最佳路线、运输方式和成本预算，提升物流效率',
+              url: '/tools/ai/analysis/transport-plan',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1112,
+              title: '情况报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成各类情况报告，客观陈述事实经过，分析原因并提出处理建议',
+              url: '/tools/ai/analysis/situation-report',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1113,
+              title: '波士顿7S分析',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能进行麦肯锡7S模型分析，从战略、结构、制度等七个维度全面诊断企业组织状况',
+              url: '/tools/ai/analysis/seven-s',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1114,
+              title: '4P营销分析',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能进行4P营销理论分析，制定产品、价格、渠道和推广策略，提升市场竞争力',
+              url: '/tools/ai/analysis/marketing-4p',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1115,
+              title: '产业顾问',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能扮演资深产业顾问，提供专业的行业洞察、发展建议和决策支持',
+              url: '/tools/ai/analysis/industry-consultant',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1116,
+              title: '创新创业金点子',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成创新创业金点子，结合市场趋势和资源优势，提供具有潜力的商业创意',
+              url: '/tools/ai/analysis/startup-ideas',
+              cate: 'AI分析报告',
+              releaseDate: '2025/12/17 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            }
+          ]
+        },
+        {
+          id: 11,
+          title: 'AI学生助手',
+          list: [
+            {
+              id: 1201,
+              title: '实习评语',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '免费在线AI实习评语生成工具，智能生成专业的实习评价内容',
+              url: '/tools/ai/student/internship-comments',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1202,
+              title: '研究报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成深度研究报告，涵盖研究背景、方法、结果与结论',
+              url: '/tools/ai/student/research-report',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1203,
+              title: '实习周记',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成实习周记，记录每周工作内容、收获与感悟',
+              url: '/tools/ai/student/internship-weekly',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1204,
+              title: '实习总结',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成实习总结报告，全面回顾实习经历，提炼核心收获',
+              url: '/tools/ai/student/internship-summary',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1205,
+              title: '暑假社会实践心得',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成暑假社会实践心得体会，记录实践过程中的所思所感',
+              url: '/tools/ai/student/social-practice',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1206,
+              title: '实践报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成社会实践报告，包含实践目的、过程、结果与分析',
+              url: '/tools/ai/student/practice-report',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1207,
+              title: '分析报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成各类分析报告，深度剖析问题成因、现状与趋势',
+              url: '/tools/ai/student/analysis-report',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1208,
+              title: '面试指南',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成面试指南，包含常见问题、回答技巧与注意事项',
+              url: '/tools/ai/student/interview-guide',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1209,
+              title: '实习体验报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成实习体验报告，分享实习期间的工作环境、氛围与成长',
+              url: '/tools/ai/student/internship-experience',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1210,
+              title: '实习报告',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成标准实习报告，符合学校或单位的格式要求',
+              url: '/tools/ai/student/internship-report',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1211,
+              title: '简历制作',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成学生版简历，突出教育背景、实习经历与校园活动',
+              url: '/tools/ai/student/resume-creation',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
+              id: 1212,
+              title: '活动方案',
+              logo: { type: 'svg', name: 'aiArticle' },
+              desc: '智能生成校园活动方案，包含活动主题、流程、预算与宣传计划',
+              url: '/tools/ai/student/activity-plan',
+              cate: 'AI学生助手',
+              releaseDate: '2025/12/19 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            }
+          ]
+        },
         {
           id: 2,
           title: 'AI对话助手',
@@ -882,17 +1163,6 @@ export function getToolsCate(): ToolCategory[] {
               logo: { type: 'svg', name: 'aiArticle' },
               desc: '智能生成社会实践报告，记录实践过程，总结实践经验',
               url: '/tools/ai/practice-report',
-              cate: 'AI写作工具',
-              releaseDate: '2025/12/15 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
-            },
-            {
-              id: 705,
-              title: 'AI分析报告',
-              logo: { type: 'svg', name: 'aiArticle' },
-              desc: '智能生成专业的数据分析、市场分析或问题分析报告，提供深度洞察',
-              url: '/tools/ai/analysis-report',
               cate: 'AI写作工具',
               releaseDate: '2025/12/15 00:00:00',
               tags: ['免费', '新品'],
@@ -1209,6 +1479,16 @@ export function getToolsCate(): ToolCategory[] {
               desc: '智能推荐中英文字体搭配方案，提供字体预览',
               url: '/tools/design/font',
               cate: '在线工具'
+            },
+            {
+              id: 115,
+              title: '字体版权查询',
+              logo: { type: 'svg', name: 'fontMatch' }, // 复用字体搭配图标
+              desc: '查询字体版权信息，确认是否可以免费商用',
+              url: '/tools/design/font-copyright',
+              cate: '在线工具',
+              isNew: true,
+              tags: ['免费', '商用']
             },
             {
               id: 1101,
@@ -1632,7 +1912,7 @@ export function getToolsCate(): ToolCategory[] {
               cate: '剪辑工具',
               isNew: true,
               tags: ['免费', '新品']
-            }
+            },
           ]
         },
         {
@@ -2089,6 +2369,16 @@ export function getToolsCate(): ToolCategory[] {
               logo: { type: 'svg', name: 'weather' },
               desc: '免费天气预报查询，支持全球城市，提供实时温度、湿度、风速等详细气象信息',
               url: '/tools/daily/weather',
+              cate: '实用查询',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 818,
+              title: '车辆价格查询',
+              logo: { type: 'svg', name: 'weather' }, // 暂用 weather 图标
+              desc: '快速查询车辆指导价、经销商报价及配置信息',
+              url: '/tools/daily/car-price',
               cate: '实用查询',
               isNew: true,
               tags: ['免费', '新品']
@@ -3065,6 +3355,16 @@ export function getToolsCate(): ToolCategory[] {
               url: '/tools/daily/flip-clock',
               cate: '其他摸鱼',
               isNew: true
+            },
+            {
+              id: 735,
+              title: '摸鱼倒数日',
+              logo: { type: 'svg', name: 'calendar' },
+              desc: '工作再忙，也别忘了期待假期。实时查看距离周末和节假日还有多久',
+              url: '/tools/life/countdown',
+              cate: '其他摸鱼',
+              isNew: true,
+              tags: ['免费', '新品']
             }
           ]
         },
@@ -3464,6 +3764,9 @@ export function getToolsCate(): ToolCategory[] {
       ]
     }
   ]
+
+export function getToolsCate(): ToolCategory[] {
+  return toolsCategories
 }
 //工具list
 export function toolsList() {
@@ -3492,7 +3795,7 @@ export function toolsList() {
 //获取工具
 export function getTools(data: ToolsReqData) {
   //获取参数
-  const { cateId, title } = data
+  const { cateId = 0, title = '' } = data
   //获取工具list
   let list = toolsList()
   //标题筛选
@@ -3579,6 +3882,32 @@ export function getHotTools(limit: number = 3): Tool[] {
   // 可自定义热门工具列表
   const tools = [
     {
+      id: 5,
+      title: "Adobe 正版全家桶可用AI",
+      text: "Adobe 正版全家桶可用AI",
+      desc: "Adobe 正版全家桶可用AI",
+      url: "https://universalbus.cn/?s=lPLG02aydo",
+      logo: "",
+      cateId: 0,
+      cate: "Banner",
+      isExternal: true,
+      gradient: 'linear-gradient(to right, rgb(249, 115, 22) 0%, rgb(255, 237, 213) 35%, rgb(255, 247, 237) 45%, rgb(251, 146, 60) 100%)',
+      badge: '特惠'
+    },
+    {
+      id: 6,
+      title: "Gemini3 可用 nanobanana",
+      text: "Gemini3 可用 nanobanana",
+      desc: "Gemini3 可用 nanobanana",
+      url: "https://universalbus.cn/?s=lPLG02aydo",
+      logo: "",
+      cateId: 0,
+      cate: "Banner",
+      isExternal: true,
+      gradient: 'linear-gradient(to right, rgb(14, 165, 233) 0%, rgb(224, 242, 254) 35%, rgb(240, 249, 255) 45%, rgb(56, 189, 248) 100%)',
+      badge: '新品'
+    },
+    {
       id: 1,
       title: "AI学习网站",
       desc: "每天逛一逛",
@@ -3619,7 +3948,7 @@ export function getHotTools(limit: number = 3): Tool[] {
       isExternal: true
     },
     {
-      id: 5,
+      id: 105,
       title: "Midjourney绘画",
       desc: "AI绘画生成工具",
       url: "https://nf.video/czybtp/?gid=26",
@@ -3630,8 +3959,8 @@ export function getHotTools(limit: number = 3): Tool[] {
     },
     {
       id: 7,
-      title: "GPT-4.0",
-      desc: "最新版GPT-4.0智能对话工具",
+      title: "GPT-5.2",
+      desc: "最新版GPT-5.2智能对话工具",
       url: "https://nf.video/oemcwv/?gid=18",
       logo: "",
       cateId: 0,
@@ -3734,4 +4063,3 @@ const ToolsExport = {
 };
 
 export default ToolsExport;
-

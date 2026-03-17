@@ -170,7 +170,7 @@
                   <div class="ml-2 px-2 py-1 bg-blue-50 rounded-full">
                     <span class="text-xs text-blue-500">{{ modelType === 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B' ?
                       '推荐模型' : ''
-                      }}</span>
+                    }}</span>
                   </div>
                 </label>
                 <div class="space-y-4">
@@ -301,7 +301,7 @@
                         <div
                           class="flex items-start gap-3 p-3 rounded-lg bg-white/50 hover:bg-white/70 transition-colors duration-200">
                           <div class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span class="text-sm text-blue-600">{{ index + 1 }}</span>
+                            <span class="text-sm text-blue-600">{{ Number(index) + 1 }}</span>
                           </div>
                           <div class="flex-1">
                             <p class="text-gray-700 whitespace-pre-wrap leading-relaxed">{{ step }}</p>
@@ -534,8 +534,7 @@
     <div class="preview-container bg-white p-8 mx-auto" ref="previewRef" style="width: 794px;">
       <!-- 报价单头部 -->
       <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold mb-2">{{projectTypeOptions.find((item: any) => item.value ===
-          projectType)?.label}}项目报价单</h2>
+        <h2 class="text-2xl font-bold mb-2">{{ selectedType?.label }}项目报价单</h2>
         <div class="text-sm text-gray-500">报价日期：{{ new Date().toLocaleDateString() }}</div>
       </div>
 
@@ -1004,7 +1003,7 @@ const generate = async () => {
           },
           {
             role: 'user',
-            content: `项目类型: ${projectTypeOptions.find(item => item.value === projectType.value)?.label}\n项目需求: ${requirements.value}\n报价偏好: ${pricePreferenceOptions.find(item => item.value === pricePreference.value)?.label}`
+            content: `项目类型: ${selectedType.value?.label}\n项目需求: ${requirements.value}\n报价偏好: ${pricePreferenceOptions.find(item => item.value === pricePreference.value)?.label}`
           }
         ],
         temperature: 0.7,
@@ -1685,35 +1684,27 @@ const parseReasoningSteps = (content) => {
     .map(step => step.trim())
 }
 
-// 快速选择标签
 const getQuickTags = computed(() => {
-  const selectedType = projectTypeOptions.find(type => type.value === projectType.value)
-  return selectedType?.commonRequirements || []
+  const current = selectedType.value
+  return current?.commonRequirements || []
 })
 
-// 获取输入提示
 const getPlaceholder = () => {
   const baseText = '请详细描述您的项目需求，例如：\n'
-  const selectedType = projectTypeOptions.find(type => type.value === projectType.value)
-  if (!selectedType) return baseText
-
-  return `${baseText}1. 项目类型：${selectedType.label}\n2. 主要功能：${selectedType.commonRequirements.join('、')}\n3. 其他要求：性能、安全性、维护等`
+  const current = selectedType.value
+  if (!current) return baseText
+  return `${baseText}1. 项目类型：${current.label}\n2. 主要功能：${current.commonRequirements.join('、')}\n3. 其他要求：性能、安全性、维护等`
 }
 
-// 智能建议
-const suggestions = ref([])
-const updateSuggestions = (input) => {
+const suggestions = ref<string[]>([])
+const updateSuggestions = (input: string) => {
   if (!input) {
     suggestions.value = []
     return
   }
+  if (!selectedType.value) return
 
-  const selectedType = projectTypeOptions.find(type => type.value === projectType.value)
-  if (!selectedType) return
-
-  const missingInfo = []
-
-  // 检查是否包含关键信息
+  const missingInfo: string[] = []
   if (!input.includes('预算')) {
     missingInfo.push('💰 项目预算范围')
   }
@@ -1723,7 +1714,6 @@ const updateSuggestions = (input) => {
   if (!input.includes('维护')) {
     missingInfo.push('🔧 后期维护需求')
   }
-
   suggestions.value = missingInfo
 }
 

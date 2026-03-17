@@ -32,6 +32,7 @@ const containerRef = ref<HTMLElement | null>(null)
 const isProcessing = ref(false)
 const progress = ref(0)
 const statusText = ref('')
+const isDragOver = ref(false)
 
 // Crop State (in percentage relative to container)
 const crop = reactive({
@@ -51,6 +52,29 @@ const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     const file = target.files[0]
+    if (file.type.startsWith('video/')) {
+      videoFile.value = file
+      if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
+      if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
+      videoUrl.value = URL.createObjectURL(file)
+      resultVideoUrl.value = ''
+
+      // Reset crop
+      crop.x = 10
+      crop.y = 10
+      crop.width = 80
+      crop.height = 80
+    } else {
+      ElMessage.warning('请选择有效的视频文件')
+    }
+  }
+}
+
+const handleDrop = (event: DragEvent) => {
+  isDragOver.value = false
+  const files = event.dataTransfer?.files
+  if (files && files.length > 0) {
+    const file = files[0]
     if (file.type.startsWith('video/')) {
       videoFile.value = file
       if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
@@ -292,161 +316,207 @@ onUnmounted(() => {
 <template>
   <div class="">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm min-h-[600px]">
+      <div class="bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
+        <!-- 头部区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">视频画面裁剪</h2>
+          <h2
+            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+            视频画面裁剪
+          </h2>
           <p class="text-gray-500 text-sm">在线裁剪视频画面区域，支持自由调整比例，本地处理保护隐私</p>
         </div>
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"
-          class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer mb-8"
+          class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer mb-8 group"
           @click="fileInput?.click()">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
-          <div class="text-6xl mb-4 text-gray-300">✂️</div>
-          <p class="text-xl font-medium text-gray-700 mb-2">点击或拖拽视频文件到此处</p>
+          <div class="w-20 h-20 mx-auto bg-indigo-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+            <svg class="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4v16M17 4v16M3 8h4m10 0h4M3 12h18M3 16h4m10 0h4M4 20h16a1 1 0 001-1V5a1 1 0 00-1-1H4a1 1 0 00-1 1v14a1 1 0 001 1z" />
+            </svg>
+          </div>
+          <p class="text-xl font-medium text-gray-700 mb-2">点击 or 拖拽视频文件到此处</p>
           <p class="text-sm text-gray-500">支持 MP4, WebM, MOV 等常见视频格式</p>
         </div>
 
-        <!-- Editor Area -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <!-- Left: Preview & Crop -->
-          <div class="lg:col-span-2 space-y-6">
-            <div ref="containerRef"
-              class="bg-black rounded-lg overflow-hidden relative shadow-lg flex items-center justify-center select-none"
-              style="min-height: 400px;">
-              <video ref="videoRef" :src="videoUrl" class="max-w-full max-h-[500px]" controls></video>
+        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- 左侧：配置区域 -->
+          <div class="lg:col-span-4 space-y-6">
+            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+              <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                  </svg>
+                </span>
+                操作面板
+              </h3>
 
-              <!-- Crop Overlay -->
-              <div class="absolute inset-0 pointer-events-none">
-                <!-- Dimmed Areas -->
-                <!-- Top -->
-                <div class="absolute bg-black/50" :style="{ top: 0, left: 0, right: 0, height: `${crop.y}%` }"></div>
-                <!-- Bottom -->
-                <div class="absolute bg-black/50"
-                  :style="{ bottom: 0, left: 0, right: 0, height: `${100 - crop.y - crop.height}%` }"></div>
-                <!-- Left -->
-                <div class="absolute bg-black/50"
-                  :style="{ top: `${crop.y}%`, left: 0, width: `${crop.x}%`, height: `${crop.height}%` }"></div>
-                <!-- Right -->
-                <div class="absolute bg-black/50"
-                  :style="{ top: `${crop.y}%`, right: 0, width: `${100 - crop.x - crop.width}%`, height: `${crop.height}%` }">
+              <div class="space-y-6">
+                <!-- Crop Info -->
+                <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                  <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                    </svg>
+                    裁剪参数
+                  </h4>
+                  <div class="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span>X:</span> <span class="font-mono font-medium text-indigo-600">{{ Math.round(crop.x) }}%</span></div>
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span>Y:</span> <span class="font-mono font-medium text-indigo-600">{{ Math.round(crop.y) }}%</span></div>
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span>宽:</span> <span class="font-mono font-medium text-indigo-600">{{ Math.round(crop.width) }}%</span></div>
+                    <div class="flex justify-between p-2 bg-gray-50 rounded"><span>高:</span> <span class="font-mono font-medium text-indigo-600">{{ Math.round(crop.height) }}%</span></div>
+                  </div>
                 </div>
 
-                <!-- Crop Box -->
-                <div
-                  class="absolute border-2 border-white pointer-events-auto cursor-move shadow-[0_0_0_1px_rgba(0,0,0,0.5)]"
-                  :style="{
-                    left: `${crop.x}%`,
-                    top: `${crop.y}%`,
-                    width: `${crop.width}%`,
-                    height: `${crop.height}%`
-                  }" @mousedown.stop="startDrag">
-                  <!-- Grid Lines -->
-                  <div class="absolute top-1/3 left-0 right-0 h-px bg-white/30 pointer-events-none"></div>
-                  <div class="absolute top-2/3 left-0 right-0 h-px bg-white/30 pointer-events-none"></div>
-                  <div class="absolute left-1/3 top-0 bottom-0 w-px bg-white/30 pointer-events-none"></div>
-                  <div class="absolute left-2/3 top-0 bottom-0 w-px bg-white/30 pointer-events-none"></div>
+                <!-- Process Button -->
+                <div class="space-y-3">
+                  <button @click="processVideo" :disabled="isProcessing"
+                    class="w-full py-3 bg-gradient-to-r from-indigo-600 to-pink-600 text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    <span v-if="isProcessing" class="mr-2 animate-spin">
+                      <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </span>
+                    {{ isProcessing ? '处理中...' : '开始裁剪' }}
+                  </button>
 
-                  <!-- Resize Handles -->
-                  <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-blue-500 border border-white cursor-nw-resize"
-                    @mousedown.stop="startResize($event, 'nw')"></div>
-                  <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-blue-500 border border-white cursor-ne-resize"
-                    @mousedown.stop="startResize($event, 'ne')"></div>
-                  <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-blue-500 border border-white cursor-sw-resize"
-                    @mousedown.stop="startResize($event, 'sw')"></div>
-                  <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-blue-500 border border-white cursor-se-resize"
-                    @mousedown.stop="startResize($event, 'se')"></div>
+                  <button v-if="resultVideoUrl" @click="downloadVideo"
+                    class="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    下载视频
+                  </button>
+
+                  <button @click="fileInput?.click()"
+                    class="w-full py-3 text-gray-600 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors font-medium">
+                    更换视频
+                  </button>
                 </div>
               </div>
             </div>
           </div>
 
-          <!-- Right: Controls -->
-          <div class="space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
-              <h3 class="font-bold text-gray-800 mb-4 flex items-center">
-                <span class="w-1 h-6 bg-blue-600 rounded-full mr-2"></span>
-                裁剪设置
-              </h3>
-
-              <div class="grid grid-cols-2 gap-4 text-sm text-gray-600 mb-4">
-                <div>X: {{ Math.round(crop.x) }}%</div>
-                <div>Y: {{ Math.round(crop.y) }}%</div>
-                <div>宽: {{ Math.round(crop.width) }}%</div>
-                <div>高: {{ Math.round(crop.height) }}%</div>
-              </div>
-
-              <div class="text-xs text-gray-400 mb-6">
-                提示：直接在左侧预览图中拖动方框或调整边角
-              </div>
-
-              <button @click="processVideo" :disabled="isProcessing"
-                class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed mb-3">
-                {{ isProcessing ? '正在裁剪...' : '开始裁剪并导出' }}
-              </button>
-
-              <button @click="fileInput?.click()" class="w-full py-2 text-gray-500 hover:text-gray-700 text-sm">
-                更换视频
-              </button>
-            </div>
-
-            <!-- Result -->
-            <div class="space-y-4">
-              <h3 class="font-bold text-gray-700">导出结果</h3>
-              <div
-                class="bg-gray-900 rounded-lg overflow-hidden aspect-video flex items-center justify-center relative shadow-lg">
-                <video v-if="resultVideoUrl" :src="resultVideoUrl" controls class="max-w-full max-h-full"></video>
-                <div v-else class="text-gray-500 flex flex-col items-center p-6 w-full">
-                  <div v-if="isProcessing" class="w-full max-w-xs">
-                    <div class="flex justify-between text-xs font-medium text-blue-400 mb-2">
-                       <span>{{ statusText }}</span>
-                       <span>{{ progress }}%</span>
-                    </div>
-                    <div class="w-full bg-gray-700 rounded-full h-2 overflow-hidden mb-4">
-                       <div class="bg-blue-500 h-2 rounded-full transition-all duration-300" :style="{ width: `${progress}%` }"></div>
-                    </div>
+          <!-- 右侧：预览区域 -->
+          <div class="lg:col-span-8 space-y-6">
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+              <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div class="flex items-center space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
                   </div>
-                  <div v-else class="text-center">
-                    <div class="text-4xl mb-2">🎬</div>
-                    <p>点击上方按钮开始处理</p>
-                  </div>
+                  <h3 class="font-medium text-gray-700">预览 & 裁剪</h3>
                 </div>
               </div>
 
-              <button v-if="resultVideoUrl" @click="downloadVideo"
-                class="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center justify-center">
-                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                下载裁剪后的视频
-              </button>
+              <div class="flex-1 p-6 flex items-center justify-center bg-gray-50 relative min-h-[400px]">
+                <!-- Video Preview -->
+                <div ref="containerRef"
+                  class="bg-black rounded-lg overflow-hidden relative shadow-lg flex items-center justify-center select-none max-w-full"
+                  style="max-height: 600px;">
+                  <video ref="videoRef" :src="videoUrl" class="max-w-full max-h-[600px]" controls></video>
+
+                  <!-- Crop Overlay -->
+                  <div class="absolute inset-0 pointer-events-none">
+                    <!-- Dimmed Areas -->
+                    <div class="absolute bg-black/50 transition-all duration-75" :style="{ top: 0, left: 0, right: 0, height: `${crop.y}%` }"></div>
+                    <div class="absolute bg-black/50 transition-all duration-75" :style="{ bottom: 0, left: 0, right: 0, height: `${100 - crop.y - crop.height}%` }"></div>
+                    <div class="absolute bg-black/50 transition-all duration-75" :style="{ top: `${crop.y}%`, left: 0, width: `${crop.x}%`, height: `${crop.height}%` }"></div>
+                    <div class="absolute bg-black/50 transition-all duration-75" :style="{ top: `${crop.y}%`, right: 0, width: `${100 - crop.x - crop.width}%`, height: `${crop.height}%` }"></div>
+
+                    <!-- Crop Box -->
+                    <div
+                      class="absolute border-2 border-white pointer-events-auto cursor-move shadow-[0_0_0_1px_rgba(0,0,0,0.5)] transition-all duration-75"
+                      :style="{
+                        left: `${crop.x}%`,
+                        top: `${crop.y}%`,
+                        width: `${crop.width}%`,
+                        height: `${crop.height}%`
+                      }" @mousedown.stop="startDrag">
+                      <!-- Grid Lines -->
+                      <div class="absolute top-1/3 left-0 right-0 h-px bg-white/30 pointer-events-none"></div>
+                      <div class="absolute top-2/3 left-0 right-0 h-px bg-white/30 pointer-events-none"></div>
+                      <div class="absolute left-1/3 top-0 bottom-0 w-px bg-white/30 pointer-events-none"></div>
+                      <div class="absolute left-2/3 top-0 bottom-0 w-px bg-white/30 pointer-events-none"></div>
+
+                      <!-- Resize Handles -->
+                      <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-nw-resize hover:scale-125 transition-transform"
+                        @mousedown.stop="startResize($event, 'nw')"></div>
+                      <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-ne-resize hover:scale-125 transition-transform"
+                        @mousedown.stop="startResize($event, 'ne')"></div>
+                      <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-sw-resize hover:scale-125 transition-transform"
+                        @mousedown.stop="startResize($event, 'sw')"></div>
+                      <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-se-resize hover:scale-125 transition-transform"
+                        @mousedown.stop="startResize($event, 'se')"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
+            <!-- Progress Status -->
+            <div v-if="isProcessing" class="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
+               <div class="flex justify-between items-center mb-2">
+                 <span class="text-sm font-medium text-gray-700">{{ statusText }}</span>
+                 <span class="text-sm font-medium text-indigo-600">{{ progress }}%</span>
+               </div>
+               <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
+                 <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
+                   :style="{ width: `${progress}%` }"></div>
+               </div>
+               <p class="text-xs text-gray-400 mt-2 text-center">处理过程中请勿关闭页面</p>
+             </div>
           </div>
         </div>
 
         <!-- Usage Instructions -->
-        <div class="bg-white rounded-xl p-8 shadow-sm mt-8 border-t border-gray-100">
-          <h3 class="text-xl font-bold mb-4 text-gray-800">使用说明</h3>
-          <div class="space-y-4 text-gray-600">
-            <div>
-              <h4 class="font-medium text-gray-800 mb-2">1. 调整区域</h4>
-              <p class="text-sm">在视频预览区中，拖动白色方框移动裁剪位置，拖动方框四角的控制点调整裁剪大小。</p>
+        <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 mt-12">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+             <svg class="w-5 h-5 text-gray-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+             </svg>
+             使用说明
+           </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
+            <div class="flex items-start">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3">1</span>
+              <div>
+                <h4 class="font-medium text-gray-800 mb-1">调整区域</h4>
+                <p>直接在预览画面中拖动裁剪框调整位置，拖动四个角调整裁剪大小。</p>
+              </div>
             </div>
-            <div>
-              <h4 class="font-medium text-gray-800 mb-2">2. 开始裁剪</h4>
-              <p class="text-sm">点击"开始裁剪并导出"按钮，工具将逐帧录制选定区域。处理时间取决于视频长度。</p>
+            <div class="flex items-start">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3">2</span>
+              <div>
+                <h4 class="font-medium text-gray-800 mb-1">开始裁剪</h4>
+                <p>设置好裁剪区域后，点击"开始裁剪"按钮，工具将自动处理视频画面。</p>
+              </div>
             </div>
-            <div>
-              <h4 class="font-medium text-gray-800 mb-2">3. 下载保存</h4>
-              <p class="text-sm">处理完成后点击下载按钮，保存 WebM 格式文件。</p>
-            </div>
-            <div class="bg-blue-50 p-4 rounded-lg">
-              <h4 class="font-medium text-blue-800 mb-2">🔒 隐私安全说明</h4>
-              <p class="text-sm text-blue-700">本工具所有处理均在您的浏览器本地进行，视频文件不会上传到服务器。</p>
+            <div class="flex items-start">
+              <span class="flex-shrink-0 w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold mr-3">3</span>
+              <div>
+                <h4 class="font-medium text-gray-800 mb-1">保存视频</h4>
+                <p>处理完成后，点击"下载视频"即可保存裁剪后的视频文件。</p>
+              </div>
             </div>
           </div>
+          <div class="mt-6 pt-6 border-t border-gray-200">
+             <div class="flex items-center text-sm text-gray-500 bg-white p-3 rounded-lg border border-gray-200">
+               <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+               </svg>
+               <span class="text-gray-700 font-medium mr-2">隐私安全说明:</span>
+               本工具所有处理均在您的浏览器本地进行，视频文件不会上传到服务器。
+             </div>
+           </div>
         </div>
       </div>
     </div>

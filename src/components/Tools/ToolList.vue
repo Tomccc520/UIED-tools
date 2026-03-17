@@ -2,21 +2,20 @@
   <div class="tools-list">
     <div v-for="cate in toolsList" :key="cate.id" class="mb-8">
       <h2 class="text-lg font-medium mb-4">{{ cate.title }}</h2>
-      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        <router-link
-          v-for="tool in cate.list"
-          :key="tool.id"
-          :to="tool.url"
-          class="block p-4 bg-white rounded-lg hover:shadow-md transition-shadow"
-        >
-          <div class="flex items-start space-x-3">
-            <ToolIcon :logo="tool.logo" />
-            <div class="flex-1 min-w-0">
-              <h3 class="font-medium text-gray-900 mb-1">{{ tool.title }}</h3>
-              <p class="text-sm text-gray-500 line-clamp-2">{{ tool.desc }}</p>
+      <div v-for="subCate in cate.list" :key="subCate.id" class="mb-6">
+        <h3 class="text-base font-medium mb-3 text-gray-700">{{ subCate.title }}</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          <router-link v-for="tool in subCate.list" :key="tool.id" :to="tool.url"
+            class="block p-4 bg-white rounded-lg hover:shadow-md transition-shadow">
+            <div class="flex items-start space-x-3">
+              <ToolIcon :icon="tool.logo" />
+              <div class="flex-1 min-w-0">
+                <h4 class="font-medium text-gray-900 mb-1">{{ tool.title }}</h4>
+                <p class="text-sm text-gray-500 line-clamp-2">{{ tool.desc }}</p>
+              </div>
             </div>
-          </div>
-        </router-link>
+          </router-link>
+        </div>
       </div>
     </div>
   </div>

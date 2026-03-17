@@ -8,8 +8,8 @@ import '@codemirror/search';
 import '@codemirror/state';
 import '@codemirror/commands';
 import * as prettier from "prettier/standalone";
-import * as parserBabel from 'prettier/parser-babel';
-import * as prettierPluginEstree from "prettier/plugins/estree";
+import babelPlugin from 'prettier/plugins/babel'
+import estreePlugin from "prettier/plugins/estree";
 import { ElMessage } from 'element-plus'
 import { minify } from "terser"
 
@@ -21,16 +21,16 @@ const info = reactive({
 })
 
 interface Error {
-    name: string;
-    message: string;
-    stack?: string;
+  name: string;
+  message: string;
+  stack?: string;
 }
 
 
 //格式化
 const formatCode = async () => {
   try {
-    info.code = await prettier.format(info.code, { parser: "babel", plugins: [parserBabel, prettierPluginEstree]})
+    info.code = await prettier.format(info.code, { parser: "babel", plugins: [babelPlugin, estreePlugin] })
   } catch (error) {
     ElMessage({
       showClose: true,
@@ -49,7 +49,7 @@ const confuseCompress = async () => {
       }
     })
     info.code = res.code != undefined ? res.code : info.code
-  } catch(error) {
+  } catch (error) {
     ElMessage({
       showClose: true,
       message: '请填入正确的js代码: ' + (error as Error).message,
@@ -73,18 +73,12 @@ const copyRes = async () => {
     <DetailHeader :title="info.title"></DetailHeader>
 
     <div class="p-4 rounded-2xl bg-white ">
-      
+
       <div>
-        <codemirror
-          v-model="info.code"
-          placeholder="这里是代码..."
-          :style="{ height: '400px' }"
-          :autofocus="true"
-          :indent-with-tab="true" 
-          :tabSize="2"
-        />
+        <codemirror v-model="info.code" placeholder="这里是代码..." :style="{ height: '400px' }" :autofocus="true"
+          :indent-with-tab="true" :tabSize="2" />
       </div>
-      
+
       <div class="mt-4">
         <el-button type="primary" @click="formatCode">格式化</el-button>
         <el-button type="primary" @click="confuseCompress">混淆压缩</el-button>
@@ -101,10 +95,9 @@ const copyRes = async () => {
     <ToolDetail title="描述">
       <el-text>
         JS格式化/压缩工具,提供在线JS格式化、JS压缩、JS混淆
-      </el-text> 
+      </el-text>
     </ToolDetail>
   </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

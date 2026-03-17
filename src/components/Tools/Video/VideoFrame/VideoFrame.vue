@@ -37,6 +37,10 @@ const extractInterval = ref(5)
 const isExtracting = ref(false)
 const extractProgress = ref(0)
 
+/**
+ * 处理文件选择
+ * @param event - 文件选择事件
+ */
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
@@ -55,18 +59,28 @@ const handleFileChange = (event: Event) => {
   }
 }
 
+/**
+ * 更新当前播放时间
+ */
 const handleTimeUpdate = () => {
   if (videoRef.value && !isExtracting.value) {
     currentTime.value = videoRef.value.currentTime
   }
 }
 
+/**
+ * 加载视频元数据
+ */
 const handleLoadedMetadata = () => {
   if (videoRef.value) {
     duration.value = videoRef.value.duration
   }
 }
 
+/**
+ * 捕获当前帧
+ * @param time - 可选，指定时间点
+ */
 const captureFrame = async (time?: number) => {
   if (!videoRef.value || !canvasRef.value) return
 
@@ -105,6 +119,9 @@ const captureFrame = async (time?: number) => {
   }
 }
 
+/**
+ * 开始自动抽帧
+ */
 const startAutoExtract = async () => {
   if (!videoRef.value || duration.value <= 0) {
     ElMessage.warning('请先加载有效的视频')
@@ -159,6 +176,10 @@ const startAutoExtract = async () => {
   }
 }
 
+/**
+ * 步进帧
+ * @param frames - 帧数
+ */
 const stepFrame = (frames: number) => {
   if (videoRef.value) {
     // Assuming 30fps as a safe default, so 1 frame is ~0.033s
@@ -166,6 +187,10 @@ const stepFrame = (frames: number) => {
   }
 }
 
+/**
+ * 格式化时间
+ * @param seconds - 秒数
+ */
 const formatTime = (seconds: number) => {
   const m = Math.floor(seconds / 60)
   const s = Math.floor(seconds % 60)
@@ -173,6 +198,10 @@ const formatTime = (seconds: number) => {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${ms.toString().padStart(2, '0')}`
 }
 
+/**
+ * 下载单张图片
+ * @param item - 截图对象
+ */
 const downloadImage = (item: { url: string; time: number }) => {
   const a = document.createElement('a')
   a.href = item.url
@@ -182,6 +211,9 @@ const downloadImage = (item: { url: string; time: number }) => {
   document.body.removeChild(a)
 }
 
+/**
+ * 批量下载所有截图
+ */
 const downloadAll = async () => {
   if (screenshots.value.length === 0) return
 
@@ -212,6 +244,10 @@ const downloadAll = async () => {
   }
 }
 
+/**
+ * 移除截图
+ * @param index - 索引
+ */
 const removeScreenshot = (index: number) => {
   screenshots.value.splice(index, 1)
 }
@@ -222,6 +258,10 @@ onUnmounted(() => {
   }
 })
 
+/**
+ * 拖拽文件处理
+ * @param ev - 拖拽事件
+ */
 const dropHandler = (ev: DragEvent) => {
   ev.preventDefault()
   if (ev.dataTransfer?.items) {
@@ -246,104 +286,82 @@ const dragOverHandler = (ev: DragEvent) => {
 </script>
 
 <template>
-  <div class="">
+  <div class="min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm min-h-[600px]">
-        <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">视频抽帧工具</h2>
-          <p class="text-gray-500 text-sm">在线提取视频画面，支持精确截图和一键下载，本地处理保护隐私</p>
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+        <div class="text-center mb-10 relative">
+          <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+            <div class="w-64 h-64 bg-indigo-400 rounded-full blur-3xl"></div>
+            <div class="w-64 h-64 bg-purple-400 rounded-full blur-3xl -ml-20"></div>
+          </div>
+          <h2
+            class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-pink-600">
+            视频抽帧工具
+          </h2>
+          <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
+            在线提取视频画面，支持精确截图和一键批量下载，本地处理保护隐私
+          </p>
         </div>
 
-        <!-- Upload Area -->
+        <!-- Initial Upload Area -->
         <div v-if="!videoUrl" @drop="dropHandler" @dragover="dragOverHandler"
-          class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer mb-8"
+          class="border-2 border-dashed border-gray-300 rounded-xl p-16 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer mb-8 group"
           @click="fileInput?.click()">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
-          <div class="text-6xl mb-4 text-gray-300">📹</div>
-          <p class="text-xl font-medium text-gray-700 mb-2">点击或拖拽视频文件到此处</p>
-          <p class="text-sm text-gray-500">支持 MP4, WebM, OGG 等常见视频格式</p>
+          <div
+            class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
+            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+          </div>
+          <h3 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition-colors">
+            点击或拖拽视频文件到此处
+          </h3>
+          <p class="text-gray-500">支持 MP4, WebM, OGG 等常见视频格式</p>
         </div>
 
         <!-- Editor Area -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <!-- Left: Video Player -->
-          <div class="lg:col-span-2 space-y-4">
-            <div
-              class="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative shadow-lg">
-              <video ref="videoRef" :src="videoUrl" controls class="w-full h-full" @timeupdate="handleTimeUpdate"
-                @loadedmetadata="handleLoadedMetadata"></video>
-
-              <!-- Processing Overlay -->
-              <div v-if="isExtracting"
-                class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white z-10">
-                <div class="text-xl font-bold mb-2">正在智能提取画面...</div>
-                <div class="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
-                  <div class="h-full bg-blue-500 transition-all duration-300" :style="{ width: `${extractProgress}%` }">
-                  </div>
-                </div>
-                <div class="mt-2 text-sm text-gray-300">{{ extractProgress }}%</div>
-              </div>
-            </div>
-
-            <div class="flex flex-col gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-              <div class="flex justify-between items-center">
-                <div class="text-lg font-mono font-bold text-gray-700 flex items-center gap-2">
-                  {{ formatTime(currentTime) }} <span class="text-gray-400">/ {{ formatTime(duration) }}</span>
-                </div>
-
-                <!-- Frame Stepping Controls -->
-                <div class="flex items-center gap-1">
-                  <button @click="stepFrame(-5)" title="后退5帧" class="p-1.5 text-gray-600 hover:bg-gray-200 rounded">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd"
-                        d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z"
-                        clip-rule="evenodd" />
-                    </svg>
-                  </button>
-                  <button @click="stepFrame(-1)" title="上一帧" class="p-1.5 text-gray-600 hover:bg-gray-200 rounded">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd"
-                        d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-                        clip-rule="evenodd" />
-                    </svg>
-                  </button>
-                  <button @click="stepFrame(1)" title="下一帧" class="p-1.5 text-gray-600 hover:bg-gray-200 rounded">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd"
-                        d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z"
-                        clip-rule="evenodd" />
-                    </svg>
-                  </button>
-                  <button @click="stepFrame(5)" title="前进5帧" class="p-1.5 text-gray-600 hover:bg-gray-200 rounded">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fill-rule="evenodd"
-                        d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
-                        clip-rule="evenodd" />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap gap-2">
-                <button @click="fileInput?.click()"
-                  class="px-4 py-2 text-sm text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-                  更换视频
-                </button>
-
-                <button @click="showAutoExtract = true"
-                  class="px-4 py-2 text-sm text-blue-600 bg-blue-50 border border-blue-200 rounded hover:bg-blue-100 transition-colors flex items-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
+        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <!-- Left: Configuration Panel -->
+          <div class="lg:col-span-4 space-y-6">
+            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+              <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                   </svg>
-                  智能抽帧
-                </button>
+                </span>
+                操作面板
+              </h3>
 
+              <!-- File Info -->
+              <div class="bg-white rounded-lg p-4 border border-gray-200 mb-6">
+                <div class="flex items-center space-x-3">
+                  <div class="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div class="overflow-hidden flex-1">
+                    <div class="text-sm font-medium text-gray-800 truncate">{{ videoFile?.name }}</div>
+                    <div class="text-xs text-gray-500">{{ (videoFile?.size ? videoFile.size / 1024 / 1024 : 0).toFixed(2) }}
+                      MB</div>
+                  </div>
+                  <button @click="fileInput?.click()" class="text-xs text-indigo-600 hover:text-indigo-800">
+                    更换
+                  </button>
+                  <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
+                </div>
+              </div>
+
+              <!-- Controls -->
+              <div class="space-y-4">
                 <button @click="captureFrame()"
-                  class="flex-1 px-6 py-2 bg-blue-600 text-white rounded font-medium hover:bg-blue-700 transition-colors shadow-sm flex items-center justify-center min-w-[140px]">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
+                  class="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transform active:scale-[0.98]">
+                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -351,92 +369,187 @@ const dragOverHandler = (ev: DragEvent) => {
                   </svg>
                   截图当前帧
                 </button>
-              </div>
-            </div>
 
-            <!-- Auto Extract Settings Panel (Conditional) -->
-            <div v-if="showAutoExtract" class="bg-blue-50 border border-blue-200 rounded-lg p-4 animate-fade-in">
-              <div class="flex justify-between items-center mb-3">
-                <h4 class="font-bold text-gray-800">智能抽帧设置</h4>
-                <button @click="showAutoExtract = false" class="text-gray-400 hover:text-gray-600">&times;</button>
-              </div>
+                <div class="bg-white p-4 rounded-xl border border-gray-200">
+                  <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-medium text-gray-700 text-sm">智能抽帧设置</h4>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" v-model="showAutoExtract" class="sr-only peer">
+                      <div
+                        class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600">
+                      </div>
+                    </label>
+                  </div>
 
-              <div class="flex flex-col sm:flex-row gap-4 mb-4">
-                <div class="flex-1">
-                  <label class="block text-sm font-medium text-gray-700 mb-1">提取模式</label>
-                  <div class="flex rounded-md shadow-sm" role="group">
-                    <button type="button" @click="extractMode = 'count'"
-                      :class="{ 'bg-blue-600 text-white': extractMode === 'count', 'bg-white text-gray-700 hover:bg-gray-50': extractMode !== 'count' }"
-                      class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-l-lg flex-1">
-                      按数量 (均分)
-                    </button>
-                    <button type="button" @click="extractMode = 'interval'"
-                      :class="{ 'bg-blue-600 text-white': extractMode === 'interval', 'bg-white text-gray-700 hover:bg-gray-50': extractMode !== 'interval' }"
-                      class="px-4 py-2 text-sm font-medium border border-gray-300 rounded-r-lg border-l-0 flex-1">
-                      按间隔 (秒)
+                  <div v-if="showAutoExtract" class="space-y-4 animate-fade-in">
+                    <div>
+                      <label class="block text-xs font-medium text-gray-500 mb-2">提取模式</label>
+                      <div class="flex rounded-lg shadow-sm">
+                        <button type="button" @click="extractMode = 'count'"
+                          :class="{ 'bg-indigo-50 text-indigo-600 border-indigo-200': extractMode === 'count', 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200': extractMode !== 'count' }"
+                          class="flex-1 px-3 py-2 text-xs font-medium border rounded-l-lg transition-colors">
+                          按数量
+                        </button>
+                        <button type="button" @click="extractMode = 'interval'"
+                          :class="{ 'bg-indigo-50 text-indigo-600 border-indigo-200': extractMode === 'interval', 'bg-white text-gray-600 hover:bg-gray-50 border-gray-200': extractMode !== 'interval' }"
+                          class="flex-1 px-3 py-2 text-xs font-medium border-t border-b border-r rounded-r-lg transition-colors">
+                          按间隔
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label v-if="extractMode === 'count'" class="block text-xs font-medium text-gray-500 mb-2">提取数量
+                        (张)</label>
+                      <label v-else class="block text-xs font-medium text-gray-500 mb-2">时间间隔 (秒)</label>
+
+                      <input v-if="extractMode === 'count'" type="number" v-model="extractCount" min="1" max="100"
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" />
+                      <input v-else type="number" v-model="extractInterval" min="0.1" step="0.5"
+                        class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-shadow" />
+                    </div>
+
+                    <button @click="startAutoExtract"
+                      class="w-full py-2 px-4 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-medium rounded-lg transition-colors text-sm border border-indigo-200">
+                      开始提取
                     </button>
                   </div>
                 </div>
 
-                <div class="flex-1">
-                  <label v-if="extractMode === 'count'" class="block text-sm font-medium text-gray-700 mb-1">提取数量
-                    (张)</label>
-                  <label v-else class="block text-sm font-medium text-gray-700 mb-1">时间间隔 (秒)</label>
-
-                  <input v-if="extractMode === 'count'" type="number" v-model="extractCount" min="1" max="100"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" />
-                  <input v-else type="number" v-model="extractInterval" min="0.1" step="0.5"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                <!-- Frame Stepping -->
+                <div class="bg-white p-4 rounded-xl border border-gray-200">
+                  <h4 class="font-medium text-gray-700 text-sm mb-3">微调控制</h4>
+                  <div class="grid grid-cols-4 gap-2">
+                    <button @click="stepFrame(-5)" title="后退5帧"
+                      class="p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors flex justify-center">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button @click="stepFrame(-1)" title="上一帧"
+                      class="p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors flex justify-center">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <button @click="stepFrame(1)" title="下一帧"
+                      class="p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors flex justify-center">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                    <button @click="stepFrame(5)" title="前进5帧"
+                      class="p-2 text-gray-600 bg-gray-50 hover:bg-gray-100 rounded-lg border border-gray-200 transition-colors flex justify-center">
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
 
-              <div class="flex justify-end">
-                <button @click="startAutoExtract"
-                  class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm font-medium">
-                  开始提取
+          <!-- Right: Preview & Results -->
+          <div class="lg:col-span-8 space-y-6">
+            <!-- Video Player -->
+            <div
+              class="border border-gray-200 rounded-xl overflow-hidden bg-black shadow-sm flex items-center justify-center relative group">
+              <video ref="videoRef" :src="videoUrl" controls class="w-full max-h-[600px]" @timeupdate="handleTimeUpdate"
+                @loadedmetadata="handleLoadedMetadata"></video>
+
+              <!-- Processing Overlay -->
+              <div v-if="isExtracting"
+                class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white z-20 backdrop-blur-sm">
+                <div class="text-xl font-bold mb-3">正在智能提取画面...</div>
+                <div class="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+                  <div class="h-full bg-gradient-to-r from-indigo-500 to-pink-500 transition-all duration-300"
+                    :style="{ width: `${extractProgress}%` }">
+                  </div>
+                </div>
+                <div class="mt-3 text-sm text-gray-300 font-mono">{{ extractProgress }}%</div>
+              </div>
+            </div>
+
+            <!-- Screenshots Grid -->
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+              <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                  <h3 class="font-semibold text-gray-700">截图列表</h3>
+                  <span class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">{{ screenshots.length }}</span>
+                </div>
+                <button v-if="screenshots.length > 0" @click="downloadAll"
+                  class="text-xs font-medium text-indigo-600 hover:text-indigo-800 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors flex items-center">
+                  <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  打包下载
                 </button>
               </div>
 
+              <div class="p-4 min-h-[200px]">
+                <div v-if="screenshots.length === 0" class="flex flex-col items-center justify-center py-12 text-gray-400">
+                  <svg class="w-12 h-12 mb-3 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <p>暂无截图</p>
+                  <p class="text-xs mt-1">点击"截图当前帧"按钮保存画面</p>
+                </div>
+
+                <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                  <div v-for="(shot, index) in screenshots" :key="index"
+                    class="group bg-gray-50 rounded-lg border border-gray-100 overflow-hidden hover:shadow-md transition-all relative">
+                    <div class="aspect-video bg-gray-200 cursor-pointer overflow-hidden" @click="downloadImage(shot)">
+                      <img :src="shot.url" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                    </div>
+                    <div class="p-2 flex items-center justify-between">
+                      <span class="text-xs font-mono text-gray-500">{{ formatTime(shot.time) }}</span>
+                      <button @click="downloadImage(shot)"
+                        class="text-gray-400 hover:text-indigo-600 transition-colors" title="下载">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </button>
+                    </div>
+                    <button @click="removeScreenshot(index)"
+                      class="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm backdrop-blur-sm">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <!-- Right: Screenshots -->
-        <div class="lg:col-span-1">
-          <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 h-full max-h-[600px] flex flex-col">
-            <h3 class="font-bold text-gray-800 mb-4 flex justify-between items-center">
-              截图列表
-              <div class="flex items-center gap-2">
-                <button v-if="screenshots.length > 0" @click="downloadAll"
-                  class="text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 px-2 py-1 rounded border border-blue-200">
-                  打包下载
-                </button>
-                <span class="text-xs font-normal text-gray-500 bg-gray-200 px-2 py-1 rounded-full">{{
-                  screenshots.length }}</span>
-              </div>
-            </h3>
-
-            <div class="flex-1 overflow-y-auto space-y-3 pr-2 custom-scrollbar">
-              <div v-if="screenshots.length === 0" class="text-center py-10 text-gray-400">
-                <p>暂无截图</p>
-                <p class="text-xs mt-2">点击"截图当前帧"按钮保存画面</p>
-              </div>
-
-              <div v-for="(shot, index) in screenshots" :key="index"
-                class="group bg-white p-2 rounded border border-gray-200 hover:shadow-md transition-shadow relative">
-                <div class="aspect-video bg-gray-100 rounded overflow-hidden mb-2 cursor-pointer"
-                  @click="downloadImage(shot)">
-                  <img :src="shot.url" class="w-full h-full object-cover" />
-                </div>
-                <div class="flex items-center justify-between text-xs text-gray-500 mt-2">
-                  <span class="font-mono">{{ formatTime(shot.time) }}</span>
-                  <button @click="downloadImage(shot)" class="text-blue-600 hover:text-blue-800 font-medium">下载</button>
-                </div>
-                <button @click="removeScreenshot(index)"
-                  class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-sm text-xs">
-                  &times;
-                </button>
-              </div>
+        <!-- Usage Instructions -->
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            使用说明
+          </h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
+            <div class="space-y-2">
+              <h4 class="font-medium text-gray-900">1. 上传视频</h4>
+              <p>支持 MP4, WebM, OGG 等常见格式。文件处理完全在本地进行，保护隐私。</p>
+            </div>
+            <div class="space-y-2">
+              <h4 class="font-medium text-gray-900">2. 提取画面</h4>
+              <p>可手动截图当前帧，或使用智能抽帧功能批量提取指定数量或间隔的画面。</p>
+            </div>
+            <div class="space-y-2">
+              <h4 class="font-medium text-gray-900">3. 保存结果</h4>
+              <p>支持单张图片下载，或将所有截图打包为 ZIP 文件批量下载。</p>
             </div>
           </div>
         </div>
@@ -445,49 +558,12 @@ const dragOverHandler = (ev: DragEvent) => {
 
     <!-- Hidden Canvas for Processing -->
     <canvas ref="canvasRef" class="hidden"></canvas>
-
+    
+    <ToolsRecommend :currentPath="route.path" />
   </div>
-
-  <!-- Usage Instructions -->
-  <div class="bg-white rounded-xl p-8 shadow-sm">
-    <h3 class="text-xl font-bold mb-4 text-gray-800">使用说明</h3>
-    <div class="space-y-4 text-gray-600">
-      <div>
-        <h4 class="font-medium text-gray-800 mb-2">1. 上传视频</h4>
-        <p class="text-sm">点击上传区域或直接将视频文件拖拽到页面中。支持 MP4, WebM, OGG 等常见浏览器支持的视频格式。</p>
-      </div>
-      <div>
-        <h4 class="font-medium text-gray-800 mb-2">2. 选择画面</h4>
-        <p class="text-sm">使用播放器控制条定位到想要提取的画面，或者直接播放视频到指定位置暂停。</p>
-      </div>
-      <div>
-        <h4 class="font-medium text-gray-800 mb-2">4. 智能抽帧</h4>
-        <p class="text-sm">点击"智能抽帧"展开设置面板，可以设置提取的时间范围、提取模式（按数量或按间隔）、输出格式（PNG/JPG）及图片质量。</p>
-      </div>
-      <div class="bg-blue-50 p-4 rounded-lg">
-        <h4 class="font-medium text-blue-800 mb-2">🔒 隐私安全说明</h4>
-        <p class="text-sm text-blue-700">本工具所有处理均在您的浏览器本地进行，视频文件不会上传到服务器，完全保护您的隐私安全。</p>
-      </div>
-    </div>
-  </div>
-
-  <ToolsRecommend :currentPath="route.path" />
 </template>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
-}
-
 @keyframes fadeIn {
   from {
     opacity: 0;

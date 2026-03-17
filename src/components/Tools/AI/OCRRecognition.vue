@@ -66,7 +66,7 @@
               <div class="flex justify-center">
                 <el-button type="primary" :loading="recognizing"
                   class="!w-48 !h-12 !text-base !font-medium !bg-blue-500 hover:!bg-blue-600 transition-colors duration-300 flex items-center justify-center gap-2"
-                  @click="startRecognition">
+                  @click="startRecognitionByClick">
                   <template v-if="!recognizing">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                       stroke="currentColor">
@@ -261,6 +261,10 @@ const startRecognition = async (file?: File) => {
   } finally {
     recognizing.value = false
   }
+}
+
+const startRecognitionByClick = () => {
+  startRecognition()
 }
 
 // 复制识别结果

@@ -14,6 +14,9 @@ import { Download, Refresh } from '@element-plus/icons-vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import QRCode from 'qrcode'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
+
+const route = useRoute()
 
 const content = ref('')
 const qrcodeUrl = ref('')
@@ -151,6 +154,6 @@ const reset = () => {
         </div>
       </div>
     </div>
-    <ToolsRecommend />
+    <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>

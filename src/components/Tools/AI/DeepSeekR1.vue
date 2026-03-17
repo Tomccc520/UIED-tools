@@ -386,6 +386,7 @@ import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import html2canvas from 'html2canvas'
 import { useHead } from '@vueuse/head'
+import { wechatVerifyConfig } from '@/utils/verify'
 
 // SEO Meta Tags
 useHead({
@@ -572,14 +573,14 @@ const usageCount = ref(Number(localStorage.getItem('deepseek_usage_count')) || 0
 const isVerified = ref(Boolean(localStorage.getItem('deepseek_verified')))
 const showVerifyDialog = ref(false)
 const verifyPassword = ref('')
-const maxFreeUsage = ref(10)  // 修改为10次免费使用机会
+const maxFreeUsage = ref(wechatVerifyConfig.maxFreeUsage)
 const route = useRoute()
 const router = useRouter()
 
 // 添加验证密码的方法
 const verifyAccess = () => {
   // 这里可以根据实际需求修改密码
-  if (verifyPassword.value.toLowerCase() === 'uied2025') {
+  if (verifyPassword.value.toLowerCase() === wechatVerifyConfig.password) {
     isVerified.value = true
     localStorage.setItem('deepseek_verified', 'true')
     showVerifyDialog.value = false

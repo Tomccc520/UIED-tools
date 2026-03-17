@@ -1,11 +1,10 @@
 <!--
- * @file PdfSign.vue
- * @description PDF签名工具组件
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-26
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -46,11 +45,13 @@
           <!-- 签名区域 -->
           <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
             <h3 class="font-bold text-gray-800 mb-4 flex items-center">
-              <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
+              <span
+                class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
               创建签名
             </h3>
             <div class="flex flex-col md:flex-row gap-6">
-              <div class="border-2 border-dashed border-gray-300 bg-white rounded-lg shadow-sm hover:border-blue-400 transition-colors"
+              <div
+                class="border-2 border-dashed border-gray-300 bg-white rounded-lg shadow-sm hover:border-blue-400 transition-colors"
                 style="width: 100%; max-width: 400px; height: 200px; position: relative;">
                 <canvas ref="signatureCanvas" width="400" height="200" class="cursor-crosshair w-full h-full touch-none"
                   @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing" @mouseleave="stopDrawing"
@@ -63,13 +64,18 @@
               <div class="flex flex-col gap-3 justify-center min-w-[150px]">
                 <el-button @click="clearSignature">
                   <template #icon>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
                   </template>
                   清除
                 </el-button>
                 <el-button type="primary" @click="confirmSignature" :disabled="isEmptySignature">
                   <template #icon>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
                   </template>
                   使用此签名
                 </el-button>
@@ -81,16 +87,23 @@
           <div v-if="signatureImage" class="bg-gray-50 p-6 rounded-lg border border-gray-100">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
               <h3 class="font-bold text-gray-800 flex items-center">
-                <span class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
+                <span
+                  class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
                 放置签名
               </h3>
               <div class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border shadow-sm">
                 <el-button size="small" circle @click="changePage(-1)" :disabled="currentPage <= 1">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                  </svg>
                 </el-button>
-                <span class="text-sm font-medium text-gray-700 min-w-[80px] text-center">第 {{ currentPage }} / {{ totalPages }} 页</span>
+                <span class="text-sm font-medium text-gray-700 min-w-[80px] text-center">第 {{ currentPage }} / {{
+                  totalPages }}
+                  页</span>
                 <el-button size="small" circle @click="changePage(1)" :disabled="currentPage >= totalPages">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                  </svg>
                 </el-button>
               </div>
             </div>
@@ -102,29 +115,37 @@
               <canvas ref="pdfCanvas" class="block"></canvas>
               <!-- 签名拖拽层 -->
               <div v-if="signatureImage"
-                class="absolute cursor-move border-2 border-dashed border-blue-500 hover:bg-blue-500/10 transition-colors group" :style="{
+                class="absolute cursor-move border-2 border-dashed border-blue-500 hover:bg-blue-500/10 transition-colors group"
+                :style="{
                   left: signaturePos.x + 'px',
                   top: signaturePos.y + 'px',
                   width: signatureSize.width + 'px',
                   height: signatureSize.height + 'px'
                 }" @mousedown="startDragSignature" @touchstart.prevent="startDragSignature">
-                <img :src="signatureImage" class="w-full h-full object-contain pointer-events-none select-none" draggable="false" />
+                <img :src="signatureImage" class="w-full h-full object-contain pointer-events-none select-none"
+                  draggable="false" />
                 <!-- 缩放手柄 -->
-                <div class="absolute bottom-[-6px] right-[-6px] w-5 h-5 bg-blue-500 rounded-full cursor-se-resize flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                <div
+                  class="absolute bottom-[-6px] right-[-6px] w-5 h-5 bg-blue-500 rounded-full cursor-se-resize flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
                   @mousedown.stop="startResizeSignature" @touchstart.stop.prevent="startResizeSignature">
-                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 20h16a1 1 0 001-1V4M4 20l16-16" /></svg>
+                  <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 20h16a1 1 0 001-1V4M4 20l16-16" />
+                  </svg>
                 </div>
               </div>
             </div>
 
             <div class="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4 border-t pt-4">
               <label class="flex items-center cursor-pointer select-none">
-                <input type="checkbox" v-model="applyToAllPages" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                <input type="checkbox" v-model="applyToAllPages"
+                  class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
                 <span class="ml-2 text-gray-700">应用到每一页 (相同位置)</span>
               </label>
               <div class="flex gap-3 w-full sm:w-auto">
-                 <el-button class="flex-1 sm:flex-none" @click="clearFile">重新上传</el-button>
-                 <el-button type="primary" class="flex-1 sm:flex-none" :loading="processing" @click="saveSignedPdf">生成并下载PDF</el-button>
+                <el-button class="flex-1 sm:flex-none" @click="clearFile">重新上传</el-button>
+                <el-button type="primary" class="flex-1 sm:flex-none" :loading="processing"
+                  @click="saveSignedPdf">生成并下载PDF</el-button>
               </div>
             </div>
           </div>
@@ -141,16 +162,15 @@ import { ref, onMounted, reactive, nextTick, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { PDFDocument } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
-// 设置 PDF.js worker
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 const route = useRoute()
+const maxFileSizeMB = 50
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const file = ref<File | null>(null)
@@ -196,6 +216,10 @@ const guideNotes = [
 ]
 
 // Signature Canvas Logic
+/**
+ * 开始签名绘制
+ * @param e 鼠标或触摸事件
+ */
 const startDrawing = (e: MouseEvent | TouchEvent) => {
   isDrawing.value = true
   isEmptySignature.value = false
@@ -205,6 +229,10 @@ const startDrawing = (e: MouseEvent | TouchEvent) => {
   ctx.value.moveTo(offsetX, offsetY)
 }
 
+/**
+ * 绘制签名路径
+ * @param e 鼠标或触摸事件
+ */
 const draw = (e: MouseEvent | TouchEvent) => {
   if (!isDrawing.value || !ctx.value) return
   const { offsetX, offsetY } = getCoordinates(e)
@@ -212,10 +240,17 @@ const draw = (e: MouseEvent | TouchEvent) => {
   ctx.value.stroke()
 }
 
+/**
+ * 结束签名绘制
+ */
 const stopDrawing = () => {
   isDrawing.value = false
 }
 
+/**
+ * 获取签名画布中的坐标
+ * @param e 鼠标或触摸事件
+ */
 const getCoordinates = (e: MouseEvent | TouchEvent) => {
   if (!signatureCanvas.value) return { offsetX: 0, offsetY: 0 }
   const rect = signatureCanvas.value.getBoundingClientRect()
@@ -227,6 +262,9 @@ const getCoordinates = (e: MouseEvent | TouchEvent) => {
   }
 }
 
+/**
+ * 清空签名画布
+ */
 const clearSignature = () => {
   if (!ctx.value || !signatureCanvas.value) return
   ctx.value.clearRect(0, 0, signatureCanvas.value.width, signatureCanvas.value.height)
@@ -234,16 +272,19 @@ const clearSignature = () => {
   signatureImage.value = null
 }
 
+/**
+ * 确认签名并生成预览图
+ */
 const confirmSignature = () => {
   if (!signatureCanvas.value) return
   signatureImage.value = signatureCanvas.value.toDataURL('image/png')
   // Reset position to center or sensible default
   if (pdfViewportWidth.value > 0) {
-     signaturePos.x = (pdfViewportWidth.value - signatureSize.width) / 2
-     signaturePos.y = (pdfViewportHeight.value - signatureSize.height) / 2
+    signaturePos.x = (pdfViewportWidth.value - signatureSize.width) / 2
+    signaturePos.y = (pdfViewportHeight.value - signatureSize.height) / 2
   } else {
-     signaturePos.x = 50
-     signaturePos.y = 50
+    signaturePos.x = 50
+    signaturePos.y = 50
   }
 }
 
@@ -253,21 +294,33 @@ const handleDrop = (e: DragEvent) => {
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
     const droppedFile = droppedFiles[0]
-    if (droppedFile.type === 'application/pdf') {
-      loadPdf(droppedFile)
-    } else {
-      ElMessage.error('请上传PDF文件')
+    const err = getPdfFileError(droppedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+      return
     }
+    loadPdf(droppedFile)
   }
 }
 
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    loadPdf(target.files[0])
+    const pickedFile = target.files[0]
+    const err = getPdfFileError(pickedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+    } else {
+      loadPdf(pickedFile)
+    }
+    target.value = ''
   }
 }
 
+/**
+ * 加载PDF并初始化预览
+ * @param f PDF文件
+ */
 const loadPdf = async (f: File) => {
   file.value = f
   const arrayBuffer = await f.arrayBuffer()
@@ -291,6 +344,10 @@ const loadPdf = async (f: File) => {
   })
 }
 
+/**
+ * 渲染指定页到画布
+ * @param num 页码（从1开始）
+ */
 const renderPage = async (num: number) => {
   if (!pdfDocProxy.value || !pdfCanvas.value) return
   const page = await pdfDocProxy.value.getPage(num)
@@ -313,6 +370,10 @@ const renderPage = async (num: number) => {
   await page.render(renderContext).promise
 }
 
+/**
+ * 切换预览页
+ * @param delta 相对页码偏移
+ */
 const changePage = (delta: number) => {
   const newPage = currentPage.value + delta
   if (newPage >= 1 && newPage <= totalPages.value) {
@@ -321,6 +382,9 @@ const changePage = (delta: number) => {
   }
 }
 
+/**
+ * 清空当前文件与签名状态
+ */
 const clearFile = () => {
   file.value = null
   pdfDocProxy.value = null
@@ -329,6 +393,10 @@ const clearFile = () => {
 }
 
 // Dragging Signature Logic
+/**
+ * 开始拖动签名
+ * @param e 鼠标或触摸事件
+ */
 const startDragSignature = (e: MouseEvent | TouchEvent) => {
   isDraggingSignature.value = true
   const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0].clientX
@@ -344,17 +412,21 @@ const startDragSignature = (e: MouseEvent | TouchEvent) => {
   document.addEventListener('touchend', stopDragSignature)
 }
 
+/**
+ * 拖动签名移动
+ * @param e 鼠标或触摸事件
+ */
 const onDragSignature = (e: MouseEvent | TouchEvent) => {
   if (!isDraggingSignature.value) return
   const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0].clientX
   const clientY = e instanceof MouseEvent ? e.clientY : e.touches[0].clientY
   const dx = clientX - dragStart.x
   const dy = clientY - dragStart.y
-  
+
   // Boundary checks
   let newX = initialPos.x + dx
   let newY = initialPos.y + dy
-  
+
   newX = Math.max(0, Math.min(newX, pdfViewportWidth.value - signatureSize.width))
   newY = Math.max(0, Math.min(newY, pdfViewportHeight.value - signatureSize.height))
 
@@ -362,6 +434,9 @@ const onDragSignature = (e: MouseEvent | TouchEvent) => {
   signaturePos.y = newY
 }
 
+/**
+ * 结束拖动签名
+ */
 const stopDragSignature = () => {
   isDraggingSignature.value = false
   document.removeEventListener('mousemove', onDragSignature)
@@ -371,6 +446,10 @@ const stopDragSignature = () => {
 }
 
 // Resizing Signature Logic
+/**
+ * 开始缩放签名
+ * @param e 鼠标或触摸事件
+ */
 const startResizeSignature = (e: MouseEvent | TouchEvent) => {
   isResizingSignature.value = true
   const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0].clientX
@@ -386,18 +465,25 @@ const startResizeSignature = (e: MouseEvent | TouchEvent) => {
   document.addEventListener('touchend', stopResizeSignature)
 }
 
+/**
+ * 执行签名缩放
+ * @param e 鼠标或触摸事件
+ */
 const onResizeSignature = (e: MouseEvent | TouchEvent) => {
   if (!isResizingSignature.value) return
   const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0].clientX
   const clientY = e instanceof MouseEvent ? e.clientY : e.touches[0].clientY
   const dx = clientX - dragStart.x
   const dy = clientY - dragStart.y
-  
+
   // Limit min size
   signatureSize.width = Math.max(50, initialSize.width + dx)
   signatureSize.height = Math.max(25, initialSize.height + dy)
 }
 
+/**
+ * 结束签名缩放
+ */
 const stopResizeSignature = () => {
   isResizingSignature.value = false
   document.removeEventListener('mousemove', onResizeSignature)
@@ -407,6 +493,9 @@ const stopResizeSignature = () => {
 }
 
 // Save Signed PDF
+/**
+ * 将签名绘制到PDF并下载
+ */
 const saveSignedPdf = async () => {
   if (!file.value || !signatureImage.value) return
   processing.value = true
@@ -431,7 +520,7 @@ const saveSignedPdf = async () => {
       // Canvas y is from top.
       // So if canvas y is 0 (top), pdf y should be near height.
       // Correct.
-      
+
       const x = signaturePos.x / scale.value
       const w = signatureSize.width / scale.value
       const h = signatureSize.height / scale.value

@@ -1,11 +1,10 @@
 <!--
- * @file PdfExtractText.vue
- * @description PDF文本提取工具组件，支持提取PDF中的文本内容
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-30
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -186,13 +185,11 @@ import { ref, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import * as pdfjsLib from 'pdfjs-dist'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
-// 设置 PDF.js worker
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 const route = useRoute()
 
@@ -239,6 +236,7 @@ const faqs = [
   }
 ]
 
+const maxFileSizeMB = 100
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const file = ref<File | null>(null)
@@ -248,6 +246,10 @@ const extractedText = ref('')
 const thumbnailCanvas = ref<HTMLCanvasElement | null>(null)
 const hasThumbnail = ref(false)
 
+/**
+ * 生成PDF缩略图（第一页）
+ * @param f PDF文件
+ */
 const generateThumbnail = async (f: File) => {
   try {
     const arrayBuffer = await f.arrayBuffer()
@@ -308,20 +310,28 @@ const handleDrop = (e: DragEvent) => {
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
     const droppedFile = droppedFiles[0]
-    if (droppedFile.type === 'application/pdf') {
-      file.value = droppedFile
-      extractedText.value = ''
-    } else {
-      ElMessage.error('请上传PDF文件')
+    const err = getPdfFileError(droppedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+      return
     }
+    file.value = droppedFile
+    extractedText.value = ''
   }
 }
 
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    file.value = target.files[0]
-    extractedText.value = ''
+    const pickedFile = target.files[0]
+    const err = getPdfFileError(pickedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+    } else {
+      file.value = pickedFile
+      extractedText.value = ''
+    }
+    target.value = ''
   }
 }
 
@@ -334,6 +344,9 @@ const clearFile = () => {
   }
 }
 
+/**
+ * 提取PDF文本内容（逐页）
+ */
 const extractText = async () => {
   if (!file.value) return
 
@@ -398,6 +411,9 @@ const extractText = async () => {
   }
 }
 
+/**
+ * 复制提取结果到剪贴板
+ */
 const copyText = async () => {
   if (!extractedText.value) return
   try {
@@ -408,6 +424,9 @@ const copyText = async () => {
   }
 }
 
+/**
+ * 下载提取结果为TXT文件
+ */
 const downloadText = () => {
   if (!extractedText.value || !file.value) return
 

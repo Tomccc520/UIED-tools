@@ -530,7 +530,7 @@ const compressPNG = async (file: File): Promise<Blob> => {
               colors
             )
 
-            resolve(new Blob([pngData], { type: 'image/png' }))
+            resolve(new Blob([pngData as BlobPart], { type: 'image/png' }))
           } catch (err) {
             reject(err)
           }

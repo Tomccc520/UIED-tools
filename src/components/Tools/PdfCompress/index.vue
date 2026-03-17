@@ -1,24 +1,10 @@
 <!--
- * @file PdfCompress.vue
- * @description PDF压缩工具组件，支持PDF文件压缩，减小文件体积
+/**
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-03-20
- * @license MIT
- *
- * 功能特性：
- * 1. 支持拖拽和点击上传PDF
- * 2. 支持批量压缩和单个下载
- * 3. 支持多种压缩质量选择（轻度/标准/深度）
- * 4. 混合压缩策略：结构优化与光栅化重绘
- * 5. 支持大文件处理与进度显示
- * 6. 压缩前后体积对比
- *
- * 主要组件：
- * - 文件上传区域
- * - 压缩模式选择
- * - 文件列表展示
- * - 压缩进度条
+ * @createDate 2026.1.27
+ */
 -->
 
 <script setup lang="ts">
@@ -31,11 +17,9 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { jsPDF } from 'jspdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 
-// 设置 PDF.js worker
-// 使用 Vite 的显式 URL 导入功能
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 // 类型定义
 interface UploadFile {
@@ -67,7 +51,7 @@ interface AdvancedConfig {
 }
 
 const info = reactive({
-  title: "免费PDF压缩工具",
+  title: "PDF压缩",
   subtitle: "在线压缩PDF文件大小，参考 PDF24 压缩算法，支持 DPI 与图片质量精细调节"
 })
 
@@ -258,7 +242,15 @@ const handleChange = async (uploadFile: any, uploadFiles: any[]) => {
 }
 
 const handleDrop = (e: DragEvent) => {
+  e.preventDefault()
   isDragging.value = false
+  const droppedFiles = e.dataTransfer?.files
+  if (!droppedFiles || droppedFiles.length === 0) return
+  const firstFile = droppedFiles[0]
+  const err = getPdfFileError(firstFile, 100)
+  if (err) {
+    ElMessage.error(err)
+  }
 }
 
 const handleRemove = (file: UploadFile) => {
@@ -274,12 +266,9 @@ const handleRemove = (file: UploadFile) => {
  * 验证文件
  */
 const validateFile = (file: File): boolean => {
-  if (file.size > 100 * 1024 * 1024) {
-    ElMessage.error('文件大小超过100MB限制，请压缩或选择较小文件')
-    return false
-  }
-  if (file.type !== 'application/pdf') {
-    ElMessage.error(`文件 ${file.name} 不是PDF格式`)
+  const err = getPdfFileError(file, 100)
+  if (err) {
+    ElMessage.error(err)
     return false
   }
   return true
@@ -568,7 +557,7 @@ const showLogs = (file: UploadFile) => {
         <div
           class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
           :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
-          @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop="handleDrop">
+          @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
           <el-upload v-model:file-list="fileList" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
             accept="application/pdf" :auto-upload="false" :on-change="handleChange" :show-file-list="false" multiple
             drag>
@@ -583,6 +572,7 @@ const showLogs = (file: UploadFile) => {
                 点击或拖拽 PDF 文件到此处
               </div>
               <p class="text-sm text-gray-400">支持批量上传，单个文件最大 100MB</p>
+              <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </el-upload>
         </div>

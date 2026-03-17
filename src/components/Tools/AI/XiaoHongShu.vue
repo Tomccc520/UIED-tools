@@ -1098,14 +1098,13 @@ const parseContent = (text: string) => {
     }
 
     // 3. 提取标签
-    const tagsMatch = text.match(/\[标签\]([\s\S]*?)(?=\[|$)/) ||
-      text.match(/#[\w\u4e00-\u9fa5]+/g)
-    if (tagsMatch) {
-      const tags = Array.isArray(tagsMatch)
-        ? tagsMatch
-        : tagsMatch[1].trim().split(/\s+/)
+    const tagsBlockMatch = text.match(/\[标签\]([\s\S]*?)(?=\[|$)/)
+    const tagItems = tagsBlockMatch?.[1]
+      ? tagsBlockMatch[1].trim().split(/\s+/)
+      : (text.match(/#[\w\u4e00-\u9fa5]+/g) || [])
 
-      result['标签'] = tags
+    if (tagItems.length > 0) {
+      result['标签'] = tagItems
         .filter(tag => tag.trim())
         .map(tag => tag.startsWith('#') ? tag : '#' + tag)
         .join(' ')

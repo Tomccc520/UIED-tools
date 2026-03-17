@@ -251,7 +251,7 @@ ${allTools.map(tool => `- ${tool.title}: ${tool.desc || '暂无描述'}`).join('
       }
     ]
 
-    const response = await aiClient.post('/chat/completions', {
+    const { data } = await aiClient.post('/chat/completions', {
       model: SILICONFLOW_MODELS.DEEPSEEK_R1_DISTILL_QWEN_32B,
       messages,
       temperature: 0.5,
@@ -259,11 +259,11 @@ ${allTools.map(tool => `- ${tool.title}: ${tool.desc || '暂无描述'}`).join('
       stream: false
     })
 
-    if (!response.choices || !response.choices[0]?.message?.content) {
+    if (!data?.choices || !data.choices[0]?.message?.content) {
       throw new Error('API响应格式错误')
     }
 
-    return response.choices[0].message.content
+    return data.choices[0].message.content
       .split('\n')
       .filter((suggestion: string) => suggestion.trim())
       .slice(0, 5)

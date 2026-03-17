@@ -155,8 +155,8 @@ const handleChange = () => {
 
 //数据
 const colunmData = ref(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
-const valueData = ref(['23', '24', '18', '25', '27', '28', '25']);
-const rowsData = ref({
+const valueData = ref([23, 24, 18, 25, 27, 28, 25]);
+const rowsData = ref<any>({
   0: {
     cells: {
       0: { text: 'Mon' },
@@ -474,7 +474,7 @@ const updateDataFile = async (params) => {
           if (sheetArray[item] != undefined) {
             let tmp1 = sheetArray as []
             tmpColumnData.push(tmp1[item][0])
-            tmpValueData.push(tmp1[item][1])
+            tmpValueData.push(Number(tmp1[item][1]))
           }
         }
         useCount++

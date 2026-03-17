@@ -9,7 +9,7 @@
 -->
 
 <script setup lang="ts">
-import { ref, onUnmounted, onMounted } from 'vue'
+import { ref, onUnmounted } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -189,121 +189,212 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="">
-    <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm min-h-[500px] flex flex-col items-center justify-center">
-        <div class="text-center mb-12">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">在线录音机</h2>
-          <p class="text-gray-500 text-sm">简单的在线录音工具，支持波形可视化和本地保存</p>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-xl p-8 mb-8 shadow-sm">
+      <!-- Header -->
+      <div class="text-center mb-10 relative">
+        <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+          <div class="w-64 h-64 bg-blue-400 rounded-full blur-3xl"></div>
+          <div class="w-64 h-64 bg-indigo-400 rounded-full blur-3xl -ml-20"></div>
         </div>
-
-        <!-- Timer Display -->
-        <div class="text-6xl font-mono font-bold text-gray-700 mb-8 tracking-wider">
-          {{ formatTime(recordingTime) }}
-        </div>
-
-        <!-- Visualizer -->
-        <div class="w-full max-w-2xl h-32 bg-gray-50 rounded-lg overflow-hidden border border-gray-200 mb-8 relative">
-          <canvas ref="canvasRef" width="800" height="128" class="w-full h-full"></canvas>
-          <div v-if="!isRecording && !audioUrl"
-            class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm">
-            点击开始录音以显示波形
-          </div>
-        </div>
-
-        <!-- Controls -->
-        <div class="flex items-center gap-6 mb-8">
-          <button v-if="!isRecording && !audioUrl" @click="startRecording"
-            class="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-105">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd"
-                d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
-                clip-rule="evenodd" />
-            </svg>
-          </button>
-
-          <template v-else-if="isRecording">
-            <button v-if="!isPaused" @click="pauseRecording"
-              class="w-12 h-12 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 flex items-center justify-center transition-colors"
-              title="暂停">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
-                  clip-rule="evenodd" />
-              </svg>
-            </button>
-            <button v-else @click="resumeRecording"
-              class="w-12 h-12 rounded-full bg-blue-100 hover:bg-blue-200 text-blue-600 flex items-center justify-center transition-colors"
-              title="继续">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
-                  clip-rule="evenodd" />
-              </svg>
-            </button>
-
-            <button @click="stopRecording"
-              class="w-16 h-16 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-105 animate-pulse"
-              title="停止">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z"
-                  clip-rule="evenodd" />
-              </svg>
-            </button>
-          </template>
-
-          <template v-else>
-            <button @click="audioUrl = ''; isRecording = false; recordingTime = 0"
-              class="px-6 py-2 border border-gray-300 rounded-full text-gray-600 hover:bg-gray-50 transition-colors">
-              重新录制
-            </button>
-            <button @click="downloadAudio"
-              class="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors shadow-sm flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
-                <path fill-rule="evenodd"
-                  d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                  clip-rule="evenodd" />
-              </svg>
-              下载录音
-            </button>
-          </template>
-        </div>
-
-        <!-- Audio Player -->
-        <div v-if="audioUrl" class="w-full max-w-md bg-gray-50 p-4 rounded-xl border border-gray-200">
-          <audio :src="audioUrl" controls class="w-full"></audio>
-        </div>
-
+        <h1
+          class="text-4xl font-extrabold mb-4 relative inline-block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          在线录音机
+        </h1>
+        <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
+          简单的在线录音工具，支持实时波形可视化，本地录制保护隐私
+        </p>
       </div>
 
-      <!-- Usage Instructions -->
-      <div class="bg-white rounded-xl p-8 shadow-sm">
-        <h3 class="text-xl font-bold mb-4 text-gray-800">使用说明</h3>
-        <div class="space-y-4 text-gray-600">
-          <div>
-            <h4 class="font-medium text-gray-800 mb-2">1. 授权麦克风</h4>
-            <p class="text-sm">首次使用需要允许浏览器访问您的麦克风。请在弹出的提示框中点击"允许"。</p>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Left Sidebar: Controls -->
+        <div class="lg:col-span-4 space-y-6">
+          <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="flex items-center space-x-2 mb-6">
+              <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              </div>
+              <h2 class="text-xl font-bold text-gray-800">录音控制</h2>
+            </div>
+
+            <div class="space-y-8 text-center">
+              <!-- Timer Display -->
+              <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                <div class="text-xs text-gray-400 mb-2 uppercase tracking-widest font-semibold">Recording Time</div>
+                <div class="text-5xl font-mono font-bold text-blue-600 tracking-wider tabular-nums">
+                  {{ formatTime(recordingTime) }}
+                </div>
+                <div
+                  class="mt-4 flex items-center justify-center space-x-2 bg-gray-50 rounded-full py-1.5 px-4 inline-flex">
+                  <span v-if="isRecording && !isPaused"
+                    class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
+                  <span class="text-xs text-gray-500 font-medium">
+                    {{ isRecording ? (isPaused ? '已暂停' : '正在录音...') : '准备就绪' }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Control Buttons -->
+              <div class="flex items-center justify-center gap-6">
+                <button v-if="!isRecording && !audioUrl" @click="startRecording"
+                  class="w-20 h-20 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 transition-all hover:scale-105 active:scale-95 group">
+                  <svg class="w-8 h-8 group-hover:scale-110 transition-transform" fill="currentColor"
+                    viewBox="0 0 20 20">
+                    <path fill-rule="evenodd"
+                      d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z"
+                      clip-rule="evenodd" />
+                  </svg>
+                </button>
+
+                <template v-else-if="isRecording">
+                  <button v-if="!isPaused" @click="pauseRecording"
+                    class="w-14 h-14 rounded-full bg-white border border-gray-200 text-amber-500 hover:bg-amber-50 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm"
+                    title="暂停">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd"
+                        d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                  <button v-else @click="resumeRecording"
+                    class="w-14 h-14 rounded-full bg-white border border-gray-200 text-blue-600 hover:bg-blue-50 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm"
+                    title="继续">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z"
+                        clip-rule="evenodd" />
+                    </svg>
+                  </button>
+
+                  <button @click="stopRecording"
+                    class="w-14 h-14 rounded-full bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-all hover:scale-105 active:scale-95 shadow-sm"
+                    title="停止">
+                    <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z"
+                        clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </template>
+
+                <template v-else>
+                  <button @click="audioUrl = ''; isRecording = false; recordingTime = 0"
+                    class="px-6 py-3 border border-gray-200 bg-white rounded-xl text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all font-medium shadow-sm flex items-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>重新录制</span>
+                  </button>
+                </template>
+              </div>
+            </div>
           </div>
-          <div>
-            <h4 class="font-medium text-gray-800 mb-2">2. 开始录制</h4>
-            <p class="text-sm">点击红色的麦克风按钮开始录音。录制过程中可以看到实时的声波变化。</p>
+
+          <!-- Usage Guide -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center">
+              <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              使用说明
+            </h3>
+            <ul class="space-y-3 text-sm text-gray-600">
+              <li class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 mt-0.5">1</span>
+                <span>点击麦克风按钮并允许浏览器访问权限</span>
+              </li>
+              <li class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 mt-0.5">2</span>
+                <span>录制过程中可暂停，观察实时波形</span>
+              </li>
+              <li class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 mt-0.5">3</span>
+                <span>点击停止完成录制，可试听并下载</span>
+              </li>
+            </ul>
           </div>
-          <div>
-            <h4 class="font-medium text-gray-800 mb-2">3. 暂停与停止</h4>
-            <p class="text-sm">录制过程中可以随时暂停。完成后点击停止按钮结束录音。</p>
+        </div>
+
+        <!-- Right Content: Visualization & Result -->
+        <div class="lg:col-span-8 space-y-6">
+          <!-- Visualizer -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                  </svg>
+                </div>
+                <h3 class="font-medium text-gray-700">实时波形</h3>
+              </div>
+            </div>
+
+            <div class="w-full h-80 bg-gray-50 relative flex items-center justify-center">
+              <canvas ref="canvasRef" width="800" height="320" class="w-full h-full"></canvas>
+              <div v-if="!isRecording && !audioUrl"
+                class="absolute inset-0 flex items-center justify-center text-gray-400 text-sm flex-col bg-white/50 backdrop-blur-sm">
+                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                  <svg class="w-8 h-8 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <span>点击左侧麦克风开始录音</span>
+              </div>
+            </div>
           </div>
-          <div>
-            <h4 class="font-medium text-gray-800 mb-2">4. 试听与下载</h4>
-            <p class="text-sm">录音结束后可以直接在线试听。满意后点击"下载录音"按钮保存为 WebM 格式文件。</p>
-          </div>
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <h4 class="font-medium text-blue-800 mb-2">🔒 隐私安全说明</h4>
-            <p class="text-sm text-blue-700">录音数据仅在您的浏览器本地处理，不会上传到任何服务器。关闭页面后录音数据将自动清除。</p>
-          </div>
+
+          <!-- Result Area -->
+          <transition name="fade">
+            <div v-if="audioUrl" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all">
+              <h3 class="font-bold text-gray-800 mb-6 flex items-center">
+                <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                录音完成
+              </h3>
+
+              <div class="bg-gray-50 rounded-xl p-6 border border-gray-200 mb-6">
+                <audio :src="audioUrl" controls class="w-full h-12 rounded-lg"></audio>
+              </div>
+
+              <button @click="downloadAudio"
+                class="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-200 hover:shadow-xl hover:shadow-blue-300 flex items-center justify-center space-x-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                <span>下载录音文件 (WebM)</span>
+              </button>
+            </div>
+          </transition>
         </div>
       </div>
     </div>
+
+    <ToolsRecommend :currentPath="route.path" />
   </div>
-  <ToolsRecommend :currentPath="route.path" />
 </template>
+
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>

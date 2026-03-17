@@ -1,11 +1,10 @@
 <!--
- * @file PdfEncrypt.vue
- * @description PDF加密工具组件
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-26
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -140,13 +139,11 @@ import { useRoute } from 'vue-router'
 import { PDFDocument } from 'pdf-lib'
 import { ElMessage } from 'element-plus'
 import * as pdfjsLib from 'pdfjs-dist'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
-// 设置 PDF.js worker
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 const route = useRoute()
 
@@ -193,6 +190,7 @@ const faqs = [
   }
 ]
 
+const maxFileSizeMB = 100
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const file = ref<File | null>(null)
@@ -202,6 +200,10 @@ const pdfPreviewCanvas = ref<HTMLCanvasElement | null>(null)
 const userPassword = ref('')
 const ownerPassword = ref('')
 
+/**
+ * 加载PDF预览缩略图
+ * @param f 选择的PDF文件
+ */
 const loadPdfPreview = async (f: File) => {
   rendering.value = true
   try {
@@ -258,21 +260,32 @@ const handleDrop = (e: DragEvent) => {
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
     const droppedFile = droppedFiles[0]
-    if (droppedFile.type === 'application/pdf') {
-      file.value = droppedFile
-    } else {
-      ElMessage.error('请上传PDF文件')
+    const err = getPdfFileError(droppedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+      return
     }
+    file.value = droppedFile
   }
 }
 
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    file.value = target.files[0]
+    const pickedFile = target.files[0]
+    const err = getPdfFileError(pickedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+    } else {
+      file.value = pickedFile
+    }
+    target.value = ''
   }
 }
 
+/**
+ * 清空当前文件与输入状态
+ */
 const clearFile = () => {
   file.value = null
   userPassword.value = ''
@@ -282,6 +295,9 @@ const clearFile = () => {
   }
 }
 
+/**
+ * 执行PDF加密并下载
+ */
 const encryptPdf = async () => {
   if (!file.value) return
 

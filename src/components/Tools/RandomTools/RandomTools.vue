@@ -111,7 +111,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
-import type { Tool, ToolCategory } from '@/store/modules/tools'
+import type { Tool, ToolCategory } from '@/types/tools'
 import ToolIcon from '../ToolIcon.vue'
 
 const router = useRouter()

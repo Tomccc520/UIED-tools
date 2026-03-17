@@ -1,11 +1,10 @@
 <!--
- * @file PdfMerge.vue
- * @description PDF合并工具组件，支持多个PDF文件合并为一个，可拖拽调整顺序
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-26
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -36,7 +35,8 @@
                 </svg>
               </div>
               <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
-              <p class="text-sm text-gray-400">请选择 2 至 30 个文件，单个文件最大 500MB</p>
+              <p class="text-sm text-gray-400">请选择 {{ minFiles }} 至 {{ maxFiles }} 个文件，单个文件最大 {{
+                maxFileSizeMB }}MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
@@ -220,21 +220,23 @@ import { PDFDocument } from 'pdf-lib'
 import draggable from 'vuedraggable'
 import * as pdfjsLib from 'pdfjs-dist'
 import { formatFileSize } from '@/utils/file'
+import { getPdfFileError } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
-// 设置 PDF.js worker
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+import { setupPdfWorker } from '@/utils/pdf'
+setupPdfWorker()
 
 const route = useRoute()
 
 const info = reactive({
-  title: "免费在线PDF合并工具",
+  title: "PDF合并",
   subtitle: "将多个PDF文件合并为一个，支持拖拽调整顺序，本地处理更安全"
 })
 
+const maxFileSizeMB = 500
+const maxFiles = 30
+const minFiles = 2
 const files = ref<File[]>([])
 const merging = ref(false)
 const uploadRef = ref()
@@ -251,7 +253,7 @@ const guideSteps = [
 const guideNotes = [
   '所有文件处理均在本地浏览器完成，不会上传到服务器，确保您的文件安全。',
   '合并加密的PDF文件前，请先移除密码。',
-  '建议单次合并文件总大小不超过500MB，以免浏览器内存不足。'
+  `建议单次合并文件总大小不超过${maxFileSizeMB}MB，以免浏览器内存不足。`
 ]
 
 // 功能特点
@@ -301,10 +303,7 @@ const handleDrop = (e: DragEvent) => {
   const droppedFiles = e.dataTransfer?.files
   if (!droppedFiles) return
 
-  const pdfFiles = Array.from(droppedFiles).filter(file =>
-    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  )
-  handleFiles(pdfFiles)
+  handleFiles(Array.from(droppedFiles))
 }
 
 // 触发文件选择
@@ -317,10 +316,7 @@ const handleFileInputChange = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files) return
 
-  const selectedFiles = Array.from(input.files).filter(file =>
-    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  )
-  handleFiles(selectedFiles)
+  handleFiles(Array.from(input.files))
 
   // 清空 input 值，允许重复选择同一文件
   input.value = ''
@@ -354,24 +350,19 @@ const generateThumbnail = async (file: File) => {
 
 // 处理文件
 const handleFiles = async (newFiles: File[]) => {
-  // 检查文件类型
-  const invalidFiles = newFiles.filter(file =>
-    !(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-  )
-  if (invalidFiles.length > 0) {
-    ElMessage.error('只能上传PDF文件')
-    return
+  const validFiles: File[] = []
+  for (const file of newFiles) {
+    const err = getPdfFileError(file, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(`${file.name} ${err}`)
+      continue
+    }
+    validFiles.push(file)
   }
-
-  // 检查文件大小
-  const oversizedFiles = newFiles.filter(file => file.size > 500 * 1024 * 1024)
-  if (oversizedFiles.length > 0) {
-    ElMessage.error('文件大小不能超过500MB')
-    return
-  }
+  if (validFiles.length === 0) return
 
   // 处理每个文件，生成缩略图
-  const filesWithThumbnails = await Promise.all(newFiles.map(async (file) => {
+  const filesWithThumbnails = await Promise.all(validFiles.map(async (file) => {
     const thumbnail = await generateThumbnail(file)
     return {
       file,
@@ -387,9 +378,9 @@ const handleFiles = async (newFiles: File[]) => {
   files.value.push(...filesWithThumbnails)
 
   // 检查文件数量
-  if (files.value.length > 30) {
-    files.value = files.value.slice(0, 30)
-    ElMessage.warning('最多只能选择30个文件')
+  if (files.value.length > maxFiles) {
+    files.value = files.value.slice(0, maxFiles)
+    ElMessage.warning(`最多只能选择${maxFiles}个文件`)
   }
 }
 

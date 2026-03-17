@@ -22,7 +22,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
-import * as JSZip from 'jszip'
+import JSZip from 'jszip'
 import { ref, computed, watch, onMounted } from '@vue/runtime-core'
 
 const route = useRoute()

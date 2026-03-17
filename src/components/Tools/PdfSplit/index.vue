@@ -1,11 +1,10 @@
 <!--
- * @file PdfSplit.vue
- * @description PDF拆分工具组件，支持按范围拆分、提取页面、每一页单独拆分
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2025-12-10
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -15,7 +14,7 @@
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">PDF拆分</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">PDF分割</h2>
           <p class="text-gray-500 text-sm">将PDF文件拆分为多个文件，支持按页面范围拆分或提取每一页</p>
         </div>
 
@@ -24,7 +23,7 @@
           <div
             class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
-            @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
+            @drop.prevent="handleDrop" @dragover.prevent="handleDragover" @dragleave.prevent="handleDragleave">
             <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
@@ -36,7 +35,7 @@
                 </svg>
               </div>
               <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
-              <p class="text-sm text-gray-400">单个文件最大 200MB</p>
+              <p class="text-sm text-gray-400">单个文件最大 {{ maxFileSizeMB }}MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
@@ -51,7 +50,7 @@
                 <h3 class="font-medium text-gray-900 mb-4">拆分设置</h3>
 
                 <!-- 拆分模式选择 -->
-                <div class="space-y-3">
+                <div class="space-y-3" :class="processing ? 'opacity-50 pointer-events-none' : ''">
                   <label class="flex items-center space-x-3 cursor-pointer">
                     <input type="radio" v-model="splitMode" value="extract"
                       class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
@@ -110,7 +109,14 @@
             </div>
 
             <!-- 右侧预览区域 -->
-            <div class="w-full md:w-2/3">
+            <div class="w-full md:w-2/3 relative">
+              <div v-if="previewLoading"
+                class="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
+                <div class="flex flex-col items-center">
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-3"></div>
+                  <div class="text-sm text-gray-600">正在生成预览，已完成 {{ previewProgress }}%</div>
+                </div>
+              </div>
               <div class="flex items-center justify-between mb-4">
                 <h3 class="font-medium text-gray-900">页面预览 ({{ pdfPages.length }}页)</h3>
                 <div class="text-sm text-gray-500">
@@ -127,8 +133,6 @@
                     <img :src="page.thumbnail" class="w-full h-full object-contain" />
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity">
                     </div>
-
-                    <!-- 页码 -->
                     <div
                       class="absolute bottom-1 right-1 bg-black bg-opacity-50 text-white text-xs px-1.5 py-0.5 rounded">
                       {{ page.pageNumber }}
@@ -138,7 +142,8 @@
                     <div v-if="isPageSelected(page.pageNumber)"
                       class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-0.5">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
+                        </path>
                       </svg>
                     </div>
                   </div>
@@ -215,15 +220,13 @@ import { ref, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { PDFDocument } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
 import JSZip from 'jszip'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
-// 设置 PDF.js worker
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 const route = useRoute()
 
@@ -271,11 +274,14 @@ interface PdfPage {
   thumbnail: string
 }
 
+const maxFileSizeMB = 200
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const currentFile = ref<File | null>(null)
 const pdfPages = ref<PdfPage[]>([])
 const isDragging = ref(false)
 const processing = ref(false)
+const previewLoading = ref(false)
+const previewProgress = ref(0)
 const splitMode = ref<'extract' | 'split_every' | 'split_range'>('extract')
 const rangeInput = ref('')
 
@@ -293,32 +299,53 @@ const guideNotes = [
   '文件处理在本地进行，保障您的数据安全。'
 ]
 
-// 处理文件拖拽
+/**
+ * 处理拖拽进入状态
+ */
+const handleDragover = () => {
+  isDragging.value = true
+}
+
+/**
+ * 处理拖拽离开状态
+ */
+const handleDragleave = () => {
+  isDragging.value = false
+}
+
 const handleDrop = (e: DragEvent) => {
   isDragging.value = false
   const files = e.dataTransfer?.files
-  if (files && files.length > 0) {
-    const file = files[0]
-    if (file.type === 'application/pdf') {
-      processFile(file)
-    } else {
-      ElMessage.warning('请上传PDF文件')
-    }
+  if (!files || files.length === 0) return
+  const file = files[0]
+  const err = getPdfFileError(file, maxFileSizeMB)
+  if (err) {
+    ElMessage.error(err)
+    return
   }
+  processFile(file)
 }
 
 // 处理文件选择
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
-  if (target.files && target.files.length > 0) {
-    processFile(target.files[0])
+  if (!target.files || target.files.length === 0) return
+  const file = target.files[0]
+  const err = getPdfFileError(file, maxFileSizeMB)
+  if (err) {
+    ElMessage.error(err)
+    return
   }
+  processFile(file)
+  target.value = ''
 }
 
 // 处理文件加载和预览
 const processFile = async (file: File) => {
   currentFile.value = file
   pdfPages.value = []
+  previewLoading.value = true
+  previewProgress.value = 0
 
   try {
     const arrayBuffer = await file.arrayBuffer()
@@ -347,6 +374,7 @@ const processFile = async (file: File) => {
         pageNumber: i,
         thumbnail: canvas.toDataURL('image/jpeg')
       })
+      previewProgress.value = Math.round((i / pdf.numPages) * 100)
     }
 
     // 默认全选范围
@@ -357,6 +385,7 @@ const processFile = async (file: File) => {
     ElMessage.error('PDF文件加载失败，可能是文件损坏或加密')
     clearFile()
   }
+  previewLoading.value = false
 }
 
 // 清除文件
@@ -367,6 +396,8 @@ const clearFile = () => {
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }
+  previewProgress.value = 0
+  previewLoading.value = false
 }
 
 // 解析范围字符串

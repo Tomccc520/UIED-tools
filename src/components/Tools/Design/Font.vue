@@ -79,6 +79,11 @@ interface FontState {
 // 获取路由实例
 const route = useRoute()
 
+const openFontCdn = (cdn?: string) => {
+  if (!cdn) return
+  window.open(cdn, '_blank')
+}
+
 // 组件配置信息
 const info = reactive<FontState>({
   // 字体类型选项
@@ -433,8 +438,7 @@ watch(() => info.selectedFontType, (newType) => {
                   <div class="flex space-x-2 mt-2">
                     <el-button type="text" size="small" @click="info.copyFontName(pair.name)">复制名称</el-button>
                     <el-button type="text" size="small" @click="info.copyFontCode(pair)">复制代码</el-button>
-                    <el-button v-if="pair.cdn" type="text" size="small"
-                      @click="window.open(pair.cdn, '_blank')">获取字体</el-button>
+                    <el-button v-if="pair.cdn" type="text" size="small" @click="openFontCdn(pair.cdn)">获取字体</el-button>
                   </div>
                 </div>
                 <div class="text-sm text-gray-500">适合{{ pair.styleLabel }}风格</div>

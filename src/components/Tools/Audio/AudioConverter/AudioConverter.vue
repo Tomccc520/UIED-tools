@@ -263,165 +263,252 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="">
-    <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm min-h-[600px]">
-        <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">音频格式转换</h2>
-          <p class="text-gray-500 text-sm">免费在线音频格式转换工具，支持 MP3、WAV、AAC、OGG 等多种格式互转</p>
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 min-h-screen">
+    <div class="bg-white rounded-xl p-8 mb-8 shadow-sm">
+      <!-- Header -->
+      <div class="text-center mb-10 relative">
+        <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+          <div class="w-64 h-64 bg-blue-400 rounded-full blur-3xl"></div>
+          <div class="w-64 h-64 bg-indigo-400 rounded-full blur-3xl -ml-20"></div>
         </div>
+        <h1
+          class="text-4xl font-extrabold mb-4 relative inline-block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          音频格式转换
+        </h1>
+        <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
+          免费在线音频格式转换工具，支持 MP3、WAV、AAC、OGG 等多种格式互转，本地处理保护隐私
+        </p>
+      </div>
 
-        <!-- Upload Area -->
-        <div v-if="!audioUrl" @drop="dropHandler" @dragover="dragOverHandler"
-          class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-500 hover:bg-blue-50 transition-colors cursor-pointer mb-8"
-          @click="fileInput?.click()">
-          <input type="file" ref="fileInput" class="hidden" accept="audio/*" @change="handleFileChange" />
-          <div class="text-6xl mb-4 text-gray-300">🎵</div>
-          <p class="text-xl font-medium text-gray-700 mb-2">点击或拖拽音频文件到此处</p>
-          <p class="text-sm text-gray-500">支持 MP3, WAV, OGG, AAC, M4A 等常见音频格式</p>
-        </div>
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <!-- Left Sidebar: Settings -->
+        <div class="lg:col-span-4 space-y-6">
+          <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+              <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+              </span>
+              转换设置
+            </h3>
 
-        <!-- Editor Area -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <!-- Left: Preview & Info -->
-          <div class="space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-200">
-              <h3 class="font-bold text-gray-800 mb-4">原文件信息</h3>
-              <div class="space-y-3 text-sm text-gray-600">
-                <div class="flex justify-between">
-                  <span>文件名:</span>
-                  <span class="font-mono text-gray-800 truncate max-w-[200px]">{{ audioFile?.name }}</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>大小:</span>
-                  <span class="font-mono text-gray-800">{{ (audioFile?.size ? audioFile.size / 1024 / 1024 :
-                    0).toFixed(2) }} MB</span>
-                </div>
-                <div class="flex justify-between">
-                  <span>类型:</span>
-                  <span class="font-mono text-gray-800">{{ audioFile?.type }}</span>
-                </div>
-              </div>
-
-              <div class="mt-6">
-                <audio :src="audioUrl" controls class="w-full"></audio>
-              </div>
-            </div>
-
-            <button @click="fileInput?.click()"
-              class="w-full py-2 text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors">
-              更换文件
-            </button>
-          </div>
-
-          <!-- Right: Settings & Convert -->
-          <div class="space-y-6">
-            <div class="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <h3 class="font-bold text-gray-800 mb-6">转换设置</h3>
-
-              <div class="space-y-4">
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-3">目标格式</label>
-                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <button v-for="format in formats" :key="format.value"
-                      @click="settings.targetFormat = format.value as any" 
-                      class="relative px-4 py-3 rounded-lg border text-left transition-all duration-200 group hover:shadow-md"
-                      :class="[
-                        settings.targetFormat === format.value
-                          ? 'bg-blue-50 border-blue-500 ring-1 ring-blue-500'
-                          : 'bg-white border-gray-200 hover:border-blue-300'
-                      ]">
-                      <div class="flex items-center justify-between mb-1">
-                        <span class="font-bold text-gray-800 group-hover:text-blue-700">{{ format.label }}</span>
-                        <span v-if="settings.targetFormat === format.value" class="text-blue-500">
-                          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-                        </span>
-                      </div>
-                      <div class="text-xs text-gray-500">{{ format.desc }}</div>
-                      <span class="absolute top-2 right-2 text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500" 
-                        :class="{ 'bg-blue-100 text-blue-600': settings.targetFormat === format.value }">
-                        {{ format.tag }}
+            <div class="space-y-5">
+              <!-- Target Format -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-3">目标格式</label>
+                <div class="grid grid-cols-2 gap-3">
+                  <button v-for="format in formats" :key="format.value"
+                    @click="settings.targetFormat = format.value as any"
+                    class="relative px-4 py-3 rounded-xl border text-left transition-all duration-200 group" :class="[
+                      settings.targetFormat === format.value
+                        ? 'bg-white border-blue-500 ring-1 ring-blue-500 shadow-sm'
+                        : 'bg-white border-gray-200 hover:border-blue-300 hover:shadow-sm'
+                    ]">
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="font-bold text-gray-800"
+                        :class="{ 'text-blue-700': settings.targetFormat === format.value }">
+                        {{ format.label }}
                       </span>
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-bold text-gray-700 mb-3">转换质量</label>
-                  <div class="relative">
-                    <select v-model="settings.quality"
-                      class="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-lg appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer hover:border-gray-400 transition-colors">
-                      <option value="low">低质量 (64 kbps) - 文件最小</option>
-                      <option value="medium">中等质量 (128 kbps) - 均衡</option>
-                      <option value="high">高质量 (320 kbps) - 最佳音质</option>
-                    </select>
-                    <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-gray-500">
-                      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                      <span v-if="settings.targetFormat === format.value" class="text-blue-600">
+                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fill-rule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clip-rule="evenodd" />
+                        </svg>
+                      </span>
                     </div>
+                    <div class="text-xs text-gray-500">{{ format.desc }}</div>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Quality -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-3">转换质量</label>
+                <div class="relative">
+                  <select v-model="settings.quality"
+                    class="w-full pl-4 pr-10 py-3 border border-gray-300 rounded-xl appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white cursor-pointer hover:border-gray-400 transition-colors text-gray-700">
+                    <option value="low">低质量 (64 kbps) - 文件最小</option>
+                    <option value="medium">中等质量 (128 kbps) - 均衡</option>
+                    <option value="high">高质量 (320 kbps) - 最佳音质</option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
                   </div>
                 </div>
               </div>
 
-              <div class="mt-8">
-                <button v-if="!isProcessing && !convertedUrl" @click="processAudio"
-                  class="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-md hover:shadow-lg transform hover:-translate-y-0.5 active:translate-y-0">
+              <!-- Action Buttons -->
+              <div class="pt-4">
+                <button v-if="!isProcessing && !convertedUrl" @click="processAudio" :disabled="!audioUrl"
+                  class="w-full py-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:from-blue-700 hover:to-indigo-700 transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
                   开始转换
                 </button>
 
-                <div v-else-if="isProcessing" class="space-y-3">
+                <div v-else-if="isProcessing" class="space-y-4">
+                  <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>处理中...</span>
+                    <span class="font-mono">{{ progress }}%</span>
+                  </div>
                   <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                    <div class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                    <div
+                      class="bg-gradient-to-r from-blue-600 to-indigo-600 h-full rounded-full transition-all duration-300"
                       :style="{ width: `${progress}%` }"></div>
                   </div>
-                  <p class="text-center text-sm text-gray-600">{{ statusText }}</p>
+                  <p class="text-center text-sm text-gray-500 animate-pulse">{{ statusText }}</p>
                 </div>
 
                 <div v-else class="space-y-3 animate-fade-in">
-                  <div class="p-4 bg-green-50 border border-green-200 rounded-lg flex items-center justify-between">
-                    <span class="text-green-700 font-medium">转换成功！</span>
-                    <span class="text-xs text-green-600 bg-green-100 px-2 py-1 rounded">
-                      {{ settings.targetFormat.toUpperCase() }}
-                    </span>
-                  </div>
                   <button @click="downloadResult"
-                    class="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition-colors shadow-md flex items-center justify-center">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20"
-                      fill="currentColor">
-                      <path fill-rule="evenodd"
-                        d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z"
-                        clip-rule="evenodd" />
+                    class="w-full py-3.5 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all shadow-lg hover:shadow-xl flex items-center justify-center space-x-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    下载文件
+                    <span>下载 {{ settings.targetFormat.toUpperCase() }}</span>
                   </button>
-                  <button @click="convertedUrl = ''" class="w-full py-2 text-gray-600 hover:text-gray-800 text-sm">
-                    重新转换
+                  <button @click="convertedUrl = ''"
+                    class="w-full py-3 text-gray-600 bg-white border border-gray-200 rounded-xl font-medium hover:bg-gray-50 transition-colors">
+                    继续转换
                   </button>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      <!-- Usage Instructions -->
-      <div class="bg-white rounded-xl p-8 shadow-sm">
-        <h3 class="text-xl font-bold mb-4 text-gray-800">使用说明</h3>
-        <div class="space-y-4 text-gray-600">
-          <div>
-            <h4 class="font-medium text-gray-800 mb-2">1. 上传音频</h4>
-            <p class="text-sm">点击上传区域或直接将音频文件拖拽到页面中。支持 MP3, WAV, OGG, AAC 等格式。</p>
+          <!-- Usage Guide -->
+          <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
+            <h3 class="font-bold text-gray-800 mb-4 flex items-center">
+              <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              使用说明
+            </h3>
+            <ul class="space-y-3 text-sm text-gray-600">
+              <li class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 mt-0.5">1</span>
+                <span>上传需要转换的音频文件（支持 MP3, WAV, OGG 等）</span>
+              </li>
+              <li class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 mt-0.5">2</span>
+                <span>选择目标格式和音频质量</span>
+              </li>
+              <li class="flex items-start">
+                <span
+                  class="flex-shrink-0 w-5 h-5 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-xs font-bold mr-2 mt-0.5">3</span>
+                <span>点击开始转换，等待处理完成后下载</span>
+              </li>
+            </ul>
           </div>
-          <div>
-            <h4 class="font-medium text-gray-800 mb-2">2. 选择格式</h4>
-            <p class="text-sm">选择您需要转换的目标格式（如 MP3, WAV 等）和转换质量。</p>
+        </div>
+
+        <!-- Right Content: Upload & Preview -->
+        <div class="lg:col-span-8 space-y-6">
+          <!-- Upload Area -->
+          <div v-if="!audioUrl"
+            class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm h-[600px] flex flex-col justify-center">
+            <div @drop="dropHandler" @dragover="dragOverHandler"
+              class="m-8 border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center hover:border-blue-500 hover:bg-blue-50 transition-all cursor-pointer group h-full flex flex-col items-center justify-center"
+              @click="fileInput?.click()">
+              <input type="file" ref="fileInput" class="hidden" accept="audio/*" @change="handleFileChange" />
+              <div
+                class="w-24 h-24 mx-auto bg-blue-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                <svg class="w-12 h-12 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                </svg>
+              </div>
+              <p class="text-2xl font-bold text-gray-700 mb-3 group-hover:text-blue-600 transition-colors">点击或拖拽音频文件到此处
+              </p>
+              <p class="text-gray-500">支持 MP3, WAV, OGG, AAC, M4A 等常见音频格式</p>
+            </div>
           </div>
-          <div>
-            <h4 class="font-medium text-gray-800 mb-2">3. 开始转换</h4>
-            <p class="text-sm">点击"开始转换"按钮，系统将自动处理文件。处理完成后即可下载。</p>
+
+          <!-- Preview Area -->
+          <div v-else class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div class="flex items-center space-x-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                  </svg>
+                </div>
+                <h3 class="font-medium text-gray-700">文件预览</h3>
+              </div>
+              <button @click="fileInput?.click()"
+                class="text-sm text-blue-600 hover:text-blue-700 font-medium hover:underline px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-colors">
+                更换文件
+              </button>
+            </div>
+
+            <div class="p-8">
+              <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
+                <div class="flex items-start space-x-4 mb-6">
+                  <div
+                    class="w-16 h-16 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0 shadow-sm">
+                    <span class="text-blue-600 font-bold text-xl">MP3</span>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-gray-900 truncate mb-1 text-lg">{{ audioFile?.name }}</h4>
+                    <div class="flex items-center space-x-4 text-sm text-gray-500">
+                      <span class="bg-white px-2 py-0.5 rounded border border-gray-200">{{ (audioFile?.size ?
+                        audioFile.size / 1024 / 1024 : 0).toFixed(2) }} MB</span>
+                      <span class="w-1 h-1 bg-gray-300 rounded-full"></span>
+                      <span>{{ audioFile?.type }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <audio ref="audioPlayer" :src="audioUrl" controls class="w-full"></audio>
+              </div>
+
+              <div v-if="convertedUrl" class="mt-8 pt-8 border-t border-gray-100">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                  <svg class="w-5 h-5 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  转换结果
+                </h3>
+                <div class="bg-green-50 rounded-xl p-6 border border-green-100">
+                  <div class="flex items-center justify-between mb-4">
+                    <span class="text-green-800 font-medium">转换成功</span>
+                    <span class="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-bold">
+                      {{ settings.targetFormat.toUpperCase() }}
+                    </span>
+                  </div>
+                  <audio :src="convertedUrl" controls class="w-full h-12 rounded-lg"></audio>
+                </div>
+              </div>
+            </div>
           </div>
-          <div class="bg-blue-50 p-4 rounded-lg">
-            <h4 class="font-medium text-blue-800 mb-2">🔒 隐私安全说明</h4>
-            <p class="text-sm text-blue-700">本工具所有处理均在您的浏览器本地进行，音频文件不会上传到服务器，完全保护您的隐私安全。</p>
+
+          <!-- Privacy Notice -->
+          <div class="bg-blue-50 rounded-xl p-6 border border-blue-100">
+            <div class="flex items-start">
+              <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <div class="ml-3">
+                <h3 class="text-sm font-bold text-blue-900">隐私安全保护</h3>
+                <div class="mt-2 text-sm text-blue-700">
+                  <p>
+                    所有音频转换均在您的浏览器本地完成，文件不会上传到云端服务器。您的音频内容完全私密，请放心使用。
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

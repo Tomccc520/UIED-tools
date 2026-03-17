@@ -1,11 +1,10 @@
 <!--
- * @file PdfPageNumber.vue
- * @description PDF添加页码工具组件
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-26
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -188,13 +187,11 @@ import { useRoute } from 'vue-router'
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
 import * as pdfjsLib from 'pdfjs-dist'
 import { ElMessage } from 'element-plus'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
-// 设置 PDF.js worker
-// @ts-ignore
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+setupPdfWorker()
 
 const route = useRoute()
 
@@ -241,6 +238,7 @@ const faqs = [
   }
 ]
 
+const maxFileSizeMB = 100
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const isDragging = ref(false)
 const file = ref<File | null>(null)
@@ -312,18 +310,26 @@ const handleDrop = (e: DragEvent) => {
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
     const droppedFile = droppedFiles[0]
-    if (droppedFile.type === 'application/pdf') {
-      handleFile(droppedFile)
-    } else {
-      ElMessage.error('请上传PDF文件')
+    const err = getPdfFileError(droppedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+      return
     }
+    handleFile(droppedFile)
   }
 }
 
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    handleFile(target.files[0])
+    const pickedFile = target.files[0]
+    const err = getPdfFileError(pickedFile, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(err)
+    } else {
+      handleFile(pickedFile)
+    }
+    target.value = ''
   }
 }
 
@@ -333,6 +339,10 @@ const handleFile = async (f: File) => {
   await loadPdfPreview(f)
 }
 
+/**
+ * 加载PDF预览并初始化页数
+ * @param f 选择的PDF文件
+ */
 const loadPdfPreview = async (f: File) => {
   rendering.value = true
   try {
@@ -348,6 +358,10 @@ const loadPdfPreview = async (f: File) => {
   }
 }
 
+/**
+ * 渲染指定页的预览画面
+ * @param pageNum 页码（从1开始）
+ */
 const renderPage = async (pageNum: number) => {
   if (!pdfDoc.value || !pdfPreviewCanvas.value) return
 
@@ -372,6 +386,10 @@ const renderPage = async (pageNum: number) => {
   }
 }
 
+/**
+ * 切换预览页
+ * @param delta 相对页码偏移（-1/1）
+ */
 const changePage = async (delta: number) => {
   const newPage = currentPage.value + delta
   if (newPage >= 1 && newPage <= totalPages.value) {
@@ -388,6 +406,9 @@ const clearFile = () => {
   }
 }
 
+/**
+ * 为PDF所有页面添加页码并下载
+ */
 const addPageNumbers = async () => {
   if (!file.value) return
 

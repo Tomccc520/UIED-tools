@@ -40,7 +40,7 @@
                 </svg>
               </div>
               <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽PDF文件到这里</div>
-              <p class="text-xs text-gray-400">单个文件最大 200MB</p>
+              <p class="text-xs text-gray-400">单个文件最大 {{ maxFileSizeMB }}MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
@@ -48,6 +48,13 @@
 
         <!-- PDF页面预览和操作区域 -->
         <div v-if="currentFile && pdfPages.length > 0" class="mt-6">
+          <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 mb-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="text-sm font-medium text-gray-700 truncate">{{ currentFile.name }}</span>
+              <span class="text-xs text-gray-500">{{ formatFileSize(currentFile.size) }}</span>
+            </div>
+            <span class="text-xs text-gray-500">共 {{ pdfPages.length }} 页</span>
+          </div>
           <div class="flex justify-between items-center mb-6">
             <div class="flex items-center gap-4">
               <h2 class="text-lg font-medium">已选择的页面</h2>
@@ -219,18 +226,22 @@ import { PDFDocument } from 'pdf-lib'
 import draggable from 'vuedraggable'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
+import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
+import * as pdfjsLib from 'pdfjs-dist'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
 const route = useRoute()
+setupPdfWorker()
 
 const info = reactive({
-  title: "免费在线删除PDF页面工具",
+  title: "PDF页面删除",
   subtitle: "选择删除PDF中的页面，可同时修改页面顺序、旋转页面，本地处理更安全"
 })
 
+const maxFileSizeMB = 200
 const guideSteps = [
-  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为200MB。' },
+  { title: '上传PDF文件', description: `点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为${maxFileSizeMB}MB。` },
   { title: '选择页面', description: '鼠标悬停在页面预览图上，点击“标记删除”按钮即可删除该页面。您也可以拖拽调整页面顺序。' },
   { title: '保存并下载', description: '完成编辑后，点击“保存PDF”按钮，系统将自动生成并下载新的PDF文件。' }
 ]
@@ -304,11 +315,7 @@ const handleDrop = async (e: DragEvent) => {
   if (!droppedFiles || droppedFiles.length === 0) return
 
   const file = droppedFiles[0]
-  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-    await handleFile(file)
-  } else {
-    ElMessage.error('请选择PDF文件')
-  }
+  await handleFile(file)
 }
 
 // 处理文件选择
@@ -335,8 +342,9 @@ const initializePages = (pageCount: number) => {
 
 // 处理文件
 const handleFile = async (file: File) => {
-  if (file.size > 200 * 1024 * 1024) {
-    ElMessage.error('文件大小不能超过200MB')
+  const err = getPdfFileError(file, maxFileSizeMB)
+  if (err) {
+    ElMessage.error(err)
     return
   }
 
@@ -362,9 +370,6 @@ const renderPagePreviews = async () => {
   if (!pdfDoc.value) return
 
   try {
-    const pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-
     const pdfBytes = await pdfDoc.value.save()
     const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise
 
@@ -403,9 +408,6 @@ const renderPage = async (pageIndex: number) => {
   if (!pdfDoc.value || !canvasRefs.value.has(pageIndex)) return
 
   try {
-    const pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-
     const pdfBytes = await pdfDoc.value.save()
     const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise
     const page = await pdf.getPage(pageIndex + 1)
