@@ -8,6 +8,8 @@
     "build": "node --max_old_space_size=8192 ./node_modules/vite/bin/vite.js build",
     "build:check": "NODE_OPTIONS=--max-old-space-size=8192 vue-tsc --noEmit && vite build",
     "build:pro": "NODE_OPTIONS=--max-old-space-size=8192 vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode production",
+    "check:tools": "node scripts/check-tools-integrity.mjs",
+    "smoke:core-tools": "node scripts/smoke-core-tools.mjs",
     "preview": "vite preview",
     "test:unit": "vitest"
   },

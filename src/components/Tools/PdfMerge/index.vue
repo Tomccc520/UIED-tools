@@ -118,7 +118,7 @@
 
             <!-- 合并按钮 -->
             <div class="text-center mt-8">
-              <button @click="mergePDFs" :disabled="merging"
+              <button data-smoke="pdf-merge-start" @click="mergePDFs" :disabled="merging"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 <span class="flex items-center justify-center">
                   <span class="mr-2">{{ merging ? '⚙️' : '✨' }}</span>

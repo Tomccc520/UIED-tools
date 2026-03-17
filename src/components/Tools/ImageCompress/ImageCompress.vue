@@ -76,14 +76,14 @@
                 <el-slider v-model="quality" :min="1" :max="100" :step="1" />
               </div>
               <div class="flex space-x-3">
-                <el-button type="primary" size="large" :loading="isCompressing" @click="compressAll"
+                <el-button data-smoke="image-compress-start" type="primary" size="large" :loading="isCompressing" @click="compressAll"
                   class="flex-1 !h-10">
                   {{ isCompressing ? '压缩中...' : '开始压缩' }}
                 </el-button>
                 <el-button v-if="fileList.length > 0" size="large" @click="recompress" class="flex-1 !h-10">
                   重新压缩
                 </el-button>
-                <el-button v-if="fileList.length > 0" type="success" size="large" @click="downloadAll"
+                <el-button data-smoke="image-compress-download" v-if="fileList.length > 0" type="success" size="large" @click="downloadAll"
                   class="flex-1 !h-10">
                   打包下载
                 </el-button>
@@ -191,7 +191,7 @@
                   <el-button @click="clearFiles" size="large" class="flex-1 sm:flex-none !h-10">
                     清空文件列表
                   </el-button>
-                  <el-button v-if="compressedCount > 0" type="success" size="large" @click="downloadAll"
+                  <el-button data-smoke="image-compress-download" v-if="compressedCount > 0" type="success" size="large" @click="downloadAll"
                     class="flex-1 sm:flex-none !h-10">
                     打包下载 ({{ compressedCount }})
                   </el-button>

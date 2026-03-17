@@ -96,7 +96,7 @@ const faqs = [
           </div>
 
           <div class="border rounded-lg overflow-hidden">
-            <v-md-editor v-model="content" height="600px" :disabled-menus="[]" @save="() => { }"></v-md-editor>
+            <v-md-editor data-smoke="markdown-editor" v-model="content" height="600px" :disabled-menus="[]" @save="() => { }"></v-md-editor>
           </div>
         </div>
       </div>

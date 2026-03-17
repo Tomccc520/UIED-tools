@@ -200,8 +200,9 @@
 
 <script setup lang="ts">
 import { getHotTools, getNewTools, getUtilityTools, getRelatedTools } from '@/components/Tools/tools'
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import type { Tool } from '@/types/tools'
 
 // Props定义
 const props = defineProps<{
@@ -211,8 +212,11 @@ const props = defineProps<{
 const route = useRoute()
 const currentPath = computed(() => props.currentPath || route.path)
 
-// 工具点击处理函数
-const handleToolClick = (tool: any) => {
+/**
+ * 处理工具点击跳转
+ * 外链使用新窗口打开，站内工具使用完整地址打开新标签
+ */
+const handleToolClick = (tool: Tool) => {
   if (tool.isExternal) {
     window.open(tool.url, '_blank')
   } else {
@@ -220,13 +224,30 @@ const handleToolClick = (tool: any) => {
   }
 }
 
-// 获取各类推荐工具数据
-// 注意: 每个区块必须返回8个工具
-const hotTools = getHotTools(8)  // 热门工具: 8个固定外部链接
-const newTools = getNewTools(8)  // 新品工具: 随机8个
-const utilityTools = getUtilityTools(8)  // 实用工具: 随机8个
+const hotTools = ref<Tool[]>(getHotTools(8))
+const newTools = ref<Tool[]>(getNewTools(8))
+const utilityTools = ref<Tool[]>(getUtilityTools(8))
+const relatedTools = ref<Tool[]>([])
 
-// 获取相关工具: 优先获取同类工具,如果不足则用其他工具补充,总共8个
-const allRelatedTools = getRelatedTools(currentPath.value, 8, 8)
-const relatedTools = allRelatedTools.slice(0, 8)
+/**
+ * 刷新“相关工具”数据
+ * 根据当前页面路径重新计算推荐列表，并按 URL 去重
+ */
+const refreshRelatedTools = () => {
+  const recommended = getRelatedTools(currentPath.value, 8, 8)
+  const seen = new Set<string>()
+  const deduped: Tool[] = []
+
+  for (const item of recommended) {
+    const uniqueKey = item.url || `id:${item.id}`
+    if (seen.has(uniqueKey)) continue
+    seen.add(uniqueKey)
+    deduped.push(item)
+    if (deduped.length >= 8) break
+  }
+
+  relatedTools.value = deduped
+}
+
+watch(currentPath, refreshRelatedTools, { immediate: true })
 </script>
