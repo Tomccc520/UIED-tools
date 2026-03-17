@@ -1,17 +1,20 @@
+<!--
+ * @file JSFormat.vue
+ * @description JS代码格式化/压缩工具
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-03-17
+-->
+
 <script setup lang="ts">
 import { reactive } from 'vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
-import { copy } from '@/utils/string';
-import { Codemirror } from "vue-codemirror";
-import '@codemirror/search';
-import '@codemirror/state';
-import '@codemirror/commands';
-import * as prettier from "prettier/standalone";
-import babelPlugin from 'prettier/plugins/babel'
-import estreePlugin from "prettier/plugins/estree";
+import AsyncCodemirror from '@/components/Common/AsyncCodemirror.vue'
+import { copy } from '@/utils/string'
+import { ensureJsMinifierRuntime, ensureJsPrettierRuntime } from '@/utils/toolRuntimeLoaders'
 import { ElMessage } from 'element-plus'
-import { minify } from "terser"
 
 const info = reactive({
   title: "js代码格式化/压缩",
@@ -21,31 +24,41 @@ const info = reactive({
 })
 
 interface Error {
-  name: string;
-  message: string;
-  stack?: string;
+  name: string
+  message: string
+  stack?: string
 }
 
-
-//格式化
+/**
+ * 格式化 JS 代码
+ * 调用时才按需加载 Prettier 运行时，避免进入页面即加载格式化依赖
+ */
 const formatCode = async () => {
   try {
-    info.code = await prettier.format(info.code, { parser: "babel", plugins: [babelPlugin, estreePlugin] })
+    const { prettier, parserBabel, parserEstree } = await ensureJsPrettierRuntime()
+    info.code = await prettier.format(info.code, {
+      parser: 'babel',
+      plugins: [parserBabel as any, parserEstree as any]
+    })
   } catch (error) {
     ElMessage({
       showClose: true,
       message: '请填入正确的js代码',
-      type: 'error',
+      type: 'error'
     })
   }
 }
 
-//混淆压缩
+/**
+ * 混淆压缩 JS 代码
+ * 仅在用户触发压缩时加载 terser，减少工具页初始加载负担
+ */
 const confuseCompress = async () => {
   try {
+    const { minify } = await ensureJsMinifierRuntime()
     let res = await minify(info.code, {
       mangle: {
-        toplevel: true,
+        toplevel: true
       }
     })
     info.code = res.code != undefined ? res.code : info.code
@@ -53,16 +66,21 @@ const confuseCompress = async () => {
     ElMessage({
       showClose: true,
       message: '请填入正确的js代码: ' + (error as Error).message,
-      type: 'error',
+      type: 'error'
     })
   }
 }
 
-//清空输入框
+/**
+ * 清空输入框
+ */
 const clear = () => {
   info.code = ''
 }
 
+/**
+ * 复制结果文本
+ */
 const copyRes = async () => {
   copy(info.code)
 }
@@ -75,8 +93,14 @@ const copyRes = async () => {
     <div class="p-4 rounded-2xl bg-white ">
 
       <div>
-        <codemirror v-model="info.code" placeholder="这里是代码..." :style="{ height: '400px' }" :autofocus="true"
-          :indent-with-tab="true" :tabSize="2" />
+        <AsyncCodemirror
+          v-model="info.code"
+          placeholder="这里是代码..."
+          :height="400"
+          :autofocus="true"
+          :indent-with-tab="true"
+          :tab-size="2"
+        />
       </div>
 
       <div class="mt-4">

@@ -135,14 +135,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { jsPDF } from 'jspdf'
-import html2canvas from 'html2canvas'
-import { marked } from 'marked'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import {
+  ensureHtml2canvasRuntime,
+  ensureJsPdfRuntime,
+  ensureMarkedRuntime
+} from '@/utils/toolRuntimeLoaders'
 
 const route = useRoute()
 
@@ -165,9 +167,20 @@ const getPageWidth = computed(() => {
   return settings.pageSize === 'a4' ? 210 : 215.9 // A4 vs Letter width in mm
 })
 
-const renderedHtml = computed(() => {
-  return marked.parse(textContent.value)
-})
+const renderedHtml = ref('')
+
+/**
+ * 更新 Markdown 预览 HTML
+ * 首次渲染时按需加载 marked，并在文本变化时增量更新预览结果
+ */
+const updateRenderedHtml = async () => {
+  const { marked } = await ensureMarkedRuntime()
+  renderedHtml.value = marked.parse(textContent.value) as string
+}
+
+watch(textContent, () => {
+  void updateRenderedHtml()
+}, { immediate: true })
 
 const features = [
   {
@@ -219,11 +232,22 @@ const clearText = () => {
   textContent.value = ''
 }
 
+/**
+ * 将 Markdown 内容导出为 PDF
+ * 导出时按需加载 html2canvas 与 jsPDF，减少页面初始化负担
+ */
 const generatePDF = async () => {
   if (!textContent.value || !previewRef.value) return
 
   generating.value = true
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
+    await updateRenderedHtml()
+    await nextTick()
+
     const element = previewRef.value
     const canvas = await html2canvas(element, {
       scale: 2, // 提高清晰度

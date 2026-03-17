@@ -138,10 +138,11 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import AsyncCodemirror from '@/components/Common/AsyncCodemirror.vue'
 import { useRoute } from 'vue-router'
 import { copy } from '@/utils/string'
-import * as prettier from "prettier/standalone"
-import * as parserCss from 'prettier/plugins/postcss'
+import {
+  ensureCssMinifierRuntime,
+  ensureCssPrettierRuntime
+} from '@/utils/toolRuntimeLoaders'
 import { ElMessage } from 'element-plus'
-import { minify } from "csso"
 
 const route = useRoute()
 
@@ -189,6 +190,7 @@ const formatCode = async () => {
   }
 
   try {
+    const { prettier, parserCss } = await ensureCssPrettierRuntime()
     info.isParseErr = false
     info.parseErr = ''
     info.code = await prettier.format(info.code, {
@@ -228,6 +230,7 @@ const compress = async () => {
   }
 
   try {
+    const { minify } = await ensureCssMinifierRuntime()
     info.isParseErr = false
     info.parseErr = ''
     info.code = minify(info.code, {

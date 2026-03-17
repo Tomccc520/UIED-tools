@@ -10,28 +10,50 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Delete, Refresh } from '@element-plus/icons-vue'
+import { Delete } from '@element-plus/icons-vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { diffLines } from 'diff'
+import { ensureDiffRuntime } from '@/utils/toolRuntimeLoaders'
 
 const oldText = ref('')
 const newText = ref('')
 const diffResult = ref<any[]>([])
 
-const compareText = () => {
+let diffLinesLoader: ((oldText: string, newText: string) => any[]) | null = null
+
+/**
+ * 获取文本差异计算函数
+ * 首次调用时按需加载 diff 库，后续直接复用缓存函数
+ */
+const getDiffLines = async () => {
+  if (!diffLinesLoader) {
+    const runtime = await ensureDiffRuntime()
+    diffLinesLoader = runtime.diffLines
+  }
+
+  return diffLinesLoader
+}
+
+/**
+ * 执行文本差异对比
+ * 在输入变化时自动触发，对空输入直接清空结果
+ */
+const compareText = async () => {
   if (!oldText.value && !newText.value) {
     diffResult.value = []
     return
   }
-  
-  const diff = diffLines(oldText.value, newText.value)
-  diffResult.value = diff
+
+  const diffLines = await getDiffLines()
+  diffResult.value = diffLines(oldText.value, newText.value)
 }
 
 watch([oldText, newText], () => {
-  compareText()
+  void compareText()
 })
 
+/**
+ * 清空输入与对比结果
+ */
 const clearAll = () => {
   oldText.value = ''
   newText.value = ''

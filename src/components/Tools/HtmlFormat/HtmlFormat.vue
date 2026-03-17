@@ -139,8 +139,7 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import AsyncCodemirror from '@/components/Common/AsyncCodemirror.vue'
 import { useRoute } from 'vue-router'
 import { copy } from '@/utils/string'
-import * as prettier from "prettier/standalone"
-import * as parserHtml from 'prettier/plugins/html'
+import { ensureHtmlPrettierRuntime } from '@/utils/toolRuntimeLoaders'
 import { ElMessage } from 'element-plus'
 
 const route = useRoute()
@@ -189,6 +188,7 @@ const formatCode = async () => {
   }
 
   try {
+    const { prettier, parserHtml } = await ensureHtmlPrettierRuntime()
     info.isParseErr = false
     info.parseErr = ''
     info.code = await prettier.format(info.code, {
@@ -229,6 +229,7 @@ const minifyCode = async () => {
   }
 
   try {
+    const { prettier, parserHtml } = await ensureHtmlPrettierRuntime()
     info.isParseErr = false
     info.parseErr = ''
     info.code = await prettier.format(info.code, {

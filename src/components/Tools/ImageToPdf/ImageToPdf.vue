@@ -7,18 +7,15 @@
 -->
 
 <script setup lang="ts">
-import { ref, reactive, onBeforeUnmount, watch } from '@vue/runtime-core'
+import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElImage } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { genFileId } from 'element-plus'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
-import { jsPDF } from 'jspdf'
+import { ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 // @ts-ignore
 import draggable from 'vuedraggable'
-import type { UploadRawFile } from 'element-plus'
 
 const route = useRoute()
 
@@ -103,7 +100,6 @@ const fileList = ref<FileItem[]>([])
 const uploadedFiles = new Set<string>()
 const isProcessing = ref(false)
 const isDragging = ref(false)
-const dataFileRef = ref<HTMLInputElement | null>(null)
 const previewUrls = ref<Map<string, string>>(new Map())
 
 // 转换配置
@@ -253,6 +249,7 @@ const convertToPdf = async () => {
 
 // 合并为单个PDF
 const convertMergedPdf = async () => {
+  const { jsPDF } = await ensureJsPdfRuntime()
   const pdf = new jsPDF({
     orientation: config.pageSize === 'a4-landscape' ? 'landscape' : 'portrait',
     unit: 'mm',
@@ -280,6 +277,7 @@ const convertMergedPdf = async () => {
 
 // 转换为独立PDF
 const convertSeparatePdfs = async () => {
+  const { jsPDF } = await ensureJsPdfRuntime()
   for (const item of fileList.value) {
     const pdf = new jsPDF({
       orientation: config.pageSize === 'a4-landscape' ? 'landscape' : 'portrait',

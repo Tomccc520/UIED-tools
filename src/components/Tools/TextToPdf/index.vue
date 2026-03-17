@@ -148,10 +148,9 @@
 import { ref, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { jsPDF } from 'jspdf'
-import html2canvas from 'html2canvas'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 const route = useRoute()
 
@@ -226,11 +225,19 @@ const clearText = () => {
   textContent.value = ''
 }
 
+/**
+ * 将文本内容转换为 PDF
+ * 仅在点击导出时加载 html2canvas 与 jsPDF，减少页面初始加载体积
+ */
 const generatePDF = async () => {
   if (!textContent.value || !previewRef.value) return
 
   generating.value = true
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
     const element = previewRef.value
     const canvas = await html2canvas(element, {
       scale: 2, // 提高清晰度
