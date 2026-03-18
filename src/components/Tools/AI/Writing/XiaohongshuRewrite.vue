@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            小红书笔记改写
+            免费小红书笔记改写
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">一键将普通文本改写为小红书风格笔记，增加吸引力</p>
         </div>
@@ -182,8 +182,16 @@
               </div>
 
               <div class="flex-1 relative bg-white min-h-0">
-                <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI改写的内容将在这里显示..."
-                  :disabled-menus="[]" @save="save"></v-md-editor>
+                <template v-if="showResultEditor">
+                  <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI改写的内容将在这里显示..."
+                    :disabled-menus="[]" @save="save"></v-md-editor>
+                </template>
+                <template v-else>
+                  <div class="h-full flex flex-col items-center justify-center text-gray-500 bg-gray-50/70">
+                    <p class="text-sm mb-1">点击“开始改写”后将自动加载编辑器并显示结果</p>
+                    <p class="text-xs text-gray-400">无需额外操作</p>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -197,7 +205,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -214,7 +222,80 @@ const form = reactive({
 
 const isGenerating = ref(false)
 const resultText = ref('')
+const showResultEditor = ref(false)
+let pendingResultChunk = ''
+let resultStreamFlushRafId: number | null = null
 
+/**
+ * 刷新待写入的流式文本分片
+ * 在动画帧内合并分片写入，减少编辑器高频响应式更新导致的卡顿
+ */
+const flushPendingResultChunk = () => {
+  resultStreamFlushRafId = null
+  if (!pendingResultChunk) return
+  resultText.value += pendingResultChunk
+  pendingResultChunk = ''
+}
+
+/**
+ * 强制刷新剩余分片
+ * 请求结束或异常时立即清空缓冲，确保结果区内容完整
+ */
+const forceFlushPendingResultChunk = () => {
+  if (resultStreamFlushRafId !== null) {
+    window.cancelAnimationFrame(resultStreamFlushRafId)
+    resultStreamFlushRafId = null
+  }
+  flushPendingResultChunk()
+}
+
+/**
+ * 调度流式分片刷新
+ * 单帧内最多刷新一次，平衡输出流畅度与主线程开销
+ */
+const scheduleResultStreamFlush = () => {
+  if (resultStreamFlushRafId !== null) return
+  resultStreamFlushRafId = window.requestAnimationFrame(() => {
+    flushPendingResultChunk()
+  })
+}
+
+/**
+ * 追加流式返回分片
+ * 先写入缓冲再统一刷新，避免每个 chunk 都触发编辑器重渲染
+ * @param chunk 流式返回文本
+ */
+const appendResultChunk = (chunk: string) => {
+  if (!chunk) return
+  pendingResultChunk += chunk
+  scheduleResultStreamFlush()
+}
+
+/**
+ * 重置流式输出状态
+ * 在新请求开始或组件卸载时清空缓冲与动画帧状态，避免串流污染
+ */
+const resetResultStreamState = () => {
+  pendingResultChunk = ''
+  if (resultStreamFlushRafId !== null) {
+    window.cancelAnimationFrame(resultStreamFlushRafId)
+    resultStreamFlushRafId = null
+  }
+}
+
+/**
+ * 确保结果编辑器已就绪
+ * 仅在用户实际使用结果区时挂载编辑器，降低页面初始化成本
+ */
+const ensureResultEditorReady = () => {
+  if (showResultEditor.value) return
+  showResultEditor.value = true
+}
+
+/**
+ * 改写小红书笔记
+ * 根据原文与改写风格生成新内容
+ */
 const generateArticle = async () => {
   if (!form.originalText) {
     ElMessage.warning('请输入原文内容')
@@ -222,7 +303,9 @@ const generateArticle = async () => {
   }
 
   try {
+    ensureResultEditorReady()
     isGenerating.value = true
+    resetResultStreamState()
     resultText.value = ''
 
     const prompt = `请将以下内容改写成小红书风格的笔记。
@@ -246,21 +329,29 @@ ${form.focus ? `改写侧重点：${form.focus}` : ''}
       systemPrompt: '你是一个小红书爆款笔记改写专家，擅长将普通文本转化为高吸引力的社交媒体文案。',
       temperature: 0.8
     }, (content) => {
-      resultText.value += content
+      appendResultChunk(content)
     })
+    forceFlushPendingResultChunk()
 
     ElMessage.success('生成完成')
   } catch (error) {
+    forceFlushPendingResultChunk()
     console.error('生成失败:', error)
     ElMessage.error('生成失败，请稍后重试')
   } finally {
     isGenerating.value = false
+    resetResultStreamState()
   }
 }
 
+/**
+ * AI辅助编辑
+ * @param type 辅助操作类型
+ */
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
 
+  ensureResultEditorReady()
   isGenerating.value = true
   const originalText = resultText.value
   let prompt = ''
@@ -287,6 +378,7 @@ const handleAiAssist = async (type: string) => {
   }
 
   try {
+    resetResultStreamState()
     if (type !== 'continue') {
       resultText.value = ''
     } else {
@@ -297,18 +389,26 @@ const handleAiAssist = async (type: string) => {
       prompt,
       systemPrompt: '你是一个专业的文字编辑助手。'
     }, (chunk) => {
-      resultText.value += chunk
+      appendResultChunk(chunk)
     })
+    forceFlushPendingResultChunk()
   } catch (error) {
+    forceFlushPendingResultChunk()
     ElMessage.error('AI助手处理失败，请重试')
     if (type !== 'continue') {
       resultText.value = originalText
     }
   } finally {
     isGenerating.value = false
+    resetResultStreamState()
   }
 }
 
+/**
+ * 获取改写风格中文标签
+ * @param style 风格值
+ * @returns 对应中文标签
+ */
 const getStyleLabel = (style: string) => {
   const map: Record<string, string> = {
     promotion: '种草安利',
@@ -319,6 +419,9 @@ const getStyleLabel = (style: string) => {
   return map[style] || '种草安利'
 }
 
+/**
+ * 复制生成结果 (Markdown)
+ */
 const copyResult = async () => {
   if (!resultText.value) return
 
@@ -331,10 +434,17 @@ const copyResult = async () => {
   }
 }
 
+/**
+ * 复制预览样式 (HTML)
+ */
 const copyPreviewHtml = async () => {
   if (!resultText.value) return
 
   try {
+    if (!showResultEditor.value) {
+      ensureResultEditorReady()
+      await nextTick()
+    }
     const previewElement = document.querySelector('.vuepress-markdown-body')
     if (previewElement) {
       const htmlContent = previewElement.innerHTML
@@ -355,11 +465,24 @@ const copyPreviewHtml = async () => {
   }
 }
 
+/**
+ * 清空生成结果
+ */
 const clearResult = () => {
+  resetResultStreamState()
   resultText.value = ''
   isGenerating.value = false
 }
 
+onBeforeUnmount(() => {
+  resetResultStreamState()
+})
+
+/**
+ * 保存编辑器内容
+ * @param text Markdown文本
+ * @param html HTML内容
+ */
 const save = (text: string, html: string) => {
   console.log('save', text, html)
 }
