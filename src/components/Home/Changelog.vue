@@ -12,8 +12,8 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-20 16:00
- * @version Beta 2.7.7
+ * @lastUpdate 2026-03-18 14:30
+ * @version Beta 2.7.9
  * @toolsCount 当前工具总数：331个
  */
 
@@ -266,7 +266,7 @@ onUnmounted(() => {
         </div>
 
         <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：329个 | 最后更新：2025-12-20 20:00
+          当前工具总数：329个 | 最后更新：2026-03-18 14:30
         </div>
       </div>
 
@@ -302,6 +302,68 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.7.9 -->
+          <div class="timeline-item" id="v2.7.9">
+            <div class="version-tag">
+              <span class="version">2.7.9</span>
+              <span class="date">2026-03-18 14:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">重工具页加载链路优化与回归加固</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">核心页面性能优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/chat" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI Chat</router-link></strong>：流式输出阶段采用纯文本展示，结束后再执行 Markdown 渲染；消息渲染增加 HTML 缓存，减少重复解析开销。</li>
+                        <li><strong><router-link to="/tools/ai/deepseek-r1" target="_blank"
+                              class="hover:text-blue-600 transition-colors">DeepSeek R1</router-link></strong>：流式响应改为分帧滚动更新，避免每个分片触发同步布局；消息渲染增加缓存并在流式结束后再做 Markdown 解析。</li>
+                        <li><strong><router-link to="/tools/ai/deepseek" target="_blank"
+                              class="hover:text-blue-600 transition-colors">DeepSeek</router-link></strong>：逐字符输出改为分帧批量写入，减少高频响应式更新；补充滚动调度与卸载清理，降低长回答卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/xunfei-spark" target="_blank"
+                              class="hover:text-blue-600 transition-colors">讯飞星火</router-link></strong>：打字机链路升级为分帧批量输出，修复“重新生成”状态阻塞问题，并优化对话区滚动性能。</li>
+                        <li><strong>搜索面板</strong>：流式响应改为按帧合并输出，历史回答增加 Markdown 解析缓存，降低高频渲染占用。</li>
+                        <li><strong><router-link to="/tools/markdown-to-pdf" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown 转 PDF</router-link></strong>：编辑器改为空闲时挂载，预览 HTML 改为导出前一次性解析，减少输入阶段主线程占用；修复分页位移按页面尺寸计算，提升 Letter/A4 一致性。</li>
+                        <li><strong><router-link to="/tools/text-to-pdf" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本转 PDF</router-link></strong>：修复多页导出时分页位移常量错误，统一按当前纸张尺寸分页；复用导出图片数据，减少重复编码开销。</li>
+                        <li><strong><router-link to="/tools/ai/office/code-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 代码生成</router-link></strong>：流式代码输出改为分片缓冲 + `requestAnimationFrame` 刷新，提升长内容生成流畅度。</li>
+                        <li><strong><router-link to="/tools/ai/work-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 工作总结</router-link></strong>：结果编辑器改为按需挂载，流式文本输出改为分片缓冲 + `requestAnimationFrame`，降低长文生成时编辑区卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/weekly-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 周报总结</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低连续长文生成时的主线程抖动。</li>
+                        <li><strong><router-link to="/tools/ai/debriefing-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 述职报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充卸载清理逻辑，减少状态残留风险。</li>
+                        <li><strong><router-link to="/tools/ai/speech-script" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 讲话稿</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低长稿生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/project-proposal" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 项目策划方案</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并完善流式状态清理逻辑，提升连续生成稳定性。</li>
+                        <li><strong>流程减负优化</strong>：对已改造的写作工具新增“高级选项（可选）”折叠区，并移除结果区“立即加载编辑器”显式按钮，改为“生成后自动加载”提示，减少页面步骤感与视觉负担。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">重依赖懒加载链路优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/markdown" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown 编辑器</router-link></strong>：编辑器改为空闲时挂载，支持用户手动立即加载，降低首屏阻塞。</li>
+                        <li><strong><router-link to="/tools/diff" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本对比</router-link></strong>：改为点击后初始化对比组件，并对快照输入做短延时防抖，减少长文本输入时重算压力。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.7.8 -->
           <div class="timeline-item" id="v2.7.8">
