@@ -1,10 +1,10 @@
 <script setup lang="ts">
 // import { Star } from '@element-plus/icons-vue'
-import { onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive } from 'vue';
 import { useRoute } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
 // import { ElMessageBox } from 'element-plus'
-import { rtrim } from '@/utils/string'
+import { ensureFreeToolTitle, rtrim } from '@/utils/string'
 const props = defineProps({
   title: String,
   subtitle: String,
@@ -19,6 +19,13 @@ const searchParam = reactive({
 })
 //store
 const toolsStore = useToolsStore()
+
+/**
+ * 工具页头部标题统一补齐“免费”前缀
+ */
+const displayTitle = computed(() => {
+  return ensureFreeToolTitle(props.title || '')
+})
 
 //根据路由查询tool id
 const getToolInfo = async () => {
@@ -43,7 +50,7 @@ onMounted(() => {
 <template>
   <div class="flex flex-col rounded-2xl bg-white p-4 mt-5 mb-5">
     <div class="text-xl font-medium">
-      {{ props.title }}
+      {{ displayTitle }}
     </div>
     <div v-if="props.subtitle" class="text-sm text-gray-600 mt-2">
       {{ props.subtitle }}

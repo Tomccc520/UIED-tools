@@ -23,6 +23,10 @@ type JsPrettierRuntime = {
   parserEstree: unknown
 }
 
+type HighlightRuntime = {
+  hljs: typeof import('highlight.js')['default']
+}
+
 let htmlPrettierPromise: Promise<HtmlPrettierRuntime> | null = null
 let cssPrettierPromise: Promise<CssPrettierRuntime> | null = null
 let jsPrettierPromise: Promise<JsPrettierRuntime> | null = null
@@ -32,6 +36,14 @@ let diffRuntimePromise: Promise<{ diffLines: typeof import('diff').diffLines }> 
 let html2canvasPromise: Promise<{ html2canvas: typeof import('html2canvas').default }> | null = null
 let jsPdfPromise: Promise<{ jsPDF: typeof import('jspdf').jsPDF }> | null = null
 let markedPromise: Promise<{ marked: typeof import('marked').marked }> | null = null
+let xlsxPromise: Promise<{ XLSX: typeof import('xlsx') }> | null = null
+let highlightCorePromise: Promise<HighlightRuntime> | null = null
+const highlightStylePromiseMap = new Map<string, Promise<void>>()
+
+const highlightStyleLoaders = {
+  github: () => import('highlight.js/styles/github.css'),
+  'atom-one-light': () => import('highlight.js/styles/atom-one-light.css')
+} as const
 
 /**
  * 按需加载 HTML 格式化运行时
@@ -183,4 +195,44 @@ export const ensureMarkedRuntime = async (): Promise<{ marked: typeof import('ma
   }
 
   return markedPromise
+}
+
+/**
+ * 按需加载表格转换运行时
+ * 仅在 Excel/CSV/JSON 转换时加载 xlsx，减少工具页初始依赖解析开销
+ */
+export const ensureXlsxRuntime = async (): Promise<{ XLSX: typeof import('xlsx') }> => {
+  if (!xlsxPromise) {
+    xlsxPromise = (async () => {
+      const XLSX = await import('xlsx')
+      return { XLSX }
+    })()
+  }
+
+  return xlsxPromise
+}
+
+/**
+ * 按需加载代码高亮运行时
+ * 统一复用 highlight.js 核心与样式加载 Promise，避免多个工具页重复请求同一资源
+ * @param styleTheme 高亮样式主题名称，默认 github
+ */
+export const ensureHighlightRuntime = async (
+  styleTheme: keyof typeof highlightStyleLoaders = 'github'
+): Promise<HighlightRuntime> => {
+  if (!highlightCorePromise) {
+    highlightCorePromise = (async () => {
+      const module = await import('highlight.js')
+      return { hljs: module.default }
+    })()
+  }
+
+  const normalizedTheme = styleTheme in highlightStyleLoaders ? styleTheme : 'github'
+  if (!highlightStylePromiseMap.has(normalizedTheme)) {
+    const loadStylePromise = highlightStyleLoaders[normalizedTheme]().then(() => undefined)
+    highlightStylePromiseMap.set(normalizedTheme, loadStylePromise)
+  }
+
+  await highlightStylePromiseMap.get(normalizedTheme)
+  return highlightCorePromise
 }

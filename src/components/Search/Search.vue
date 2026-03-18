@@ -52,7 +52,7 @@
                     </el-icon>
                     <span>回答</span>
                   </div>
-                  <div class="answer-text" v-html="renderMarkdown(chat.answer.content)"></div>
+                  <div class="answer-text" v-html="getHistoryAnswerHtml(chat.answer.content)"></div>
                 </div>
               </div>
             </div>
@@ -84,7 +84,7 @@
                   </el-icon>
                   <span>回答</span>
                 </div>
-                <div class="answer-text" v-html="renderMarkdown(aiResponse.content)"></div>
+                <div class="answer-text" v-html="currentAnswerHtml"></div>
               </div>
 
               <!-- 工具推荐 -->
@@ -196,8 +196,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed, type Ref } from 'vue'
-import { Search, Delete, Link as LinkIcon, ArrowRight, Close, Loading, User, ChatDotRound, Check } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { Search, Delete, Link as LinkIcon, Close, Loading, User, ChatDotRound, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
 import logoImg from '@/assets/uiedlogo.png'
@@ -269,17 +269,10 @@ const aiResponse = ref<AISearchResponse | null>(null)
 const searchHistory = ref<string[]>([])
 const MAX_HISTORY = 10
 
-// 打字机效果相关变量
-const TYPING_SPEED = 5 // 打字速度(ms)
-let typingTimer: ReturnType<typeof setTimeout> | null = null
-
 // 缓存的响应内容
 const responseBuffer = reactive({
   content: ''
 })
-
-// 实际显示的内容
-const displayContent = ref('')
 
 // 是否正在输出
 const isTyping = ref(false)
@@ -290,64 +283,131 @@ const chatHistory = ref<Array<{
   answer: AISearchResponse
 }>>([])
 
-// 添加 markdown 渲染函数
-const renderMarkdown = (content: string) => {
-  const ready = markedReady.value
+const currentAnswerHtml = ref('')
+const historyAnswerHtmlCache = new Map<string, string>()
+const MAX_HISTORY_HTML_CACHE_SIZE = 120
+let currentAnswerRenderTimer: ReturnType<typeof setTimeout> | null = null
+let pendingResponseChunk = ''
+let responseFlushRafId: number | null = null
+
+/**
+ * 同步解析 Markdown 文本
+ * 统一处理解析器未就绪与异常场景，确保渲染流程始终可用
+ * @param content Markdown 文本
+ * @returns HTML 字符串
+ */
+const parseMarkdownContent = (content: string) => {
   if (!content) return ''
 
+  const ready = markedReady.value
   if (!ready || !markedCore) {
     void ensureSearchMarkedCore()
     return content
   }
 
-  return markedCore.parse(content) as string
+  try {
+    return markedCore.parse(content) as string
+  } catch (error) {
+    debugError('Markdown 解析失败:', error)
+    return content
+  }
 }
 
-// 更新显示内容的函数
-const updateDisplay = () => {
-  if (typingTimer) {
-    clearTimeout(typingTimer)
-  }
-
-  const typeText = (text: string, displayRef: Ref<string>, callback?: () => void) => {
-    let index = displayRef.value.length
-
-    const type = () => {
-      if (index < text.length) {
-        displayRef.value = text.slice(0, index + 1)
-        index++
-        typingTimer = setTimeout(type, TYPING_SPEED)
-      } else {
-        callback?.()
-      }
+/**
+ * 维护历史回答 HTML 缓存上限
+ * 超出容量时移除最早缓存项，避免长会话造成内存持续增长
+ * @param key 缓存键
+ * @param html 缓存值
+ */
+const setHistoryAnswerHtmlCache = (key: string, html: string) => {
+  if (historyAnswerHtmlCache.has(key)) return
+  if (historyAnswerHtmlCache.size >= MAX_HISTORY_HTML_CACHE_SIZE) {
+    const oldestKey = historyAnswerHtmlCache.keys().next().value
+    if (oldestKey) {
+      historyAnswerHtmlCache.delete(oldestKey)
     }
-
-    type()
   }
-
-  // 直接打字回答
-  if (responseBuffer.content !== displayContent.value) {
-    typeText(responseBuffer.content, displayContent)
-  }
+  historyAnswerHtmlCache.set(key, html)
 }
 
-// 更新响应内容的防抖函数
+/**
+ * 获取历史回答的渲染结果
+ * 历史消息使用缓存复用解析结果，减少每次渲染重复执行 marked.parse
+ * @param content 历史回答内容
+ * @returns HTML 字符串
+ */
+const getHistoryAnswerHtml = (content: string) => {
+  if (!content) return ''
+  const cachedHtml = historyAnswerHtmlCache.get(content)
+  if (cachedHtml) return cachedHtml
+
+  const parsedHtml = parseMarkdownContent(content)
+  setHistoryAnswerHtmlCache(content, parsedHtml)
+  return parsedHtml
+}
+
+/**
+ * 调度当前回答 HTML 渲染
+ * 流式输出时采用短延时防抖，降低高频 chunk 更新对主线程的压力
+ * @param content 当前回答 Markdown 文本
+ * @param immediate 是否立即渲染
+ */
+const scheduleCurrentAnswerHtmlRender = (content: string, immediate = false) => {
+  if (currentAnswerRenderTimer) {
+    clearTimeout(currentAnswerRenderTimer)
+    currentAnswerRenderTimer = null
+  }
+
+  const runRender = () => {
+    currentAnswerHtml.value = parseMarkdownContent(content)
+  }
+
+  if (immediate) {
+    runRender()
+    return
+  }
+
+  currentAnswerRenderTimer = setTimeout(() => {
+    runRender()
+    currentAnswerRenderTimer = null
+  }, 120)
+}
+
+/**
+ * 刷新待输出的流式分片
+ * 通过 requestAnimationFrame 合并多次 chunk 更新，减少响应式状态频繁写入
+ */
+const flushPendingResponseChunk = () => {
+  responseFlushRafId = null
+  if (!aiResponse.value || !pendingResponseChunk) return
+
+  responseBuffer.content += pendingResponseChunk
+  pendingResponseChunk = ''
+  aiResponse.value.content = responseBuffer.content
+  scheduleCurrentAnswerHtmlRender(aiResponse.value.content)
+}
+
+/**
+ * 调度流式分片刷新
+ * 同一帧内仅刷新一次内容，避免多次 chunk 到达时重复触发渲染
+ */
+const scheduleResponseFlush = () => {
+  if (responseFlushRafId !== null) return
+  responseFlushRafId = window.requestAnimationFrame(() => {
+    flushPendingResponseChunk()
+  })
+}
+
+/**
+ * 接收流式响应分片
+ * 将分片先放入缓冲区再分帧写入，平衡输出流畅度与 CPU 占用
+ * @param data 分片数据
+ */
 const updateResponse = (data: { content?: string }) => {
-  if (!aiResponse.value) return
-
-  if (typingTimer) {
-    clearTimeout(typingTimer)
-  }
-
+  if (!aiResponse.value || !data.content) return
   isTyping.value = true
-
-  typingTimer = setTimeout(() => {
-    if (data.content) {
-      responseBuffer.content += data.content
-      aiResponse.value!.content = responseBuffer.content
-    }
-    updateDisplay()
-  }, TYPING_SPEED)
+  pendingResponseChunk += data.content
+  scheduleResponseFlush()
 }
 
 // 从localStorage加载搜索历史
@@ -439,7 +499,13 @@ const handleSearch = async () => {
 
     // 重置当前回答的内容
     responseBuffer.content = ''
-    displayContent.value = ''
+    pendingResponseChunk = ''
+    currentAnswerHtml.value = ''
+
+    if (responseFlushRafId !== null) {
+      window.cancelAnimationFrame(responseFlushRafId)
+      responseFlushRafId = null
+    }
 
     // 创建新的回答
     const newResponse = {
@@ -471,11 +537,12 @@ const handleSearch = async () => {
       // 清除超时计时器
       clearTimeout(timeoutTimer)
 
-      // 确保最后一次更新完成
-      responseBuffer.content = response.content
-      updateDisplay()
+      // 确保最后一次分片刷新完成
+      flushPendingResponseChunk()
 
       aiResponse.value = response
+      responseBuffer.content = response.content || ''
+      scheduleCurrentAnswerHtmlRender(responseBuffer.content, true)
       saveHistory(searchParam.title)
     } catch (error: any) {
       // 清除超时计时器
@@ -492,7 +559,7 @@ const handleSearch = async () => {
         if (aiResponse.value) {
           aiResponse.value.content = '抱歉，处理您的请求时发生超时。这可能是因为您的问题较为复杂或当前服务负载较高。\n\n请尝试：\n- 简化您的问题\n- 拆分为多个简单问题\n- 稍后再试'
           responseBuffer.content = aiResponse.value.content
-          updateDisplay()
+          scheduleCurrentAnswerHtmlRender(responseBuffer.content, true)
         }
       } else {
         ElMessage.error('搜索失败，请稍后重试')
@@ -501,7 +568,7 @@ const handleSearch = async () => {
         if (aiResponse.value) {
           aiResponse.value.content = '抱歉，处理您的请求时发生错误。请稍后再试。'
           responseBuffer.content = aiResponse.value.content
-          updateDisplay()
+          scheduleCurrentAnswerHtmlRender(responseBuffer.content, true)
         }
       }
     }
@@ -511,9 +578,15 @@ const handleSearch = async () => {
   } finally {
     searchParam.loading = false
     isTyping.value = false
-    if (typingTimer) {
-      clearTimeout(typingTimer)
-      typingTimer = null
+
+    if (responseFlushRafId !== null) {
+      window.cancelAnimationFrame(responseFlushRafId)
+      responseFlushRafId = null
+    }
+
+    if (currentAnswerRenderTimer) {
+      clearTimeout(currentAnswerRenderTimer)
+      currentAnswerRenderTimer = null
     }
   }
 }
@@ -541,7 +614,19 @@ const handleClose = () => {
   aiResponse.value = null
   chatHistory.value = []
   responseBuffer.content = ''
-  displayContent.value = ''
+  currentAnswerHtml.value = ''
+  pendingResponseChunk = ''
+  historyAnswerHtmlCache.clear()
+
+  if (responseFlushRafId !== null) {
+    window.cancelAnimationFrame(responseFlushRafId)
+    responseFlushRafId = null
+  }
+
+  if (currentAnswerRenderTimer) {
+    clearTimeout(currentAnswerRenderTimer)
+    currentAnswerRenderTimer = null
+  }
 }
 
 // 清除搜索
@@ -552,7 +637,6 @@ const handleClear = () => {
 
 // 组件挂载时加载搜索历史
 onMounted(() => {
-  void ensureSearchMarkedCore()
   loadSearchHistory()
 
   // 调试logo图片 - 仅在开发环境
@@ -562,6 +646,18 @@ onMounted(() => {
     img.onerror = () => debugError('Logo 图片加载失败')
     img.onload = () => debugLog('Logo 图片加载成功')
     img.src = logoImg
+  }
+})
+
+onBeforeUnmount(() => {
+  if (responseFlushRafId !== null) {
+    window.cancelAnimationFrame(responseFlushRafId)
+    responseFlushRafId = null
+  }
+
+  if (currentAnswerRenderTimer) {
+    clearTimeout(currentAnswerRenderTimer)
+    currentAnswerRenderTimer = null
   }
 })
 

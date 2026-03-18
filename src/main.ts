@@ -18,6 +18,7 @@ import { setupMdEditor } from './plugins/v-md-editor'
 import 'default-passive-events'
 // 导入调试工具
 import { debugLog, isDev } from './utils/debug'
+import { ensureFreeToolTitle } from './utils/string'
 
 const app = createApp(App)
 //安装仓库
@@ -27,6 +28,8 @@ app.use(ElementPlus, {
   locale: zhCn
 })
 setupMdEditor(app)
+// 挂载全局模板方法：仅用于工具页面内部标题展示
+app.config.globalProperties.$ensureFreeToolTitle = ensureFreeToolTitle
 
 // 路由守卫，动态更新页面标题和 meta 信息
 router.beforeEach((to, from, next) => {
