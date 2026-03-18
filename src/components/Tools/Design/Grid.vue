@@ -20,7 +20,7 @@
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3">栅格计算器</h2>
+          <h2 class="text-4xl font-bold mb-3">免费栅格计算器</h2>
           <p class="text-gray-500 text-sm">快速计算和预览网页栅格布局</p>
         </div>
 

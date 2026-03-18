@@ -260,7 +260,7 @@ onUnmounted(() => {
         </div>
         <h1
           class="text-4xl font-extrabold mb-4 relative inline-block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          音频合并
+          免费音频合并
         </h1>
         <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
           免费在线合并多个音频文件，支持 MP3、WAV 等格式拼接，可自由调整顺序

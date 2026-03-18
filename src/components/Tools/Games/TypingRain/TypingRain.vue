@@ -113,7 +113,7 @@
                   class="bg-white/10 p-8 rounded-2xl border border-white/20 shadow-2xl text-center max-w-md w-full mx-4 backdrop-blur-md">
                   <h2
                     class="text-4xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
-                    {{ gameStatus === 'start' ? (language === 'cn' ? '准备好了吗？' : 'Ready to Type?') : (language === 'cn' ?
+                    免费{{ gameStatus === 'start' ? (language === 'cn' ? '准备好了吗？' : 'Ready to Type?') : (language === 'cn' ?
                       '游戏结束' : 'Game Over') }}
                   </h2>
 

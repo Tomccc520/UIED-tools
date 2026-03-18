@@ -93,7 +93,7 @@ const copyFullCss = async () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">字体排版规范</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费字体排版规范</h2>
           <p class="text-gray-500 text-sm">基于模块化比例生成字体排版系统，支持多种字体预览与导出</p>
         </div>
 

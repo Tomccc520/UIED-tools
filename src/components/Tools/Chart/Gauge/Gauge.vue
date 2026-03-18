@@ -14,8 +14,8 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { toEchartsData, toSpreadsheetData } from '@/utils/echarts'
+import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import * as echarts from 'echarts'
-import * as XLSX from 'xlsx'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -326,10 +326,15 @@ const downLoad = () => {
   a.dispatchEvent(event);
 }
 
+/**
+ * 解析并导入 Excel 数据到仪表盘图表
+ * 按需加载 xlsx，降低图表页默认加载压力
+ */
 const updateDataFile = (params: { file: File }) => {
   // console.log(params.file)
   var reader = new FileReader();
-  reader.onload = function (e) {
+  reader.onload = async function (e) {
+    const { XLSX } = await ensureXlsxRuntime()
     var data = e.target?.result;
     var workbook = XLSX.read(data, { type: 'binary' });
     let sheetName = workbook.SheetNames[0]

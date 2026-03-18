@@ -108,7 +108,7 @@ const clearAll = () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">文本清洗工具</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费文本清洗工具</h2>
           <p class="text-gray-500 text-sm">一键去除空行、重复行、HTML标签，支持大小写转换和文本替换</p>
         </div>
 

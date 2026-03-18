@@ -47,8 +47,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
+import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
@@ -68,6 +68,9 @@ const guideNotes = [
   '所有处理均在本地完成，数据不会上传到服务器。'
 ]
 
+/**
+ * 格式化 JSON 文本，方便用户校验内容结构
+ */
 const formatJson = () => {
   try {
     const obj = JSON.parse(jsonContent.value)
@@ -77,12 +80,20 @@ const formatJson = () => {
   }
 }
 
+/**
+ * 清空输入的 JSON 内容
+ */
 const clearJson = () => {
   jsonContent.value = ''
 }
 
-const convertAndDownload = () => {
+/**
+ * 将 JSON 数组转换为 Excel 并下载
+ * 在点击转换时按需加载 xlsx，避免页面初始加载大依赖
+ */
+const convertAndDownload = async () => {
   try {
+    const { XLSX } = await ensureXlsxRuntime()
     const data = JSON.parse(jsonContent.value)
     if (!Array.isArray(data)) {
       ElMessage.error('JSON必须是数组格式')

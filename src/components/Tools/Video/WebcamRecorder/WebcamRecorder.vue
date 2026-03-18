@@ -186,7 +186,7 @@ onUnmounted(() => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
         <div class="text-center mb-8">
-          <h2 class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">摄像头录制</h2>
+          <h2 class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">免费摄像头录制</h2>
           <p class="text-gray-500 text-sm">在线录制摄像头视频，支持高清录制和音频采集</p>
         </div>
 

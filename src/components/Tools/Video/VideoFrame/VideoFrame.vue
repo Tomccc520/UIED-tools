@@ -296,7 +296,7 @@ const dragOverHandler = (ev: DragEvent) => {
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-pink-600">
-            视频抽帧工具
+            免费视频抽帧工具
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
             在线提取视频画面，支持精确截图和一键批量下载，本地处理保护隐私

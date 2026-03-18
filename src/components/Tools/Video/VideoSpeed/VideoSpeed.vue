@@ -195,7 +195,7 @@ onUnmounted(() => {
         <div class="text-center mb-8">
           <h2
             class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            视频变速
+            免费视频变速
           </h2>
           <p class="text-gray-500 text-sm">在线调整视频播放速度，支持 0.5x - 4.0x 变速，快速制作慢动作或快进效果</p>
         </div>

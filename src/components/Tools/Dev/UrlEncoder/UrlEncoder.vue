@@ -69,7 +69,7 @@ const clearAll = () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl shadow-sm">
         <div class="text-center py-8 px-4">
-          <h2 class="text-3xl font-bold mb-3 text-gray-800">URL 编码/解码</h2>
+          <h2 class="text-3xl font-bold mb-3 text-gray-800">免费 URL 编码/解码</h2>
           <p class="text-gray-500 text-sm mt-4">在线 URL Encode / Decode 工具，支持 UTF-8 编码</p>
         </div>
 

@@ -3,7 +3,7 @@
     <div class="max-w-4xl mx-auto px-4 sm:px-6">
       <!-- 标题区，参考ImageToPdf.vue风格 -->
       <div class="text-center mb-8">
-        <h2 class="text-4xl font-bold mb-2 text-gray-900">摸鱼日历</h2>
+        <h2 class="text-4xl font-bold mb-2 text-gray-900">免费摸鱼日历</h2>
         <p class="text-base text-gray-500">Fish Calendar Reminder</p>
       </div>
       <!-- 摸鱼卡片区块（可导出图片） -->

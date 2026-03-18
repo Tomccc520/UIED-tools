@@ -2,7 +2,7 @@
   <div class="base64-converter">
     <div class="bg-white rounded-xl p-8 shadow-sm max-w-4xl mx-auto">
       <div class="text-center mb-8">
-        <h2 class="text-3xl font-bold text-gray-800 mb-2">Base64 转换工具</h2>
+        <h2 class="text-3xl font-bold text-gray-800 mb-2">免费 Base64 转换工具</h2>
         <p class="text-gray-500">支持文本/图片与Base64编码之间的相互转换</p>
       </div>
 

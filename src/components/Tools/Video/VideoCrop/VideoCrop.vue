@@ -321,7 +321,7 @@ onUnmounted(() => {
         <div class="text-center mb-8">
           <h2
             class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            视频画面裁剪
+            免费视频画面裁剪
           </h2>
           <p class="text-gray-500 text-sm">在线裁剪视频画面区域，支持自由调整比例，本地处理保护隐私</p>
         </div>

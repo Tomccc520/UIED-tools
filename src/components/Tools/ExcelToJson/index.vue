@@ -66,8 +66,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import * as XLSX from 'xlsx'
 import { ElMessage } from 'element-plus'
+import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import useClipboard from 'vue-clipboard3'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
@@ -114,10 +114,15 @@ const handleFileInputChange = (e: Event) => {
   }
 }
 
+/**
+ * 解析上传的 Excel 文件并转换为 JSON 文本
+ * 按需加载 xlsx 运行时，避免工具页初始渲染时加载大体积解析库
+ */
 const processFile = (file: File) => {
   const reader = new FileReader()
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
+      const { XLSX } = await ensureXlsxRuntime()
       const data = new Uint8Array(e.target?.result as ArrayBuffer)
       const workbook = XLSX.read(data, { type: 'array' })
       const firstSheetName = workbook.SheetNames[0]

@@ -60,7 +60,7 @@ onMounted(() => {
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-orange-500 to-yellow-500">
-            摸鱼倒数日
+            免费摸鱼倒数日
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">工作再忙，也别忘了期待假期</p>
         </div>

@@ -107,7 +107,7 @@ const copyCss = async () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">CSS 三角形生成器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 CSS 三角形生成器</h2>
           <p class="text-gray-500 text-sm">利用 CSS border 属性特性，快速生成各种方向和尺寸的三角形代码</p>
         </div>
 

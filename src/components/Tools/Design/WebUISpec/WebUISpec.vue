@@ -56,7 +56,7 @@ const spacings = [4, 8, 12, 16, 24, 32, 48, 64, 80, 96]
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">Web端设计规范</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 Web端设计规范</h2>
           <p class="text-gray-500 text-sm">Web 界面设计的标准尺寸和规范参考，助你打造专业的桌面端应用</p>
         </div>
 

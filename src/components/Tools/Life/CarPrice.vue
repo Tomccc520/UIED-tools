@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-            车辆价格查询
+            免费车辆价格查询
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">快速查询车辆指导价、经销商报价及配置信息</p>
         </div>

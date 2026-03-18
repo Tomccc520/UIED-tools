@@ -15,7 +15,7 @@
         <div class="text-center py-8 px-4 relative">
           <h2 class="text-3xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-4">支持中英文与摩尔斯电码的双向转换</p>

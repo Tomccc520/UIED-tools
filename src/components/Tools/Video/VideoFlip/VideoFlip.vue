@@ -228,7 +228,7 @@ onUnmounted(() => {
         <div class="text-center mb-8">
           <h2
             class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            视频翻转/旋转
+            免费视频翻转/旋转
           </h2>
           <p class="text-gray-500 text-sm">在线旋转视频方向，支持水平/垂直翻转，快速修复拍摄方向错误</p>
         </div>

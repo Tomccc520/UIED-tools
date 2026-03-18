@@ -223,7 +223,7 @@ const dragLeaveHandler = (ev: DragEvent) => {
         <div class="text-center mb-8">
           <h2
             class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            视频时长剪辑
+            免费视频时长剪辑
           </h2>
           <p class="text-gray-500 text-sm">在线截取视频片段，精准控制开始和结束时间，本地处理保护隐私</p>
         </div>

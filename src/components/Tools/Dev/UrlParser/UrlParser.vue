@@ -74,7 +74,7 @@ const copyText = (text: string) => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">URL 解析器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 URL 解析器</h2>
           <p class="text-gray-500 text-sm">将 URL 解析为协议、主机、路径、查询参数等组成部分</p>
         </div>
 

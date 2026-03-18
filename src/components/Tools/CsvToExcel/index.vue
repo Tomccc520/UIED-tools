@@ -88,8 +88,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import * as XLSX from 'xlsx'
+import type { WorkBook } from 'xlsx'
 import { ElMessage } from 'element-plus'
+import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
@@ -100,7 +101,7 @@ const file = ref<File | null>(null)
 const previewHeaders = ref<string[]>([])
 const previewRows = ref<any[]>([])
 const totalRows = ref(0)
-const workbook = ref<XLSX.WorkBook | null>(null)
+const workbook = ref<WorkBook | null>(null)
 
 const guideSteps = [
   { title: '上传CSV文件', description: '点击上传区域或直接拖拽CSV文件（.csv）到指定区域。' },
@@ -137,10 +138,15 @@ const handleFileInputChange = (e: Event) => {
   }
 }
 
+/**
+ * 解析 CSV 文件并生成 Excel 预览数据
+ * 按需加载 xlsx，减少页面初始体积
+ */
 const processFile = (file: File) => {
   const reader = new FileReader()
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
+      const { XLSX } = await ensureXlsxRuntime()
       const data = e.target?.result
       // Try to read with default encoding first, if it fails or looks weird, might need encoding detection logic
       // XLSX handles basic CSV well usually
@@ -175,8 +181,12 @@ const clearFile = () => {
   }
 }
 
-const downloadExcel = () => {
+/**
+ * 下载转换后的 Excel 文件
+ */
+const downloadExcel = async () => {
   if (!workbook.value) return
+  const { XLSX } = await ensureXlsxRuntime()
   XLSX.writeFile(workbook.value, `${file.value?.name.replace('.csv', '')}.xlsx`)
   ElMessage.success('下载成功')
 }

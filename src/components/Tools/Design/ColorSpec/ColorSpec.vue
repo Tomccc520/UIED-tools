@@ -79,7 +79,7 @@ const copyCssCode = async () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">色彩规范生成器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费色彩规范生成器</h2>
           <p class="text-gray-500 text-sm">输入品牌主色，自动生成完整的色阶板，并提供无障碍对比度检测</p>
         </div>
 

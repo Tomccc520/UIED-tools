@@ -76,7 +76,7 @@ const clearAll = () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl shadow-sm">
         <div class="text-center py-8 px-4">
-          <h2 class="text-3xl font-bold mb-3 text-gray-800">JSON 格式化工具</h2>
+          <h2 class="text-3xl font-bold mb-3 text-gray-800">免费 JSON 格式化工具</h2>
           <p class="text-gray-500 text-sm mt-4">在线 JSON 代码格式化、验证、压缩工具</p>
         </div>
 

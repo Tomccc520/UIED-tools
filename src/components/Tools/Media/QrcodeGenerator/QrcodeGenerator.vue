@@ -79,7 +79,7 @@ const reset = () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl shadow-sm">
         <div class="text-center py-8 px-4">
-          <h2 class="text-3xl font-bold mb-3 text-gray-800">二维码生成器</h2>
+          <h2 class="text-3xl font-bold mb-3 text-gray-800">免费二维码生成器</h2>
           <p class="text-gray-500 text-sm mt-4">在线生成自定义二维码，支持颜色、大小设置</p>
         </div>
 

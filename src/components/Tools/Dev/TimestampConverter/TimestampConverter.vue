@@ -116,7 +116,7 @@ onUnmounted(() => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl shadow-sm">
         <div class="text-center py-8 px-4">
-          <h2 class="text-3xl font-bold mb-3 text-gray-800">时间戳转换</h2>
+          <h2 class="text-3xl font-bold mb-3 text-gray-800">免费时间戳转换</h2>
           <p class="text-gray-500 text-sm mt-4">在线 Unix 时间戳与北京时间相互转换工具</p>
         </div>
 

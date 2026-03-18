@@ -17,7 +17,7 @@
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-12 shadow-sm min-h-[600px]">
         <div class="text-center mb-12">
-          <h2 class="text-[32px] font-bold mb-3">疯狂星期四文案生成器</h2>
+          <h2 class="text-[32px] font-bold mb-3">免费疯狂星期四文案生成器</h2>
           <p class="text-gray-500">生成疯狂星期四文案</p>
         </div>
 

@@ -100,7 +100,7 @@ const resetTable = () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">Markdown 表格生成器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 Markdown 表格生成器</h2>
           <p class="text-gray-500 text-sm">可视化编辑表格，自动生成 Markdown 格式代码</p>
         </div>
 

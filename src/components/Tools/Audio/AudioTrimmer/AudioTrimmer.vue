@@ -251,7 +251,7 @@ onUnmounted(() => {
         </div>
         <h1
           class="text-4xl font-extrabold mb-4 relative inline-block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          音频剪辑工具
+          免费音频剪辑工具
         </h1>
         <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
           在线音频剪辑，支持可视化的波形剪辑，精确裁剪音频片段，本地处理保护隐私

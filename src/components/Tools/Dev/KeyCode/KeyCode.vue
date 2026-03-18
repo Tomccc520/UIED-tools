@@ -79,7 +79,7 @@ const clearHistory = () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm min-h-[600px]">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">键盘键值码查看器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费键盘键值码查看器</h2>
           <p class="text-gray-500 text-sm">按下键盘上的任意键，查看其 KeyCode、Code 和其他详细信息</p>
         </div>
 

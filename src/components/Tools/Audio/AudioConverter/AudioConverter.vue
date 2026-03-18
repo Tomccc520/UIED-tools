@@ -273,7 +273,7 @@ onUnmounted(() => {
         </div>
         <h1
           class="text-4xl font-extrabold mb-4 relative inline-block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          音频格式转换
+          免费音频格式转换
         </h1>
         <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
           免费在线音频格式转换工具，支持 MP3、WAV、AAC、OGG 等多种格式互转，本地处理保护隐私

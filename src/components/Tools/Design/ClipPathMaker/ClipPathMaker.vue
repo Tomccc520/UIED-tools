@@ -22,7 +22,7 @@
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">CSS Clip-path 生成器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 CSS Clip-path 生成器</h2>
           <p class="text-gray-500 text-sm">在线可视化生成 CSS clip-path 代码，支持拖拽调整多边形顶点，提供多种常用形状预设</p>
         </div>
 

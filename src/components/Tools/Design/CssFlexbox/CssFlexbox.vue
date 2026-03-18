@@ -87,7 +87,7 @@ const copyCss = async () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">CSS Flexbox 生成器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 CSS Flexbox 生成器</h2>
           <p class="text-gray-500 text-sm">可视化调整 CSS Flexbox 布局属性，实时预览布局效果并生成代码</p>
         </div>
 

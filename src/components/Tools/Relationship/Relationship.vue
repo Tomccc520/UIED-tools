@@ -2,7 +2,7 @@
   <div class="relationship-calculator">
     <div class="bg-white rounded-xl p-8 shadow-sm max-w-4xl mx-auto">
       <div class="text-center mb-8">
-        <h2 class="text-3xl font-bold text-gray-800 mb-2">亲戚称呼计算器</h2>
+        <h2 class="text-3xl font-bold text-gray-800 mb-2">免费亲戚称呼计算器</h2>
         <p class="text-gray-500">中国亲戚关系称呼查询，支持互查，逢年过节必备神器</p>
       </div>
 

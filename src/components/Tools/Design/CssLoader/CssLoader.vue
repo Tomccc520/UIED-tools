@@ -80,7 +80,7 @@ const copyCss = async () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">CSS 加载动画生成器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 CSS 加载动画生成器</h2>
           <p class="text-gray-500 text-sm">生成纯 CSS 实现的 Loading 旋转动画，可自定义大小、颜色和速度</p>
         </div>
 

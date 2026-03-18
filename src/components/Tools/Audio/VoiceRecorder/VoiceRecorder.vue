@@ -199,7 +199,7 @@ onUnmounted(() => {
         </div>
         <h1
           class="text-4xl font-extrabold mb-4 relative inline-block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          在线录音机
+          免费在线录音机
         </h1>
         <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
           简单的在线录音工具，支持实时波形可视化，本地录制保护隐私

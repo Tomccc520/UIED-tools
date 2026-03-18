@@ -99,7 +99,7 @@ const copyCss = async () => {
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">CSS 丝带生成器</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 CSS 丝带生成器</h2>
           <p class="text-gray-500 text-sm">快速生成常见的角落丝带（Ribbon）样式，常用于标记“热门”、“新品”等状态</p>
         </div>
 

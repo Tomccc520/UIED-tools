@@ -17,7 +17,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -46,13 +46,25 @@
             </div>
 
             <!-- 输入框 -->
-            <v-md-editor 
-              v-model="textContent" 
-              height="500px"
-              placeholder="请输入或粘贴Markdown内容..."
-              :disabled-menus="[]"
-              @save="generatePDF"
-            ></v-md-editor>
+            <template v-if="showEditor">
+              <v-md-editor
+                v-model="textContent"
+                height="500px"
+                placeholder="请输入或粘贴Markdown内容..."
+                :disabled-menus="[]"
+                @save="generatePDF"
+              ></v-md-editor>
+            </template>
+            <template v-else>
+              <div class="h-[500px] rounded-lg border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500">
+                <p class="text-sm mb-3">编辑器初始化中...</p>
+                <button
+                  class="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                  @click="activateEditor">
+                  立即加载编辑器
+                </button>
+              </div>
+            </template>
           </div>
 
           <!-- 右侧设置与预览 -->
@@ -135,7 +147,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { ref, reactive, computed, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -157,6 +169,7 @@ const textContent = ref('# 欢迎使用 Markdown 转 PDF 工具\n\n这是一个�
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const previewRef = ref<HTMLElement | null>(null)
 const generating = ref(false)
+const showEditor = ref(false)
 
 const settings = reactive({
   pageSize: 'a4',
@@ -168,19 +181,73 @@ const getPageWidth = computed(() => {
 })
 
 const renderedHtml = ref('')
+let markdownRenderVersion = 0
+let editorMountTimer: ReturnType<typeof setTimeout> | null = null
+let editorMountIdleHandle: number | null = null
 
-/**
- * 更新 Markdown 预览 HTML
- * 首次渲染时按需加载 marked，并在文本变化时增量更新预览结果
- */
-const updateRenderedHtml = async () => {
-  const { marked } = await ensureMarkedRuntime()
-  renderedHtml.value = marked.parse(textContent.value) as string
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+  cancelIdleCallback?: (handle: number) => void
 }
 
-watch(textContent, () => {
-  void updateRenderedHtml()
-}, { immediate: true })
+/**
+ * 激活 Markdown 编辑器
+ * 仅在用户进入编辑场景后挂载编辑器，避免首屏直接加载重依赖
+ */
+const activateEditor = () => {
+  if (showEditor.value) return
+  showEditor.value = true
+}
+
+/**
+ * 调度编辑器挂载
+ * 优先使用 requestIdleCallback，在浏览器空闲时初始化编辑器
+ */
+const scheduleEditorMount = () => {
+  const idleWindow = window as IdleWindow
+
+  if (typeof idleWindow.requestIdleCallback === 'function') {
+    editorMountIdleHandle = idleWindow.requestIdleCallback(() => {
+      activateEditor()
+      editorMountIdleHandle = null
+    }, { timeout: 1800 })
+    return
+  }
+
+  editorMountTimer = setTimeout(() => {
+    activateEditor()
+    editorMountTimer = null
+  }, 700)
+}
+
+/**
+ * 执行 Markdown 预览渲染
+ * 每次渲染都会携带版本号，仅应用最新一次结果，避免异步解析结果乱序覆盖
+ */
+const executeRenderedHtmlUpdate = async () => {
+  const currentVersion = ++markdownRenderVersion
+  const { marked } = await ensureMarkedRuntime()
+  const parsedHtml = marked.parse(textContent.value) as string
+  if (currentVersion !== markdownRenderVersion) return
+  renderedHtml.value = parsedHtml
+}
+
+onMounted(() => {
+  scheduleEditorMount()
+})
+
+onBeforeUnmount(() => {
+  const idleWindow = window as IdleWindow
+  if (editorMountIdleHandle !== null && typeof idleWindow.cancelIdleCallback === 'function') {
+    idleWindow.cancelIdleCallback(editorMountIdleHandle)
+    editorMountIdleHandle = null
+  }
+
+  if (editorMountTimer) {
+    clearTimeout(editorMountTimer)
+    editorMountTimer = null
+  }
+})
 
 const features = [
   {
@@ -245,7 +312,7 @@ const generatePDF = async () => {
       ensureHtml2canvasRuntime(),
       ensureJsPdfRuntime()
     ])
-    await updateRenderedHtml()
+    await executeRenderedHtmlUpdate()
     await nextTick()
 
     const element = previewRef.value
@@ -267,15 +334,16 @@ const generatePDF = async () => {
     const imgWidth = pdfPageWidth
     const imgHeight = pdfPageWidth / contentWidth * contentHeight
 
-    const pdf = new jsPDF(settings.pageSize === 'a4' ? 'p' : 'p', 'pt', settings.pageSize)
+    const pdf = new jsPDF('p', 'pt', settings.pageSize)
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 1.0)
 
-    if (leftHeight < pageHeight) {
-      pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, imgWidth, imgHeight)
+    if (leftHeight <= pageHeight) {
+      pdf.addImage(imageDataUrl, 'JPEG', 0, 0, imgWidth, imgHeight)
     } else {
       while (leftHeight > 0) {
-        pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, imgWidth, imgHeight)
+        pdf.addImage(imageDataUrl, 'JPEG', 0, position, imgWidth, imgHeight)
         leftHeight -= pageHeight
-        position -= 841.89 // Use calculated page height
+        position -= pdfPageHeight
         if (leftHeight > 0) {
           pdf.addPage()
         }

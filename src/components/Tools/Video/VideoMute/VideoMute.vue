@@ -156,7 +156,7 @@ onUnmounted(() => {
         <div class="text-center mb-8">
           <h2
             class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            视频静音
+            免费视频静音
           </h2>
           <p class="text-gray-500 text-sm">一键移除视频中的音频轨道，快速制作静音视频</p>
         </div>

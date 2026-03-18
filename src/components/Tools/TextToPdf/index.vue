@@ -17,7 +17,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -257,15 +257,16 @@ const generatePDF = async () => {
     const imgWidth = pdfPageWidth
     const imgHeight = pdfPageWidth / contentWidth * contentHeight
 
-    const pdf = new jsPDF(settings.pageSize === 'a4' ? 'p' : 'p', 'pt', settings.pageSize)
+    const pdf = new jsPDF('p', 'pt', settings.pageSize)
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 1.0)
 
-    if (leftHeight < pageHeight) {
-      pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, 0, imgWidth, imgHeight)
+    if (leftHeight <= pageHeight) {
+      pdf.addImage(imageDataUrl, 'JPEG', 0, 0, imgWidth, imgHeight)
     } else {
       while (leftHeight > 0) {
-        pdf.addImage(canvas.toDataURL('image/jpeg', 1.0), 'JPEG', 0, position, imgWidth, imgHeight)
+        pdf.addImage(imageDataUrl, 'JPEG', 0, position, imgWidth, imgHeight)
         leftHeight -= pageHeight
-        position -= 841.89 // Use calculated page height
+        position -= pdfPageHeight
         if (leftHeight > 0) {
           pdf.addPage()
         }

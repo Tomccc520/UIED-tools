@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-600">
-            字体版权查询
+            免费字体版权查询
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">快速查询字体版权信息，避免商用侵权风险</p>
         </div>

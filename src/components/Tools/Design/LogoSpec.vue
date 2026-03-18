@@ -41,7 +41,7 @@
 
       <!-- 标题区域优化 -->
       <div class="text-center mb-12">
-        <h2 class="text-3xl font-bold mb-4 text-gray-900">Logo设计规范生成器</h2>
+        <h2 class="text-3xl font-bold mb-4 text-gray-900">免费 Logo设计规范生成器</h2>
         <p class="text-base text-gray-500">快速生成专业的Logo使用规范说明书，帮助品牌建立统一的视觉形象</p>
       </div>
 

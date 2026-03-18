@@ -14,7 +14,7 @@
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">PDF分割</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 PDF分割</h2>
           <p class="text-gray-500 text-sm">将PDF文件拆分为多个文件，支持按页面范围拆分或提取每一页</p>
         </div>
 

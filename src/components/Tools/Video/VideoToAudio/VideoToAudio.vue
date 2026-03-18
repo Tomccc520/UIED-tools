@@ -196,7 +196,7 @@ const dragLeaveHandler = (ev: DragEvent) => {
         <div class="text-center mb-8">
           <h2
             class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            视频提取音频
+            免费视频提取音频
           </h2>
           <p class="text-gray-500 text-sm">
             从视频中提取高品质音频，支持 MP4, WebM, MOV 等格式，本地处理保护隐私

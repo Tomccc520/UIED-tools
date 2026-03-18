@@ -252,7 +252,7 @@ onUnmounted(() => {
         </div>
         <h1
           class="text-4xl font-extrabold mb-4 relative inline-block bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-          音频音量放大
+          免费音频音量放大
         </h1>
         <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
           在线调整音频音量，支持最大 300% 增益，本地处理保护隐私

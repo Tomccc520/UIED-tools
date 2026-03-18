@@ -88,8 +88,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute } from 'vue-router'
-import * as XLSX from 'xlsx'
+import type { WorkBook } from 'xlsx'
 import { ElMessage } from 'element-plus'
+import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
@@ -100,7 +101,7 @@ const file = ref<File | null>(null)
 const previewHeaders = ref<string[]>([])
 const previewRows = ref<string[][]>([])
 const totalRows = ref(0)
-const workbook = ref<XLSX.WorkBook | null>(null)
+const workbook = ref<WorkBook | null>(null)
 
 const guideSteps = [
   { title: '上传Excel文件', description: '点击上传区域或直接拖拽Excel文件到指定区域，支持.xlsx和.xls格式。' },
@@ -136,10 +137,15 @@ const handleFileInputChange = (e: Event) => {
   }
 }
 
+/**
+ * 解析 Excel 文件并生成 CSV 预览数据
+ * 按需加载 xlsx，避免页面初始阶段引入完整表格解析库
+ */
 const processFile = (file: File) => {
   const reader = new FileReader()
-  reader.onload = (e) => {
+  reader.onload = async (e) => {
     try {
+      const { XLSX } = await ensureXlsxRuntime()
       const data = e.target?.result
       workbook.value = XLSX.read(data, { type: 'binary' })
       const firstSheetName = workbook.value.SheetNames[0]
@@ -172,8 +178,13 @@ const clearFile = () => {
   }
 }
 
-const downloadCsv = () => {
+/**
+ * 下载转换后的 CSV 文件
+ * 复用已缓存的 xlsx 运行时执行写出，保证导出逻辑与原行为一致
+ */
+const downloadCsv = async () => {
   if (!workbook.value) return
+  const { XLSX } = await ensureXlsxRuntime()
   XLSX.writeFile(workbook.value, `${file.value?.name.split('.')[0]}.csv`, { bookType: 'csv' })
   ElMessage.success('下载成功')
 }

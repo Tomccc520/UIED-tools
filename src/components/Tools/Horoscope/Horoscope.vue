@@ -22,7 +22,7 @@
         </div>
         <h1
           class="text-3xl md:text-5xl font-bold mb-4 text-transparent bg-clip-text bg-gradient-to-r from-indigo-200 via-white to-purple-200 tracking-tight">
-          {{ selectedZodiac }}座运势查询
+          免费{{ selectedZodiac }}座运势查询
         </h1>
         <p class="text-slate-400 text-sm md:text-base max-w-lg mx-auto leading-relaxed">
           探索星象奥秘，解锁今日运程，让好运伴随每一天
