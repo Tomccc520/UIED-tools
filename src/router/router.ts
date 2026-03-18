@@ -2554,12 +2554,21 @@ export const constantRoute: RouteRecordRaw[] = [
   },
   {
     path: '/tools/ai-ranking',
-    component: () => import('@/components/Tools/AI/AIRanking.vue'),
+    component: { render: () => null },
     name: 'airanking',
+    /**
+     * AI产品榜已下线，保留原路由并跳转到外部导航站
+     */
+    beforeEnter: () => {
+      if (typeof window !== 'undefined') {
+        window.location.href = 'https://hao.uied.cn/'
+      }
+      return false
+    },
     meta: {
-      title: "AI网站排行榜",
-      keywords: 'AI工具,AI产品榜,AI应用,人工智能工具,AI热门工具',
-      description: '实时追踪AI工具热度，发现优质AI应用，包括AI聊天助手、AI图像创作、AI办公助手等多个分类的热门工具',
+      title: "AI产品导航",
+      keywords: 'AI工具导航,AI产品导航,AI应用导航,人工智能工具',
+      description: '跳转到 AI 产品导航站，快速发现并访问各类优质 AI 应用。',
     }
   },
   {

@@ -303,6 +303,41 @@ onUnmounted(() => {
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
 
+          <!-- Version 2.7.10 -->
+          <div class="timeline-item" id="v2.7.10">
+            <div class="version-tag">
+              <span class="version">2.7.10</span>
+              <span class="date">2026-03-18 18:20</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">工具链路优化（精简记录）</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">AI产品榜外链调整</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>AI产品榜</strong>：站内页面下线，统一跳转至 <a href="https://hao.uied.cn/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700">https://hao.uied.cn/</a>，并保留原路由兼容访问。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">AI工具页加载优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>AI/Student 全量页面</strong>：统一接入结果编辑器按需挂载、分片缓冲 + `requestAnimationFrame` 流式输出、复制预览前编辑器就绪兜底与卸载清理。</li>
+                        <li><strong><router-link to="/tools/markdown" target="_blank" class="hover:text-blue-600 transition-colors">Markdown</router-link> / <router-link to="/tools/markdown-to-pdf" target="_blank" class="hover:text-blue-600 transition-colors">Markdown 转 PDF</router-link></strong>：优化编辑器初始化占位文案，默认自动加载，减少操作步骤；Markdown 转 PDF 增加渲染结果缓存，减少重复解析。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <!-- Version 2.7.9 -->
           <div class="timeline-item" id="v2.7.9">
             <div class="version-tag">
@@ -345,6 +380,81 @@ onUnmounted(() => {
                               class="hover:text-blue-600 transition-colors">AI 讲话稿</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低长稿生成时编辑区高频重渲染。</li>
                         <li><strong><router-link to="/tools/ai/project-proposal" target="_blank"
                               class="hover:text-blue-600 transition-colors">AI 项目策划方案</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并完善流式状态清理逻辑，提升连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/article-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 摘要生成</router-link></strong>：结果编辑器切换为按需挂载，流式输出改为分片缓冲 + `requestAnimationFrame` 刷新，降低长文提炼时卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/article-outline" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 写作大纲</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/article-polishing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 降重润色</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升连续处理稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/literature-review" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 文献综述</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底，降低长文综述生成卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/novel-plot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 小说剧情创作</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升长剧情生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/practice-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 实践报告</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，减少连续生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/opening-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 开题报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低长报告生成期间的编辑器卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/essay-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 作文一键写作</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/speech-draft" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 演讲稿</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/intern-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 实习总结</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，降低连续生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 分析报告</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升长报告生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/literature-recommend" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 文献推荐</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/essay-contest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 征文</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，降低长稿生成过程中的编辑区重渲染抖动。</li>
+                        <li><strong><router-link to="/tools/ai/graduation-thesis" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 毕业长文/报告</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，并补充复制预览前的编辑器就绪兜底，提升长文连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/self-reflection" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 检讨书</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少连续生成时的卡顿与状态残留。</li>
+                        <li><strong><router-link to="/tools/ai/short-video-title" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 短视频标题</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低标题批量生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/spokesperson-speech" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 发言稿</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/training-experience" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 培训心得</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/work-report-ppt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 工作汇报PPT</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，降低长内容生成时卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/research-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 研究报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低深度报告生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/business-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 商业计划书</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升长内容连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/feasibility-study" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 可行性研究报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/swot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI SWOT分析</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少连续优化时的状态残留。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 分析报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低复杂分析生成时编辑区重渲染压力。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/activity-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 活动方案</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续调整时稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/survey-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 调研报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 行业报告</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少长内容生成阶段卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/project-application" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 立项申请报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/pest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI PEST分析</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续分析稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/transport-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 运输方案</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低长方案生成时编辑区卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/situation-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 情况报告</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少连续生成时状态残留。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/seven-s" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 波士顿7S分析</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，提升组织诊断长文生成流畅度。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/marketing-4p" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 4P营销分析</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-consultant" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 产业顾问</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续咨询场景稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/startup-ideas" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 创新创业金点子</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低创意扩展阶段重渲染开销。</li>
+                        <li><strong>AI Office 全量工具页</strong>：为 <router-link to="/tools/ai/office/notice-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">通知生成</router-link>、<router-link to="/tools/ai/office/resume-builder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">简历制作</router-link>、<router-link to="/tools/ai/office/okr-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">OKR 制定</router-link>、<router-link to="/tools/ai/office/contract-template" target="_blank"
+                              class="hover:text-blue-600 transition-colors">合同模版</router-link> 及同类 Office 页面统一接入结果编辑器按需挂载、分片缓冲 + `requestAnimationFrame` 流式输出、复制预览前编辑器就绪兜底与卸载清理，减少长内容生成卡顿并提升连续操作稳定性。</li>
                         <li><strong>流程减负优化</strong>：对已改造的写作工具新增“高级选项（可选）”折叠区，并移除结果区“立即加载编辑器”显式按钮，改为“生成后自动加载”提示，减少页面步骤感与视觉负担。</li>
                       </ul>
                     </div>

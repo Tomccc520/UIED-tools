@@ -57,12 +57,8 @@
             </template>
             <template v-else>
               <div class="h-[500px] rounded-lg border border-dashed border-gray-300 bg-gray-50 flex flex-col items-center justify-center text-gray-500">
-                <p class="text-sm mb-3">编辑器初始化中...</p>
-                <button
-                  class="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-                  @click="activateEditor">
-                  立即加载编辑器
-                </button>
+                <p class="text-sm mb-1">编辑器初始化中...</p>
+                <p class="text-xs text-gray-400">系统会自动加载，无需额外操作</p>
               </div>
             </template>
           </div>
@@ -181,6 +177,7 @@ const getPageWidth = computed(() => {
 })
 
 const renderedHtml = ref('')
+const renderedHtmlSourceKey = ref('')
 let markdownRenderVersion = 0
 let editorMountTimer: ReturnType<typeof setTimeout> | null = null
 let editorMountIdleHandle: number | null = null
@@ -225,11 +222,15 @@ const scheduleEditorMount = () => {
  * 每次渲染都会携带版本号，仅应用最新一次结果，避免异步解析结果乱序覆盖
  */
 const executeRenderedHtmlUpdate = async () => {
+  const nextSourceKey = `${settings.pageSize}|${settings.margin}|${textContent.value}`
+  if (nextSourceKey === renderedHtmlSourceKey.value && renderedHtml.value) return
+
   const currentVersion = ++markdownRenderVersion
   const { marked } = await ensureMarkedRuntime()
   const parsedHtml = marked.parse(textContent.value) as string
   if (currentVersion !== markdownRenderVersion) return
   renderedHtml.value = parsedHtml
+  renderedHtmlSourceKey.value = nextSourceKey
 }
 
 onMounted(() => {
@@ -297,6 +298,8 @@ const handleFileInputChange = (event: Event) => {
 
 const clearText = () => {
   textContent.value = ''
+  renderedHtml.value = ''
+  renderedHtmlSourceKey.value = ''
 }
 
 /**

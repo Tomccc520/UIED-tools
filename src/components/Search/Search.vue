@@ -472,9 +472,9 @@ const quickTools = [
     url: '/tools/ai-design-cover'
   },
   {
-    title: 'AI排行榜',
-    desc: 'AI模型能力评测排行',
-    url: '/tools/ai-ranking'
+    title: 'AI产品榜',
+    desc: '跳转至 AI 产品导航站',
+    url: 'https://hao.uied.cn/'
   }
 ]
 

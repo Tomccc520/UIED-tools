@@ -68,7 +68,7 @@ export const useToolsStore = defineStore('tools', {
         {
           id: 1009,
           title: "AI导航",
-          desc: "聚合导航工具，包含AI工具、AI学习网站、AI新闻、AI产品榜等",
+          desc: "聚合导航工具，包含AI工具、AI学习网站、AI新闻与应用导航等",
           url: "https://www.88sheji.cn/ai",
           logo: { type: 'svg', name: 'palette' },
           cate: "热门工具",

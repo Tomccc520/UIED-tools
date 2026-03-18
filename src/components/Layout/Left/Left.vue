@@ -229,7 +229,7 @@ onMounted(() => {
             <el-menu-item index="recommend-daily-article"
               @click="openExternalLink('https://hot.uied.cn/')">每日文章</el-menu-item>
             <el-menu-item index="recommend-ai-news" @click="gotoTool('/tools/ai-news')">实时资讯</el-menu-item>
-            <el-menu-item index="recommend-ai-ranking" @click="gotoTool('/tools/ai-ranking')">AI产品榜</el-menu-item>
+            <el-menu-item index="recommend-ai-ranking" @click="openExternalLink('https://hao.uied.cn/')">AI产品榜</el-menu-item>
           </el-menu-item-group>
         </el-sub-menu>
 

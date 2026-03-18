@@ -155,12 +155,8 @@ onBeforeUnmount(() => {
             </template>
             <template v-else>
               <div class="h-[600px] bg-gray-50 flex flex-col items-center justify-center text-gray-500">
-                <p class="text-sm mb-3">编辑器初始化中...</p>
-                <button
-                  class="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
-                  @click="activateEditor">
-                  立即加载编辑器
-                </button>
+                <p class="text-sm mb-1">编辑器初始化中...</p>
+                <p class="text-xs text-gray-400">系统会自动加载，无需额外操作</p>
               </div>
             </template>
           </div>
