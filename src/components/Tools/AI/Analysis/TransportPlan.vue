@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-lime-600 to-green-600">
-            运输方案
+            免费运输方案
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能规划物流运输路线和方式，优化成本、时效与安全性，制定最佳运输策略</p>
         </div>

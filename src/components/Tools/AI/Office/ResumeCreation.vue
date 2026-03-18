@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-            AI简历制作
+            免费 AI简历制作
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成专业简历，优化工作经历和技能描述，提升求职成功率</p>
         </div>

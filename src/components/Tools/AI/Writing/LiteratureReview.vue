@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            文献综述
+            免费文献综述
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成专业文献综述，支持多种学术领域</p>
         </div>

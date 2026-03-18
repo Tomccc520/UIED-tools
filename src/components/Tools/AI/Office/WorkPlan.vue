@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-600">
-            AI工作方案
+            免费 AI工作方案
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成详细的工作实施方案，明确目标、步骤和资源配置</p>
         </div>

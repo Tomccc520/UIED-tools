@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            作文一键写作
+            免费作文一键写作
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成各类作文，支持不同年级和题材要求</p>
         </div>

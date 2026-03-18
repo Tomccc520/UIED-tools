@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-gray-600 to-slate-600">
-            AI辞职报告
+            免费 AI辞职报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成得体、专业的辞职报告，妥善处理离职事宜，保持良好职业关系</p>
         </div>

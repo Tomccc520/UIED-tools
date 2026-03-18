@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-emerald-600">
-            AI摘要生成
+            免费 AI摘要生成
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能提炼长文和报告的核心观点，快速生成精准摘要，提高阅读效率</p>
         </div>

@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            实习评语生成
+            免费实习评语生成
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成专业的实习评语，支持多种评价等级和风格，助您高效完成评价工作</p>
         </div>

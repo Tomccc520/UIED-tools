@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            AI工作汇报
+            免费 AI工作汇报
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成条理清晰、重点突出的工作汇报，展示工作成果和价值</p>
         </div>

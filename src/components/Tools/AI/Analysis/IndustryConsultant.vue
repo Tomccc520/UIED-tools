@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-emerald-500">
-            产业顾问
+            免费产业顾问
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">模拟资深产业顾问，为您解答行业疑惑，提供专业见解与发展建议</p>
         </div>

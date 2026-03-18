@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            简历内容生成
+            免费简历内容生成
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成简历各模块内容，包括自我评价、工作经历、项目经验等，助您打造专业简历</p>
         </div>

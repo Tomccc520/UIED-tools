@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-cyan-600">
-            AI培训方案
+            免费 AI培训方案
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成系统化培训方案，包含课程设计、时间安排和考核评估</p>
         </div>

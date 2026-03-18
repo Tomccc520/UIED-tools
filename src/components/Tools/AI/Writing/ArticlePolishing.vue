@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-yellow-600">
-            AI降重润色
+            免费 AI降重润色
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能改写文本，降低查重率，优化语言表达，提升文章质量</p>
         </div>

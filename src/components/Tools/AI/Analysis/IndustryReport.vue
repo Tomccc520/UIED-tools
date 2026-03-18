@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-fuchsia-600">
-            AI行业报告
+            免费 AI行业报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成行业深度分析报告，洞察市场规模、竞争格局与未来趋势</p>
         </div>

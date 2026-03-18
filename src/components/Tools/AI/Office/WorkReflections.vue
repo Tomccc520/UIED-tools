@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-amber-600 to-yellow-600">
-            AI工作感想
+            免费 AI工作感想
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成真挚、深刻的工作心得体会，总结经验，提升认知</p>
         </div>

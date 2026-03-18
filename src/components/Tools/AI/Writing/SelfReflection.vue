@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-gray-600 to-slate-600">
-            AI检讨书
+            免费 AI检讨书
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成态度诚恳、深刻反省的检讨书，助您表达歉意和改进决心</p>
         </div>

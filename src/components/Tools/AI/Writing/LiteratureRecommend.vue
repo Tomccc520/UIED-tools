@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-600">
-            AI文献推荐
+            免费 AI文献推荐
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能推荐相关领域的高质量文献，助力学术研究和论文写作</p>
         </div>

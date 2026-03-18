@@ -25,7 +25,7 @@
 
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3">{{ info.title }}</h2>
+          <h2 class="text-4xl font-bold mb-3">{{ $ensureFreeToolTitle(info.title) }}</h2>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
@@ -233,7 +233,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, onUnmounted } from 'vue'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 
@@ -255,6 +255,62 @@ const currentMessage = ref('')
 const loading = ref(false)
 const textareaHeight = ref(56)
 const isTyping = ref(false)
+let typewriterTimer: ReturnType<typeof setTimeout> | null = null
+let scrollRafId: number | null = null
+
+/**
+ * 调度对话区滚动到底部
+ * 合并同一帧内的多次滚动请求，避免连续更新时重复触发布局计算
+ */
+const scheduleScrollToBottom = () => {
+  if (scrollRafId !== null) return
+  scrollRafId = window.requestAnimationFrame(() => {
+    scrollRafId = null
+    if (!chatContainer.value) return
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+  })
+}
+
+/**
+ * 启动分帧打字机输出
+ * 批量追加字符，降低逐字符 setTimeout 导致的高频响应式更新开销
+ * @param targetMessage 目标消息对象
+ * @param fullText 完整回复文本
+ * @param onDone 完成回调
+ */
+const startTypewriterOutput = (
+  targetMessage: Message,
+  fullText: string,
+  onDone?: () => void
+) => {
+  if (typewriterTimer) {
+    clearTimeout(typewriterTimer)
+    typewriterTimer = null
+  }
+
+  const chars = fullText.split('')
+  let index = 0
+  isTyping.value = true
+
+  const typeNextChunk = () => {
+    if (index >= chars.length) {
+      isTyping.value = false
+      typewriterTimer = null
+      onDone?.()
+      return
+    }
+
+    const remaining = chars.length - index
+    const chunkSize = remaining > 240 ? 10 : remaining > 120 ? 6 : remaining > 60 ? 4 : 2
+    targetMessage.content += chars.slice(index, index + chunkSize).join('')
+    index += chunkSize
+    scheduleScrollToBottom()
+
+    typewriterTimer = setTimeout(typeNextChunk, 24)
+  }
+
+  typeNextChunk()
+}
 
 // 功能特性
 const features = [
@@ -397,10 +453,9 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
 // 重新生成回复
 const regenerateMessage = async (index: number) => {
-  if (loading.value) return
+  if (loading.value || isTyping.value) return
 
   try {
-    loading.value = true
     // 移除当前回复
     messages.value.splice(index, 1)
     // 重新调用API获取回复
@@ -408,8 +463,6 @@ const regenerateMessage = async (index: number) => {
   } catch (error) {
     console.error('重新生成失败:', error)
     ElMessage.error('重新生成失败，请重试')
-  } finally {
-    loading.value = false
   }
 }
 
@@ -427,7 +480,7 @@ const handleSend = async () => {
     ElMessage.warning('请输入消息内容')
     return
   }
-  if (loading.value) return
+  if (loading.value || isTyping.value) return
 
   try {
     loading.value = true
@@ -449,6 +502,7 @@ const handleSend = async () => {
       content: currentMessage.value.trim()
     })
     console.log('已添加用户消息')
+    scheduleScrollToBottom()
 
     // 调用API
     console.log('正在调用API...')
@@ -468,30 +522,17 @@ const handleSend = async () => {
       console.log('AI回复:', aiMessage)
 
       // 添加AI回复
-      messages.value.push({
+      const assistantMessage: Message = {
         role: 'assistant',
         content: '' // 初始化为空，准备打字机效果
-      })
+      }
+      messages.value.push(assistantMessage)
       console.log('已添加AI回复')
 
-      // 打字机效果
-      isTyping.value = true
-      const lastIndex = messages.value.length - 1
-      const chars = aiMessage.split('')
-      let index = 0
-
-      const typeNextChar = () => {
-        if (index < chars.length) {
-          messages.value[lastIndex].content += chars[index]
-          index++
-          setTimeout(typeNextChar, 50) // 每50ms显示一个字符
-        } else {
-          isTyping.value = false
-          ElMessage.success('发送成功')
-        }
-      }
-
-      typeNextChar()
+      // 打字机效果（分帧批量输出）
+      startTypewriterOutput(assistantMessage, aiMessage, () => {
+        ElMessage.success('发送成功')
+      })
 
       // 清空输入框
       currentMessage.value = ''
@@ -554,9 +595,19 @@ onMounted(() => {
   document.addEventListener('keypress', handleKeyPress)
 })
 
-onUnmounted(() => {
+onBeforeUnmount(() => {
   // 移除键盘事件监听
   document.removeEventListener('keypress', handleKeyPress)
+
+  if (typewriterTimer) {
+    clearTimeout(typewriterTimer)
+    typewriterTimer = null
+  }
+
+  if (scrollRafId !== null) {
+    window.cancelAnimationFrame(scrollRafId)
+    scrollRafId = null
+  }
 })
 
 </script>

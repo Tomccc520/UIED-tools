@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-cyan-600 to-blue-600">
-            AI申请报告
+            免费 AI申请报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成各类申请报告，理由充分，逻辑清晰，提高审批通过率</p>
         </div>

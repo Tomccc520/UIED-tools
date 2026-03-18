@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-indigo-600">
-            AI分析报告
+            免费 AI分析报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成专业的数据分析、市场分析或问题分析报告，提供深度洞察</p>
         </div>

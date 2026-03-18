@@ -146,7 +146,8 @@
 
                   <!-- 主要消息内容 -->
                   <div class="prose prose-sm max-w-none">
-                    <div class="markdown-body" v-html="renderMarkdown(message.content)"></div>
+                    <div v-if="!message.isStreaming" class="markdown-body" v-html="getMessageHtml(message.content)"></div>
+                    <div v-else class="text-gray-700 whitespace-pre-wrap">{{ message.content }}</div>
                   </div>
 
                   <!-- 操作按钮 -->
@@ -376,19 +377,18 @@
 
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed, watch, onUnmounted, onBeforeUnmount } from '@vue/runtime-core'
+import { ref, onMounted, computed, onBeforeUnmount } from '@vue/runtime-core'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import html2canvas from 'html2canvas'
 import { useHead } from '@vueuse/head'
 import { wechatVerifyConfig } from '@/utils/verify'
-import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
+import { ensureHighlightRuntime, ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
-let highlightStyleLoaded = false
+let highlightConfigured = false
 type MarkedCore = typeof import('marked').marked
 let markedCore: MarkedCore | null = null
 let markedConfigured = false
@@ -413,13 +413,17 @@ const escapeHtml = (code: string) => {
  */
 const ensureHighlightCore = async () => {
   if (!highlightCore) {
-    const module = await import('highlight.js')
-    highlightCore = module.default
+    const runtime = await ensureHighlightRuntime('github')
+    highlightCore = runtime.hljs
   }
 
-  if (!highlightStyleLoaded) {
-    await import('highlight.js/styles/github.css')
-    highlightStyleLoaded = true
+  if (!highlightConfigured) {
+    highlightCore.configure({
+      ignoreUnescapedHTML: true,
+      cssSelector: 'pre code',
+      languages: ['javascript', 'typescript', 'python', 'java', 'html', 'css', 'bash', 'json']
+    })
+    highlightConfigured = true
   }
 
   return highlightCore
@@ -504,6 +508,7 @@ interface Message {
   content: string
   reasoning_content?: string
   thinking_time?: string
+  isStreaming?: boolean
 }
 
 // 系统提示和欢迎消息
@@ -548,6 +553,39 @@ const showReasoning = ref(localStorage.getItem('deepseek-reasoning') !== 'false'
 
 // 添加推理内容显示状态
 const reasoningVisible = ref<{ [key: number]: boolean }>({})
+const markdownHtmlCache = new Map<string, string>()
+const MAX_MARKDOWN_HTML_CACHE_SIZE = 200
+let chatScrollRafId: number | null = null
+
+/**
+ * 调度聊天区滚动到底部
+ * 流式输出期间合并多次滚动请求，避免每个分片都触发强制布局计算
+ */
+const scheduleChatScrollToBottom = () => {
+  if (chatScrollRafId !== null) return
+  chatScrollRafId = window.requestAnimationFrame(() => {
+    chatScrollRafId = null
+    if (!chatContainer.value) return
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+  })
+}
+
+/**
+ * 维护 Markdown 渲染缓存容量
+ * 缓存达到上限后移除最早项，防止长对话场景下内存持续增长
+ * @param key 原始 Markdown 文本
+ * @param html 渲染后的 HTML 文本
+ */
+const setMarkdownHtmlCache = (key: string, html: string) => {
+  if (markdownHtmlCache.has(key)) return
+  if (markdownHtmlCache.size >= MAX_MARKDOWN_HTML_CACHE_SIZE) {
+    const oldestKey = markdownHtmlCache.keys().next().value
+    if (oldestKey) {
+      markdownHtmlCache.delete(oldestKey)
+    }
+  }
+  markdownHtmlCache.set(key, html)
+}
 
 // 功能特性
 const features = [
@@ -819,18 +857,11 @@ const handleSend = async () => {
       role: 'assistant',
       content: '',
       reasoning_content: '',
-      thinking_time: '0.0'
+      thinking_time: '0.0',
+      isStreaming: true
     })
 
     const currentIndex = messages.value.length - 1
-
-    // 添加自动滚动函数
-    const scrollToBottom = () => {
-      if (chatContainer.value) {
-        const container = chatContainer.value
-        container.scrollTop = container.scrollHeight
-      }
-    }
 
     // 发送请求
     const response = await fetch('/api/v1/chat/completions', {
@@ -927,18 +958,10 @@ const handleSend = async () => {
               }
 
               messages.value[currentIndex].content = responseText;
-
-              // 添加代码块自动滚动
-              await nextTick();
-              const codeContainers = document.querySelectorAll('.code-scroll-container');
-              codeContainers.forEach(container => {
-                container.scrollTop = container.scrollHeight;
-              });
+              scheduleChatScrollToBottom()
             }
 
-            // 更新UI
-            await nextTick()
-            scrollToBottom()
+            scheduleChatScrollToBottom()
           } catch (e) {
             console.error('JSON解析错误:', e, '原始数据:', jsonData)
             continue
@@ -951,11 +974,14 @@ const handleSend = async () => {
     if (reasoningText) {
       messages.value[currentIndex].reasoning_content = reasoningText
     }
+    messages.value[currentIndex].isStreaming = false
+    void getMessageHtml(messages.value[currentIndex].content)
 
   } catch (error: any) {
     console.error('请求出错:', error)
     if (error.name === 'AbortError') {
       messages.value[messages.value.length - 1].content += '\n\n[生成已终止]'
+      messages.value[messages.value.length - 1].isStreaming = false
     } else {
       messages.value.pop()
       ElMessage.error(error.message || '请求失败，请重试')
@@ -1065,6 +1091,7 @@ const clearChat = () => {
     role: 'assistant',
     content: '👋 对话已清空，让我们重新开始吧！有什么我可以帮你的？'
   }]
+  markdownHtmlCache.clear()
   currentMessage.value = ''
   ElMessage.success('对话已清空 ✨')
 }
@@ -1128,7 +1155,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 }
 
 onMounted(async () => {
-  const hljs = await ensureHighlightCore()
+  await ensureHighlightCore()
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)
   // 在 onMounted 中初始化所有推理内容为展开状态
@@ -1136,12 +1163,6 @@ onMounted(async () => {
     reasoningVisible.value[index] = true
   })
 
-  // 初始化代码高亮
-  hljs.configure({
-    ignoreUnescapedHTML: true,
-    cssSelector: 'pre code',
-    languages: ['javascript', 'typescript', 'python', 'java', 'html', 'css', 'bash', 'json']
-  })
   await ensureMarkedCore()
 
   // 全局暴露复制函数
@@ -1158,7 +1179,13 @@ onMounted(async () => {
   };
 })
 
-const renderMarkdown = (content: string) => {
+/**
+ * 解析 Markdown 内容
+ * 统一处理 marked 未就绪和异常场景，保证消息内容稳定可展示
+ * @param content Markdown 文本
+ * @returns HTML 字符串
+ */
+const parseMarkdownContent = (content: string) => {
   const ready = markedReady.value
   if (!ready || !markedCore) {
     void ensureMarkedCore()
@@ -1173,8 +1200,28 @@ const renderMarkdown = (content: string) => {
   }
 }
 
+/**
+ * 获取消息渲染 HTML
+ * 静态消息优先复用缓存，减少多次渲染时重复执行 Markdown 解析
+ * @param content 消息内容
+ * @returns HTML 字符串
+ */
+const getMessageHtml = (content: string) => {
+  if (!content) return ''
+  const cachedHtml = markdownHtmlCache.get(content)
+  if (cachedHtml) return cachedHtml
+
+  const parsedHtml = parseMarkdownContent(content)
+  setMarkdownHtmlCache(content, parsedHtml)
+  return parsedHtml
+}
+
 onBeforeUnmount(() => {
   document.removeEventListener('keypress', handleKeyPress)
+  if (chatScrollRafId !== null) {
+    window.cancelAnimationFrame(chatScrollRafId)
+    chatScrollRafId = null
+  }
   // 清理全局函数
   delete (window as any).copyCode
 })

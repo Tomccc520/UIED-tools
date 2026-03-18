@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            AI竞聘演讲稿
+            免费 AI竞聘演讲稿
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成专业、有感染力的岗位竞聘演讲稿，助您在职业晋升中脱颖而出</p>
         </div>

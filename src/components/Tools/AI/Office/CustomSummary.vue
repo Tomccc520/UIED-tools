@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-fuchsia-600">
-            AI自定义总结
+            免费 AI自定义总结
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">灵活生成各类总结文档，支持自定义主题和结构，满足个性化需求</p>
         </div>

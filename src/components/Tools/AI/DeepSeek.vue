@@ -28,7 +28,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -43,7 +43,7 @@
               <div v-if="messages.length === 1" class="text-center py-8">
                 <h1
                   class="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
-                  欢迎使用 AI 助手
+                  免费欢迎使用 AI 助手
                 </h1>
                 <p class="mt-4 text-gray-500">您可以开始提问，或点击下方快捷提示开始对话</p>
               </div>
@@ -202,7 +202,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from '@vue/runtime-core'
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import axios from 'axios'
 
@@ -213,7 +213,12 @@ const info = {
 }
 
 // 简化数据结构
-const messages = ref<Array<{ role: string, content: string }>>([
+interface Message {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+const messages = ref<Message[]>([
   {
     role: 'system',
     content: 'You are a helpful assistant.'
@@ -225,8 +230,57 @@ const chatContainer = ref<HTMLElement | null>(null)
 const currentMessage = ref('')
 const loading = ref(false)
 const textareaHeight = ref(56)
-const typingMessage = ref('')
 const isTyping = ref(false)
+let typewriterTimer: ReturnType<typeof setTimeout> | null = null
+let scrollRafId: number | null = null
+
+/**
+ * 调度对话区滚动到底部
+ * 合并同一帧内的多次滚动请求，减少高频内容追加导致的布局抖动
+ */
+const scheduleScrollToBottom = () => {
+  if (scrollRafId !== null) return
+  scrollRafId = window.requestAnimationFrame(() => {
+    scrollRafId = null
+    if (!chatContainer.value) return
+    chatContainer.value.scrollTop = chatContainer.value.scrollHeight
+  })
+}
+
+/**
+ * 启动分帧打字机输出
+ * 采用批量字符追加替代逐字符定时器，保留动态输出体验并降低响应式更新频率
+ * @param targetMessage 目标消息对象
+ * @param fullText 完整回复文本
+ */
+const startTypewriterOutput = (targetMessage: Message, fullText: string) => {
+  if (typewriterTimer) {
+    clearTimeout(typewriterTimer)
+    typewriterTimer = null
+  }
+
+  const chars = fullText.split('')
+  let index = 0
+  isTyping.value = true
+
+  const typeNextChunk = () => {
+    if (index >= chars.length) {
+      isTyping.value = false
+      typewriterTimer = null
+      return
+    }
+
+    const remaining = chars.length - index
+    const chunkSize = remaining > 240 ? 10 : remaining > 120 ? 6 : remaining > 60 ? 4 : 2
+    targetMessage.content += chars.slice(index, index + chunkSize).join('')
+    index += chunkSize
+    scheduleScrollToBottom()
+
+    typewriterTimer = setTimeout(typeNextChunk, 22)
+  }
+
+  typeNextChunk()
+}
 
 // 功能特性
 const features = [
@@ -340,10 +394,7 @@ const handleSend = async () => {
     })
 
     // 滚动到底部
-    await nextTick()
-    if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-    }
+    scheduleScrollToBottom()
 
     // 调用API
     const response = await axios.post('https://api.pearktrue.cn/api/deepseek/', {
@@ -353,28 +404,14 @@ const handleSend = async () => {
     // 添加AI回复(使用打字机效果)
     if (response.data && response.data.code === 200 && response.data.message) {
       const aiMessage = response.data.message
-      messages.value.push({
+      const assistantMessage: Message = {
         role: 'assistant',
         content: ''
-      })
-
-      // 打字机效果
-      isTyping.value = true
-      const lastIndex = messages.value.length - 1
-      const chars = aiMessage.split('')
-      let index = 0
-
-      const typeNextChar = () => {
-        if (index < chars.length) {
-          messages.value[lastIndex].content += chars[index]
-          index++
-          setTimeout(typeNextChar, 30) // 调整这个数值可以改变打字速度
-        } else {
-          isTyping.value = false
-        }
       }
+      messages.value.push(assistantMessage)
 
-      typeNextChar()
+      // 打字机效果（分帧批量输出）
+      startTypewriterOutput(assistantMessage, aiMessage)
     } else {
       console.error('API响应数据:', response.data)
       throw new Error('API返回数据格式不符合预期')
@@ -384,10 +421,7 @@ const handleSend = async () => {
     currentMessage.value = ''
 
     // 滚动到底部
-    await nextTick()
-    if (chatContainer.value) {
-      chatContainer.value.scrollTop = chatContainer.value.scrollHeight
-    }
+    scheduleScrollToBottom()
 
   } catch (error) {
     console.error('发送消息失败:', error)
@@ -434,6 +468,20 @@ const handleKeyPress = (e: KeyboardEvent) => {
 onMounted(() => {
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keypress', handleKeyPress)
+
+  if (typewriterTimer) {
+    clearTimeout(typewriterTimer)
+    typewriterTimer = null
+  }
+
+  if (scrollRafId !== null) {
+    window.cancelAnimationFrame(scrollRafId)
+    scrollRafId = null
+  }
 })
 
 </script>

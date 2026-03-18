@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            研究报告生成
+            免费研究报告生成
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成深度研究报告，涵盖研究背景、方法、结果与结论，助力学术与商业研究</p>
         </div>

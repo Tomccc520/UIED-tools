@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-emerald-500">
-            立项申请报告
+            免费立项申请报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成规范的立项申请报告，清晰阐述项目必要性、目标、实施计划与预算</p>
         </div>

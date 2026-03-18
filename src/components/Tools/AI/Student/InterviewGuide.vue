@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            面试指南生成
+            免费面试指南生成
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成个性化面试指南，涵盖常见问题、答题技巧与注意事项，助您面试通关</p>
         </div>

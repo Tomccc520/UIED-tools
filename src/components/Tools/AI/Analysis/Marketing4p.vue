@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-pink-500 to-rose-500">
-            4P营销分析
+            免费 4P营销分析
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成4P营销组合策略，涵盖产品、价格、渠道与促销</p>
         </div>

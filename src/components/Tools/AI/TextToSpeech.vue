@@ -103,7 +103,7 @@ onMounted(() => {
           <div class="text-center mb-8">
             <h1
               class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-4">
-              {{ info.title }}
+              {{ $ensureFreeToolTitle(info.title) }}
             </h1>
             <p class="text-gray-500">{{ info.subtitle }}</p>
           </div>

@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-cyan-500">
-            PEST分析
+            免费 PEST分析
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成PEST宏观环境分析，涵盖政治、经济、社会与技术四大维度</p>
         </div>

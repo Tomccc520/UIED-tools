@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-emerald-500 to-green-600">
-            AI调研报告
+            免费 AI调研报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成实地调研报告，整理调研数据，提炼核心发现，支持决策制定</p>
         </div>

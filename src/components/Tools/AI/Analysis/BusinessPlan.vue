@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-amber-500 to-orange-600">
-            AI商业计划书
+            免费 AI商业计划书
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能撰写专业商业计划书，涵盖市场分析、商业模式、运营策略与财务预测，助力融资成功</p>
         </div>

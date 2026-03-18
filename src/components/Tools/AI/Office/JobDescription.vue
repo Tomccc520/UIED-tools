@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-fuchsia-600">
-            AI招聘JD
+            免费 AI招聘JD
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成专业、吸引人的职位描述(JD)，精准匹配人才</p>
         </div>

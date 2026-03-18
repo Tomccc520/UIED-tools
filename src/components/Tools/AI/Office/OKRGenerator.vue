@@ -9,7 +9,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            AI OKR 制定
+            免费 AI OKR 制定
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
             智能协助制定目标与关键结果（OKR），确保目标聚焦且可衡量，提升团队执行力

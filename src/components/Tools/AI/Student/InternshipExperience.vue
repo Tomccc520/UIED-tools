@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            实习体验报告生成
+            免费实习体验报告生成
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成实习体验报告，分享公司环境、团队氛围和工作感受，记录真实职场体验</p>
         </div>

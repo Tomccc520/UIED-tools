@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-slate-600 to-zinc-600">
-            AI毕业论文
+            免费 AI毕业论文
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能辅助生成毕业论文初稿，包含摘要、正文和参考文献，助力学术写作</p>
         </div>

@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            AI问卷设计
+            免费 AI问卷设计
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
             智能生成科学、合理的调查问卷，提高数据收集的有效性与回收率

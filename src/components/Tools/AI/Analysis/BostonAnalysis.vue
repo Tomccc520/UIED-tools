@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-500 to-pink-500">
-            7S模型分析
+            免费 7S模型分析
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成麦肯锡7S分析报告，全方位剖析企业战略、结构、制度、人员、风格、技能与价值观</p>
         </div>

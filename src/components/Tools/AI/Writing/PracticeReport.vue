@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-600">
-            AI社会实践报告
+            免费 AI社会实践报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成社会实践报告，记录实践过程，总结实践经验</p>
         </div>

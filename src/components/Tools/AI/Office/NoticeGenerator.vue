@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600">
-            AI通知撰写
+            免费 AI通知撰写
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
             智能生成各类公务通知、放假安排、会议通知等，格式规范，措辞得体

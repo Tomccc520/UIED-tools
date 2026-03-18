@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-zinc-500 to-slate-500">
-            情况报告
+            免费情况报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成客观、详实的情况报告，梳理事件经过，分析原因并提出处理意见</p>
         </div>

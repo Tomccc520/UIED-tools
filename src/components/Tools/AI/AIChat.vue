@@ -258,7 +258,8 @@
                   </div>
 
                   <!-- Main Content -->
-                  <div v-if="msg.content" class="markdown-body" v-html="renderMarkdown(msg.content)"></div>
+                  <div v-if="msg.content && !msg.isStreaming" class="markdown-body" v-html="getMessageHtml(msg.content)"></div>
+                  <div v-else-if="msg.content" class="text-gray-700 whitespace-pre-wrap">{{ msg.content }}</div>
                   <div v-else class="flex items-center space-x-1 h-7 px-2">
                     <div class="typing-dot"></div>
                     <div class="typing-dot" style="animation-delay: 0.2s"></div>
@@ -417,7 +418,7 @@ import { ElMessage, ElSelect, ElOption, ElMessageBox, ElDialog, ElSwitch, ElInpu
 import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
 import uiedLogo from '@/assets/uiedlogo.png'
-import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
+import { ensureHighlightRuntime, ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 
 // Types
 interface Message {
@@ -426,6 +427,7 @@ interface Message {
   time: string
   reasoning_content?: string
   showReasoning?: boolean
+  isStreaming?: boolean
 }
 
 interface ChatSession {
@@ -466,11 +468,12 @@ const maxFreeUsage = ref(5)
 
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
-let highlightStyleLoaded = false
 type MarkedCore = typeof import('marked').marked
 let markedCore: MarkedCore | null = null
 let markedConfigured = false
 const markedReady = ref(false)
+const markdownHtmlCache = new Map<string, string>()
+const MAX_MARKDOWN_HTML_CACHE_SIZE = 160
 
 /**
  * 转义 HTML 特殊字符
@@ -491,13 +494,8 @@ const escapeHtml = (code: string) => {
  */
 const ensureHighlightCore = async () => {
   if (!highlightCore) {
-    const module = await import('highlight.js')
-    highlightCore = module.default
-  }
-
-  if (!highlightStyleLoaded) {
-    await import('highlight.js/styles/atom-one-light.css')
-    highlightStyleLoaded = true
+    const runtime = await ensureHighlightRuntime('atom-one-light')
+    highlightCore = runtime.hljs
   }
 
   return highlightCore
@@ -761,6 +759,7 @@ const clearAllHistory = () => {
     .then(() => {
       history.value = []
       localStorage.removeItem(STORAGE_KEY)
+      markdownHtmlCache.clear()
       createNewChat()
       ElMessage.success('已清空所有记录')
     })
@@ -844,7 +843,30 @@ const scrollToBottom = () => {
   })
 }
 
-const renderMarkdown = (content: string) => {
+/**
+ * 维护 Markdown 渲染缓存容量
+ * 缓存超过上限时移除最早项，避免长会话导致内存持续增长
+ * @param key 缓存键（原始 Markdown）
+ * @param html 缓存值（解析后 HTML）
+ */
+const setMarkdownHtmlCache = (key: string, html: string) => {
+  if (markdownHtmlCache.has(key)) return
+  if (markdownHtmlCache.size >= MAX_MARKDOWN_HTML_CACHE_SIZE) {
+    const oldestKey = markdownHtmlCache.keys().next().value
+    if (oldestKey) {
+      markdownHtmlCache.delete(oldestKey)
+    }
+  }
+  markdownHtmlCache.set(key, html)
+}
+
+/**
+ * 解析 Markdown 文本
+ * 统一处理 marked 未就绪和异常场景，保证消息内容稳定可显示
+ * @param content Markdown 文本
+ * @returns 解析后的 HTML
+ */
+const parseMarkdownContent = (content: string) => {
   const ready = markedReady.value
   if (!ready || !markedCore) {
     void ensureMarkedCore()
@@ -856,6 +878,22 @@ const renderMarkdown = (content: string) => {
   } catch (e) {
     return content
   }
+}
+
+/**
+ * 获取消息 HTML 内容
+ * 对静态消息复用解析缓存，减少聊天窗口重渲染时重复执行 marked.parse
+ * @param content 消息 Markdown 文本
+ * @returns 渲染后的 HTML
+ */
+const getMessageHtml = (content: string) => {
+  if (!content) return ''
+  const cachedHtml = markdownHtmlCache.get(content)
+  if (cachedHtml) return cachedHtml
+
+  const parsedHtml = parseMarkdownContent(content)
+  setMarkdownHtmlCache(content, parsedHtml)
+  return parsedHtml
 }
 
 const copyToClipboard = async (text: string) => {
@@ -925,7 +963,8 @@ const sendMessage = async () => {
     content: '',
     time: 'Thinking...',
     reasoning_content: '',
-    showReasoning: true
+    showReasoning: true,
+    isStreaming: true
   }
 
   if (currentSession.value) {
@@ -988,7 +1027,9 @@ const sendMessage = async () => {
             })
           } else {
             // 打字结束
+            targetMsg.isStreaming = false
             targetMsg.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            void getMessageHtml(targetMsg.content)
             saveHistory()
 
             // Highlight code blocks
@@ -1004,6 +1045,7 @@ const sendMessage = async () => {
         typeNextChar()
 
       } else {
+        targetMsg.isStreaming = false
         targetMsg.content = `Error: ${data.msg || 'Unknown error'}`
         saveHistory()
       }
@@ -1021,6 +1063,7 @@ const sendMessage = async () => {
     console.error('Chat failed:', error)
     if (currentSession.value) {
       const targetMsg = currentSession.value.messages[currentSession.value.messages.length - 1]
+      targetMsg.isStreaming = false
       targetMsg.content = '抱歉，发生了一些错误，请稍后重试。'
       saveHistory()
     }
@@ -1032,8 +1075,6 @@ const sendMessage = async () => {
 onMounted(async () => {
   loadHistory()
   loadSettings()
-  await ensureHighlightCore()
-  void ensureMarkedCore()
   await fetchModels()
 })
 </script>

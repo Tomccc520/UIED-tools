@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-amber-500">
-            创新创业金点子
+            免费创新创业金点子
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">激发创业灵感，结合您的优势与资源，提供极具潜力的商业创意</p>
         </div>

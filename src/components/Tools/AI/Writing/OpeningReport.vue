@@ -19,7 +19,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-cyan-600 to-sky-600">
-            AI开题报告
+            免费 AI开题报告
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成标准规范的开题报告，包含选题意义、研究现状、内容方法和进度安排</p>
         </div>

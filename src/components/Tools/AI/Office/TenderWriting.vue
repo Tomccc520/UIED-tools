@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-slate-600 to-gray-600">
-            AI标书撰写
+            免费 AI标书撰写
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能辅助撰写投标文件，包含技术方案、商务标和实施计划等核心内容</p>
         </div>

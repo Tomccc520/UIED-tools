@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-red-600 to-orange-600">
-            AI放假通知
+            免费 AI放假通知
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成规范、温馨的放假通知，包含放假时间、调休安排和注意事项</p>
         </div>

@@ -18,7 +18,7 @@
           </div>
           <h2
             class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-teal-600 to-cyan-600">
-            AI访谈提纲
+            免费 AI访谈提纲
           </h2>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能设计专业的访谈提纲，确保访谈过程高效、深入</p>
         </div>
