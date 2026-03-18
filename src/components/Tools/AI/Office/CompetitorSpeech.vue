@@ -158,8 +158,27 @@
               </div>
 
               <div class="flex-1 relative bg-white min-h-0">
-                <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI生成的演讲稿将在这里显示..."
-                  :disabled-menus="[]" @save="save"></v-md-editor>
+
+                <template v-if="showResultEditor">
+
+                  <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI生成的演讲稿将在这里显示..."
+
+                    :disabled-menus="[]" @save="save"></v-md-editor>
+
+                </template>
+
+                <template v-else>
+
+                  <div class="h-full flex flex-col items-center justify-center text-gray-500 bg-gray-50/70">
+
+                    <p class="text-sm mb-1">点击“开始生成”后将自动加载编辑器并显示结果</p>
+
+                    <p class="text-xs text-gray-400">无需额外操作</p>
+
+                  </div>
+
+                </template>
+
               </div>
             </div>
           </div>
@@ -179,7 +198,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { nextTick, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -196,6 +215,76 @@ const form = reactive({
 
 const isGenerating = ref(false)
 const resultText = ref('')
+const showResultEditor = ref(false)
+let pendingResultChunk = ''
+let resultStreamFlushRafId: number | null = null
+
+/**
+ * 刷新待写入的流式文本分片
+ * 在动画帧内合并分片写入，减少编辑器高频响应式更新导致的卡顿
+ */
+const flushPendingResultChunk = () => {
+  resultStreamFlushRafId = null
+  if (!pendingResultChunk) return
+  resultText.value += pendingResultChunk
+  pendingResultChunk = ''
+}
+
+/**
+ * 强制刷新剩余分片
+ * 请求结束或异常时立即清空缓冲，确保结果区内容完整
+ */
+const forceFlushPendingResultChunk = () => {
+  if (resultStreamFlushRafId !== null) {
+    window.cancelAnimationFrame(resultStreamFlushRafId)
+    resultStreamFlushRafId = null
+  }
+  flushPendingResultChunk()
+}
+
+/**
+ * 调度流式分片刷新
+ * 单帧内最多刷新一次，平衡输出流畅度与主线程开销
+ */
+const scheduleResultStreamFlush = () => {
+  if (resultStreamFlushRafId !== null) return
+  resultStreamFlushRafId = window.requestAnimationFrame(() => {
+    flushPendingResultChunk()
+  })
+}
+
+/**
+ * 追加流式返回分片
+ * 先写入缓冲再统一刷新，避免每个 chunk 都触发编辑器重渲染
+ * @param chunk 流式返回文本
+ */
+const appendResultChunk = (chunk: string) => {
+  if (!chunk) return
+  pendingResultChunk += chunk
+  scheduleResultStreamFlush()
+}
+
+/**
+ * 重置流式输出状态
+ * 在新请求开始或组件卸载时清空缓冲与动画帧状态，避免串流污染
+ */
+const resetResultStreamState = () => {
+  pendingResultChunk = ''
+  if (resultStreamFlushRafId !== null) {
+    window.cancelAnimationFrame(resultStreamFlushRafId)
+    resultStreamFlushRafId = null
+  }
+}
+
+/**
+ * 确保结果编辑器已就绪
+ * 仅在用户实际使用结果区时挂载编辑器，降低页面初始化成本
+ */
+const ensureResultEditorReady = () => {
+  if (showResultEditor.value) return
+  showResultEditor.value = true
+}
+
 
 const generateContent = async () => {
   if (!form.position) {
@@ -204,7 +293,9 @@ const generateContent = async () => {
   }
 
   try {
+    ensureResultEditorReady()
     isGenerating.value = true
+    resetResultStreamState()
     resultText.value = ''
 
     const prompt = `请帮我撰写一份竞聘演讲稿。
@@ -224,14 +315,17 @@ ${form.plan ? `未来规划：${form.plan}` : ''}
       systemPrompt: '你是一个资深的职业演说教练，擅长撰写各类竞聘演讲稿。',
       temperature: 0.6
     }, (content) => {
-      resultText.value += content
+      appendResultChunk(content)
     })
+    forceFlushPendingResultChunk()
 
     ElMessage.success('生成完成')
   } catch (error) {
+    forceFlushPendingResultChunk()
     ElMessage.error('生成失败，请稍后重试')
   } finally {
     isGenerating.value = false
+    resetResultStreamState()
   }
 }
 
@@ -266,7 +360,9 @@ const handleAiAssist = async (type: string) => {
   }
 
   try {
-    isGenerating.value = true
+    resetResultStreamState()
+    ensureResultEditorReady()
+  isGenerating.value = true
     const currentContent = resultText.value
     resultText.value = ''
 
@@ -275,15 +371,18 @@ const handleAiAssist = async (type: string) => {
       systemPrompt,
       temperature: 0.6
     }, (content) => {
-      resultText.value += content
+      appendResultChunk(content)
     })
+    forceFlushPendingResultChunk()
 
     ElMessage.success('优化完成')
   } catch (error) {
+    forceFlushPendingResultChunk()
     resultText.value = resultText.value
     ElMessage.error('操作失败，请重试')
   } finally {
     isGenerating.value = false
+    resetResultStreamState()
   }
 }
 
@@ -300,6 +399,10 @@ const copyResult = async () => {
 const copyPreviewHtml = async () => {
   if (!resultText.value) return
   try {
+    if (!showResultEditor.value) {
+      ensureResultEditorReady()
+      await nextTick()
+    }
     const previewElement = document.querySelector('.vuepress-markdown-body')
     if (previewElement) {
       const htmlContent = previewElement.innerHTML
@@ -318,9 +421,14 @@ const copyPreviewHtml = async () => {
 }
 
 const clearResult = () => {
+  resetResultStreamState()
   resultText.value = ''
   isGenerating.value = false
 }
+
+onBeforeUnmount(() => {
+  resetResultStreamState()
+})
 
 const save = (text: string, html: string) => {
   console.log('save', text, html)
