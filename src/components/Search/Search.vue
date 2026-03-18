@@ -25,7 +25,7 @@
       <!-- 搜索区域 -->
       <div class="search-content">
         <!-- 对话内容区 -->
-        <div class="chat-container" v-if="searchParam.title && aiResponse">
+        <div class="chat-container" v-if="currentQuestion && aiResponse">
           <!-- 历史对话 -->
           <template v-for="(chat, index) in chatHistory" :key="index">
             <div class="chat-message user-message">
@@ -65,7 +65,7 @@
                 <User />
               </el-icon>
             </div>
-            <div class="message-content">{{ searchParam.title }}</div>
+            <div class="message-content">{{ currentQuestion }}</div>
           </div>
           <div v-if="aiResponse" class="chat-message ai-message">
             <div class="message-avatar">
@@ -112,7 +112,7 @@
         </div>
 
         <!-- 快捷工具 -->
-        <template v-if="!searchParam.title">
+        <template v-if="!currentQuestion">
           <div class="welcome-section">
             <h3 class="welcome-title">AI智能助手</h3>
             <p class="welcome-desc">我可以帮您查找工具、解答问题或推荐解决方案。</p>
@@ -282,6 +282,7 @@ const chatHistory = ref<Array<{
   question: string
   answer: AISearchResponse
 }>>([])
+const currentQuestion = ref('')
 
 const currentAnswerHtml = ref('')
 const historyAnswerHtmlCache = new Map<string, string>()
@@ -478,12 +479,6 @@ const quickTools = [
   }
 ]
 
-// 格式化内容，去掉链接
-const formatContent = (content: string) => {
-  // 移除方括号中的URL
-  return content.replace(/\[(.*?)\]/g, '').trim()
-}
-
 // 在新窗口打开链接
 const openInNewTab = (url: string) => {
   window.open(url, '_blank')
@@ -491,7 +486,8 @@ const openInNewTab = (url: string) => {
 
 // 处理搜索
 const handleSearch = async () => {
-  if (!searchParam.title.trim()) return
+  const query = searchParam.title.trim()
+  if (!query) return
 
   try {
     searchParam.loading = true
@@ -514,13 +510,16 @@ const handleSearch = async () => {
     }
 
     // 如果已有对话，添加到历史
-    if (aiResponse.value) {
+    const previousQuestion = currentQuestion.value.trim()
+    if (aiResponse.value && previousQuestion && aiResponse.value.content?.trim()) {
       chatHistory.value.push({
-        question: searchParam.title,
+        question: previousQuestion,
         answer: aiResponse.value
       })
     }
 
+    // 锁定当前提问，避免输入框变化导致问题文案错位
+    currentQuestion.value = query
     aiResponse.value = newResponse
 
     // 设置一个更长的超时计时器，超过45秒提示用户
@@ -532,7 +531,7 @@ const handleSearch = async () => {
     }, 25000)
 
     try {
-      const response = await searchWithAI(searchParam.title, updateResponse)
+      const response = await searchWithAI(query, updateResponse)
 
       // 清除超时计时器
       clearTimeout(timeoutTimer)
@@ -543,7 +542,7 @@ const handleSearch = async () => {
       aiResponse.value = response
       responseBuffer.content = response.content || ''
       scheduleCurrentAnswerHtmlRender(responseBuffer.content, true)
-      saveHistory(searchParam.title)
+      saveHistory(query)
     } catch (error: any) {
       // 清除超时计时器
       clearTimeout(timeoutTimer)
@@ -610,6 +609,7 @@ const handleHistoryClick = (query: string) => {
 const handleClose = () => {
   emit('update:visible', false)
   searchParam.title = ''
+  currentQuestion.value = ''
   // 清除所有状态
   aiResponse.value = null
   chatHistory.value = []
