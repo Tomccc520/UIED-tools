@@ -197,16 +197,12 @@
 import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { PDFDocument, degrees } from 'pdf-lib'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
 import VueDraggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
-import * as pdfjsLib from 'pdfjs-dist'
-import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
-
-setupPdfWorker()
+import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 
 const route = useRoute()
 
@@ -216,6 +212,15 @@ const pdfJsReady = ref(true)
 // 注册组件
 const components = {
   'vue-draggable': VueDraggable
+}
+
+/**
+ * 打开 PDF.js 文档实例
+ * 统一通过运行时懒加载获取 pdfjs-dist，避免页面初始化时引入重依赖
+ */
+const openPdfDocument = async (arrayBuffer: ArrayBuffer) => {
+  const pdfjsLib = await ensurePdfjsRuntime()
+  return pdfjsLib.getDocument(arrayBuffer).promise
 }
 
 interface Page {
@@ -341,8 +346,7 @@ const handleFile = async (file: File) => {
     const arrayBuffer = await file.arrayBuffer()
 
     // 先用 pdf.js 检查文件是否可以正常打开
-    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
-    const pdfDoc = await loadingTask.promise
+    const pdfDoc = await openPdfDocument(arrayBuffer)
     pageCount.value = pdfDoc.numPages
 
     // 初始化页面数据
@@ -428,8 +432,7 @@ const rotatePage = async (index: number, angle: number) => {
       const arrayBuffer = await currentFile.value?.arrayBuffer()
       if (!arrayBuffer) return
 
-      const loadingTask = pdfjsLib.getDocument(arrayBuffer)
-      const pdfDoc = await loadingTask.promise
+      const pdfDoc = await openPdfDocument(arrayBuffer)
       const page = await pdfDoc.getPage(index + 1)
       const canvas = pageCanvases.value[index]
       if (!canvas) return
@@ -475,8 +478,7 @@ const rotateAll = async (angle: number) => {
     const arrayBuffer = await currentFile.value?.arrayBuffer()
     if (!arrayBuffer) return
 
-    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
-    const pdfDoc = await loadingTask.promise
+    const pdfDoc = await openPdfDocument(arrayBuffer)
 
     for (let i = 0; i < pdfDoc.numPages; i++) {
       const page = await pdfDoc.getPage(i + 1)
@@ -536,8 +538,7 @@ const deletePage = async (index: number) => {
       const arrayBuffer = await currentFile.value?.arrayBuffer()
       if (!arrayBuffer) return
 
-      const loadingTask = pdfjsLib.getDocument(arrayBuffer)
-      const pdfDoc = await loadingTask.promise
+      const pdfDoc = await openPdfDocument(arrayBuffer)
 
       // 清除所有画布
       Object.values(pageCanvases.value).forEach(canvas => {
@@ -598,6 +599,7 @@ const savePDF = async () => {
 
   processing.value = true
   try {
+    const { PDFDocument, degrees } = await ensurePdfLibRuntime()
     const arrayBuffer = await currentFile.value.arrayBuffer()
     const pdfDoc = await PDFDocument.load(arrayBuffer)
 

@@ -216,16 +216,11 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { PDFDocument } from 'pdf-lib'
 import draggable from 'vuedraggable'
-import * as pdfjsLib from 'pdfjs-dist'
 import { formatFileSize } from '@/utils/file'
-import { getPdfFileError } from '@/utils/pdf'
+import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
-
-import { setupPdfWorker } from '@/utils/pdf'
-setupPdfWorker()
 
 const route = useRoute()
 
@@ -324,6 +319,7 @@ const handleFileInputChange = (event: Event) => {
 
 const generateThumbnail = async (file: File) => {
   try {
+    const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await file.arrayBuffer()
     const loadingTask = pdfjsLib.getDocument(arrayBuffer)
     const pdf = await loadingTask.promise
@@ -409,6 +405,7 @@ const mergePDFs = async () => {
 
   try {
     merging.value = true
+    const { PDFDocument } = await ensurePdfLibRuntime()
     const mergedPdf = await PDFDocument.create()
 
     for (const item of files.value) {

@@ -238,12 +238,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from '@vue/runtime-core'
+import { ref, reactive } from '@vue/runtime-core'
 import { ElMessage } from 'element-plus'
 // @ts-ignore
 import JSZip from 'jszip'
-import * as pdfjsLib from 'pdfjs-dist'
-import { setupPdfWorker, getPdfFileError } from '@/utils/pdf'
+import { ensurePdfjsRuntime, getPdfFileError } from '@/utils/pdf'
 import { Document, Upload, Delete } from '@element-plus/icons-vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -331,6 +330,7 @@ const startConversion = async () => {
 
 // PDF转图片
 const convertPdfToImages = async (file: File) => {
+  const pdfjsLib = await ensurePdfjsRuntime()
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
   const zip = new JSZip()
@@ -367,35 +367,6 @@ const convertPdfToImages = async (file: File) => {
   link.click()
   URL.revokeObjectURL(link.href)
 }
-
-// 拖放处理
-onMounted(async () => {
-  // const dropZone = document.querySelector('.border-dashed')
-  // if (!dropZone) return
-
-  // dropZone.addEventListener('dragover', ((e: Event) => {
-  //   e.preventDefault()
-  //   if (e instanceof DragEvent) {
-  //     dropZone.classList.add('border-blue-500')
-  //   }
-  // }) as EventListener)
-
-  // dropZone.addEventListener('dragleave', () => {
-  //   dropZone.classList.remove('border-blue-500')
-  // })
-
-  // dropZone.addEventListener('drop', ((e: Event) => {
-  //   e.preventDefault()
-  //   if (e instanceof DragEvent && e.dataTransfer) {
-  //     dropZone.classList.remove('border-blue-500')
-  //     const droppedFiles = e.dataTransfer.files
-  //     const pdfFiles = Array.from(droppedFiles).filter((file: File) => file.type.includes('pdf'))
-  //     files.value.push(...pdfFiles)
-  //   }
-  // }) as EventListener)
-
-  setupPdfWorker()
-})
 
 /**
  * 格式化文件大小

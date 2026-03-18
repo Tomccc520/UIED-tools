@@ -184,14 +184,10 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import { ElMessage } from 'element-plus'
-import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
+import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
-
-setupPdfWorker()
 
 const route = useRoute()
 
@@ -346,6 +342,7 @@ const handleFile = async (f: File) => {
 const loadPdfPreview = async (f: File) => {
   rendering.value = true
   try {
+    const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await f.arrayBuffer()
     pdfDoc.value = await pdfjsLib.getDocument(arrayBuffer).promise
     totalPages.value = pdfDoc.value.numPages
@@ -414,6 +411,7 @@ const addPageNumbers = async () => {
 
   processing.value = true
   try {
+    const { PDFDocument, StandardFonts, rgb } = await ensurePdfLibRuntime()
     const arrayBuffer = await file.value.arrayBuffer()
     const pdfDoc = await PDFDocument.load(arrayBuffer)
     const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica)

@@ -222,17 +222,14 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { PDFDocument } from 'pdf-lib'
 import draggable from 'vuedraggable'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
-import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
-import * as pdfjsLib from 'pdfjs-dist'
+import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
 const route = useRoute()
-setupPdfWorker()
 
 const info = reactive({
   title: "PDF页面删除",
@@ -351,6 +348,7 @@ const handleFile = async (file: File) => {
   try {
     currentFile.value = file
     const arrayBuffer = await file.arrayBuffer()
+    const { PDFDocument } = await ensurePdfLibRuntime()
     pdfDoc.value = await PDFDocument.load(arrayBuffer)
 
     // 初始化页面数据
@@ -371,6 +369,7 @@ const renderPagePreviews = async () => {
 
   try {
     const pdfBytes = await pdfDoc.value.save()
+    const pdfjsLib = await ensurePdfjsRuntime()
     const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise
 
     // 使用Promise.all并行渲染所有页面
@@ -409,6 +408,7 @@ const renderPage = async (pageIndex: number) => {
 
   try {
     const pdfBytes = await pdfDoc.value.save()
+    const pdfjsLib = await ensurePdfjsRuntime()
     const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise
     const page = await pdf.getPage(pageIndex + 1)
     const canvas = canvasRefs.value.get(pageIndex)
@@ -496,6 +496,7 @@ const savePDF = async () => {
 
   try {
     saving.value = true
+    const { PDFDocument } = await ensurePdfLibRuntime()
     const newPdf = await PDFDocument.create()
 
     // 只复制未删除的页面

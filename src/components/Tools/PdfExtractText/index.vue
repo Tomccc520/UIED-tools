@@ -184,12 +184,9 @@
 import { ref, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import * as pdfjsLib from 'pdfjs-dist'
-import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
+import { getPdfFileError, ensurePdfjsRuntime } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
-
-setupPdfWorker()
 
 const route = useRoute()
 
@@ -252,6 +249,7 @@ const hasThumbnail = ref(false)
  */
 const generateThumbnail = async (f: File) => {
   try {
+    const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await f.arrayBuffer()
     const loadingTask = pdfjsLib.getDocument(arrayBuffer)
     const pdf = await loadingTask.promise
@@ -355,6 +353,7 @@ const extractText = async () => {
   extractedText.value = ''
 
   try {
+    const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await file.value.arrayBuffer()
     const loadingTask = pdfjsLib.getDocument(arrayBuffer)
     const pdf = await loadingTask.promise

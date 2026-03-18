@@ -218,15 +218,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { PDFDocument } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
 import JSZip from 'jszip'
-import { getPdfFileError, setupPdfWorker } from '@/utils/pdf'
+import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
-
-setupPdfWorker()
 
 const route = useRoute()
 
@@ -348,6 +344,7 @@ const processFile = async (file: File) => {
   previewProgress.value = 0
 
   try {
+    const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await file.arrayBuffer()
     const loadingTask = pdfjsLib.getDocument(arrayBuffer)
     const pdf = await loadingTask.promise
@@ -500,6 +497,7 @@ const processPdf = async () => {
 
   processing.value = true
   try {
+    const { PDFDocument } = await ensurePdfLibRuntime()
     const arrayBuffer = await currentFile.value.arrayBuffer()
     const srcDoc = await PDFDocument.load(arrayBuffer)
     const totalPages = srcDoc.getPageCount()

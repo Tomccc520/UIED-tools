@@ -26,6 +26,10 @@ const CORE_TOOL_SPECS = [
     checks: [/data-smoke="pdf-merge-start"/, /@click="mergePDFs"/, /@click="clearFiles"/]
   },
   {
+    route: '/tools/pdf-compress',
+    checks: [/@click="compressPDF"/, /@click="clearAll"/, /@click="downloadAllFiles"/]
+  },
+  {
     route: '/tools/markdown',
     checks: [/<v-md-editor/, /data-smoke="markdown-editor"/, /编辑器/]
   },
