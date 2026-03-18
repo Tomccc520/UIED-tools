@@ -12,8 +12,8 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2026-03-18 14:30
- * @version Beta 2.7.9
+ * @lastUpdate 2026-03-18 23:40
+ * @version Beta 2.7.13
  * @toolsCount 当前工具总数：331个
  */
 
@@ -266,7 +266,7 @@ onUnmounted(() => {
         </div>
 
         <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：329个 | 最后更新：2026-03-18 14:30
+          当前工具总数：329个 | 最后更新：2026-03-18 23:40
         </div>
       </div>
 
@@ -302,6 +302,134 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.7.13 -->
+          <div class="timeline-item" id="v2.7.13">
+            <div class="version-tag">
+              <span class="version">2.7.13</span>
+              <span class="date">2026-03-18 23:40</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">工具优化</el-tag>
+                <span class="text-gray-700">GIF 压缩画质与交互升级</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">GIF 压缩体验升级</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/gif-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">GIF 压缩</router-link></strong>：新增“画质保护模式”（原尺寸/原帧率/256 色优先）与压缩预设，减少误操作带来的画质损失。</li>
+                        <li><strong><router-link to="/tools/gif-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">GIF 压缩</router-link></strong>：增加逐帧重复帧识别与延时合并统计，在尽量保持观感的前提下进一步压缩体积。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.12 -->
+          <div class="timeline-item" id="v2.7.12">
+            <div class="version-tag">
+              <span class="version">2.7.12</span>
+              <span class="date">2026-03-18 22:20</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">PDF工具组运行时加载优化（精简记录）</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">PDF 依赖链路懒加载</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>
+                          <strong><router-link to="/tools/pdf-compress" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 压缩</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-merge" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 合并</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-split" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 分割</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-delete" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 删除</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-rotate" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 旋转</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-encrypt" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 加密</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-watermark" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 水印</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-sign" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 签名</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-extract-text" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 提取文本</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-to-images" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 转图片</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-page-number" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 加页码</router-link></strong>
+                          统一改为运行时按需加载 <code>pdfjs-dist</code> 与 <code>pdf-lib</code>。
+                        </li>
+                        <li>新增 <strong><router-link to="/tools/pdf-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">/tools/pdf-compress</router-link></strong> 冒烟项，持续校验路由可达与关键按钮可用。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.11 -->
+          <div class="timeline-item" id="v2.7.11">
+            <div class="version-tag">
+              <span class="version">2.7.11</span>
+              <span class="date">2026-03-18 20:40</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">导出工具重依赖按需加载（精简记录）</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">运行时加载收敛</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>
+                          <strong><router-link to="/tools/ai/resume" target="_blank"
+                                class="hover:text-blue-600 transition-colors">AI简历</router-link> /
+                            <router-link to="/tools/ai-outsource-quote" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI外包报价</router-link> /
+                            <router-link to="/tools/ai/prompt-editor" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI提示词编辑</router-link> /
+                            <router-link to="/tools/xiaohongshu" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书生成</router-link></strong> 与
+                          <strong><router-link to="/tools/design/DesignQuote" target="_blank"
+                                class="hover:text-blue-600 transition-colors">设计报价单</router-link> /
+                            <router-link to="/tools/design/logo-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Logo 规范</router-link> /
+                            <router-link to="/tools/fish-calendar" target="_blank"
+                              class="hover:text-blue-600 transition-colors">摸鱼日历</router-link> /
+                            <router-link to="/tools/horoscope" target="_blank"
+                              class="hover:text-blue-600 transition-colors">星座运势</router-link> /
+                            <router-link to="/tools/pdf-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF 压缩</router-link></strong>
+                          的 <code>html2canvas</code>、<code>jsPDF</code> 链路已统一切换为“触发导出时再加载”。
+                        </li>
+                        <li>清理无效静态导入，减少首页解析压力，原有功能与交互保持不变。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.7.10 -->
           <div class="timeline-item" id="v2.7.10">

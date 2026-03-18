@@ -27,6 +27,12 @@ type HighlightRuntime = {
   hljs: typeof import('highlight.js')['default']
 }
 
+type GifRuntime = {
+  GIF: typeof import('gif.js')
+  parseGIF: typeof import('gifuct-js').parseGIF
+  decompressFrames: typeof import('gifuct-js').decompressFrames
+}
+
 let htmlPrettierPromise: Promise<HtmlPrettierRuntime> | null = null
 let cssPrettierPromise: Promise<CssPrettierRuntime> | null = null
 let jsPrettierPromise: Promise<JsPrettierRuntime> | null = null
@@ -38,6 +44,7 @@ let jsPdfPromise: Promise<{ jsPDF: typeof import('jspdf').jsPDF }> | null = null
 let markedPromise: Promise<{ marked: typeof import('marked').marked }> | null = null
 let xlsxPromise: Promise<{ XLSX: typeof import('xlsx') }> | null = null
 let highlightCorePromise: Promise<HighlightRuntime> | null = null
+let gifRuntimePromise: Promise<GifRuntime> | null = null
 const highlightStylePromiseMap = new Map<string, Promise<void>>()
 
 const highlightStyleLoaders = {
@@ -235,4 +242,27 @@ export const ensureHighlightRuntime = async (
 
   await highlightStylePromiseMap.get(normalizedTheme)
   return highlightCorePromise
+}
+
+/**
+ * 按需加载 GIF 压缩运行时
+ * 首次压缩时动态引入 gif.js 与 gifuct-js，后续复用缓存 Promise
+ */
+export const ensureGifRuntime = async (): Promise<GifRuntime> => {
+  if (!gifRuntimePromise) {
+    gifRuntimePromise = (async () => {
+      const [gifModule, gifuctModule] = await Promise.all([
+        import('gif.js'),
+        import('gifuct-js')
+      ])
+
+      return {
+        GIF: ((gifModule as any).default ?? gifModule) as typeof import('gif.js'),
+        parseGIF: gifuctModule.parseGIF,
+        decompressFrames: gifuctModule.decompressFrames
+      }
+    })()
+  }
+
+  return gifRuntimePromise
 }
