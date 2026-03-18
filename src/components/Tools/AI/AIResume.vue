@@ -795,8 +795,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElLoading, ElDialog, ElButton, ElInput, ElMessageBox } from 'element-plus'
-import html2canvas from 'html2canvas'
-import jspdf from 'jspdf'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 // 获取路由实例
 const router = useRouter()
@@ -980,6 +979,11 @@ const generatePDF = async () => {
   })
 
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
+
     const element = document.getElementById('resume-container')
     if (!element) {
       ElMessage.error('无法找到简历容器元素')
@@ -993,7 +997,7 @@ const generatePDF = async () => {
     })
 
     const imgData = canvas.toDataURL('image/jpeg', 1.0)
-    const pdf = new jspdf({
+    const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'

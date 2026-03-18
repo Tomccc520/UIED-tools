@@ -680,10 +680,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import html2canvas from 'html2canvas'
 import type { Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { ensureHtml2canvasRuntime } from '@/utils/toolRuntimeLoaders'
 
 const route = useRoute()
 
@@ -1366,6 +1366,8 @@ const generateImage = async () => {
 
   generatingImage.value = true
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     const selectedTemplateData = templates.find(t => t.id === selectedTemplate.value)
     const gradientClass = selectedTemplateData?.gradient || 'from-blue-50 via-purple-50 to-pink-50'
 

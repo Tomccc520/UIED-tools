@@ -394,7 +394,6 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import html2canvas from 'html2canvas'
 import { useRoute } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'

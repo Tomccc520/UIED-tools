@@ -314,8 +314,7 @@ import { useHead } from '@vueuse/head'
 import { ElMessage } from 'element-plus'
 import axios, { AxiosError } from 'axios'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import QRCode from 'qrcode'
-import html2canvas from 'html2canvas'
+import { ensureHtml2canvasRuntime } from '@/utils/toolRuntimeLoaders'
 
 // 接口定义
 interface Fortune {
@@ -395,6 +394,7 @@ const luckyItems = computed(() => {
 const generateQRCode = async () => {
   if (!qrCodeRef.value) return
   try {
+    const QRCode = await import('qrcode')
     const fullUrl = new URL(window.location.pathname, window.location.origin)
     fullUrl.searchParams.set('zodiac', selectedZodiac.value)
 
@@ -421,6 +421,8 @@ const generatePreview = async () => {
   }
 
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     isGenerating.value = true
 
     await nextTick()

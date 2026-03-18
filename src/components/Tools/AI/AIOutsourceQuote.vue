@@ -657,13 +657,11 @@
 import { ref, reactive, watch, computed, h, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
-import html2canvas from 'html2canvas'
-import html2pdf from 'html2pdf.js'
-import { jsPDF } from 'jspdf'
 import { debounce } from 'lodash-es'
 import { useRouter, useRoute } from 'vue-router'
 import type { CascaderOption } from 'element-plus'
 import { ElCascader } from 'element-plus'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 // 初始化路由
 const router = useRouter()
@@ -1137,6 +1135,11 @@ const exportToPDF = async () => {
   if (!validateForm()) return
 
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
+
     exporting.value = true
     const element = previewRef.value
     if (!element) {
@@ -1215,6 +1218,8 @@ const exportToImage = async () => {
   if (!validateForm()) return
 
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     exporting.value = true
     const element = previewRef.value
     if (!element) {
@@ -1350,6 +1355,8 @@ const handleExport = async () => {
   if (!validateForm()) return
 
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     exporting.value = true
     const element = previewRef.value
     if (!element) {
@@ -1407,6 +1414,7 @@ const handleExport = async () => {
 
     if (exportType.value === 'pdf') {
       // 导出为PDF
+      const { jsPDF } = await ensureJsPdfRuntime()
       const imgData = canvas.toDataURL('image/jpeg', 1.0)
       const pdf = new jsPDF({
         orientation: 'portrait',

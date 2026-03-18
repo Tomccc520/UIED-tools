@@ -311,8 +311,7 @@ import { ref, reactive, watch } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 const route = useRoute()
 
@@ -537,6 +536,11 @@ const generateSpec = async () => {
 
 const downloadSpec = async () => {
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
+
     const element = document.querySelector('.preview-content') as HTMLElement
     if (!element) {
       alert('预览内容不存在')
