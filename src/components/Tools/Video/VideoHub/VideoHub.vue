@@ -1,6 +1,6 @@
 <!--
  * @file VideoHub.vue
- * @description 视频工具总览页，统一展示已上线能力、规划能力与处理说明
+ * @description 视频工具总览页，聚合展示已上线视频处理能力
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
@@ -14,7 +14,7 @@
  * @author UIED技术团队
  * @createDate 2026-03-19
  */
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 
@@ -25,16 +25,8 @@ interface VideoToolCard {
   badge: string
 }
 
-interface CapabilityStatus {
-  title: string
-  status: 'online' | 'planned'
-  detail: string
-  path?: string
-}
-
 const route = useRoute()
 const router = useRouter()
-const activeTab = ref<'online' | 'planned'>('online')
 
 const onlineTools: VideoToolCard[] = [
   {
@@ -93,47 +85,12 @@ const onlineTools: VideoToolCard[] = [
   }
 ]
 
-const plannedCapabilities: CapabilityStatus[] = [
-  {
-    title: '多段视频音轨无缝拼接',
-    status: 'planned',
-    detail: '当前已支持多段画面合并，后续将继续补齐跨片段音轨无缝拼接能力。'
-  }
-]
-
-const capabilityAudit: CapabilityStatus[] = [
-  {
-    title: '视频格式转换（MP4 / WebM / MOV）',
-    status: 'online',
-    detail: '已上线：支持常见格式互转与导出。',
-    path: '/tools/video/convert'
-  },
-  {
-    title: '视频分辨率重设（1080p / 720p / 480p）',
-    status: 'online',
-    detail: '已上线：支持预设与自定义分辨率重设。',
-    path: '/tools/video/resolution'
-  },
-  {
-    title: '视频拼接（多段合并）',
-    status: 'online',
-    detail: '已上线：支持多段视频按顺序合并导出。',
-    path: '/tools/video/merge'
-  },
-  {
-    title: '视频封面提取（单帧 / 多帧导出）',
-    status: 'online',
-    detail: '已上线：可通过“视频抽帧”完成单帧截图与批量导出。',
-    path: '/tools/video/frame'
-  },
-  ...plannedCapabilities
-]
-
 /**
- * 获取当前标签页展示的数据
+ * 获取工具总数展示文本
+ * @returns 已上线工具数量文本
  */
-const currentCards = computed(() => {
-  return activeTab.value === 'online' ? onlineTools : []
+const toolsCountText = computed(() => {
+  return `已上线 ${onlineTools.length} 个视频工具`
 })
 
 /**
@@ -176,30 +133,15 @@ const resolveToolHref = (path: string) => {
 
     <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
       <div class="mb-4 flex items-center justify-between gap-4">
-        <h2 class="text-lg font-semibold text-slate-900 sm:text-xl">已上线视频工具</h2>
-        <div class="inline-flex rounded-lg border border-slate-200 p-1 text-sm">
-          <button
-            type="button"
-            class="rounded-md px-3 py-1.5 transition-colors"
-            :class="activeTab === 'online' ? 'bg-sky-600 text-white' : 'text-slate-600 hover:bg-slate-100'"
-            @click="activeTab = 'online'"
-          >
-            已上线
-          </button>
-          <button
-            type="button"
-            class="rounded-md px-3 py-1.5 transition-colors"
-            :class="activeTab === 'planned' ? 'bg-sky-600 text-white' : 'text-slate-600 hover:bg-slate-100'"
-            @click="activeTab = 'planned'"
-          >
-            规划中
-          </button>
+        <h2 class="text-lg font-semibold text-slate-900 sm:text-xl">全部视频工具</h2>
+        <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 sm:text-sm">
+          {{ toolsCountText }}
         </div>
       </div>
 
-      <div v-if="activeTab === 'online'" class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
         <a
-          v-for="tool in currentCards"
+          v-for="tool in onlineTools"
           :key="tool.path"
           :href="resolveToolHref(tool.path)"
           target="_blank"
@@ -213,59 +155,6 @@ const resolveToolHref = (path: string) => {
           <p class="text-sm leading-6 text-slate-600">{{ tool.desc }}</p>
           <div class="mt-3 text-sm font-medium text-sky-700">进入工具 →</div>
         </a>
-      </div>
-
-      <div v-else class="space-y-3">
-        <p v-if="plannedCapabilities.length === 0" class="rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-          当前暂无新的规划中视频能力，后续会按使用反馈持续迭代。
-        </p>
-        <article
-          v-for="item in plannedCapabilities"
-          :key="item.title"
-          class="rounded-xl border border-amber-200 bg-amber-50 p-4"
-        >
-          <div class="mb-1 flex items-center gap-2">
-            <span class="rounded-md bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">规划中</span>
-            <h3 class="font-semibold text-slate-900">{{ item.title }}</h3>
-          </div>
-          <p class="text-sm leading-6 text-slate-600">{{ item.detail }}</p>
-        </article>
-      </div>
-    </section>
-
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-      <h2 class="mb-3 text-lg font-semibold text-slate-900 sm:text-xl">能力核对（避免重复开发）</h2>
-      <p class="mb-4 text-sm leading-6 text-slate-600">
-        你提到的下一批视频能力已全部核对并接入，后续重点优化输出质量与处理稳定性。
-      </p>
-
-      <div class="space-y-3">
-        <article
-          v-for="item in capabilityAudit"
-          :key="item.title"
-          class="rounded-xl border p-4"
-          :class="item.status === 'online' ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'"
-        >
-          <div class="mb-1 flex flex-wrap items-center gap-2">
-            <span
-              class="rounded-md px-2 py-0.5 text-xs font-medium"
-              :class="item.status === 'online' ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-white'"
-            >
-              {{ item.status === 'online' ? '已上线' : '未上线' }}
-            </span>
-            <h3 class="font-semibold text-slate-900">{{ item.title }}</h3>
-          </div>
-          <p class="text-sm leading-6 text-slate-600">{{ item.detail }}</p>
-          <a
-            v-if="item.path"
-            :href="resolveToolHref(item.path)"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mt-2 inline-flex text-sm font-medium text-emerald-700 hover:text-emerald-800"
-          >
-            立即查看已上线页面 →
-          </a>
-        </article>
       </div>
     </section>
 

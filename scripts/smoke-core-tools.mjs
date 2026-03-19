@@ -35,7 +35,7 @@ const CORE_TOOL_SPECS = [
   },
   {
     route: '/tools/video',
-    checks: [/免费在线视频处理工具箱/, /能力核对（避免重复开发）/, /target="_blank"/, /resolveToolHref/]
+    checks: [/免费在线视频处理工具箱/, /全部视频工具/, /toolsCountText/, /onlineTools\.length/, /target="_blank"/, /resolveToolHref/]
   },
   {
     route: '/tools/video/convert',
