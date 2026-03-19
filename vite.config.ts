@@ -183,49 +183,87 @@ export default defineConfig({
          * 将高体积依赖按能力域拆分，降低主包体积并提升首屏加载稳定性
          */
         manualChunks(id) {
-          if (!id.includes('node_modules')) return
+          const normalizedId = id.replace(/\\/g, '/')
+          if (!normalizedId.includes('/node_modules/')) return
 
-          if (id.includes('vue') || id.includes('@vue/')) {
+          /**
+           * Vue 核心运行时分包
+           * 仅匹配 vue / @vue / vue-router 核心路径，避免“名称中包含 vue”被误分包
+           */
+          if (
+            normalizedId.includes('/node_modules/vue/') ||
+            normalizedId.includes('/node_modules/@vue/') ||
+            normalizedId.includes('/node_modules/vue-router/')
+          ) {
             return 'vendor-vue'
           }
 
-          if (id.includes('element-plus')) {
+          /**
+           * Element Plus 组件库分包
+           * 与 Vue 核心保持单向依赖，避免形成 chunk 循环引用导致 TDZ 报错
+           */
+          if (
+            normalizedId.includes('/node_modules/element-plus/') ||
+            normalizedId.includes('/node_modules/@element-plus/')
+          ) {
             return 'vendor-element-plus'
           }
 
-          if (id.includes('pdfjs-dist') || id.includes('pdf-lib') || id.includes('jspdf') || id.includes('html2pdf.js')) {
+          if (
+            normalizedId.includes('/node_modules/pdfjs-dist/') ||
+            normalizedId.includes('/node_modules/pdf-lib/') ||
+            normalizedId.includes('/node_modules/jspdf/') ||
+            normalizedId.includes('/node_modules/html2pdf.js/')
+          ) {
             return 'vendor-pdf'
           }
 
-          if (id.includes('xlsx') || id.includes('jszip')) {
+          if (
+            normalizedId.includes('/node_modules/xlsx/') ||
+            normalizedId.includes('/node_modules/jszip/')
+          ) {
             return 'vendor-sheet'
           }
 
-          if (id.includes('@wangeditor')) {
+          if (normalizedId.includes('/node_modules/@wangeditor/')) {
             return 'vendor-editor-wangeditor'
           }
 
-          if (id.includes('vue-codemirror') || id.includes('@codemirror')) {
+          if (
+            normalizedId.includes('/node_modules/vue-codemirror/') ||
+            normalizedId.includes('/node_modules/@codemirror/')
+          ) {
             return 'vendor-editor-codemirror'
           }
 
-          if (id.includes('highlight.js')) {
+          if (normalizedId.includes('/node_modules/highlight.js/')) {
             return 'vendor-editor-highlight'
           }
 
-          if (id.includes('@kangc/v-md-editor') || id.includes('prismjs')) {
+          if (
+            normalizedId.includes('/node_modules/@kangc/v-md-editor/') ||
+            normalizedId.includes('/node_modules/prismjs/')
+          ) {
             return 'vendor-editor-markdown'
           }
 
-          if (id.includes('v-code-diff') || id.includes('/node_modules/diff/')) {
+          if (
+            normalizedId.includes('/node_modules/v-code-diff/') ||
+            normalizedId.includes('/node_modules/diff/')
+          ) {
             return 'vendor-diff'
           }
 
-          if (id.includes('fabric') || id.includes('cropperjs') || id.includes('tui-image-editor') || id.includes('gifuct-js')) {
+          if (
+            normalizedId.includes('/node_modules/fabric/') ||
+            normalizedId.includes('/node_modules/cropperjs/') ||
+            normalizedId.includes('/node_modules/tui-image-editor/') ||
+            normalizedId.includes('/node_modules/gifuct-js/')
+          ) {
             return 'vendor-image'
           }
 
-          if (id.includes('echarts')) {
+          if (normalizedId.includes('/node_modules/echarts/')) {
             return 'vendor-charts'
           }
         }

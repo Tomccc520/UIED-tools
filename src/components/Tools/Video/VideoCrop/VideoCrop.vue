@@ -15,10 +15,14 @@
  * @author UIED技术团队
  * @createDate 2025-9-22
  */
-import { ref, reactive, onUnmounted, computed, watch, nextTick } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { useRoute } from 'vue-router'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
+import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
+import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 
 const route = useRoute()
 
@@ -32,7 +36,36 @@ const containerRef = ref<HTMLElement | null>(null)
 const isProcessing = ref(false)
 const progress = ref(0)
 const statusText = ref('')
+const etaText = ref('')
+const errorText = ref('')
+const processStartedAt = ref(0)
+const isCancelRequested = ref(false)
+const resultFileSizeMB = ref(0)
 const isDragOver = ref(false)
+
+const sourceMeta = reactive({
+  duration: 0,
+  width: 0,
+  height: 0
+})
+
+const resultMeta = reactive({
+  duration: 0,
+  width: 0,
+  height: 0
+})
+
+let mediaRecorder: MediaRecorder | null = null
+let drawRafId: number | null = null
+let activeCanvasStream: MediaStream | null = null
+let activeSourceStream: MediaStream | null = null
+let activeAudioContext: AudioContext | null = null
+let isFinalizingOutput = false
+
+const sourceSizeMB = computed(() => {
+  if (!videoFile.value) return 0
+  return videoFile.value.size / 1024 / 1024
+})
 
 // Crop State (in percentage relative to container)
 const crop = reactive({
@@ -48,48 +81,160 @@ const crop = reactive({
 // Dragging state
 const dragStart = reactive({ x: 0, y: 0, cropX: 0, cropY: 0, cropW: 0, cropH: 0 })
 
+/**
+ * 格式化时长文本
+ * @param seconds 秒数
+ * @returns mm:ss 格式文本
+ */
+const formatTime = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '00:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+/**
+ * 更新 ETA 文案
+ * @param currentProgress 当前进度
+ */
+const updateEtaText = (currentProgress: number) => {
+  const remainSeconds = estimateRemainingSeconds(currentProgress, processStartedAt.value)
+  etaText.value = formatEtaText(remainSeconds)
+}
+
+/**
+ * 重置裁剪框为默认状态
+ */
+const resetCropArea = () => {
+  crop.x = 10
+  crop.y = 10
+  crop.width = 80
+  crop.height = 80
+}
+
+/**
+ * 清理结果链接
+ */
+const clearResultVideo = () => {
+  if (resultVideoUrl.value) {
+    URL.revokeObjectURL(resultVideoUrl.value)
+  }
+  resultVideoUrl.value = ''
+  resultFileSizeMB.value = 0
+  resultMeta.duration = 0
+  resultMeta.width = 0
+  resultMeta.height = 0
+}
+
+/**
+ * 停止并清理媒体流资源
+ */
+const clearMediaResources = () => {
+  activeCanvasStream?.getTracks().forEach(track => track.stop())
+  activeSourceStream?.getTracks().forEach(track => track.stop())
+  activeCanvasStream = null
+  activeSourceStream = null
+
+  if (activeAudioContext) {
+    activeAudioContext.close().catch(() => {})
+    activeAudioContext = null
+  }
+}
+
+/**
+ * 停止当前处理流程
+ */
+const stopCurrentProcessing = () => {
+  if (drawRafId !== null) {
+    cancelAnimationFrame(drawRafId)
+    drawRafId = null
+  }
+
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.onended = null
+  }
+
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  } else {
+    clearMediaResources()
+  }
+
+  mediaRecorder = null
+  isProcessing.value = false
+  isFinalizingOutput = false
+}
+
+/**
+ * 请求结束录制并封装输出
+ */
+const finalizeRecording = () => {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive' || isFinalizingOutput) {
+    return
+  }
+
+  isFinalizingOutput = true
+  progress.value = Math.max(progress.value, 99)
+  statusText.value = '正在封装输出文件...'
+  etaText.value = '预计剩余时间：约 0 秒'
+  mediaRecorder.stop()
+}
+
+/**
+ * 加载视频文件并重置状态
+ * @param file 视频文件
+ */
+const loadVideo = (file: File) => {
+  if (!file.type.startsWith('video/')) {
+    ElMessage.warning('请选择有效的视频文件')
+    return
+  }
+
+  isCancelRequested.value = true
+  stopCurrentProcessing()
+
+  videoFile.value = file
+  if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
+  clearResultVideo()
+  videoUrl.value = URL.createObjectURL(file)
+
+  sourceMeta.duration = 0
+  sourceMeta.width = 0
+  sourceMeta.height = 0
+
+  progress.value = 0
+  statusText.value = ''
+  etaText.value = ''
+  errorText.value = ''
+  processStartedAt.value = 0
+  resetCropArea()
+}
+
+/**
+ * 源视频元数据加载回调
+ * @param event 事件对象
+ */
+const onSourceVideoLoaded = (event: Event) => {
+  const target = event.target as HTMLVideoElement
+  sourceMeta.duration = target.duration || 0
+  sourceMeta.width = target.videoWidth || 0
+  sourceMeta.height = target.videoHeight || 0
+}
+
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    const file = target.files[0]
-    if (file.type.startsWith('video/')) {
-      videoFile.value = file
-      if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
-      if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
-      videoUrl.value = URL.createObjectURL(file)
-      resultVideoUrl.value = ''
-
-      // Reset crop
-      crop.x = 10
-      crop.y = 10
-      crop.width = 80
-      crop.height = 80
-    } else {
-      ElMessage.warning('请选择有效的视频文件')
-    }
+    loadVideo(target.files[0])
   }
+  if (target.value) target.value = ''
 }
 
 const handleDrop = (event: DragEvent) => {
   isDragOver.value = false
   const files = event.dataTransfer?.files
   if (files && files.length > 0) {
-    const file = files[0]
-    if (file.type.startsWith('video/')) {
-      videoFile.value = file
-      if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
-      if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
-      videoUrl.value = URL.createObjectURL(file)
-      resultVideoUrl.value = ''
-
-      // Reset crop
-      crop.x = 10
-      crop.y = 10
-      crop.width = 80
-      crop.height = 80
-    } else {
-      ElMessage.warning('请选择有效的视频文件')
-    }
+    loadVideo(files[0])
   }
 }
 
@@ -187,11 +332,49 @@ const stopResize = () => {
   window.removeEventListener('mouseup', stopResize)
 }
 
-// Processing Logic
+/**
+ * 等待视频 seek 完成
+ * @param video 视频元素
+ * @param targetTime 目标时间
+ */
+const waitForSeeked = (video: HTMLVideoElement, targetTime: number) => {
+  return new Promise<void>((resolve) => {
+    const handleSeeked = () => {
+      video.removeEventListener('seeked', handleSeeked)
+      resolve()
+    }
+    video.addEventListener('seeked', handleSeeked)
+    video.currentTime = targetTime
+  })
+}
+
+/**
+ * 取消当前处理任务
+ */
+const cancelProcessing = () => {
+  if (!isProcessing.value) return
+
+  isCancelRequested.value = true
+  statusText.value = '已取消处理'
+  etaText.value = ''
+  stopCurrentProcessing()
+  ElMessage.info('已取消当前裁剪任务')
+}
+
+/**
+ * 视频裁剪处理主流程
+ */
 const processVideo = async () => {
-  if (!videoRef.value) return
+  if (!videoRef.value || !videoFile.value) {
+    ElMessage.warning('请先上传视频文件')
+    return
+  }
 
   const video = videoRef.value
+  if (!video.videoWidth || !video.videoHeight || !video.duration) {
+    ElMessage.warning('视频元数据尚未加载完成，请稍后重试')
+    return
+  }
 
   // Calculate actual crop coordinates
   const sx = (crop.x / 100) * video.videoWidth
@@ -205,9 +388,15 @@ const processVideo = async () => {
     return
   }
 
+  isCancelRequested.value = false
+  isFinalizingOutput = false
   isProcessing.value = true
-  statusText.value = '准备处理...'
+  statusText.value = '正在准备裁剪任务...'
   progress.value = 0
+  etaText.value = formatEtaText(null)
+  errorText.value = ''
+  processStartedAt.value = Date.now()
+  clearResultVideo()
 
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
@@ -222,101 +411,226 @@ const processVideo = async () => {
   canvas.width = sWidth
   canvas.height = sHeight
 
-  // Setup MediaRecorder
-  const canvasStream = canvas.captureStream(30) // 30 FPS
-
-  // Try to get audio track from original video
   try {
-    // @ts-ignore - captureStream is experimental but supported
-    const videoStream = video.captureStream ? video.captureStream() : (video.mozCaptureStream ? video.mozCaptureStream() : null)
-    if (videoStream) {
-      const audioTracks = videoStream.getAudioTracks()
-      if (audioTracks.length > 0) {
-        canvasStream.addTrack(audioTracks[0])
-      }
+    const canvasStream = canvas.captureStream(30)
+    activeCanvasStream = canvasStream
+
+    const sourceCapture = (video as any).captureStream?.() || (video as any).mozCaptureStream?.()
+    activeSourceStream = sourceCapture || null
+    const audioTracks = sourceCapture?.getAudioTracks?.() || []
+    if (audioTracks.length > 0) {
+      canvasStream.addTrack(audioTracks[0])
     } else {
-      // Fallback: Use AudioContext to capture audio if captureStream fails
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)()
+      activeAudioContext = audioCtx
       const source = audioCtx.createMediaElementSource(video)
       const dest = audioCtx.createMediaStreamDestination()
       source.connect(dest)
-      source.connect(audioCtx.destination) // Optional: hear it while processing
+      source.connect(audioCtx.destination)
       if (dest.stream.getAudioTracks().length > 0) {
         canvasStream.addTrack(dest.stream.getAudioTracks()[0])
       }
     }
-  } catch (e) {
-    console.warn('Audio capture failed:', e)
-  }
 
-  const mimeType = 'video/webm;codecs=vp9,opus'
-  const options = MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : { mimeType: 'video/webm' }
-  const mediaRecorder = new MediaRecorder(canvasStream, options)
-  const chunks: Blob[] = []
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : 'video/webm'
 
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data)
-  }
+    const chunks: Blob[] = []
+    mediaRecorder = new MediaRecorder(canvasStream, { mimeType })
 
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' })
-    resultVideoUrl.value = URL.createObjectURL(blob)
-    isProcessing.value = false
-    progress.value = 100
-    statusText.value = '处理完成！'
-    ElMessage.success('裁剪完成')
-  }
-
-  mediaRecorder.start()
-
-  // Play video from start to end to record
-  const originalTime = video.currentTime
-  video.currentTime = 0
-
-  await new Promise(r => setTimeout(r, 100)) // Wait for seek
-
-  video.play()
-  statusText.value = '正在裁剪...'
-
-  const drawFrame = () => {
-    if (!isProcessing.value) return
-
-    if (video.ended) {
-      mediaRecorder.stop()
-      video.currentTime = originalTime
-    } else {
-      ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight)
-      progress.value = Math.round((video.currentTime / video.duration) * 100)
-      requestAnimationFrame(drawFrame)
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        chunks.push(e.data)
+      }
     }
+
+    mediaRecorder.onstop = () => {
+      if (drawRafId !== null) {
+        cancelAnimationFrame(drawRafId)
+        drawRafId = null
+      }
+
+      video.pause()
+      video.onended = null
+      clearMediaResources()
+
+      if (isCancelRequested.value) {
+        isCancelRequested.value = false
+        progress.value = 0
+        statusText.value = '已取消处理'
+        etaText.value = ''
+        mediaRecorder = null
+        isFinalizingOutput = false
+        return
+      }
+
+      const blob = new Blob(chunks, { type: mimeType })
+      resultVideoUrl.value = URL.createObjectURL(blob)
+      resultFileSizeMB.value = blob.size / 1024 / 1024
+      resultMeta.duration = sourceMeta.duration
+      resultMeta.width = Math.round(sWidth)
+      resultMeta.height = Math.round(sHeight)
+      isProcessing.value = false
+      progress.value = 100
+      statusText.value = '裁剪完成'
+      etaText.value = '预计剩余时间：约 0 秒'
+      mediaRecorder = null
+      isFinalizingOutput = false
+      ElMessage.success('裁剪完成')
+    }
+
+    mediaRecorder.onerror = (event) => {
+      if (drawRafId !== null) {
+        cancelAnimationFrame(drawRafId)
+        drawRafId = null
+      }
+      video.pause()
+      video.onended = null
+      clearMediaResources()
+
+      isProcessing.value = false
+      statusText.value = '裁剪失败'
+      etaText.value = ''
+      const message = getFriendlyVideoError((event as any)?.error, '裁剪失败，请稍后重试')
+      errorText.value = message
+      ElMessage.error(message)
+      mediaRecorder = null
+      isFinalizingOutput = false
+    }
+
+    await waitForSeeked(video, 0)
+    mediaRecorder.start(500)
+    statusText.value = '正在裁剪视频...'
+    await video.play()
+
+    const drawFrame = () => {
+      if (!isProcessing.value || !videoRef.value) return
+
+      ctx.drawImage(videoRef.value, sx, sy, sWidth, sHeight, 0, 0, sWidth, sHeight)
+      const currentProgress = Math.min(99, Math.round((videoRef.value.currentTime / sourceMeta.duration) * 99))
+      progress.value = currentProgress
+      updateEtaText(currentProgress)
+
+      if (videoRef.value.currentTime >= sourceMeta.duration - 0.2 || videoRef.value.ended) {
+        finalizeRecording()
+        return
+      }
+
+      drawRafId = requestAnimationFrame(drawFrame)
+    }
+
+    drawRafId = requestAnimationFrame(drawFrame)
+    video.onended = () => {
+      finalizeRecording()
+    }
+  } catch (error) {
+    clearMediaResources()
+    isProcessing.value = false
+    statusText.value = '裁剪失败'
+    etaText.value = ''
+    const message = getFriendlyVideoError(error, '裁剪失败，请稍后重试')
+    errorText.value = message
+    ElMessage.error(message)
+    mediaRecorder = null
+    isFinalizingOutput = false
   }
-  requestAnimationFrame(drawFrame)
 }
 
 const downloadVideo = () => {
-  if (!resultVideoUrl.value) return
+  if (!resultVideoUrl.value || !videoFile.value) return
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
-  a.download = `cropped_${new Date().getTime()}.webm`
+  const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')
+  a.download = `${originalName}_cropped.webm`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
 }
 
+/**
+ * 获取结果摘要文案
+ * @returns 摘要字符串
+ */
+const getResultSummary = () => {
+  if (!videoFile.value || !resultVideoUrl.value) return '-'
+  const delta = sourceSizeMB.value - resultFileSizeMB.value
+  const ratio = sourceSizeMB.value > 0 ? (delta / sourceSizeMB.value) * 100 : 0
+  const label = delta >= 0 ? '节省' : '增加'
+  return `${label} ${Math.abs(delta).toFixed(2)}MB（${Math.abs(ratio).toFixed(1)}%）`
+}
+
+/**
+ * 结果对比指标
+ */
+const resultComparisonMetrics = computed(() => {
+  return [
+    {
+      label: '文件体积',
+      before: `${sourceSizeMB.value.toFixed(2)} MB`,
+      after: resultVideoUrl.value ? `${resultFileSizeMB.value.toFixed(2)} MB` : '-'
+    },
+    {
+      label: '分辨率',
+      before: sourceMeta.width && sourceMeta.height ? `${sourceMeta.width} × ${sourceMeta.height}` : '-',
+      after: resultMeta.width && resultMeta.height ? `${resultMeta.width} × ${resultMeta.height}` : '-'
+    },
+    {
+      label: '时长',
+      before: formatTime(sourceMeta.duration),
+      after: resultMeta.duration ? formatTime(resultMeta.duration) : '-'
+    }
+  ]
+})
+
+/**
+ * 浏览器刷新/关闭提醒
+ * @param event 浏览器事件
+ */
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!isProcessing.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
 onUnmounted(() => {
+  isCancelRequested.value = true
+  stopCurrentProcessing()
+  clearMediaResources()
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
-  if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
+  clearResultVideo()
   window.removeEventListener('mousemove', onDrag)
   window.removeEventListener('mouseup', stopDrag)
   window.removeEventListener('mousemove', onResize)
   window.removeEventListener('mouseup', stopResize)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  if (!isProcessing.value) {
+    next()
+    return
+  }
+
+  const shouldLeave = window.confirm('视频裁剪仍在处理中，离开页面会中断任务。确定要离开吗？')
+  if (!shouldLeave) {
+    next(false)
+    return
+  }
+
+  cancelProcessing()
+  next()
 })
 </script>
 
 <template>
   <div class="">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
+      <div class="bg-white rounded-xl min-h-[600px] p-6 sm:p-8">
         <!-- 头部区域 -->
         <div class="text-center mb-8">
           <h2
@@ -325,6 +639,7 @@ onUnmounted(() => {
           </h2>
           <p class="text-gray-500 text-sm">在线裁剪视频画面区域，支持自由调整比例，本地处理保护隐私</p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"
@@ -356,7 +671,7 @@ onUnmounted(() => {
 
               <div class="space-y-6">
                 <!-- Crop Info -->
-                <div class="bg-white rounded-xl p-4 border border-gray-200 shadow-sm">
+                <div class="bg-white rounded-xl p-4 border border-gray-200">
                   <h4 class="text-sm font-medium text-gray-700 mb-3 flex items-center">
                     <svg class="w-4 h-4 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
@@ -374,7 +689,7 @@ onUnmounted(() => {
                 <!-- Process Button -->
                 <div class="space-y-3">
                   <button @click="processVideo" :disabled="isProcessing"
-                    class="w-full py-3 bg-gradient-to-r from-indigo-600 to-pink-600 text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    class="w-full py-3 bg-gradient-to-r from-indigo-600 to-pink-600 text-white rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                     <span v-if="isProcessing" class="mr-2 animate-spin">
                       <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -385,7 +700,7 @@ onUnmounted(() => {
                   </button>
 
                   <button v-if="resultVideoUrl" @click="downloadVideo"
-                    class="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center">
+                    class="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -398,13 +713,25 @@ onUnmounted(() => {
                     更换视频
                   </button>
                 </div>
+
+                <VideoProcessStatus
+                  v-if="isProcessing"
+                  :progress="progress"
+                  :status-text="statusText"
+                  :eta-text="etaText"
+                  @cancel="cancelProcessing"
+                />
+
+                <div v-if="errorText" class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                  {{ errorText }}
+                </div>
               </div>
             </div>
           </div>
 
           <!-- 右侧：预览区域 -->
           <div class="lg:col-span-8 space-y-6">
-            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                 <div class="flex items-center space-x-3">
                   <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -420,9 +747,9 @@ onUnmounted(() => {
               <div class="flex-1 p-6 flex items-center justify-center bg-gray-50 relative min-h-[400px]">
                 <!-- Video Preview -->
                 <div ref="containerRef"
-                  class="bg-black rounded-lg overflow-hidden relative shadow-lg flex items-center justify-center select-none max-w-full"
+                  class="bg-black rounded-lg overflow-hidden relative flex items-center justify-center select-none max-w-full"
                   style="max-height: 600px;">
-                  <video ref="videoRef" :src="videoUrl" class="max-w-full max-h-[600px]" controls></video>
+                  <video ref="videoRef" :src="videoUrl" class="max-w-full max-h-[600px]" controls @loadedmetadata="onSourceVideoLoaded"></video>
 
                   <!-- Crop Overlay -->
                   <div class="absolute inset-0 pointer-events-none">
@@ -434,7 +761,7 @@ onUnmounted(() => {
 
                     <!-- Crop Box -->
                     <div
-                      class="absolute border-2 border-white pointer-events-auto cursor-move shadow-[0_0_0_1px_rgba(0,0,0,0.5)] transition-all duration-75"
+                      class="absolute border-2 border-white pointer-events-auto cursor-move transition-all duration-75"
                       :style="{
                         left: `${crop.x}%`,
                         top: `${crop.y}%`,
@@ -462,18 +789,13 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Progress Status -->
-            <div v-if="isProcessing" class="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-               <div class="flex justify-between items-center mb-2">
-                 <span class="text-sm font-medium text-gray-700">{{ statusText }}</span>
-                 <span class="text-sm font-medium text-indigo-600">{{ progress }}%</span>
-               </div>
-               <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                 <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
-                   :style="{ width: `${progress}%` }"></div>
-               </div>
-               <p class="text-xs text-gray-400 mt-2 text-center">处理过程中请勿关闭页面</p>
-             </div>
+            <div v-if="resultVideoUrl" class="bg-white rounded-xl border border-green-200 p-6 space-y-4">
+              <h3 class="text-lg font-semibold text-gray-800">裁剪结果</h3>
+              <VideoResultComparison :metrics="resultComparisonMetrics" :summary="getResultSummary()" />
+              <div class="rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                <video :src="resultVideoUrl" controls class="w-full max-h-[420px]" />
+              </div>
+            </div>
           </div>
         </div>
 

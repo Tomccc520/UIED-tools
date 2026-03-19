@@ -17,6 +17,7 @@
  */
 import { ref, reactive, onUnmounted } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -160,6 +161,7 @@ onUnmounted(() => {
           </h2>
           <p class="text-gray-500 text-sm">一键移除视频中的音频轨道，快速制作静音视频</p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"

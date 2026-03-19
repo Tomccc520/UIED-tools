@@ -1063,6 +1063,16 @@ export const constantRoute: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/tools/video',
+    component: () => import('@/components/Tools/Video/VideoHub/VideoHub.vue'),
+    name: 'videoHub',
+    meta: {
+      title: "免费视频工具箱",
+      keywords: '免费视频工具,视频压缩,视频抽帧,视频剪辑,视频转GIF,在线视频处理',
+      description: '免费视频处理工具总览，包含视频压缩、抽帧、剪辑、转GIF、加水印等能力，支持浏览器本地处理。'
+    }
+  },
+  {
     path: '/tools/video/frame',
     component: () => import('@/components/Tools/Video/VideoFrame/VideoFrame.vue'),
     name: 'videoFrame',
@@ -1070,6 +1080,46 @@ export const constantRoute: RouteRecordRaw[] = [
       title: "视频抽帧",
       keywords: '视频抽帧,视频截图,视频转图片,提取视频帧',
       description: '在线提取视频画面，支持按时间点精确截图和批量导出。'
+    }
+  },
+  {
+    path: '/tools/video/compress',
+    component: () => import('@/components/Tools/Video/VideoCompress/VideoCompress.vue'),
+    name: 'videoCompress',
+    meta: {
+      title: "在线视频压缩工具 | 免费压缩MP4/MOV/AVI",
+      keywords: '在线视频压缩,视频压缩工具,免费视频压缩,MP4压缩,MOV压缩,AVI压缩,MKV压缩',
+      description: '免费在线视频压缩工具，支持 MP4、AVI、MOV、MKV 等格式，在不改变分辨率前提下压缩视频体积。'
+    }
+  },
+  {
+    path: '/tools/video/convert',
+    component: () => import('@/components/Tools/Video/VideoFormatConvert/VideoFormatConvert.vue'),
+    name: 'videoFormatConvert',
+    meta: {
+      title: "免费视频格式转换",
+      keywords: '视频格式转换,MP4转WebM,WebM转MP4,MOV转MP4,在线视频转码',
+      description: '免费在线视频格式转换工具，支持 MP4、WebM、MOV 等常见格式互转，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/video/resolution',
+    component: () => import('@/components/Tools/Video/VideoResolutionReset/VideoResolutionReset.vue'),
+    name: 'videoResolutionReset',
+    meta: {
+      title: "免费视频分辨率重设",
+      keywords: '视频分辨率重设,视频改1080p,视频改720p,在线视频尺寸调整',
+      description: '免费在线视频分辨率重设工具，支持 1080p、720p、480p 与自定义尺寸输出，本地处理更安全。'
+    }
+  },
+  {
+    path: '/tools/video/merge',
+    component: () => import('@/components/Tools/Video/VideoMerge/VideoMerge.vue'),
+    name: 'videoMerge',
+    meta: {
+      title: "免费视频拼接",
+      keywords: '视频拼接,视频合并,多段视频合并,在线视频拼接',
+      description: '免费在线视频拼接工具，支持多段视频顺序合并导出，适合快速制作合集视频。'
     }
   },
   {

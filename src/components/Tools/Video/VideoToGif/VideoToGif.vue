@@ -19,9 +19,13 @@ import { ref, reactive, onUnmounted, computed } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import FollowWechatVerifyDialog from '@/components/Common/FollowWechatVerifyDialog.vue'
 import { useRoute } from 'vue-router'
-import GIF from 'gif.js'
 import { ElMessage } from 'element-plus'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
+import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
+import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import { ensureGifRuntime } from '@/utils/toolRuntimeLoaders'
 import { wechatVerifyConfig } from '@/utils/verify'
+import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 
 const route = useRoute()
 
@@ -33,11 +37,17 @@ const gifUrl = ref<string>('')
 const isProcessing = ref(false)
 const progress = ref(0)
 const statusText = ref('')
+const etaText = ref('')
+const errorText = ref('')
+const processStartedAt = ref(0)
+const resultGifSizeMB = ref(0)
+const isCancelRequested = ref(false)
 const usageCount = ref(Number(localStorage.getItem('video_to_gif_usage_count')) || 0)
 const isVerified = ref(Boolean(localStorage.getItem('video_to_gif_verified')))
 const showVerifyDialog = ref(false)
 const maxFreeUsage = ref(wechatVerifyConfig.maxFreeUsage)
 const expectedPassword = wechatVerifyConfig.password
+let activeGifEncoder: any = null
 
 // Settings
 const settings = reactive({
@@ -54,6 +64,38 @@ const videoMeta = reactive({
   duration: 0,
   width: 0,
   height: 0
+})
+
+const clipDuration = computed(() => {
+  return Math.max(0, settings.endTime - settings.startTime)
+})
+
+const outputDuration = computed(() => {
+  if (!settings.speed) return 0
+  return clipDuration.value / settings.speed
+})
+
+const resultComparisonMetrics = computed(() => {
+  const sourceSizeText = `${((videoFile.value?.size || 0) / 1024 / 1024).toFixed(2)} MB`
+  const resultSizeText = gifUrl.value ? `${resultGifSizeMB.value.toFixed(2)} MB` : '-'
+
+  return [
+    {
+      label: '文件体积',
+      before: sourceSizeText,
+      after: resultSizeText
+    },
+    {
+      label: '分辨率',
+      before: videoMeta.width && videoMeta.height ? `${videoMeta.width} × ${videoMeta.height}` : '-',
+      after: settings.width && settings.height ? `${settings.width} × ${settings.height}` : '-'
+    },
+    {
+      label: '时长',
+      before: `${clipDuration.value.toFixed(1)}s`,
+      after: `${outputDuration.value.toFixed(1)}s`
+    }
+  ]
 })
 
 /**
@@ -85,6 +127,11 @@ const loadVideo = (file: File) => {
   gifUrl.value = ''
   progress.value = 0
   statusText.value = ''
+  etaText.value = ''
+  errorText.value = ''
+  resultGifSizeMB.value = 0
+  isCancelRequested.value = false
+  processStartedAt.value = 0
 }
 
 /**
@@ -124,6 +171,15 @@ const handleWidthChange = () => {
  */
 const formatTime = (seconds: number) => {
   return seconds.toFixed(1) + 's'
+}
+
+/**
+ * 更新 ETA 文本
+ * @param currentProgress 当前进度（0-100）
+ */
+const updateEtaText = (currentProgress: number) => {
+  const remainSeconds = estimateRemainingSeconds(currentProgress, processStartedAt.value)
+  etaText.value = formatEtaText(remainSeconds)
 }
 
 /**
@@ -178,86 +234,135 @@ const generateGif = async () => {
     return
   }
 
-  isProcessing.value = true
-  statusText.value = '准备处理...'
-  progress.value = 0
-  gifUrl.value = ''
-  if (!isVerified.value) {
-    usageCount.value++
-    localStorage.setItem('video_to_gif_usage_count', usageCount.value.toString())
-  }
+  try {
+    isCancelRequested.value = false
+    isProcessing.value = true
+    statusText.value = '准备处理...'
+    progress.value = 0
+    etaText.value = formatEtaText(null)
+    errorText.value = ''
+    gifUrl.value = ''
+    resultGifSizeMB.value = 0
+    processStartedAt.value = Date.now()
 
-  const video = videoRef.value
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })
-
-  if (!ctx) {
-    ElMessage.error('无法创建 Canvas 上下文')
-    isProcessing.value = false
-    return
-  }
-
-  canvas.width = settings.width
-  canvas.height = settings.height
-
-  const gif = new GIF({
-    workers: 2,
-    quality: settings.quality,
-    width: settings.width,
-    height: settings.height,
-    workerScript: '/workers/gif.worker.js'
-  })
-
-  gif.on('finished', (blob: Blob) => {
-    gifUrl.value = URL.createObjectURL(blob)
-    isProcessing.value = false
-    progress.value = 100
-    statusText.value = '生成完成'
-    ElMessage.success('GIF 生成成功')
-  })
-
-  gif.on('progress', (p: number) => {
-    progress.value = Math.round(p * 100)
-    statusText.value = `正在编码 GIF... ${Math.round(p * 100)}%`
-  })
-
-  // Capture frames
-  const captureInterval = 1 / settings.fps
-  const duration = settings.endTime - settings.startTime
-  const totalFrames = Math.floor(duration * settings.fps)
-
-  let currentFrame = 0
-  let currentTime = settings.startTime
-
-  statusText.value = '正在捕获帧...'
-
-  const captureFrame = async () => {
-    if (!isProcessing.value) return // Aborted
-
-    if (currentFrame >= totalFrames) {
-      statusText.value = '开始渲染 GIF...'
-      gif.render()
-      return
+    if (!isVerified.value) {
+      usageCount.value++
+      localStorage.setItem('video_to_gif_usage_count', usageCount.value.toString())
     }
 
-    await waitForSeeked(video, currentTime)
+    const video = videoRef.value
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
-    ctx.drawImage(video, 0, 0, settings.width, settings.height)
-    gif.addFrame(ctx, {
-      copy: true,
-      delay: (1000 / settings.fps) / settings.speed
+    if (!ctx) {
+      throw new Error('无法创建 Canvas 上下文')
+    }
+
+    canvas.width = settings.width
+    canvas.height = settings.height
+
+    const { GIF } = await ensureGifRuntime()
+    const GifConstructor = GIF as any
+    const gif = new GifConstructor({
+      workers: 2,
+      quality: settings.quality,
+      width: settings.width,
+      height: settings.height,
+      workerScript: '/workers/gif.worker.js'
+    })
+    activeGifEncoder = gif
+
+    gif.on('finished', (blob: Blob) => {
+      if (isCancelRequested.value) {
+        isCancelRequested.value = false
+        return
+      }
+
+      gifUrl.value = URL.createObjectURL(blob)
+      resultGifSizeMB.value = blob.size / 1024 / 1024
+      isProcessing.value = false
+      progress.value = 100
+      etaText.value = '预计剩余时间：约 0 秒'
+      statusText.value = '生成完成'
+      activeGifEncoder = null
+      ElMessage.success('GIF 生成成功')
     })
 
-    currentFrame++
-    currentTime += captureInterval
-    progress.value = Math.round((currentFrame / totalFrames) * 50) // First 50% is capturing
+    gif.on('progress', (p: number) => {
+      if (!isProcessing.value || isCancelRequested.value) return
 
-    // Use requestAnimationFrame or setTimeout to prevent UI blocking
-    // setTimeout(captureFrame, 0)
-    requestAnimationFrame(() => captureFrame())
+      const currentProgress = Math.max(progress.value, Math.round(p * 100))
+      progress.value = currentProgress
+      statusText.value = `正在编码 GIF... ${Math.round(p * 100)}%`
+      updateEtaText(currentProgress)
+    })
+
+    const captureInterval = 1 / settings.fps
+    const duration = settings.endTime - settings.startTime
+    const totalFrames = Math.max(1, Math.floor(duration * settings.fps))
+
+    let currentFrame = 0
+    let currentTime = settings.startTime
+
+    statusText.value = '正在捕获帧...'
+
+    const captureFrame = async () => {
+      if (!isProcessing.value || isCancelRequested.value) return
+
+      if (currentFrame >= totalFrames) {
+        statusText.value = '开始渲染 GIF...'
+        gif.render()
+        return
+      }
+
+      await waitForSeeked(video, currentTime)
+
+      if (!isProcessing.value || isCancelRequested.value) return
+
+      ctx.drawImage(video, 0, 0, settings.width, settings.height)
+      gif.addFrame(ctx, {
+        copy: true,
+        delay: (1000 / settings.fps) / settings.speed
+      })
+
+      currentFrame++
+      currentTime += captureInterval
+
+      const captureProgress = Math.min(55, Math.round((currentFrame / totalFrames) * 55))
+      progress.value = captureProgress
+      updateEtaText(captureProgress)
+      requestAnimationFrame(() => captureFrame())
+    }
+
+    captureFrame()
+  } catch (error) {
+    console.error(error)
+    isProcessing.value = false
+    activeGifEncoder = null
+    etaText.value = ''
+    const message = getFriendlyVideoError(error, 'GIF 生成失败，请调整参数后重试')
+    errorText.value = message
+    ElMessage.error(message)
   }
+}
 
-  captureFrame()
+/**
+ * 取消当前 GIF 生成任务
+ */
+const cancelProcessing = () => {
+  if (!isProcessing.value) return
+
+  isCancelRequested.value = true
+  isProcessing.value = false
+  statusText.value = '已取消处理'
+  progress.value = 0
+  etaText.value = ''
+
+  if (activeGifEncoder && typeof activeGifEncoder.abort === 'function') {
+    activeGifEncoder.abort()
+  }
+  activeGifEncoder = null
+  ElMessage.info('已取消当前 GIF 生成任务')
 }
 
 /**
@@ -307,6 +412,11 @@ const handleVerify = (password: string) => {
 }
 
 onUnmounted(() => {
+  if (activeGifEncoder && typeof activeGifEncoder.abort === 'function') {
+    activeGifEncoder.abort()
+  }
+  activeGifEncoder = null
+
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
   if (gifUrl.value) URL.revokeObjectURL(gifUrl.value)
 })
@@ -315,16 +425,17 @@ onUnmounted(() => {
 <template>
   <div class="min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <div class="text-center mb-8">
+      <div class="bg-white rounded-xl p-8 mb-4">
+        <div class="text-center mb-6">
           <h2
-            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
             免费视频转 GIF
           </h2>
           <p class="text-gray-500 text-sm">
             在线将视频转换为 GIF 动图，支持截取片段、调整尺寸和帧率，本地处理保护隐私
           </p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Initial Upload Area -->
         <div v-if="!videoUrl" @drop="dropHandler" @dragover="dragOverHandler"
@@ -434,19 +545,20 @@ onUnmounted(() => {
                   <p class="text-xs text-gray-500 mt-1">数值越小画质越好，但处理越慢</p>
                 </div>
 
-                <div v-if="isProcessing" class="bg-white p-4 rounded-xl border border-gray-200">
-                  <div class="flex justify-between text-xs font-medium text-gray-600 mb-2">
-                    <span>{{ statusText }}</span>
-                    <span>{{ progress }}%</span>
-                  </div>
-                  <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                    <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                      :style="{ width: `${progress}%` }"></div>
-                  </div>
+                <VideoProcessStatus
+                  v-if="isProcessing"
+                  :progress="progress"
+                  :status-text="statusText"
+                  :eta-text="etaText"
+                  @cancel="cancelProcessing"
+                />
+
+                <div v-if="errorText" class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                  {{ errorText }}
                 </div>
 
                 <button @click="generateGif" :disabled="isProcessing"
-                  class="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transform active:scale-[0.98]">
+                  class="w-full py-3.5 px-4 bg-gradient-to-r from-sky-600 to-emerald-600 hover:from-sky-700 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]">
                   <span v-if="!isProcessing" class="flex items-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -473,13 +585,13 @@ onUnmounted(() => {
           <div class="lg:col-span-8 space-y-6">
             <!-- Video Player -->
             <div
-              class="border border-gray-200 rounded-xl overflow-hidden bg-black shadow-sm flex items-center justify-center relative group">
+              class="border border-gray-200 rounded-xl overflow-hidden bg-black flex items-center justify-center relative group">
               <video ref="videoRef" :src="videoUrl" controls class="w-full max-h-[500px]"
                 @loadedmetadata="onVideoLoaded"></video>
             </div>
 
             <!-- Result -->
-            <div v-if="gifUrl" class="bg-white rounded-xl border border-gray-200 p-6 shadow-sm animate-fade-in">
+            <div v-if="gifUrl" class="bg-white rounded-xl border border-gray-200 p-6 animate-fade-in">
               <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-4">
                 <div class="flex items-center space-x-2">
                   <div class="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
@@ -497,9 +609,11 @@ onUnmounted(() => {
                 </button>
               </div>
 
+              <VideoResultComparison :metrics="resultComparisonMetrics" class="mb-4" />
+
               <div
                 class="flex flex-col items-center justify-center bg-gray-50 rounded-lg border border-dashed border-gray-200 p-4">
-                <img :src="gifUrl" class="max-w-full max-h-[400px] object-contain rounded shadow-sm" />
+                <img :src="gifUrl" class="max-w-full max-h-[400px] object-contain rounded" />
                 <p class="text-xs text-gray-500 mt-2">长按图片可保存或拖拽到桌面</p>
               </div>
             </div>
@@ -507,7 +621,7 @@ onUnmounted(() => {
         </div>
 
         <!-- Usage Instructions -->
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
+        <div class="bg-white rounded-xl p-6 border border-gray-100 mt-8">
           <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

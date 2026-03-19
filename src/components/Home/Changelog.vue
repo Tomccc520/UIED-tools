@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2026-03-18 23:40
- * @version Beta 2.7.13
- * @toolsCount 当前工具总数：331个
+ * @lastUpdate 2026-03-19 17:51
+ * @version Beta 2.7.14
+ * @toolsCount 当前工具总数：332个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -266,7 +266,7 @@ onUnmounted(() => {
         </div>
 
         <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：329个 | 最后更新：2026-03-18 23:40
+          当前工具总数：332个 | 最后更新：2026-03-19 17:51
         </div>
       </div>
 
@@ -302,6 +302,39 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.7.14 -->
+          <div class="timeline-item" id="v2.7.14">
+            <div class="version-tag">
+              <span class="version">2.7.14</span>
+              <span class="date">2026-03-19 17:51</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">工具优化</el-tag>
+                <span class="text-gray-700">视频工具总览跳转优化与新工具补齐</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">视频入口与可用能力更新</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频工具总览</router-link></strong>：工具卡片与能力核对区链接统一改为新窗口打开，降低处理中误切换风险。</li>
+                        <li><strong><router-link to="/tools/video/convert" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频格式转换</router-link></strong>：新增 MP4/WebM/MOV 常见格式转换，支持进度、ETA、取消处理和结果对比。</li>
+                        <li><strong><router-link to="/tools/video/resolution" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频分辨率重设</router-link></strong>：新增 1080p/720p/480p 与自定义尺寸重设，保持等比输出并支持结果对比。</li>
+                        <li><strong><router-link to="/tools/video/merge" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频拼接</router-link></strong>：新增多段视频顺序合并导出，支持片段排序、进度/ETA、取消处理与结果区下载。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.7.13 -->
           <div class="timeline-item" id="v2.7.13">

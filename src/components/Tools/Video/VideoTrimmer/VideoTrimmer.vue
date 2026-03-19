@@ -17,6 +17,7 @@
  */
 import { ref, reactive, onUnmounted, watch } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -227,6 +228,7 @@ const dragLeaveHandler = (ev: DragEvent) => {
           </h2>
           <p class="text-gray-500 text-sm">在线截取视频片段，精准控制开始和结束时间，本地处理保护隐私</p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Initial Upload Area -->
         <div v-if="!videoUrl"

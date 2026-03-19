@@ -15,11 +15,15 @@
  * @author UIED技术团队
  * @createDate 2025-9-22
  */
-import { ref, reactive, onUnmounted, computed, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { useRoute } from 'vue-router'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
+import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
+import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useDraggable } from '@vueuse/core'
+import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 
 const route = useRoute()
 
@@ -35,7 +39,24 @@ const resultVideoUrl = ref<string>('')
 const isProcessing = ref(false)
 const progress = ref(0)
 const statusText = ref('')
+const etaText = ref('')
+const errorText = ref('')
+const processStartedAt = ref(0)
+const isCancelRequested = ref(false)
+const resultFileSizeMB = ref(0)
 const isDragOver = ref(false)
+
+const sourceMeta = reactive({
+  duration: 0,
+  width: 0,
+  height: 0
+})
+
+const resultMeta = reactive({
+  duration: 0,
+  width: 0,
+  height: 0
+})
 
 // Watermark Settings
 const settings = reactive({
@@ -49,6 +70,17 @@ const settings = reactive({
   imageWidth: 100,
   x: 20,
   y: 20
+})
+
+let mediaRecorder: MediaRecorder | null = null
+let drawRafId: number | null = null
+let activeOutputStream: MediaStream | null = null
+let activeSourceStream: MediaStream | null = null
+let isFinalizingOutput = false
+
+const sourceSizeMB = computed(() => {
+  if (!videoFile.value) return 0
+  return videoFile.value.size / 1024 / 1024
 })
 
 // Draggable logic - safe initialization
@@ -76,6 +108,91 @@ watch([x, y], ([newX, newY]) => {
     settings.y = newY
   }
 })
+
+/**
+ * 格式化时长文本
+ * @param seconds 秒数
+ * @returns mm:ss 文本
+ */
+const formatTime = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '00:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+/**
+ * 更新 ETA 文本
+ * @param currentProgress 当前进度
+ */
+const updateEtaText = (currentProgress: number) => {
+  const remainSeconds = estimateRemainingSeconds(currentProgress, processStartedAt.value)
+  etaText.value = formatEtaText(remainSeconds)
+}
+
+/**
+ * 清理结果视频链接与元数据
+ */
+const clearResultVideo = () => {
+  if (resultVideoUrl.value) {
+    URL.revokeObjectURL(resultVideoUrl.value)
+  }
+  resultVideoUrl.value = ''
+  resultFileSizeMB.value = 0
+  resultMeta.duration = 0
+  resultMeta.width = 0
+  resultMeta.height = 0
+}
+
+/**
+ * 停止流资源
+ */
+const clearStreams = () => {
+  activeOutputStream?.getTracks().forEach(track => track.stop())
+  activeSourceStream?.getTracks().forEach(track => track.stop())
+  activeOutputStream = null
+  activeSourceStream = null
+}
+
+/**
+ * 停止当前处理流程
+ */
+const stopCurrentProcessing = () => {
+  if (drawRafId !== null) {
+    cancelAnimationFrame(drawRafId)
+    drawRafId = null
+  }
+
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.onended = null
+  }
+
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  } else {
+    clearStreams()
+  }
+
+  mediaRecorder = null
+  isProcessing.value = false
+  isFinalizingOutput = false
+}
+
+/**
+ * 请求结束录制并封装输出
+ */
+const finalizeRecording = () => {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive' || isFinalizingOutput) {
+    return
+  }
+
+  isFinalizingOutput = true
+  progress.value = Math.max(progress.value, 99)
+  statusText.value = '正在封装输出文件...'
+  etaText.value = '预计剩余时间：约 0 秒'
+  mediaRecorder.stop()
+}
 
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -118,24 +235,118 @@ const handleDrop = (event: DragEvent) => {
 }
 
 const loadVideo = (file: File) => {
+  if (!file.type.startsWith('video/')) {
+    ElMessage.warning('请选择有效的视频文件')
+    return
+  }
+
+  isCancelRequested.value = true
+  stopCurrentProcessing()
+
   videoFile.value = file
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
-  if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
-
+  clearResultVideo()
   videoUrl.value = URL.createObjectURL(file)
-  resultVideoUrl.value = ''
+
+  sourceMeta.duration = 0
+  sourceMeta.width = 0
+  sourceMeta.height = 0
   progress.value = 0
   statusText.value = ''
+  etaText.value = ''
+  errorText.value = ''
+  processStartedAt.value = 0
+
+  settings.x = 20
+  settings.y = 20
+  x.value = 20
+  y.value = 20
 }
 
+/**
+ * 源视频元数据加载回调
+ * @param event 事件对象
+ */
+const onSourceVideoLoaded = (event: Event) => {
+  const target = event.target as HTMLVideoElement
+  sourceMeta.duration = target.duration || 0
+  sourceMeta.width = target.videoWidth || 0
+  sourceMeta.height = target.videoHeight || 0
+}
+
+/**
+ * 等待视频定位完成
+ * @param video 视频元素
+ * @param targetTime 目标时间
+ */
+const waitForSeeked = (video: HTMLVideoElement, targetTime: number) => {
+  return new Promise<void>((resolve) => {
+    const handleSeeked = () => {
+      video.removeEventListener('seeked', handleSeeked)
+      resolve()
+    }
+    video.addEventListener('seeked', handleSeeked)
+    video.currentTime = targetTime
+  })
+}
+
+/**
+ * 预加载水印图片
+ * @returns 图片对象或 null
+ */
+const loadWatermarkImage = async () => {
+  if (settings.type !== 'image' || !settings.imageUrl) {
+    return null
+  }
+
+  return new Promise<HTMLImageElement>((resolve, reject) => {
+    const image = new Image()
+    image.onload = () => resolve(image)
+    image.onerror = () => reject(new Error('水印图片加载失败'))
+    image.src = settings.imageUrl
+  })
+}
+
+/**
+ * 取消当前处理任务
+ */
+const cancelProcessing = () => {
+  if (!isProcessing.value) return
+
+  isCancelRequested.value = true
+  statusText.value = '已取消处理'
+  etaText.value = ''
+  stopCurrentProcessing()
+  ElMessage.info('已取消当前加水印任务')
+}
+
+/**
+ * 视频加水印主流程
+ */
 const processVideo = async () => {
   if (!videoRef.value || !previewContainerRef.value) return
 
-  isProcessing.value = true
-  statusText.value = '准备处理...'
-  progress.value = 0
+  if (!videoFile.value) {
+    ElMessage.warning('请先上传视频文件')
+    return
+  }
 
   const video = videoRef.value
+  if (!video.videoWidth || !video.videoHeight || !video.duration) {
+    ElMessage.warning('视频元数据尚未加载完成，请稍后重试')
+    return
+  }
+
+  isCancelRequested.value = false
+  isFinalizingOutput = false
+  isProcessing.value = true
+  statusText.value = '正在准备处理任务...'
+  progress.value = 0
+  etaText.value = formatEtaText(null)
+  errorText.value = ''
+  processStartedAt.value = Date.now()
+  clearResultVideo()
+
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
 
@@ -151,144 +362,248 @@ const processVideo = async () => {
 
   // Calculate scale factor between preview and actual video
   const previewRect = previewContainerRef.value.getBoundingClientRect()
-  const scaleX = video.videoWidth / previewRect.width
-  const scaleY = video.videoHeight / previewRect.height
+  const scaleX = previewRect.width > 0 ? video.videoWidth / previewRect.width : 1
+  const scaleY = previewRect.height > 0 ? video.videoHeight / previewRect.height : 1
 
-  // Setup MediaRecorder
-  const stream = canvas.captureStream(30) // 30 FPS
-  const mimeType = 'video/webm;codecs=vp9'
-  const options = MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : { mimeType: 'video/webm' }
-  const mediaRecorder = new MediaRecorder(stream, options)
-  const chunks: Blob[] = []
+  try {
+    const watermarkImage = await loadWatermarkImage()
+    const outputStream = canvas.captureStream(30)
+    activeOutputStream = outputStream
 
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data)
-  }
-
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' })
-    resultVideoUrl.value = URL.createObjectURL(blob)
-    isProcessing.value = false
-    statusText.value = '处理完成'
-    progress.value = 100
-    ElMessage.success('水印添加成功')
-
-    // Restore video state
-    video.currentTime = 0
-    video.pause()
-    video.muted = false
-  }
-
-  mediaRecorder.start()
-
-  // Play and render loop
-  const originalTime = video.currentTime
-  video.currentTime = 0
-  video.muted = true // Mute during processing to avoid feedback if any
-
-  statusText.value = '正在渲染...'
-
-  await video.play()
-
-  const draw = () => {
-    if (!isProcessing.value) return
-
-    if (video.ended) {
-      mediaRecorder.stop()
-      return
+    const sourceCapture = (video as any).captureStream?.() || (video as any).mozCaptureStream?.()
+    activeSourceStream = sourceCapture || null
+    const audioTracks = sourceCapture?.getAudioTracks?.() || []
+    if (audioTracks.length > 0) {
+      outputStream.addTrack(audioTracks[0])
     }
 
-    // Draw video frame
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : 'video/webm'
 
-    // Draw watermark
-    ctx.globalAlpha = settings.opacity
+    const chunks: Blob[] = []
+    mediaRecorder = new MediaRecorder(outputStream, { mimeType })
 
-    const watermarkX = settings.x * scaleX
-    const watermarkY = settings.y * scaleY
-
-    if (settings.type === 'text') {
-      ctx.font = `${settings.textSize * scaleX}px Arial` // Simple scaling approximation
-      ctx.fillStyle = settings.textColor
-      ctx.textBaseline = 'top'
-      ctx.fillText(settings.text, watermarkX, watermarkY)
-    } else if (settings.type === 'image' && settings.imageUrl) {
-      const img = new Image()
-      img.src = settings.imageUrl
-      // Note: In a real loop, we shouldn't create Image object every frame.
-      // But for this simplified version, we rely on browser cache or pre-loading.
-      // Better to pre-load image.
-      // Let's assume it's loaded for now or do a quick hack.
-      // Actually, creating new Image() synchronously in loop is bad.
-      // We should load it once.
-    }
-
-    ctx.globalAlpha = 1.0
-
-    progress.value = Math.round((video.currentTime / video.duration) * 100)
-
-    requestAnimationFrame(draw)
-  }
-
-  // Pre-load image if needed
-  if (settings.type === 'image' && settings.imageUrl) {
-    const img = new Image()
-    img.onload = () => {
-      // Override draw function to use this img
-      const originalDraw = draw
-      // We need to pass img to the loop
-      const drawWithImage = () => {
-        if (!isProcessing.value) return
-        if (video.ended) {
-          mediaRecorder.stop()
-          return
-        }
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-        ctx.globalAlpha = settings.opacity
-        const watermarkX = settings.x * scaleX
-        const watermarkY = settings.y * scaleY
-        const w = settings.imageWidth * scaleX
-        const h = (settings.imageWidth * img.height / img.width) * scaleX
-        ctx.drawImage(img, watermarkX, watermarkY, w, h)
-        ctx.globalAlpha = 1.0
-        progress.value = Math.round((video.currentTime / video.duration) * 100)
-        requestAnimationFrame(drawWithImage)
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        chunks.push(e.data)
       }
-      requestAnimationFrame(drawWithImage)
     }
-    img.src = settings.imageUrl
-  } else {
-    requestAnimationFrame(draw)
+
+    const originalMuted = video.muted
+
+    mediaRecorder.onstop = () => {
+      if (drawRafId !== null) {
+        cancelAnimationFrame(drawRafId)
+        drawRafId = null
+      }
+
+      video.pause()
+      video.onended = null
+      video.muted = originalMuted
+      clearStreams()
+
+      if (isCancelRequested.value) {
+        isCancelRequested.value = false
+        progress.value = 0
+        statusText.value = '已取消处理'
+        etaText.value = ''
+        mediaRecorder = null
+        isFinalizingOutput = false
+        return
+      }
+
+      const blob = new Blob(chunks, { type: mimeType })
+      resultVideoUrl.value = URL.createObjectURL(blob)
+      resultFileSizeMB.value = blob.size / 1024 / 1024
+      resultMeta.duration = sourceMeta.duration
+      resultMeta.width = sourceMeta.width
+      resultMeta.height = sourceMeta.height
+      isProcessing.value = false
+      statusText.value = '处理完成'
+      progress.value = 100
+      etaText.value = '预计剩余时间：约 0 秒'
+      mediaRecorder = null
+      isFinalizingOutput = false
+      ElMessage.success('水印添加成功')
+    }
+
+    mediaRecorder.onerror = (event) => {
+      if (drawRafId !== null) {
+        cancelAnimationFrame(drawRafId)
+        drawRafId = null
+      }
+
+      video.pause()
+      video.onended = null
+      video.muted = originalMuted
+      clearStreams()
+
+      isProcessing.value = false
+      statusText.value = '处理失败'
+      etaText.value = ''
+      const message = getFriendlyVideoError((event as any)?.error, '加水印失败，请稍后重试')
+      errorText.value = message
+      ElMessage.error(message)
+      mediaRecorder = null
+      isFinalizingOutput = false
+    }
+
+    await waitForSeeked(video, 0)
+    mediaRecorder.start(500)
+    video.muted = true
+    statusText.value = '正在渲染水印...'
+    await video.play()
+
+    const draw = () => {
+      if (!isProcessing.value || !videoRef.value) return
+
+      ctx.drawImage(videoRef.value, 0, 0, canvas.width, canvas.height)
+
+      ctx.globalAlpha = settings.opacity
+      const watermarkX = settings.x * scaleX
+      const watermarkY = settings.y * scaleY
+
+      if (settings.type === 'text') {
+        ctx.font = `${settings.textSize * scaleX}px Arial`
+        ctx.fillStyle = settings.textColor
+        ctx.textBaseline = 'top'
+        ctx.fillText(settings.text, watermarkX, watermarkY)
+      } else if (watermarkImage) {
+        const width = settings.imageWidth * scaleX
+        const height = (settings.imageWidth * watermarkImage.height / watermarkImage.width) * scaleY
+        ctx.drawImage(watermarkImage, watermarkX, watermarkY, width, height)
+      }
+
+      ctx.globalAlpha = 1
+
+      const currentProgress = Math.min(99, Math.round((videoRef.value.currentTime / sourceMeta.duration) * 99))
+      progress.value = currentProgress
+      updateEtaText(currentProgress)
+
+      if (videoRef.value.currentTime >= sourceMeta.duration - 0.2 || videoRef.value.ended) {
+        finalizeRecording()
+        return
+      }
+
+      drawRafId = requestAnimationFrame(draw)
+    }
+
+    drawRafId = requestAnimationFrame(draw)
+    video.onended = () => {
+      finalizeRecording()
+    }
+  } catch (error) {
+    clearStreams()
+    isProcessing.value = false
+    statusText.value = '处理失败'
+    etaText.value = ''
+    const message = getFriendlyVideoError(error, '加水印失败，请稍后重试')
+    errorText.value = message
+    ElMessage.error(message)
+    mediaRecorder = null
+    isFinalizingOutput = false
   }
 }
 
 const downloadResult = () => {
-  if (!resultVideoUrl.value) return
+  if (!resultVideoUrl.value || !videoFile.value) return
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
-  a.download = `watermarked_${new Date().getTime()}.webm`
+  const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')
+  a.download = `${originalName}_watermarked.webm`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
 }
 
+/**
+ * 获取处理结果摘要
+ * @returns 摘要文案
+ */
+const getResultSummary = () => {
+  if (!videoFile.value || !resultVideoUrl.value) return '-'
+  const delta = sourceSizeMB.value - resultFileSizeMB.value
+  const ratio = sourceSizeMB.value > 0 ? (delta / sourceSizeMB.value) * 100 : 0
+  const label = delta >= 0 ? '节省' : '增加'
+  return `${label} ${Math.abs(delta).toFixed(2)}MB（${Math.abs(ratio).toFixed(1)}%）`
+}
+
+/**
+ * 处理结果对比指标
+ */
+const resultComparisonMetrics = computed(() => {
+  return [
+    {
+      label: '文件体积',
+      before: `${sourceSizeMB.value.toFixed(2)} MB`,
+      after: resultVideoUrl.value ? `${resultFileSizeMB.value.toFixed(2)} MB` : '-'
+    },
+    {
+      label: '分辨率',
+      before: sourceMeta.width && sourceMeta.height ? `${sourceMeta.width} × ${sourceMeta.height}` : '-',
+      after: resultMeta.width && resultMeta.height ? `${resultMeta.width} × ${resultMeta.height}` : '-'
+    },
+    {
+      label: '时长',
+      before: formatTime(sourceMeta.duration),
+      after: resultMeta.duration ? formatTime(resultMeta.duration) : '-'
+    }
+  ]
+})
+
+/**
+ * 浏览器刷新/关闭提醒
+ * @param event 浏览器事件
+ */
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!isProcessing.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
 onUnmounted(() => {
+  isCancelRequested.value = true
+  stopCurrentProcessing()
+  clearStreams()
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
-  if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
+  clearResultVideo()
   if (settings.imageUrl) URL.revokeObjectURL(settings.imageUrl)
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  if (!isProcessing.value) {
+    next()
+    return
+  }
+
+  const shouldLeave = window.confirm('视频加水印仍在处理中，离开页面会中断任务。确定要离开吗？')
+  if (!shouldLeave) {
+    next(false)
+    return
+  }
+
+  cancelProcessing()
+  next()
 })
 </script>
 
 <template>
   <div class="">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
+      <div class="bg-white rounded-xl min-h-[600px] p-6 sm:p-8">
         <div class="text-center mb-8">
           <h2
             class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
             免费视频加水印</h2>
           <p class="text-gray-500 text-sm">在线为视频添加文字或图片水印，支持拖拽调节位置，本地处理保护隐私</p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"
@@ -332,7 +647,7 @@ onUnmounted(() => {
                   <div class="flex bg-white rounded-lg p-1 border border-gray-200">
                     <button v-for="type in ['text', 'image']" :key="type" @click="settings.type = type as any"
                       class="flex-1 py-1.5 text-sm rounded-md transition-all duration-200 capitalize"
-                      :class="settings.type === type ? 'bg-indigo-100 text-indigo-700 font-medium shadow-sm' : 'text-gray-600 hover:bg-gray-50'">
+                      :class="settings.type === type ? 'bg-indigo-100 text-indigo-700 font-medium' : 'text-gray-600 hover:bg-gray-50'">
                       {{ type === 'text' ? '文字' : '图片' }}
                     </button>
                   </div>
@@ -343,7 +658,7 @@ onUnmounted(() => {
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">文字内容</label>
                     <input type="text" v-model="settings.text"
-                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-shadow" />
+                      class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
 
                   <div class="grid grid-cols-2 gap-4">
@@ -387,7 +702,7 @@ onUnmounted(() => {
                 <!-- Actions -->
                 <div class="pt-6 border-t border-gray-200 space-y-3">
                   <button v-if="!resultVideoUrl" @click="processVideo" :disabled="isProcessing"
-                    class="w-full py-3 bg-gradient-to-r from-indigo-600 to-pink-600 text-white rounded-xl font-bold hover:opacity-90 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
+                    class="w-full py-3 bg-gradient-to-r from-indigo-600 to-pink-600 text-white rounded-xl font-bold hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
                     <span v-if="isProcessing" class="mr-2 animate-spin">
                       <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
@@ -401,7 +716,7 @@ onUnmounted(() => {
                   </button>
 
                   <button v-if="resultVideoUrl" @click="downloadResult"
-                    class="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors shadow-md hover:shadow-lg flex items-center justify-center">
+                    class="w-full py-3 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-colors flex items-center justify-center">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24"
                       stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -415,20 +730,32 @@ onUnmounted(() => {
                     更换视频
                   </button>
                 </div>
+
+                <VideoProcessStatus
+                  v-if="isProcessing"
+                  :progress="progress"
+                  :status-text="statusText"
+                  :eta-text="etaText"
+                  @cancel="cancelProcessing"
+                />
+
+                <div v-if="errorText" class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                  {{ errorText }}
+                </div>
               </div>
             </div>
           </div>
 
           <!-- Right: Preview -->
           <div class="lg:col-span-8 space-y-6">
-            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div ref="previewContainerRef"
                 class="bg-black aspect-video flex items-center justify-center relative group select-none">
-                <video ref="videoRef" :src="videoUrl" controls class="w-full h-full object-contain"></video>
+                <video ref="videoRef" :src="videoUrl" controls class="w-full h-full object-contain" @loadedmetadata="onSourceVideoLoaded"></video>
 
                 <!-- Watermark Overlay -->
                 <div ref="watermarkRef"
-                  class="absolute cursor-move hover:ring-2 hover:ring-indigo-500 hover:ring-dashed p-1 rounded transition-shadow"
+                  class="absolute cursor-move hover:ring-2 hover:ring-indigo-500 hover:ring-dashed p-1 rounded"
                   :style="{
                     left: `${x}px`,
                     top: `${y}px`,
@@ -437,8 +764,7 @@ onUnmounted(() => {
                   <span v-if="settings.type === 'text'" :style="{
                     color: settings.textColor,
                     fontSize: `${settings.textSize}px`,
-                    fontFamily: 'Arial',
-                    textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+                    fontFamily: 'Arial'
                   }">{{ settings.text }}</span>
 
                   <img v-else-if="settings.imageUrl" :src="settings.imageUrl"
@@ -447,18 +773,12 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Process Status -->
-            <div v-if="isProcessing" class="bg-white rounded-xl p-6 border border-gray-100 shadow-sm">
-              <div class="flex justify-between items-center mb-2">
-                <span class="text-sm font-medium text-gray-700">{{ statusText }}</span>
-                <span class="text-sm font-medium text-indigo-600">{{ progress }}%</span>
+            <div v-if="resultVideoUrl" class="bg-white rounded-xl border border-green-200 p-6 space-y-4">
+              <h3 class="text-lg font-semibold text-gray-800">加水印结果</h3>
+              <VideoResultComparison :metrics="resultComparisonMetrics" :summary="getResultSummary()" />
+              <div class="rounded-lg overflow-hidden bg-black flex items-center justify-center">
+                <video :src="resultVideoUrl" controls class="w-full max-h-[420px]" />
               </div>
-              <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-                <div class="bg-indigo-600 h-2.5 rounded-full transition-all duration-300"
-                  :style="{ width: `${progress}%` }">
-                </div>
-              </div>
-              <p class="text-xs text-gray-400 mt-2 text-center">处理过程中请勿关闭页面</p>
             </div>
           </div>
         </div>

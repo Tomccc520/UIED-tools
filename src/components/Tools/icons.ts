@@ -928,6 +928,10 @@ export const toolIcons = {
     type: 'svg',
     content: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13" /><circle cx="6" cy="18" r="3" /><circle cx="18" cy="16" r="3" /></svg>'
   },
+  videoCompress: {
+    type: 'svg',
+    content: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M17 10l4-2v8l-4-2z"/><path d="M7 15h6M7 12h4M7 9h6"/></svg>'
+  },
   videoToGif: {
     type: 'svg',
     content: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="14" height="12" rx="2" ry="2" /><path d="M22 10l-6 4 6 4V10z" /><path d="M8 10h4v4H8z" /></svg>'

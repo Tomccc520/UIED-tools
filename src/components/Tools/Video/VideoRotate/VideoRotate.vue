@@ -15,10 +15,14 @@
  * @author UIED技术团队
  * @createDate 2025-9-22
  */
-import { ref, reactive, onUnmounted } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { useRoute } from 'vue-router'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
+import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
+import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 
 const route = useRoute()
 
@@ -31,13 +35,126 @@ const videoRef = ref<HTMLVideoElement | null>(null)
 const isProcessing = ref(false)
 const progress = ref(0)
 const statusText = ref('')
+const etaText = ref('')
+const errorText = ref('')
+const processStartedAt = ref(0)
+const isCancelRequested = ref(false)
+const resultFileSizeMB = ref(0)
 const isDragOver = ref(false)
+
+const sourceMeta = reactive({
+  duration: 0,
+  width: 0,
+  height: 0
+})
+
+const resultMeta = reactive({
+  duration: 0,
+  width: 0,
+  height: 0
+})
 
 const settings = reactive({
   rotate: 0, // 0, 90, 180, 270
   flipH: false,
   flipV: false
 })
+
+let mediaRecorder: MediaRecorder | null = null
+let drawRafId: number | null = null
+let activeOutputStream: MediaStream | null = null
+let activeSourceStream: MediaStream | null = null
+let isFinalizingOutput = false
+
+const sourceSizeMB = computed(() => {
+  if (!videoFile.value) return 0
+  return videoFile.value.size / 1024 / 1024
+})
+
+/**
+ * 格式化时长文本
+ * @param seconds 秒数
+ * @returns mm:ss 格式字符串
+ */
+const formatTime = (seconds: number) => {
+  if (!Number.isFinite(seconds) || seconds <= 0) return '00:00'
+  const mins = Math.floor(seconds / 60)
+  const secs = Math.floor(seconds % 60)
+  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`
+}
+
+/**
+ * 更新 ETA 文案
+ * @param currentProgress 当前进度
+ */
+const updateEtaText = (currentProgress: number) => {
+  const remainSeconds = estimateRemainingSeconds(currentProgress, processStartedAt.value)
+  etaText.value = formatEtaText(remainSeconds)
+}
+
+/**
+ * 清理处理结果链接
+ */
+const clearResultVideo = () => {
+  if (resultVideoUrl.value) {
+    URL.revokeObjectURL(resultVideoUrl.value)
+  }
+  resultVideoUrl.value = ''
+  resultFileSizeMB.value = 0
+  resultMeta.duration = 0
+  resultMeta.width = 0
+  resultMeta.height = 0
+}
+
+/**
+ * 停止流资源
+ */
+const clearStreams = () => {
+  activeOutputStream?.getTracks().forEach(track => track.stop())
+  activeSourceStream?.getTracks().forEach(track => track.stop())
+  activeOutputStream = null
+  activeSourceStream = null
+}
+
+/**
+ * 停止当前处理任务
+ */
+const stopCurrentProcessing = () => {
+  if (drawRafId !== null) {
+    cancelAnimationFrame(drawRafId)
+    drawRafId = null
+  }
+
+  if (videoRef.value) {
+    videoRef.value.pause()
+    videoRef.value.onended = null
+  }
+
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop()
+  } else {
+    clearStreams()
+  }
+
+  mediaRecorder = null
+  isProcessing.value = false
+  isFinalizingOutput = false
+}
+
+/**
+ * 请求结束录制并封装输出
+ */
+const finalizeRecording = () => {
+  if (!mediaRecorder || mediaRecorder.state === 'inactive' || isFinalizingOutput) {
+    return
+  }
+
+  isFinalizingOutput = true
+  progress.value = Math.max(progress.value, 99)
+  statusText.value = '正在封装输出文件...'
+  etaText.value = '预计剩余时间：约 0 秒'
+  mediaRecorder.stop()
+}
 
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
@@ -61,19 +178,38 @@ const loadVideo = (file: File) => {
     return
   }
 
+  isCancelRequested.value = true
+  stopCurrentProcessing()
+
   videoFile.value = file
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
-  if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
+  clearResultVideo()
 
   videoUrl.value = URL.createObjectURL(file)
-  resultVideoUrl.value = ''
+  sourceMeta.duration = 0
+  sourceMeta.width = 0
+  sourceMeta.height = 0
   progress.value = 0
   statusText.value = ''
+  etaText.value = ''
+  errorText.value = ''
+  processStartedAt.value = 0
 
   // Reset settings
   settings.rotate = 0
   settings.flipH = false
   settings.flipV = false
+}
+
+/**
+ * 源视频加载完成后更新基础信息
+ * @param event 元数据加载事件
+ */
+const onSourceVideoLoaded = (event: Event) => {
+  const target = event.target as HTMLVideoElement
+  sourceMeta.duration = target.duration || 0
+  sourceMeta.width = target.videoWidth || 0
+  sourceMeta.height = target.videoHeight || 0
 }
 
 const rotateLeft = () => {
@@ -92,26 +228,61 @@ const toggleFlipV = () => {
   settings.flipV = !settings.flipV
 }
 
+/**
+ * 等待视频定位完成
+ * @param video 视频元素
+ * @param targetTime 目标时间
+ */
+const waitForSeeked = (video: HTMLVideoElement, targetTime: number) => {
+  return new Promise<void>((resolve) => {
+    const handleSeeked = () => {
+      video.removeEventListener('seeked', handleSeeked)
+      resolve()
+    }
+    video.addEventListener('seeked', handleSeeked)
+    video.currentTime = targetTime
+  })
+}
+
+/**
+ * 取消当前处理任务
+ */
+const cancelProcessing = () => {
+  if (!isProcessing.value) return
+
+  isCancelRequested.value = true
+  statusText.value = '已取消处理'
+  etaText.value = ''
+  stopCurrentProcessing()
+  ElMessage.info('已取消当前视频处理任务')
+}
+
+/**
+ * 视频旋转/翻转处理主流程
+ */
 const processVideo = async () => {
-  if (!videoRef.value) return
-
-  const video = videoRef.value
-
-  isProcessing.value = true
-  statusText.value = '准备处理...'
-  progress.value = 0
-
-  const canvas = document.createElement('canvas')
-  const ctx = canvas.getContext('2d')
-
-  if (!ctx) {
-    ElMessage.error('无法创建 Canvas 上下文')
-    isProcessing.value = false
+  if (!videoRef.value || !videoFile.value) {
+    ElMessage.warning('请先上传视频文件')
     return
   }
 
-  // Calculate canvas size
-  // If rotated 90 or 270, swap width and height
+  const video = videoRef.value
+  if (!video.videoWidth || !video.videoHeight || !video.duration) {
+    ElMessage.warning('视频元数据尚未加载完成，请稍后重试')
+    return
+  }
+
+  isCancelRequested.value = false
+  isFinalizingOutput = false
+  isProcessing.value = true
+  progress.value = 0
+  statusText.value = '准备处理...'
+  etaText.value = formatEtaText(null)
+  errorText.value = ''
+  processStartedAt.value = Date.now()
+  clearResultVideo()
+
+  const canvas = document.createElement('canvas')
   if (settings.rotate % 180 !== 0) {
     canvas.width = video.videoHeight
     canvas.height = video.videoWidth
@@ -120,108 +291,225 @@ const processVideo = async () => {
     canvas.height = video.videoHeight
   }
 
-  // Capture stream
-  let stream: MediaStream | null = null
-  try {
-    // @ts-ignore
-    const videoStream = video.captureStream ? video.captureStream() : (video.mozCaptureStream ? video.mozCaptureStream() : null)
-    stream = canvas.captureStream(30)
-
-    // Try to add audio track
-    if (videoStream) {
-      const audioTracks = videoStream.getAudioTracks()
-      if (audioTracks.length > 0) stream.addTrack(audioTracks[0])
-    }
-  } catch (e) {
-    console.warn('Stream capture failed', e)
-  }
-
-  if (!stream) {
-    ElMessage.error('浏览器不支持')
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    ElMessage.error('无法创建 Canvas 上下文')
     isProcessing.value = false
     return
   }
 
-  const mimeType = 'video/webm;codecs=vp9,opus'
-  const options = MediaRecorder.isTypeSupported(mimeType) ? { mimeType } : { mimeType: 'video/webm' }
-  const mediaRecorder = new MediaRecorder(stream, options)
-  const chunks: Blob[] = []
+  try {
+    const outputStream = canvas.captureStream(30)
+    activeOutputStream = outputStream
 
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data.size > 0) chunks.push(e.data)
-  }
+    const sourceCapture = (video as any).captureStream?.() || (video as any).mozCaptureStream?.()
+    activeSourceStream = sourceCapture || null
+    const audioTracks = sourceCapture?.getAudioTracks?.() || []
+    if (audioTracks.length > 0) {
+      outputStream.addTrack(audioTracks[0])
+    }
 
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(chunks, { type: 'video/webm' })
-    resultVideoUrl.value = URL.createObjectURL(blob)
-    isProcessing.value = false
-    progress.value = 100
-    statusText.value = '处理完成！'
-    ElMessage.success('处理成功')
+    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+      ? 'video/webm;codecs=vp9,opus'
+      : 'video/webm'
 
-    video.currentTime = 0
-    video.pause()
-  }
+    const chunks: Blob[] = []
+    mediaRecorder = new MediaRecorder(outputStream, { mimeType })
 
-  // Start processing
-  video.currentTime = 0
-  await new Promise(r => setTimeout(r, 200))
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) {
+        chunks.push(e.data)
+      }
+    }
 
-  mediaRecorder.start()
-  video.play()
-  statusText.value = '正在转换...'
+    mediaRecorder.onstop = () => {
+      if (drawRafId !== null) {
+        cancelAnimationFrame(drawRafId)
+        drawRafId = null
+      }
 
-  const drawFrame = () => {
-    if (!isProcessing.value) return
+      video.pause()
+      video.onended = null
+      clearStreams()
 
-    if (video.ended) {
-      mediaRecorder.stop()
-    } else {
+      if (isCancelRequested.value) {
+        isCancelRequested.value = false
+        progress.value = 0
+        statusText.value = '已取消处理'
+        etaText.value = ''
+        mediaRecorder = null
+        isFinalizingOutput = false
+        return
+      }
+
+      const blob = new Blob(chunks, { type: mimeType })
+      resultVideoUrl.value = URL.createObjectURL(blob)
+      resultFileSizeMB.value = blob.size / 1024 / 1024
+      resultMeta.duration = sourceMeta.duration
+      resultMeta.width = canvas.width
+      resultMeta.height = canvas.height
+      isProcessing.value = false
+      progress.value = 100
+      statusText.value = '处理完成'
+      etaText.value = '预计剩余时间：约 0 秒'
+      mediaRecorder = null
+      isFinalizingOutput = false
+      ElMessage.success('处理成功')
+    }
+
+    mediaRecorder.onerror = (event) => {
+      if (drawRafId !== null) {
+        cancelAnimationFrame(drawRafId)
+        drawRafId = null
+      }
+      video.pause()
+      video.onended = null
+      clearStreams()
+
+      isProcessing.value = false
+      statusText.value = '处理失败'
+      etaText.value = ''
+      const message = getFriendlyVideoError((event as any)?.error, '视频处理失败，请稍后重试')
+      errorText.value = message
+      ElMessage.error(message)
+      mediaRecorder = null
+      isFinalizingOutput = false
+    }
+
+    await waitForSeeked(video, 0)
+    mediaRecorder.start(500)
+    statusText.value = '正在处理视频...'
+    await video.play()
+
+    const drawFrame = () => {
+      if (!isProcessing.value || !videoRef.value) return
+
       ctx.save()
-
-      // Move to center of canvas
       ctx.translate(canvas.width / 2, canvas.height / 2)
-
-      // Rotate
       ctx.rotate((settings.rotate * Math.PI) / 180)
-
-      // Scale (Flip)
       ctx.scale(settings.flipH ? -1 : 1, settings.flipV ? -1 : 1)
-
-      // Draw image centered
-      // Note: when drawing, we draw at -width/2, -height/2 relative to the UNROTATED video dimensions
-      ctx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2)
-
+      ctx.drawImage(videoRef.value, -video.videoWidth / 2, -video.videoHeight / 2)
       ctx.restore()
 
-      progress.value = Math.round((video.currentTime / video.duration) * 100)
-      requestAnimationFrame(drawFrame)
-    }
-  }
+      const currentProgress = Math.min(99, Math.round((video.currentTime / sourceMeta.duration) * 99))
+      progress.value = currentProgress
+      updateEtaText(currentProgress)
 
-  requestAnimationFrame(drawFrame)
+      if (video.currentTime >= sourceMeta.duration - 0.2 || video.ended) {
+        finalizeRecording()
+        return
+      }
+
+      drawRafId = requestAnimationFrame(drawFrame)
+    }
+
+    drawRafId = requestAnimationFrame(drawFrame)
+    video.onended = () => {
+      finalizeRecording()
+    }
+  } catch (error) {
+    clearStreams()
+    isProcessing.value = false
+    statusText.value = '处理失败'
+    etaText.value = ''
+    const message = getFriendlyVideoError(error, '处理失败，请稍后重试')
+    errorText.value = message
+    ElMessage.error(message)
+    mediaRecorder = null
+    isFinalizingOutput = false
+  }
 }
 
 const downloadResult = () => {
-  if (!resultVideoUrl.value) return
+  if (!resultVideoUrl.value || !videoFile.value) return
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
-  a.download = `rotated_${new Date().getTime()}.webm`
+  const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')
+  a.download = `${originalName}_rotated.webm`
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
 }
 
+/**
+ * 结果摘要文案
+ * @returns 摘要字符串
+ */
+const getResultSummary = () => {
+  if (!videoFile.value || !resultVideoUrl.value) return '-'
+  const delta = sourceSizeMB.value - resultFileSizeMB.value
+  const ratio = sourceSizeMB.value > 0 ? (delta / sourceSizeMB.value) * 100 : 0
+  const label = delta >= 0 ? '节省' : '增加'
+  return `${label} ${Math.abs(delta).toFixed(2)}MB（${Math.abs(ratio).toFixed(1)}%）`
+}
+
+/**
+ * 结果对比指标
+ */
+const resultComparisonMetrics = computed(() => {
+  return [
+    {
+      label: '文件体积',
+      before: `${sourceSizeMB.value.toFixed(2)} MB`,
+      after: resultVideoUrl.value ? `${resultFileSizeMB.value.toFixed(2)} MB` : '-'
+    },
+    {
+      label: '分辨率',
+      before: sourceMeta.width && sourceMeta.height ? `${sourceMeta.width} × ${sourceMeta.height}` : '-',
+      after: resultMeta.width && resultMeta.height ? `${resultMeta.width} × ${resultMeta.height}` : '-'
+    },
+    {
+      label: '时长',
+      before: formatTime(sourceMeta.duration),
+      after: resultMeta.duration ? formatTime(resultMeta.duration) : '-'
+    }
+  ]
+})
+
+/**
+ * 浏览器刷新/关闭提醒
+ * @param event 浏览器事件
+ */
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+  if (!isProcessing.value) return
+  event.preventDefault()
+  event.returnValue = ''
+}
+
+onMounted(() => {
+  window.addEventListener('beforeunload', handleBeforeUnload)
+})
+
 onUnmounted(() => {
+  isCancelRequested.value = true
+  stopCurrentProcessing()
+  clearStreams()
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
-  if (resultVideoUrl.value) URL.revokeObjectURL(resultVideoUrl.value)
+  clearResultVideo()
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+})
+
+onBeforeRouteLeave((to, from, next) => {
+  if (!isProcessing.value) {
+    next()
+    return
+  }
+
+  const shouldLeave = window.confirm('视频处理仍在进行中，离开页面会中断任务。确定要离开吗？')
+  if (!shouldLeave) {
+    next(false)
+    return
+  }
+
+  cancelProcessing()
+  next()
 })
 </script>
 
 <template>
   <div class="min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4">
         <!-- 头部区域 -->
         <div class="text-center mb-8">
           <h2
@@ -230,6 +518,7 @@ onUnmounted(() => {
           </h2>
           <p class="text-gray-500 text-sm">在线旋转视频角度或镜像翻转，修复拍摄方向错误</p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"
@@ -333,7 +622,7 @@ onUnmounted(() => {
                 <!-- Process Button -->
                 <div v-if="videoUrl">
                   <button @click="processVideo" :disabled="isProcessing"
-                    class="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transform active:scale-[0.98]">
+                    class="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]">
                     <span v-if="!isProcessing" class="flex items-center">
                       <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -357,27 +646,27 @@ onUnmounted(() => {
                   </button>
                 </div>
 
-                <!-- Progress -->
-                <div v-if="isProcessing" class="space-y-2">
-                  <div class="flex justify-between text-xs font-medium text-gray-600">
-                    <span>{{ statusText }}</span>
-                    <span>{{ progress }}%</span>
-                  </div>
-                  <div class="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div class="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                      :style="{ width: `${progress}%` }"></div>
-                  </div>
+                <VideoProcessStatus
+                  v-if="isProcessing"
+                  :progress="progress"
+                  :status-text="statusText"
+                  :eta-text="etaText"
+                  @cancel="cancelProcessing"
+                />
+
+                <div v-if="errorText" class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                  {{ errorText }}
                 </div>
 
                 <!-- Result & Download -->
                 <div v-if="resultVideoUrl" class="space-y-4 pt-4 border-t border-gray-200">
                   <h3 class="font-medium text-gray-800">处理完成</h3>
-                  <div
-                    class="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative shadow-md">
+                  <VideoResultComparison :metrics="resultComparisonMetrics" :summary="getResultSummary()" />
+                  <div class="bg-black rounded-lg overflow-hidden aspect-video flex items-center justify-center relative">
                     <video :src="resultVideoUrl" controls class="max-w-full max-h-full"></video>
                   </div>
                   <button @click="downloadResult"
-                    class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors shadow-lg shadow-green-500/30 flex items-center justify-center">
+                    class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-xl transition-colors flex items-center justify-center">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -391,8 +680,7 @@ onUnmounted(() => {
 
           <!-- 右侧：预览区域 -->
           <div class="lg:col-span-8">
-            <div
-              class="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm min-h-[500px] flex flex-col">
+            <div class="border border-gray-200 rounded-xl overflow-hidden bg-white min-h-[500px] flex flex-col">
               <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                 <div class="flex items-center space-x-3">
                   <div class="w-8 h-8 rounded-lg bg-pink-100 text-pink-600 flex items-center justify-center">
@@ -419,9 +707,9 @@ onUnmounted(() => {
 
                 <!-- Video Preview -->
                 <div v-else
-                  class="bg-black rounded-lg overflow-hidden shadow-lg flex items-center justify-center max-w-full relative transition-all duration-300"
+                  class="bg-black rounded-lg overflow-hidden flex items-center justify-center max-w-full relative transition-all duration-300"
                   style="max-height: 600px;">
-                  <video ref="videoRef" :src="videoUrl" controls class="max-w-full max-h-[600px]" :style="{
+                  <video ref="videoRef" :src="videoUrl" controls class="max-w-full max-h-[600px]" @loadedmetadata="onSourceVideoLoaded" :style="{
                     transform: `rotate(${settings.rotate}deg) scale(${settings.flipH ? -1 : 1}, ${settings.flipV ? -1 : 1})`,
                     transition: 'transform 0.3s'
                   }"></video>
@@ -435,21 +723,3 @@ onUnmounted(() => {
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
-
-<style scoped>
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-</style>

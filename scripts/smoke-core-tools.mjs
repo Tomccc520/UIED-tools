@@ -30,6 +30,26 @@ const CORE_TOOL_SPECS = [
     checks: [/@click="compressPDF"/, /@click="clearAll"/, /@click="downloadAllFiles"/]
   },
   {
+    route: '/tools/video/compress',
+    checks: [/@click="compressVideo"/, /compressionRatio/, /outputFormat/]
+  },
+  {
+    route: '/tools/video',
+    checks: [/免费在线视频处理工具箱/, /能力核对（避免重复开发）/, /target="_blank"/, /resolveToolHref/]
+  },
+  {
+    route: '/tools/video/convert',
+    checks: [/开始转换/, /VideoProcessStatus/, /VideoResultComparison/]
+  },
+  {
+    route: '/tools/video/resolution',
+    checks: [/开始重设分辨率/, /VideoProcessStatus/, /VideoResultComparison/]
+  },
+  {
+    route: '/tools/video/merge',
+    checks: [/开始拼接/, /片段列表/, /VideoProcessStatus/]
+  },
+  {
     route: '/tools/markdown',
     checks: [/<v-md-editor/, /data-smoke="markdown-editor"/, /编辑器/]
   },

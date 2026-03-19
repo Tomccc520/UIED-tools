@@ -17,6 +17,7 @@
  */
 import { ref, onUnmounted, reactive } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { ElMessage } from 'element-plus'
 
 import { useRoute } from 'vue-router'
@@ -189,6 +190,7 @@ onUnmounted(() => {
           <h2 class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">免费摄像头录制</h2>
           <p class="text-gray-500 text-sm">在线录制摄像头视频，支持高清录制和音频采集</p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- Left: Configuration Panel -->

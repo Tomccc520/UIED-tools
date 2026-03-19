@@ -17,6 +17,7 @@
  */
 import { ref, reactive, onUnmounted, watch } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
@@ -199,6 +200,7 @@ onUnmounted(() => {
           </h2>
           <p class="text-gray-500 text-sm">在线调整视频播放速度，支持 0.5x - 4.0x 变速，快速制作慢动作或快进效果</p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"

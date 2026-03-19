@@ -14,6 +14,7 @@
  */
 import { ref, onUnmounted, computed, nextTick } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import JSZip from 'jszip'
@@ -302,6 +303,7 @@ const dragOverHandler = (ev: DragEvent) => {
             在线提取视频画面，支持精确截图和一键批量下载，本地处理保护隐私
           </p>
         </div>
+        <VideoToolNotice class="mb-8" />
 
         <!-- Initial Upload Area -->
         <div v-if="!videoUrl" @drop="dropHandler" @dragover="dragOverHandler"

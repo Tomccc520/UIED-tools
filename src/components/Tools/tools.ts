@@ -1628,6 +1628,16 @@ const toolsCategories: ToolCategory[] = [
           title: '视频处理',
           list: [
             {
+              id: 1023,
+              title: '视频工具总览',
+              logo: { type: 'svg', name: 'videoFrame' },
+              desc: '查看视频工具能力总览，快速进入压缩、抽帧、剪辑、转GIF等页面',
+              url: '/tools/video',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '推荐']
+            },
+            {
               id: 1011,
               title: '视频抽帧',
               logo: { type: 'svg', name: 'videoFrame' },
@@ -1643,6 +1653,46 @@ const toolsCategories: ToolCategory[] = [
               logo: { type: 'svg', name: 'videoAudio' },
               desc: '在线从视频中提取音频，支持导出为 MP3/WAV 格式',
               url: '/tools/video/to-audio',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1022,
+              title: '视频压缩',
+              logo: { type: 'svg', name: 'videoCompress' },
+              desc: '在线压缩 MP4、AVI、MOV、MKV 等视频格式，在不改变分辨率前提下减小体积',
+              url: '/tools/video/compress',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1024,
+              title: '视频格式转换',
+              logo: { type: 'svg', name: 'videoCompress' },
+              desc: '在线转换 MP4、WebM、MOV 等常见格式，支持本地处理与快速导出',
+              url: '/tools/video/convert',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1025,
+              title: '视频分辨率重设',
+              logo: { type: 'svg', name: 'videoRotate' },
+              desc: '支持 1080p、720p、480p 与自定义尺寸重设，保持画面比例输出',
+              url: '/tools/video/resolution',
+              cate: '剪辑工具',
+              isNew: true,
+              tags: ['免费', '新品']
+            },
+            {
+              id: 1026,
+              title: '视频拼接',
+              logo: { type: 'svg', name: 'videoFrame' },
+              desc: '支持多段视频按顺序合并导出，适合快速制作合集视频',
+              url: '/tools/video/merge',
               cate: '剪辑工具',
               isNew: true,
               tags: ['免费', '新品']
