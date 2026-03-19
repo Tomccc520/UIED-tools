@@ -519,7 +519,8 @@ const renderHotList = async (containerId: string, data: HotListItem[]) => {
 
 // 缓存相关优化
 const CACHE_KEY = 'hot_ranking_cache'
-const CACHE_EXPIRY = 10 * 60 * 1000
+const CACHE_EXPIRY = 15 * 60 * 1000
+const BACKGROUND_REFRESH_INTERVAL = 8 * 60 * 1000
 const REFRESH_COOLDOWN = 30 * 1000
 const lastRefreshTime = ref(0)
 
@@ -551,8 +552,11 @@ const saveToIndexedDB = async (data: any) => {
   }
 }
 
-// 从 IndexedDB 读取缓存
-const getFromIndexedDB = async () => {
+/**
+ * 从 IndexedDB 读取完整缓存记录
+ * @returns 缓存记录
+ */
+const getCacheRecordFromIndexedDB = async (): Promise<CacheData | null> => {
   try {
     const db = await openDB()
     const tx = db.transaction('hotRankingCache', 'readonly') as CacheTransaction
@@ -564,16 +568,28 @@ const getFromIndexedDB = async () => {
       request.onerror = () => reject(request.error)
     })
 
-    if (result && Date.now() - result.timestamp < CACHE_EXPIRY) {
-      return result.data
-    }
-    return null
+    return result || null
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('IndexedDB读取失败:', error)
     }
     return null
   }
+}
+
+/**
+ * 从 IndexedDB 读取有效缓存数据
+ * @returns 未过期缓存数据
+ */
+const getFromIndexedDB = async () => {
+  const cacheRecord = await getCacheRecordFromIndexedDB()
+  if (!cacheRecord) return null
+
+  if (Date.now() - cacheRecord.timestamp < CACHE_EXPIRY) {
+    return cacheRecord.data
+  }
+
+  return null
 }
 
 // IndexedDB 相关函数
@@ -853,9 +869,13 @@ const handleAutoRefreshChange = (value: boolean) => {
 }
 
 const startAutoRefresh = () => {
+  if (autoRefreshTimer || countdownTimer) {
+    return
+  }
+
   nextRefreshTime.value = 300
   autoRefreshTimer = setInterval(() => {
-    refreshList()
+    fetchHotList(false)
     nextRefreshTime.value = 300
   }, 300000) // 5分钟刷新一次
 
@@ -901,22 +921,31 @@ const refreshList = () => {
   }
 
   lastRefreshTime.value = now
-  fetchHotList()
+  fetchHotList(true)
 }
 
 // 修改数据获取和渲染函数
-const fetchHotList = async () => {
+const fetchHotList = async (forceRefresh = false) => {
   if (loading.value) return
 
   loading.value = true
 
   try {
-    // 尝试从缓存获取数据
-    const cachedData = await getFromIndexedDB()
+    // 优先展示缓存
+    const cacheRecord = await getCacheRecordFromIndexedDB()
+    const cacheAge = cacheRecord ? Date.now() - cacheRecord.timestamp : Number.POSITIVE_INFINITY
+    const hasFreshCache = Boolean(cacheRecord && cacheAge < CACHE_EXPIRY)
+    const cachedData = hasFreshCache ? cacheRecord?.data : null
+
     if (cachedData) {
       loading.value = false
       await nextTick()
       await renderAllData(cachedData)
+
+      // 缓存仍较新且非强刷时，直接使用缓存，跳过后台网络请求
+      if (!forceRefresh && cacheAge < BACKGROUND_REFRESH_INTERVAL) {
+        return
+      }
     }
 
     // 后台更新数据
@@ -980,12 +1009,31 @@ const renderAllData = async (data: { thirdPartyData: any, uiedData: any }) => {
       if (uiedData.ai_tools_hot) await renderHotList('ai_tools_hot', uiedData.ai_tools_hot)
       if (uiedData.opensource_hot) await renderHotList('opensource_hot', uiedData.opensource_hot)
     }
+
+    // 渲染结束后一次性补充高亮类，避免定时轮询
+    await nextTick()
+    enhanceListItems()
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('渲染数据失败:', error)
     }
     showMessage('渲染数据失败，请刷新重试', 'error')
   }
+}
+
+/**
+ * 强化前三项样式
+ */
+const enhanceListItems = () => {
+  const lists = document.querySelectorAll('.io-hot-list')
+  lists.forEach(list => {
+    const items = list.querySelectorAll('.io-hot-item')
+    items.forEach((item, index) => {
+      if (index < 3) {
+        item.classList.add(`io-hot-item-top-${index + 1}`)
+      }
+    })
+  })
 }
 
 // 添加计算样式的方法
@@ -1063,31 +1111,37 @@ const handleScroll = () => {
   }
 }
 
+/**
+ * 页面可见性变化处理
+ * 页面隐藏时停止自动刷新，恢复可见时重启并按需刷新
+ */
+const handleVisibilityChange = () => {
+  if (typeof document === 'undefined') return
+
+  if (document.visibilityState === 'hidden') {
+    stopAutoRefresh()
+    return
+  }
+
+  startAutoRefresh()
+
+  if (Date.now() - lastRefreshTime.value > CACHE_EXPIRY) {
+    fetchHotList(false)
+  }
+}
+
 onMounted(async () => {
   // 添加粘性头部效果
   window.addEventListener('scroll', handleScroll)
-
-  // 添加项目动态高亮效果
-  const enhanceListItems = () => {
-    const lists = document.querySelectorAll('.io-hot-list')
-    lists.forEach(list => {
-      const items = list.querySelectorAll('.io-hot-item')
-      items.forEach((item, index) => {
-        if (index < 3) {
-          item.classList.add(`io-hot-item-top-${index + 1}`)
-        }
-      })
-    })
-  }
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 
   await nextTick()
-  fetchHotList()
+  fetchHotList(false)
   updateTime()
   timeUpdateInterval = setInterval(updateTime, 1000)
-  startAutoRefresh()
-
-  // 定期强化列表项
-  setInterval(enhanceListItems, 3000)
+  if (document.visibilityState === 'visible') {
+    startAutoRefresh()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -1100,6 +1154,7 @@ onBeforeUnmount(() => {
 
   // 移除滚动监听
   window.removeEventListener('scroll', handleScroll)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
