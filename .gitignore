@@ -41,3 +41,8 @@ pnpm-debug.log*
 public/sitemap.txt
 UIED-Tools/
 *.zip
+backups/
+backend/likeadmin-go/
+.runtime/
+backend/data/
+backend/matting-service/.venv/

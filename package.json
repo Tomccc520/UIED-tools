@@ -5,6 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:fullstack:start": "bash scripts/dev/start-fullstack.sh",
+    "dev:fullstack:stop": "bash scripts/dev/stop-fullstack.sh",
+    "dev:fullstack:stop:all": "bash scripts/dev/stop-fullstack.sh --down-db",
+    "dev:fullstack:status": "bash scripts/dev/status-fullstack.sh",
     "build": "node --max_old_space_size=8192 ./node_modules/vite/bin/vite.js build",
     "build:check": "NODE_OPTIONS=--max-old-space-size=8192 vue-tsc --noEmit && vite build",
     "build:pro": "NODE_OPTIONS=--max-old-space-size=8192 vue-tsc --noEmit && node --max_old_space_size=8192 node_modules/vite/bin/vite.js build --mode production",
