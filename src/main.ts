@@ -16,10 +16,9 @@ import pinia from './store'
 import { setupMdEditor } from './plugins/v-md-editor'
 //default-passive-events
 import 'default-passive-events'
-//echarts
-import * as echarts from 'echarts'
 // 导入调试工具
 import { debugLog, isDev } from './utils/debug'
+import { ensureFreeToolTitle } from './utils/string'
 
 const app = createApp(App)
 //安装仓库
@@ -29,8 +28,8 @@ app.use(ElementPlus, {
   locale: zhCn
 })
 setupMdEditor(app)
-//全局挂载echarts
-app.config.globalProperties.$echarts = echarts
+// 挂载全局模板方法：仅用于工具页面内部标题展示
+app.config.globalProperties.$ensureFreeToolTitle = ensureFreeToolTitle
 
 // 路由守卫，动态更新页面标题和 meta 信息
 router.beforeEach((to, from, next) => {

@@ -89,15 +89,24 @@ export interface NewsItem {
   source: string;
   description?: string;
   category: string;
+  cover?: string;
+}
+
+interface RSSCacheEntry {
+  data: NewsItem[];
+  timestamp: number;
 }
 
 class RSSNewsService {
   private parser: Parser;
-  private cache: Map<string, { data: NewsItem[]; timestamp: number; retryCount: number }>;
-  private CACHE_DURATION = 10 * 60 * 1000; // 增加到10分钟
-  private MAX_RETRY_COUNT = 3;
+  private cache: Map<string, RSSCacheEntry>;
+  private CACHE_DURATION = 15 * 60 * 1000; // 15分钟缓存，降低频繁拉取
+  private FORCE_REFRESH_COOLDOWN = 30 * 1000; // 手动强刷冷却30秒
   private MIN_CACHE_ITEMS = 5;
-  private AUTO_REFRESH_INTERVAL = 5 * 60 * 1000; // 5分钟自动刷新
+  private AUTO_REFRESH_INTERVAL = 15 * 60 * 1000; // 15分钟自动刷新
+  private STORAGE_KEY = 'rss_news_cache_v2';
+  private MAX_PERSIST_ITEMS = 20;
+  private refreshTimer: number | null = null;
   private lastError: Error | null = null;
 
   constructor() {
@@ -112,18 +121,37 @@ class RSSNewsService {
       }
     });
     this.cache = new Map();
+    this.restoreCacheFromStorage();
     this.setupAutoRefresh();
   }
 
-  // 设置自动刷新
+  /**
+   * 设置自动刷新
+   * 仅在页面可见且网络可用时执行，避免后台标签页频繁请求
+   */
   private setupAutoRefresh() {
-    setInterval(() => {
+    if (typeof window === 'undefined') return;
+
+    this.refreshTimer = window.setInterval(() => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') {
+        return;
+      }
+
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        return;
+      }
+
       this.refreshAll();
     }, this.AUTO_REFRESH_INTERVAL);
   }
 
-  // 刷新所有缓存的数据
+  /**
+   * 刷新所有缓存数据
+   * 仅刷新已经访问过并缓存的分类，避免无意义全量请求
+   */
   private async refreshAll() {
+    if (this.cache.size === 0) return;
+
     const refreshPromises = Array.from(this.cache.keys()).map(async (cacheKey) => {
       try {
         const [category, page, pageSize] = cacheKey.split('_');
@@ -156,8 +184,15 @@ class RSSNewsService {
   // 清除缓存的方法
   public clearCache() {
     this.cache.clear();
+    this.persistCacheToStorage();
   }
 
+  /**
+   * 判断是否使用缓存
+   * @param cacheKey 缓存键
+   * @param forceRefresh 是否强制刷新
+   * @returns 是否命中缓存
+   */
   private shouldUseCache(cacheKey: string, forceRefresh: boolean): boolean {
     const cached = this.cache.get(cacheKey);
     if (!cached) return false;
@@ -165,9 +200,9 @@ class RSSNewsService {
     const now = Date.now();
     const age = now - cached.timestamp;
 
-    // 如果强制刷新且重试次数未超过限制，不使用缓存
-    if (forceRefresh && cached.retryCount < this.MAX_RETRY_COUNT) {
-      return false;
+    if (forceRefresh) {
+      // 避免连续点击强刷导致高频请求
+      return age < this.FORCE_REFRESH_COOLDOWN;
     }
 
     // 如果缓存时间未过期且有足够的数据，使用缓存
@@ -175,21 +210,69 @@ class RSSNewsService {
       return true;
     }
 
-    // 如果缓存已过期但重试次数已达上限且有数据，仍然使用缓存
-    if (cached.retryCount >= this.MAX_RETRY_COUNT && cached.data.length > 0) {
-      return true;
-    }
-
     return false;
   }
 
+  /**
+   * 更新内存缓存并持久化
+   * @param cacheKey 缓存键
+   * @param data 新闻列表
+   */
   private updateCache(cacheKey: string, data: NewsItem[]) {
-    const existing = this.cache.get(cacheKey);
     this.cache.set(cacheKey, {
       data,
-      timestamp: Date.now(),
-      retryCount: (existing?.retryCount || 0) + 1
+      timestamp: Date.now()
     });
+    this.persistCacheToStorage();
+  }
+
+  /**
+   * 将缓存落盘到 localStorage
+   */
+  private persistCacheToStorage() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const entries = Array.from(this.cache.entries())
+        .sort((a, b) => b[1].timestamp - a[1].timestamp)
+        .slice(0, this.MAX_PERSIST_ITEMS);
+
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(entries));
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('持久化新闻缓存失败:', error);
+      }
+    }
+  }
+
+  /**
+   * 从 localStorage 恢复缓存
+   */
+  private restoreCacheFromStorage() {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (!raw) return;
+
+      const parsed = JSON.parse(raw) as [string, RSSCacheEntry][];
+      if (!Array.isArray(parsed)) return;
+
+      const now = Date.now();
+      parsed.forEach((entry) => {
+        const [key, value] = entry;
+        if (!key || !value || !Array.isArray(value.data)) return;
+
+        // 允许恢复最多2倍TTL内的缓存，超时后自动丢弃
+        if (now - value.timestamp <= this.CACHE_DURATION * 2) {
+          this.cache.set(key, value);
+        }
+      });
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.warn('恢复新闻缓存失败:', error);
+      }
+    }
   }
 
   private async fetchWithRetry(url: string, options: any = {}, retries = 3, delay = 1000): Promise<string> {

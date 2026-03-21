@@ -18,7 +18,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -680,10 +680,10 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import html2canvas from 'html2canvas'
 import type { Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { ensureHtml2canvasRuntime } from '@/utils/toolRuntimeLoaders'
 
 const route = useRoute()
 
@@ -1098,14 +1098,13 @@ const parseContent = (text: string) => {
     }
 
     // 3. 提取标签
-    const tagsMatch = text.match(/\[标签\]([\s\S]*?)(?=\[|$)/) ||
-      text.match(/#[\w\u4e00-\u9fa5]+/g)
-    if (tagsMatch) {
-      const tags = Array.isArray(tagsMatch)
-        ? tagsMatch
-        : tagsMatch[1].trim().split(/\s+/)
+    const tagsBlockMatch = text.match(/\[标签\]([\s\S]*?)(?=\[|$)/)
+    const tagItems = tagsBlockMatch?.[1]
+      ? tagsBlockMatch[1].trim().split(/\s+/)
+      : (text.match(/#[\w\u4e00-\u9fa5]+/g) || [])
 
-      result['标签'] = tags
+    if (tagItems.length > 0) {
+      result['标签'] = tagItems
         .filter(tag => tag.trim())
         .map(tag => tag.startsWith('#') ? tag : '#' + tag)
         .join(' ')
@@ -1367,6 +1366,8 @@ const generateImage = async () => {
 
   generatingImage.value = true
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     const selectedTemplateData = templates.find(t => t.id === selectedTemplate.value)
     const gradientClass = selectedTemplateData?.gradient || 'from-blue-50 via-purple-50 to-pink-50'
 

@@ -1,6 +1,8 @@
 <!--
 * @file AINews.vue
 * @description AI实时快讯页面，展示最新科技资讯
+* @copyright Tomda (https://www.tomda.top)
+* @copyright UIED技术团队 (https://fsuied.com)
 * @author UIED技术团队
 * @createDate 2024-03-20
 -->
@@ -17,10 +19,21 @@ const lastUpdate = ref(dayjs().format('HH:mm'))
 const currentCategory = ref<NewsCategory>('全部')
 const lastError = ref<string | null>(null)
 const refreshing = ref(false)
+const lastRequestAt = ref(0)
+const REQUEST_COOLDOWN = 15 * 1000
 
-// 获取新闻数据
+/**
+ * 获取新闻数据
+ * @param forceRefresh 是否强制刷新
+ */
 const fetchNews = async (forceRefresh = false) => {
   if (loading.value && !forceRefresh) return
+
+  const now = Date.now()
+  if (!forceRefresh && now - lastRequestAt.value < REQUEST_COOLDOWN) {
+    return
+  }
+  lastRequestAt.value = now
 
   loading.value = true
   lastError.value = null
@@ -154,7 +167,6 @@ onUnmounted(() => {
 
 // 添加已读状态记录
 const readNews = ref<Set<string>>(new Set())
-const isLoadingMore = ref(false)
 
 const markAsRead = (newsId: string) => {
   readNews.value.add(newsId)
@@ -162,22 +174,6 @@ const markAsRead = (newsId: string) => {
     localStorage.setItem('readNews', JSON.stringify([...readNews.value]))
   } catch (e) {
     console.warn('Failed to save read status:', e)
-  }
-}
-
-// 添加无限滚动
-const handleScroll = async (e: Event) => {
-  const target = e.target as HTMLElement
-  if (isLoadingMore.value) return
-
-  if (target.scrollHeight - target.scrollTop < target.clientHeight + 100) {
-    isLoadingMore.value = true
-    try {
-      // 加载更多逻辑
-      await fetchNews()
-    } finally {
-      isLoadingMore.value = false
-    }
   }
 }
 
@@ -343,7 +339,7 @@ onMounted(async () => {
             </div>
 
             <!-- PC端新闻列表 -->
-            <div class="hidden sm:block divide-y divide-gray-50" @scroll="handleScroll">
+            <div class="hidden sm:block divide-y divide-gray-50">
               <div v-for="(news, index) in newsList" :key="news.url + index"
                 class="group hover:bg-gray-50/50 transition-all duration-200 relative" @click="markAsRead(news.url)">
                 <!-- 添加已读标记 -->
@@ -465,11 +461,6 @@ onMounted(async () => {
               </div>
             </div>
 
-            <!-- 加载更多提示 -->
-            <div v-if="isLoadingMore" class="py-4 text-center text-gray-500">
-              <div class="loading-circle mx-auto"></div>
-              <div class="mt-2">加载更多...</div>
-            </div>
           </template>
 
           <!-- 添加错误提示 -->

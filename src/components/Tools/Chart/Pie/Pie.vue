@@ -23,8 +23,8 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 // import { copy } from '@/utils/string'
 import { toEchartsPieData, toSpreadsheetData, tranObjAndColumn, toEchartsData } from '@/utils/echarts'
+import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import * as echarts from 'echarts'
-import * as XLSX from 'xlsx'
 const info = reactive({
   title: "饼图",
 })
@@ -399,14 +399,19 @@ watch(drawer, (newVal) => {
 
 //上传数据文件
 const fileList = ref()
+/**
+ * 解析并导入 Excel 数据到饼图
+ * 仅在用户导入时加载 xlsx，降低页面初始加载成本
+ */
 const updateDataFile = async (params) => {
   const _file = params.file;
   const fileReader = new FileReader();
-  fileReader.onload = (ev) => {
+  fileReader.onload = async (ev) => {
     try {
       if (!ev.target) {
         return
       }
+      const { XLSX } = await ensureXlsxRuntime()
       const data = ev.target.result;
       const workbook = XLSX.read(data, {
         type: 'binary'
@@ -555,7 +560,7 @@ const updateRowsData = (cols: string[], vals: number[]) => {
         <div class="text-center mb-8">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">在线饼图制作工具，支持数据可视化和图表定制</p>

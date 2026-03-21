@@ -22,7 +22,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -468,8 +468,7 @@ import { ElMessage } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
-import html2canvas from 'html2canvas'
-import jsPDF from 'jspdf'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 import {
   Monitor,
   Brush,
@@ -644,6 +643,8 @@ const generateQuote = async (type: 'pdf' | 'image') => {
   }
 
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     if (!previewRef.value) {
       ElMessage.error('获取报价单预览失败')
       return
@@ -703,6 +704,7 @@ const generateQuote = async (type: 'pdf' | 'image') => {
       ElMessage.success('报价单已导出为图片')
     } else {
       // 导出为PDF
+      const { jsPDF } = await ensureJsPdfRuntime()
       const imgData = canvas.toDataURL('image/jpeg', 1.0)
       const pdf = new jsPDF({
         orientation: 'portrait',

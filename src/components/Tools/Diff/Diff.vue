@@ -14,11 +14,9 @@
 -->
 
 <script setup lang="ts">
-import { ref } from '@vue/runtime-core'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { CodeDiff } from "v-code-diff"
+import AsyncCodeDiff from '@/components/Common/AsyncCodeDiff.vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -29,8 +27,96 @@ const info = {
   subtitle: "在线文本差异比对工具，支持中文、英文、代码比对"
 }
 
-const leftTxt = ref('旧文本')
-const rightTxt = ref('新文本')
+const leftTxt = ref('')
+const rightTxt = ref('')
+const showDiffPanel = ref(false)
+const compareLeftText = ref('')
+const compareRightText = ref('')
+let compareSyncTimer: ReturnType<typeof setTimeout> | null = null
+
+/**
+ * 判断是否满足启动对比条件
+ * 两侧文本都存在内容时才允许加载差异组件，避免无意义初始化重型依赖
+ */
+const canStartCompare = computed(() => {
+  return Boolean(leftTxt.value.trim() && rightTxt.value.trim())
+})
+
+/**
+ * 同步对比快照内容
+ * 将输入区文本写入对比区专用状态，避免每个键入字符都触发重型对比渲染
+ */
+const syncCompareSnapshot = () => {
+  compareLeftText.value = leftTxt.value
+  compareRightText.value = rightTxt.value
+}
+
+/**
+ * 调度对比快照更新
+ * 启动对比后采用短延时防抖，降低长文本连续输入时的 CPU 占用
+ * @param immediate 是否立即更新快照
+ */
+const scheduleCompareSnapshot = (immediate = false) => {
+  if (compareSyncTimer) {
+    clearTimeout(compareSyncTimer)
+    compareSyncTimer = null
+  }
+
+  if (immediate) {
+    syncCompareSnapshot()
+    return
+  }
+
+  compareSyncTimer = setTimeout(() => {
+    syncCompareSnapshot()
+    compareSyncTimer = null
+  }, 120)
+}
+
+/**
+ * 关闭对比面板并清理状态
+ * 在输入不完整或页面卸载时释放快照与定时器，避免残留渲染开销
+ */
+const resetComparePanel = () => {
+  showDiffPanel.value = false
+  compareLeftText.value = ''
+  compareRightText.value = ''
+  if (compareSyncTimer) {
+    clearTimeout(compareSyncTimer)
+    compareSyncTimer = null
+  }
+}
+
+/**
+ * 启动文本对比面板
+ * 首次点击后才挂载异步差异组件，减少进入页面时的依赖加载压力
+ */
+const startCompare = () => {
+  if (!canStartCompare.value) return
+  showDiffPanel.value = true
+  scheduleCompareSnapshot(true)
+}
+
+watch([leftTxt, rightTxt], () => {
+  if (!showDiffPanel.value) return
+  if (!canStartCompare.value) {
+    resetComparePanel()
+    return
+  }
+  scheduleCompareSnapshot()
+})
+
+watch(canStartCompare, (ready) => {
+  if (ready || !showDiffPanel.value) return
+  resetComparePanel()
+})
+
+onBeforeUnmount(() => {
+  if (compareSyncTimer) {
+    clearTimeout(compareSyncTimer)
+    compareSyncTimer = null
+  }
+})
 
 // 功能特点
 const features = [
@@ -86,7 +172,7 @@ const faqs = [
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -115,8 +201,20 @@ const faqs = [
           <!-- 对比结果 -->
           <div class="mt-8 border rounded-lg p-6 bg-gray-50">
             <h4 class="text-base font-medium text-gray-700 mb-4">对比结果</h4>
-            <code-diff :old-string="leftTxt" :new-string="rightTxt" output-format="side-by-side"
-              :show-line-numbers="true" :diff-style="'char'" :trim-space="false" :show-space="true" />
+            <template v-if="showDiffPanel">
+              <AsyncCodeDiff :old-string="compareLeftText" :new-string="compareRightText" output-format="side-by-side"
+                :show-line-numbers="true" :diff-style="'char'" :trim-space="false" :show-space="true" />
+            </template>
+            <template v-else>
+              <div class="min-h-[240px] flex flex-col items-center justify-center text-gray-500">
+                <p class="text-sm mb-3">输入两侧文本后，点击开始对比</p>
+                <button
+                  class="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="!canStartCompare" @click="startCompare">
+                  开始对比
+                </button>
+              </div>
+            </template>
           </div>
         </div>
 

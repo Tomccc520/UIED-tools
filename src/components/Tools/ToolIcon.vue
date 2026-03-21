@@ -15,8 +15,8 @@
 
 <template>
   <div class="tool-icon">
-    <template v-if="typeof icon === 'object' && icon.type === 'svg' && icon.name">
-      <div class="icon-wrapper" v-html="toolIcons[icon.name].content" />
+    <template v-if="typeof icon === 'object' && icon.type === 'svg' && icon.name && getSvgIcon(icon.name)">
+      <div class="icon-wrapper" v-html="getSvgIcon(icon.name)?.content" />
     </template>
     <template v-else-if="typeof icon === 'string'">
       <img :src="icon" class="icon-image" :alt="icon" />
@@ -33,10 +33,14 @@
 import { toolIcons } from './icons'
 
 interface Props {
-  icon: string | { type: 'svg', name: keyof typeof toolIcons }
+  icon: string | { type: 'svg', name: string }
 }
 
 defineProps<Props>()
+
+const getSvgIcon = (name: string) => {
+  return toolIcons[name as keyof typeof toolIcons]
+}
 </script>
 
 <style scoped>

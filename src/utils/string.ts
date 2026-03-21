@@ -118,12 +118,29 @@ export function rtrim(str, char = ' ') {
     return str.replace(new RegExp('\\'+char+'+$', 'g'), '');
 }
 
+/**
+ * 为工具标题补齐“免费”前缀（已包含则不重复添加）
+ * @param title 工具标题
+ * @returns 处理后的标题
+ */
+export function ensureFreeToolTitle(title: string): string {
+  const rawTitle = String(title || '').trim()
+  if (!rawTitle) {
+    return rawTitle
+  }
+  if (rawTitle.includes('免费')) {
+    return rawTitle
+  }
+  return /^[A-Za-z0-9]/.test(rawTitle) ? `免费 ${rawTitle}` : `免费${rawTitle}`
+}
+
 const StringUtils = {
   transferred,
   copy,
   genRandomStrByChars,
   numberToChinese,
   rtrim,
+  ensureFreeToolTitle,
 }
 
 export default StringUtils

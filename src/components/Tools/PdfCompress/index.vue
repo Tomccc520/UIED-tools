@@ -1,40 +1,21 @@
 <!--
- * @file PdfCompress.vue
- * @description PDF压缩工具组件，支持PDF文件压缩，减小文件体积
+/**
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-03-20
- * @license MIT
- *
- * 功能特性：
- * 1. 支持拖拽和点击上传PDF
- * 2. 支持批量压缩和单个下载
- * 3. 支持多种压缩质量选择（轻度/标准/深度）
- * 4. 混合压缩策略：结构优化与光栅化重绘
- * 5. 支持大文件处理与进度显示
- * 6. 压缩前后体积对比
- *
- * 主要组件：
- * - 文件上传区域
- * - 压缩模式选择
- * - 文件列表展示
- * - 压缩进度条
+ * @createDate 2026.1.27
+ */
 -->
 
 <script setup lang="ts">
 import { ref, reactive, watch, onUnmounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import * as JSZip from 'jszip'
-import { PDFDocument } from 'pdf-lib'
-import * as pdfjsLib from 'pdfjs-dist'
-import { jsPDF } from 'jspdf'
+import JSZip from 'jszip'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-
-// 设置 PDF.js worker
-// 使用 Vite 的显式 URL 导入功能
-import pdfWorker from 'pdfjs-dist/build/pdf.worker?url'
-pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker
+import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { getPdfFileError, ensurePdfjsRuntime } from '@/utils/pdf'
+import { ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 // 类型定义
 interface UploadFile {
@@ -66,7 +47,7 @@ interface AdvancedConfig {
 }
 
 const info = reactive({
-  title: "免费PDF压缩工具",
+  title: "PDF压缩",
   subtitle: "在线压缩PDF文件大小，参考 PDF24 压缩算法，支持 DPI 与图片质量精细调节"
 })
 
@@ -79,6 +60,18 @@ const isDragging = ref(false)
 const dataFileRef = ref()
 const processedFiles = ref<Map<string, ProcessedFile>>(new Map())
 const showAdvanced = ref(false)
+
+const guideSteps = [
+  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，支持批量上传。' },
+  { title: '选择压缩模式', description: '根据需求选择低、中、高三种压缩质量，或自定义DPI和图片质量。' },
+  { title: '开始压缩', description: '点击“开始压缩”按钮，系统将自动处理文件。' },
+  { title: '下载文件', description: '压缩完成后，可预览效果并下载单个文件或打包下载所有文件。' }
+]
+
+const guideNotes = [
+  '压缩效果取决于原文件内容，图片较多的PDF文件压缩效果最明显。',
+  '建议先尝试“中等质量”模式，如果体积仍过大可尝试“低质量”模式。'
+]
 
 // 预设配置
 const presets = {
@@ -121,6 +114,28 @@ const currentPreset = ref<keyof typeof presets>('medium')
 
 // 当前配置（响应式，初始化为默认预设）
 const config = reactive<AdvancedConfig>({ ...presets.medium.config } as AdvancedConfig)
+
+type JsPdfImageCompression = 'NONE' | 'FAST' | 'MEDIUM' | 'SLOW'
+
+/**
+ * 各预设的最大渲染长边
+ * @description 限制极端页面尺寸下的渲染分辨率，避免内存峰值过高导致崩溃
+ */
+const PRESET_MAX_RENDER_LONG_EDGE: Record<keyof typeof presets, number> = {
+  low: 1600,
+  medium: 2200,
+  high: 3200
+}
+
+/**
+ * 各预设对应的 JPEG 压缩级别
+ * @description 结合 jsPDF 内部压缩档位，进一步减小输出体积
+ */
+const PRESET_JPEG_COMPRESSION_LEVEL: Record<keyof typeof presets, JsPdfImageCompression> = {
+  low: 'SLOW',
+  medium: 'MEDIUM',
+  high: 'FAST'
+}
 
 // 监听预设变化
 watch(currentPreset, (newVal) => {
@@ -174,10 +189,70 @@ const faqs = [
 ]
 
 /**
+ * 生成上传项唯一标识
+ * @description 优先使用浏览器原生 UUID，兜底时间戳随机串
+ * @returns 唯一 ID
+ */
+const createUploadUid = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `pdf_${Date.now()}_${Math.random().toString(16).slice(2)}`
+}
+
+/**
+ * 约束 JPEG 质量参数
+ * @description 将百分比配置映射到 0.1-1 区间，避免异常值导致输出失败
+ * @param quality 图片质量（0-100）
+ * @returns 可用于 canvas 导出的质量值
+ */
+const normalizeJpegQuality = (quality: number) => {
+  const normalized = quality / 100
+  if (Number.isNaN(normalized)) return 0.75
+  return Math.min(1, Math.max(0.1, normalized))
+}
+
+/**
+ * 计算自适应渲染缩放比
+ * @description 在用户 DPI 基础上，按页数和页面尺寸进行二次约束，平衡清晰度与压缩率
+ * @param viewport 原始页面视口
+ * @param baseScale 基础缩放比（DPI/72）
+ * @param pageCount 文档页数
+ * @returns 最终缩放比
+ */
+const getAdaptiveScale = (
+  viewport: { width: number; height: number },
+  baseScale: number,
+  pageCount: number
+) => {
+  const presetLimit = PRESET_MAX_RENDER_LONG_EDGE[currentPreset.value]
+  const longEdge = Math.max(viewport.width, viewport.height)
+
+  // 页数越多，适度降低上限，减少超大文档内存压力
+  const pageCountFactor = pageCount > 80 ? 0.62 : pageCount > 40 ? 0.76 : pageCount > 20 ? 0.86 : 1
+  const maxLongEdge = presetLimit * pageCountFactor
+
+  if (longEdge <= 0) return baseScale
+
+  const safeScale = maxLongEdge / longEdge
+  return Math.min(baseScale, safeScale)
+}
+
+/**
+ * 获取当前预设对应的 JPEG 压缩档位
+ * @description 传递给 jsPDF.addImage 的压缩参数
+ * @returns 压缩档位
+ */
+const getCurrentJpegCompression = (): JsPdfImageCompression => {
+  return PRESET_JPEG_COMPRESSION_LEVEL[currentPreset.value]
+}
+
+/**
  * 生成文件缩略图（取第一页）
  */
 const generateThumbnail = async (file: File): Promise<string> => {
   try {
+    const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await file.arrayBuffer()
     const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
     const page = await pdf.getPage(1)
@@ -202,50 +277,77 @@ const generateThumbnail = async (file: File): Promise<string> => {
 /**
  * 处理文件变更
  */
-const handleChange = async (uploadFile: any, uploadFiles: any[]) => {
+const handleChange = async (uploadFile: any, _uploadFiles: any[]) => {
   try {
     if (uploadFile.status !== 'ready') return
 
     const file = uploadFile.raw
     if (!file || !(file instanceof File)) return
 
-    if (!validateFile(file)) {
-      const index = fileList.value.findIndex(f => f.uid === uploadFile.uid)
-      if (index !== -1) fileList.value.splice(index, 1)
-      return
-    }
-
-    // 转换为自定义 UploadFile 对象
-    const newFile: UploadFile = {
-      uid: uploadFile.uid,
-      name: file.name,
-      size: file.size,
-      status: 'ready',
-      progress: 0,
-      raw: file,
-      url: URL.createObjectURL(file),
-      previewImage: '',
-      logs: []
-    }
-
-    // 生成预览图
-    generateThumbnail(file).then(img => {
-      newFile.previewImage = img
-    })
-
-    const existingIndex = fileList.value.findIndex(f => f.uid === newFile.uid)
-    if (existingIndex === -1) {
-      fileList.value.push(newFile)
-    }
-
+    await addFileToQueue(file, uploadFile.uid)
   } catch (error) {
     console.error('文件处理失败:', error)
     ElMessage.error('文件加载失败')
   }
 }
 
+/**
+ * 将原始文件加入处理队列
+ * @description 统一处理上传与拖拽入口，避免重复逻辑并确保缩略图异步生成
+ * @param file 原始 PDF 文件
+ * @param uid 外部传入的唯一标识
+ */
+const addFileToQueue = async (file: File, uid?: string) => {
+  if (!validateFile(file)) {
+    return
+  }
+
+  const fileUid = uid || createUploadUid()
+  const isDuplicate = fileList.value.some(item =>
+    item.name === file.name && item.size === file.size && item.status !== 'error'
+  )
+
+  if (isDuplicate) {
+    ElMessage.warning(`文件 ${file.name} 已在列表中`)
+    return
+  }
+
+  const newFile: UploadFile = {
+    uid: fileUid,
+    name: file.name,
+    size: file.size,
+    status: 'ready',
+    progress: 0,
+    raw: file,
+    url: URL.createObjectURL(file),
+    previewImage: '',
+    logs: []
+  }
+
+  fileList.value.push(newFile)
+
+  // 缩略图异步生成，失败不影响主流程
+  generateThumbnail(file).then(img => {
+    newFile.previewImage = img
+  }).catch(() => {
+    newFile.previewImage = ''
+  })
+}
+
+/**
+ * 处理拖拽上传
+ * @description 支持批量拖拽文件并加入队列，补齐原先仅校验不入队的问题
+ */
 const handleDrop = (e: DragEvent) => {
+  e.preventDefault()
   isDragging.value = false
+  const droppedFiles = e.dataTransfer?.files
+  if (!droppedFiles || droppedFiles.length === 0) return
+
+  Array.from(droppedFiles).forEach((rawFile) => {
+    if (!(rawFile instanceof File)) return
+    void addFileToQueue(rawFile)
+  })
 }
 
 const handleRemove = (file: UploadFile) => {
@@ -261,12 +363,9 @@ const handleRemove = (file: UploadFile) => {
  * 验证文件
  */
 const validateFile = (file: File): boolean => {
-  if (file.size > 100 * 1024 * 1024) {
-    ElMessage.error('文件大小超过100MB限制，请压缩或选择较小文件')
-    return false
-  }
-  if (file.type !== 'application/pdf') {
-    ElMessage.error(`文件 ${file.name} 不是PDF格式`)
+  const err = getPdfFileError(file, 100)
+  if (err) {
+    ElMessage.error(err)
     return false
   }
   return true
@@ -283,59 +382,118 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
 
   const rawFile = file.raw!
   const arrayBuffer = await rawFile.arrayBuffer()
+  const pdfjsLib = await ensurePdfjsRuntime()
 
-  // 策略：基于 DPI 的光栅化 (PDF24 风格)
-  // 72 DPI is standard screen resolution.
-  // Scale factor = Target DPI / 72
-  const scaleFactor = config.dpi / 72
+  // 72 DPI 为 PDF 基础分辨率，最终缩放比由 DPI 和自适应策略共同决定
+  const baseScaleFactor = config.dpi / 72
+  const jpegQuality = normalizeJpegQuality(config.imageQuality)
+  const jpegCompression = getCurrentJpegCompression()
 
-  file.logs.push(`策略: DPI 光栅化 (DPI: ${config.dpi}, Scale: ${scaleFactor.toFixed(2)}, Quality: ${config.imageQuality}%)`)
+  file.logs.push(
+    `策略: DPI 光栅化 + 自适应缩放 (DPI: ${config.dpi}, Quality: ${(jpegQuality * 100).toFixed(0)}%, JPEG: ${jpegCompression})`
+  )
 
-  const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
+  const loadingTask = pdfjsLib.getDocument({
+    data: arrayBuffer,
+    useSystemFonts: true
+  } as any)
+  const pdf = await loadingTask.promise
   const totalPages = pdf.numPages
 
   const firstPage = await pdf.getPage(1)
   const firstViewport = firstPage.getViewport({ scale: 1.0 })
+  const { jsPDF } = await ensureJsPdfRuntime()
 
   const doc = new jsPDF({
     orientation: firstViewport.width > firstViewport.height ? 'l' : 'p',
     unit: 'pt',
-    format: [firstViewport.width, firstViewport.height]
+    format: [firstViewport.width, firstViewport.height],
+    compress: true,
+    putOnlyUsedFonts: true,
+    precision: 2
   })
 
-  for (let i = 1; i <= totalPages; i++) {
-    file.progress = 10 + Math.floor((i / totalPages) * 80)
+  // 可选移除元数据，降低信息暴露并减少少量冗余字节
+  if (config.removeMetadata) {
+    doc.setProperties({
+      title: '',
+      subject: '',
+      author: '',
+      keywords: '',
+      creator: ''
+    })
+  }
 
-    const page = await pdf.getPage(i)
-    const viewport = page.getViewport({ scale: scaleFactor })
-    const originalViewport = page.getViewport({ scale: 1.0 })
+  try {
+    for (let i = 1; i <= totalPages; i++) {
+      file.progress = 10 + Math.floor((i / totalPages) * 80)
 
-    const canvas = document.createElement('canvas')
-    canvas.width = viewport.width
-    canvas.height = viewport.height
-    const ctx = canvas.getContext('2d')
+      const page = await pdf.getPage(i)
+      const originalViewport = page.getViewport({ scale: 1.0 })
+      const adaptiveScale = getAdaptiveScale(originalViewport, baseScaleFactor, totalPages)
+      const viewport = page.getViewport({ scale: adaptiveScale })
 
-    if (!ctx) throw new Error('Canvas Context creation failed')
+      if (adaptiveScale < baseScaleFactor && (i === 1 || i % 10 === 0)) {
+        file.logs.push(
+          `第 ${i} 页启用自适应缩放: ${baseScaleFactor.toFixed(2)} → ${adaptiveScale.toFixed(2)}`
+        )
+      }
 
-    // 颜色模式处理
-    if (config.colorMode === 'grayscale') {
-      ctx.filter = 'grayscale(100%)'
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.floor(viewport.width))
+      canvas.height = Math.max(1, Math.floor(viewport.height))
+      const ctx = canvas.getContext('2d', { alpha: false })
+
+      if (!ctx) {
+        throw new Error('Canvas 上下文创建失败')
+      }
+
+      // 灰度模式下直接在渲染阶段应用滤镜
+      if (config.colorMode === 'grayscale') {
+        ctx.filter = 'grayscale(100%)'
+      }
+
+      await page.render({ canvasContext: ctx, viewport }).promise
+
+      const imgData = canvas.toDataURL('image/jpeg', jpegQuality)
+
+      if (i > 1) {
+        doc.addPage(
+          [originalViewport.width, originalViewport.height],
+          originalViewport.width > originalViewport.height ? 'l' : 'p'
+        )
+      }
+
+      doc.addImage(
+        imgData,
+        'JPEG',
+        0,
+        0,
+        originalViewport.width,
+        originalViewport.height,
+        undefined,
+        jpegCompression
+      )
+
+      // 显式回收画布内存，降低大文件处理时的内存峰值
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      canvas.width = 1
+      canvas.height = 1
+      page.cleanup()
+
+      // 每处理数页让出主线程，缓解长文档卡顿
+      if (i % 6 === 0) {
+        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+      }
     }
-
-    await page.render({ canvasContext: ctx, viewport }).promise
-
-    const imgData = canvas.toDataURL('image/jpeg', config.imageQuality / 100)
-
-    if (i > 1) {
-      doc.addPage([originalViewport.width, originalViewport.height], originalViewport.width > originalViewport.height ? 'l' : 'p')
-    }
-
-    doc.addImage(imgData, 'JPEG', 0, 0, originalViewport.width, originalViewport.height)
+  } finally {
+    pdf.cleanup()
+    await pdf.destroy()
   }
 
   const blob = doc.output('blob')
   file.endTime = Date.now()
-  file.logs.push(`处理完成，耗时 ${(file.endTime - file.startTime!) / 1000}s`)
+  file.logs.push(`处理完成，耗时 ${((file.endTime - file.startTime!) / 1000).toFixed(1)}s`)
 
   // 体积检查
   if (blob.size >= file.size) {
@@ -547,7 +705,7 @@ const showLogs = (file: UploadFile) => {
       <!-- 标题区域 -->
       <div class="bg-white rounded-xl p-8 mb-4">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ info.title }}</h2>
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
@@ -555,7 +713,7 @@ const showLogs = (file: UploadFile) => {
         <div
           class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
           :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
-          @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop="handleDrop">
+          @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
           <el-upload v-model:file-list="fileList" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
             accept="application/pdf" :auto-upload="false" :on-change="handleChange" :show-file-list="false" multiple
             drag>
@@ -570,6 +728,7 @@ const showLogs = (file: UploadFile) => {
                 点击或拖拽 PDF 文件到此处
               </div>
               <p class="text-sm text-gray-400">支持批量上传，单个文件最大 100MB</p>
+              <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </el-upload>
         </div>
@@ -630,6 +789,15 @@ const showLogs = (file: UploadFile) => {
                 <label class="text-sm font-medium text-gray-700">输出文件名规则</label>
                 <el-input v-model="config.filenamePattern" placeholder="例如: compressed_{name}" />
                 <p class="text-xs text-gray-400">支持变量: {name}, {date}</p>
+              </div>
+
+              <!-- 元数据处理 -->
+              <div class="space-y-2">
+                <label class="text-sm font-medium text-gray-700">移除元数据</label>
+                <div class="h-[32px] flex items-center">
+                  <el-switch v-model="config.removeMetadata" />
+                </div>
+                <p class="text-xs text-gray-400">开启后将清空作者、主题等文档属性</p>
               </div>
             </div>
 
@@ -825,6 +993,9 @@ const showLogs = (file: UploadFile) => {
             </div>
           </div>
         </div>
+
+        <!-- 使用说明 -->
+        <UsageGuide :steps="guideSteps" :notes="guideNotes" />
       </div>
 
       <!-- 工具推荐 -->

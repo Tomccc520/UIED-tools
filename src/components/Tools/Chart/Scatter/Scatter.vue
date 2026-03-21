@@ -22,8 +22,8 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { toEchartsData, toSpreadsheetData, tranObjAndColumn } from '@/utils/echarts'
+import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import * as echarts from 'echarts'
-import * as XLSX from 'xlsx'
 
 const route = useRoute()
 
@@ -322,14 +322,19 @@ watch(drawer, (newVal) => {
 
 //上传数据文件
 const fileList = ref()
+/**
+ * 解析并导入 Excel 数据到散点图
+ * 仅在用户上传数据时按需加载 xlsx 运行时
+ */
 const updateDataFile = async (params) => {
   const _file = params.file;
   const fileReader = new FileReader();
-  fileReader.onload = (ev) => {
+  fileReader.onload = async (ev) => {
     try {
       if (!ev.target) {
         return
       }
+      const { XLSX } = await ensureXlsxRuntime()
       const data = ev.target.result;
       const workbook = XLSX.read(data, {
         type: 'binary'
@@ -440,7 +445,7 @@ onMounted(() => {
         <div class="text-center mb-8">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">在线散点图制作工具，支持数据可视化和图表定制</p>

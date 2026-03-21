@@ -53,9 +53,34 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 // 环境变量配置
 const isProd = process.env.NODE_ENV === 'production'
 const BASE_API = isProd ? '' : ''  // 移除生产环境的基础URL
+const enableCoep = process.env.VITE_ENABLE_COEP === 'true'
+
+/**
+ * 修复第三方样式中的历史拼写错误
+ * 对 tui-image-editor 的构建 CSS 做定向替换，消除 backbround-color 告警
+ */
+const fixTuiImageEditorCssTypo = () => ({
+  name: 'fix-tui-image-editor-css-typo',
+  enforce: 'pre' as const,
+  transform(code: string, id: string) {
+    if (!id.includes('tui-image-editor/dist/tui-image-editor.css')) {
+      return null
+    }
+
+    if (!code.includes('backbround-color')) {
+      return null
+    }
+
+    return {
+      code: code.replaceAll('backbround-color', 'background-color'),
+      map: null
+    }
+  }
+})
 
 export default defineConfig({
   plugins: [
+    fixTuiImageEditorCssTypo(),
     vue(),
     // 添加Node.js polyfills
     nodePolyfills({
@@ -72,7 +97,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      'vue': 'vue/dist/vue.esm-bundler.js'
+      'vue': 'vue/dist/vue.esm-bundler.js',
+      'v-code-diff': path.resolve(__dirname, 'node_modules/v-code-diff/dist/v3/index.es.js')
     },
     // 添加 .mjs 扩展名支持
     extensions: ['.mjs', '.js', '.ts', '.jsx', '.tsx', '.json', '.vue']
@@ -102,6 +128,27 @@ export default defineConfig({
 
   // 构建配置
   build: {
+    modulePreload: {
+      /**
+       * 入口预加载瘦身
+       * 首屏仅保留核心运行依赖，重型能力包改为路由触发后再加载
+       */
+      resolveDependencies: (_url, deps, context) => {
+        if (context.hostType !== 'html') {
+          return deps
+        }
+
+        const lazyPrefixes = [
+          'assets/vendor-editor-',
+          'assets/vendor-image-',
+          'assets/vendor-pdf-',
+          'assets/vendor-charts-',
+          'assets/vendor-diff-'
+        ]
+
+        return deps.filter((dep) => !lazyPrefixes.some((prefix) => dep.includes(prefix)))
+      }
+    },
     outDir: 'dist',
     assetsDir: 'assets',
     // 使用 terser 进行更安全的代码压缩
@@ -131,10 +178,94 @@ export default defineConfig({
       // 确保 Vue 相关的包能够正确被引用
       external: [],
       output: {
-        // 解决代码分割问题
-        manualChunks: {
-          'vendor-vue': ['vue', '@vue/runtime-core', '@vue/reactivity', '@vue/shared'],
-          'vendor-element-plus': ['element-plus']
+        /**
+         * 自定义分包策略
+         * 将高体积依赖按能力域拆分，降低主包体积并提升首屏加载稳定性
+         */
+        manualChunks(id) {
+          const normalizedId = id.replace(/\\/g, '/')
+          if (!normalizedId.includes('/node_modules/')) return
+
+          /**
+           * Vue 核心运行时分包
+           * 仅匹配 vue / @vue / vue-router 核心路径，避免“名称中包含 vue”被误分包
+           */
+          if (
+            normalizedId.includes('/node_modules/vue/') ||
+            normalizedId.includes('/node_modules/@vue/') ||
+            normalizedId.includes('/node_modules/vue-router/')
+          ) {
+            return 'vendor-vue'
+          }
+
+          /**
+           * Element Plus 组件库分包
+           * 与 Vue 核心保持单向依赖，避免形成 chunk 循环引用导致 TDZ 报错
+           */
+          if (
+            normalizedId.includes('/node_modules/element-plus/') ||
+            normalizedId.includes('/node_modules/@element-plus/')
+          ) {
+            return 'vendor-element-plus'
+          }
+
+          if (
+            normalizedId.includes('/node_modules/pdfjs-dist/') ||
+            normalizedId.includes('/node_modules/pdf-lib/') ||
+            normalizedId.includes('/node_modules/jspdf/') ||
+            normalizedId.includes('/node_modules/html2pdf.js/')
+          ) {
+            return 'vendor-pdf'
+          }
+
+          if (
+            normalizedId.includes('/node_modules/xlsx/') ||
+            normalizedId.includes('/node_modules/jszip/')
+          ) {
+            return 'vendor-sheet'
+          }
+
+          if (normalizedId.includes('/node_modules/@wangeditor/')) {
+            return 'vendor-editor-wangeditor'
+          }
+
+          if (
+            normalizedId.includes('/node_modules/vue-codemirror/') ||
+            normalizedId.includes('/node_modules/@codemirror/')
+          ) {
+            return 'vendor-editor-codemirror'
+          }
+
+          if (normalizedId.includes('/node_modules/highlight.js/')) {
+            return 'vendor-editor-highlight'
+          }
+
+          if (
+            normalizedId.includes('/node_modules/@kangc/v-md-editor/') ||
+            normalizedId.includes('/node_modules/prismjs/')
+          ) {
+            return 'vendor-editor-markdown'
+          }
+
+          if (
+            normalizedId.includes('/node_modules/v-code-diff/') ||
+            normalizedId.includes('/node_modules/diff/')
+          ) {
+            return 'vendor-diff'
+          }
+
+          if (
+            normalizedId.includes('/node_modules/fabric/') ||
+            normalizedId.includes('/node_modules/cropperjs/') ||
+            normalizedId.includes('/node_modules/tui-image-editor/') ||
+            normalizedId.includes('/node_modules/gifuct-js/')
+          ) {
+            return 'vendor-image'
+          }
+
+          if (normalizedId.includes('/node_modules/echarts/')) {
+            return 'vendor-charts'
+          }
         }
       }
     },
@@ -146,8 +277,14 @@ export default defineConfig({
 
   // 开发服务器配置
   server: {
-    host: true,
-    port: 5173,
+    host: '0.0.0.0',
+    port: 5179,
+    open: true,
+    // 配置响应头，支持 SharedArrayBuffer (提升 WASM 性能)
+    headers: enableCoep ? {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    } : {},
     proxy: {
       // 翻译接口代理配置
       '/api/translate': {
@@ -209,7 +346,7 @@ export default defineConfig({
         }
       },
 
-      // 爱情公寓台词接口代理配置
+      // 爱情公寓台词
       '/api/aqgy': {
         target: 'https://api.tangdouz.com',
         changeOrigin: true,
@@ -219,6 +356,31 @@ export default defineConfig({
           'Origin': 'https://api.tangdouz.com',
           'Referer': 'https://api.tangdouz.com/'
         }
+      },
+
+
+      // 摸鱼倒数日接口代理
+      '/api/dailyhot': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
+      },
+      '/api/countdownday': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
+      },
+      // 抖音视频接口代理
+      '/api/video/douyin': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
+      },
+      // 小红书图片接口代理
+      '/api/xhhimg': {
+        target: 'https://api.pearktrue.cn',
+        changeOrigin: true,
+        secure: false
       },
 
       // 聚合热榜接口代理配置
@@ -241,17 +403,6 @@ export default defineConfig({
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': 'YOUR_API_KEY'
-        }
-      },
-
-      // 热榜聚合接口代理配置
-      '/api/dailyhot': {
-        target: 'https://api.pearktrue.cn',
-        changeOrigin: true,
-        rewrite: (path) => path,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
         }
       },
 
@@ -603,12 +754,9 @@ export default defineConfig({
       allow: ['..']
     }
   },
+
+  // 单元测试配置
   test: {
-    environment: 'jsdom',
-    globals: true,
-    setupFiles: [],
-    deps: {
-      inline: ['@vue/test-utils']
-    }
+    environment: 'jsdom'
   }
 })

@@ -1,8 +1,9 @@
 <!--
 * @file HotRanking.vue
 * @description 每日热榜工具，汇聚各大平台热点内容
-* @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
+* @author UIED技术团队
 * @createDate 2025-1-22
 *
 * 功能特性：
@@ -59,7 +60,9 @@
                   <div class="platform-info">
                     <img :src="platform.icon" class="platform-icon" :alt="platform.name">
                     <span class="platform-name">{{ platform.name }}</span>
-                    <span class="platform-type">{{ platform.type }}</span>
+                    <span class="platform-type"
+                      :style="category.name === '设计热榜' ? 'color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;' : ''">{{
+                        platform.type }}</span>
                   </div>
                 </div>
                 <div class="hot-list-container">
@@ -87,7 +90,8 @@
                   <div class="platform-info">
                     <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
                     <span class="platform-name">DeepSeek教程</span>
-                    <span class="platform-type">最近爆火</span>
+                    <span class="platform-type"
+                      style="color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;">最近爆火</span>
                   </div>
                 </div>
                 <div class="hot-list-container">
@@ -115,7 +119,8 @@
                   <div class="platform-info">
                     <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
                     <span class="platform-name">Midjourney教程</span>
-                    <span class="platform-type">AI绘画</span>
+                    <span class="platform-type"
+                      style="color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;">AI绘画</span>
                   </div>
                 </div>
                 <div class="hot-list-container">
@@ -143,7 +148,8 @@
                   <div class="platform-info">
                     <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
                     <span class="platform-name">Stable Diffusion教程</span>
-                    <span class="platform-type">AI绘画</span>
+                    <span class="platform-type"
+                      style="color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;">AI绘画</span>
                   </div>
                 </div>
                 <div class="hot-list-container">
@@ -164,6 +170,119 @@
                   </template>
                 </div>
               </div>
+              <!-- 新增 UIED 资讯热榜 -->
+              <div v-if="category.name === '设计热榜'" class="hot-list-section">
+                <div class="section-header">
+                  <div class="platform-info">
+                    <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
+                    <span class="platform-name">即梦AI教程</span>
+                    <span class="platform-type"
+                      style="color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;">AI教程</span>
+                  </div>
+                </div>
+                <div class="hot-list-container">
+                  <template v-if="loading">
+                    <div class="skeleton-list">
+                      <div v-for="i in 10" :key="i" class="skeleton-item" :style="{ animationDelay: `${i * 0.05}s` }">
+                        <div class="skeleton-index" :class="[i <= 3 ? `skeleton-index-${i}` : '', 'skeleton-pulse']">
+                        </div>
+                        <div class="skeleton-content">
+                          <div class="skeleton-title skeleton-pulse"></div>
+                          <div class="skeleton-hot skeleton-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div id="dream_ai_hot" class="io-hot-list"></div>
+                  </template>
+                </div>
+              </div>
+
+              <div v-if="category.name === '设计热榜'" class="hot-list-section">
+                <div class="section-header">
+                  <div class="platform-info">
+                    <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
+                    <span class="platform-name">Nano-Banana教程</span>
+                    <span class="platform-type"
+                      style="color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;">AI教程</span>
+                  </div>
+                </div>
+                <div class="hot-list-container">
+                  <template v-if="loading">
+                    <div class="skeleton-list">
+                      <div v-for="i in 10" :key="i" class="skeleton-item" :style="{ animationDelay: `${i * 0.05}s` }">
+                        <div class="skeleton-index" :class="[i <= 3 ? `skeleton-index-${i}` : '', 'skeleton-pulse']">
+                        </div>
+                        <div class="skeleton-content">
+                          <div class="skeleton-title skeleton-pulse"></div>
+                          <div class="skeleton-hot skeleton-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div id="nano_banana_hot" class="io-hot-list"></div>
+                  </template>
+                </div>
+              </div>
+
+              <div v-if="category.name === '设计热榜'" class="hot-list-section">
+                <div class="section-header">
+                  <div class="platform-info">
+                    <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
+                    <span class="platform-name">AI工具</span>
+                    <span class="platform-type"
+                      style="color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;">AI工具</span>
+                  </div>
+                </div>
+                <div class="hot-list-container">
+                  <template v-if="loading">
+                    <div class="skeleton-list">
+                      <div v-for="i in 10" :key="i" class="skeleton-item" :style="{ animationDelay: `${i * 0.05}s` }">
+                        <div class="skeleton-index" :class="[i <= 3 ? `skeleton-index-${i}` : '', 'skeleton-pulse']">
+                        </div>
+                        <div class="skeleton-content">
+                          <div class="skeleton-title skeleton-pulse"></div>
+                          <div class="skeleton-hot skeleton-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div id="ai_tools_hot" class="io-hot-list"></div>
+                  </template>
+                </div>
+              </div>
+
+              <div v-if="category.name === '设计热榜'" class="hot-list-section">
+                <div class="section-header">
+                  <div class="platform-info">
+                    <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
+                    <span class="platform-name">开源项目</span>
+                    <span class="platform-type"
+                      style="color: #ef4444; background: #fef2f2; border: 1px solid #fee2e2;">开源资源</span>
+                  </div>
+                </div>
+                <div class="hot-list-container">
+                  <template v-if="loading">
+                    <div class="skeleton-list">
+                      <div v-for="i in 10" :key="i" class="skeleton-item" :style="{ animationDelay: `${i * 0.05}s` }">
+                        <div class="skeleton-index" :class="[i <= 3 ? `skeleton-index-${i}` : '', 'skeleton-pulse']">
+                        </div>
+                        <div class="skeleton-content">
+                          <div class="skeleton-title skeleton-pulse"></div>
+                          <div class="skeleton-hot skeleton-pulse"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div id="opensource_hot" class="io-hot-list"></div>
+                  </template>
+                </div>
+              </div>
+
             </div>
           </div>
         </template>
@@ -180,7 +299,7 @@
 
     <!-- 错误提示 -->
     <div v-if="showToast"
-      class="fixed top-4 right-4 px-4 py-2 rounded-lg text-sm text-white shadow-lg transition-all duration-300"
+      class="fixed top-4 right-4 px-4 py-2 rounded-lg text-sm text-white transition-all duration-300"
       :class="toastType === 'success' ? 'bg-green-500' : 'bg-red-500'">
       {{ toastMessage }}
     </div>
@@ -400,7 +519,8 @@ const renderHotList = async (containerId: string, data: HotListItem[]) => {
 
 // 缓存相关优化
 const CACHE_KEY = 'hot_ranking_cache'
-const CACHE_EXPIRY = 10 * 60 * 1000
+const CACHE_EXPIRY = 15 * 60 * 1000
+const BACKGROUND_REFRESH_INTERVAL = 8 * 60 * 1000
 const REFRESH_COOLDOWN = 30 * 1000
 const lastRefreshTime = ref(0)
 
@@ -432,8 +552,11 @@ const saveToIndexedDB = async (data: any) => {
   }
 }
 
-// 从 IndexedDB 读取缓存
-const getFromIndexedDB = async () => {
+/**
+ * 从 IndexedDB 读取完整缓存记录
+ * @returns 缓存记录
+ */
+const getCacheRecordFromIndexedDB = async (): Promise<CacheData | null> => {
   try {
     const db = await openDB()
     const tx = db.transaction('hotRankingCache', 'readonly') as CacheTransaction
@@ -445,16 +568,28 @@ const getFromIndexedDB = async () => {
       request.onerror = () => reject(request.error)
     })
 
-    if (result && Date.now() - result.timestamp < CACHE_EXPIRY) {
-      return result.data
-    }
-    return null
+    return result || null
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('IndexedDB读取失败:', error)
     }
     return null
   }
+}
+
+/**
+ * 从 IndexedDB 读取有效缓存数据
+ * @returns 未过期缓存数据
+ */
+const getFromIndexedDB = async () => {
+  const cacheRecord = await getCacheRecordFromIndexedDB()
+  if (!cacheRecord) return null
+
+  if (Date.now() - cacheRecord.timestamp < CACHE_EXPIRY) {
+    return cacheRecord.data
+  }
+
+  return null
 }
 
 // IndexedDB 相关函数
@@ -587,6 +722,50 @@ const fetchUiedData = async (signal: AbortSignal) => {
         tags: '428'
       },
       key: 'sd_tag'
+    },
+    {
+      url: 'https://www.uied.cn/wp-json/wp/v2/posts',
+      params: {
+        _fields: 'title,link,date',
+        per_page: '50',
+        orderby: 'date',
+        order: 'desc',
+        tags: '12110'
+      },
+      key: 'dream_ai_hot'
+    },
+    {
+      url: 'https://www.uied.cn/wp-json/wp/v2/posts',
+      params: {
+        _fields: 'title,link,date',
+        per_page: '50',
+        orderby: 'date',
+        order: 'desc',
+        tags: '13220'
+      },
+      key: 'nano_banana_hot'
+    },
+    {
+      url: 'https://www.uied.cn/wp-json/wp/v2/posts',
+      params: {
+        _fields: 'title,link,date',
+        per_page: '50',
+        orderby: 'date',
+        order: 'desc',
+        categories: '3351'
+      },
+      key: 'ai_tools_hot'
+    },
+    {
+      url: 'https://www.uied.cn/wp-json/wp/v2/posts',
+      params: {
+        _fields: 'title,link,date',
+        per_page: '50',
+        orderby: 'date',
+        order: 'desc',
+        categories: '12066'
+      },
+      key: 'opensource_hot'
     }
   ]
 
@@ -690,9 +869,13 @@ const handleAutoRefreshChange = (value: boolean) => {
 }
 
 const startAutoRefresh = () => {
+  if (autoRefreshTimer || countdownTimer) {
+    return
+  }
+
   nextRefreshTime.value = 300
   autoRefreshTimer = setInterval(() => {
-    refreshList()
+    fetchHotList(false)
     nextRefreshTime.value = 300
   }, 300000) // 5分钟刷新一次
 
@@ -738,22 +921,31 @@ const refreshList = () => {
   }
 
   lastRefreshTime.value = now
-  fetchHotList()
+  fetchHotList(true)
 }
 
 // 修改数据获取和渲染函数
-const fetchHotList = async () => {
+const fetchHotList = async (forceRefresh = false) => {
   if (loading.value) return
 
   loading.value = true
 
   try {
-    // 尝试从缓存获取数据
-    const cachedData = await getFromIndexedDB()
+    // 优先展示缓存
+    const cacheRecord = await getCacheRecordFromIndexedDB()
+    const cacheAge = cacheRecord ? Date.now() - cacheRecord.timestamp : Number.POSITIVE_INFINITY
+    const hasFreshCache = Boolean(cacheRecord && cacheAge < CACHE_EXPIRY)
+    const cachedData = hasFreshCache ? cacheRecord?.data : null
+
     if (cachedData) {
       loading.value = false
       await nextTick()
       await renderAllData(cachedData)
+
+      // 缓存仍较新且非强刷时，直接使用缓存，跳过后台网络请求
+      if (!forceRefresh && cacheAge < BACKGROUND_REFRESH_INTERVAL) {
+        return
+      }
     }
 
     // 后台更新数据
@@ -812,13 +1004,36 @@ const renderAllData = async (data: { thirdPartyData: any, uiedData: any }) => {
       if (uiedData.design_tag) await renderHotList('design_tag_hot', uiedData.design_tag)
       if (uiedData.midjourney_tag) await renderHotList('midjourney_tag_hot', uiedData.midjourney_tag)
       if (uiedData.sd_tag) await renderHotList('sd_tag_hot', uiedData.sd_tag)
+      if (uiedData.dream_ai_hot) await renderHotList('dream_ai_hot', uiedData.dream_ai_hot)
+      if (uiedData.nano_banana_hot) await renderHotList('nano_banana_hot', uiedData.nano_banana_hot)
+      if (uiedData.ai_tools_hot) await renderHotList('ai_tools_hot', uiedData.ai_tools_hot)
+      if (uiedData.opensource_hot) await renderHotList('opensource_hot', uiedData.opensource_hot)
     }
+
+    // 渲染结束后一次性补充高亮类，避免定时轮询
+    await nextTick()
+    enhanceListItems()
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('渲染数据失败:', error)
     }
     showMessage('渲染数据失败，请刷新重试', 'error')
   }
+}
+
+/**
+ * 强化前三项样式
+ */
+const enhanceListItems = () => {
+  const lists = document.querySelectorAll('.io-hot-list')
+  lists.forEach(list => {
+    const items = list.querySelectorAll('.io-hot-item')
+    items.forEach((item, index) => {
+      if (index < 3) {
+        item.classList.add(`io-hot-item-top-${index + 1}`)
+      }
+    })
+  })
 }
 
 // 添加计算样式的方法
@@ -896,31 +1111,37 @@ const handleScroll = () => {
   }
 }
 
+/**
+ * 页面可见性变化处理
+ * 页面隐藏时停止自动刷新，恢复可见时重启并按需刷新
+ */
+const handleVisibilityChange = () => {
+  if (typeof document === 'undefined') return
+
+  if (document.visibilityState === 'hidden') {
+    stopAutoRefresh()
+    return
+  }
+
+  startAutoRefresh()
+
+  if (Date.now() - lastRefreshTime.value > CACHE_EXPIRY) {
+    fetchHotList(false)
+  }
+}
+
 onMounted(async () => {
   // 添加粘性头部效果
   window.addEventListener('scroll', handleScroll)
-
-  // 添加项目动态高亮效果
-  const enhanceListItems = () => {
-    const lists = document.querySelectorAll('.io-hot-list')
-    lists.forEach(list => {
-      const items = list.querySelectorAll('.io-hot-item')
-      items.forEach((item, index) => {
-        if (index < 3) {
-          item.classList.add(`io-hot-item-top-${index + 1}`)
-        }
-      })
-    })
-  }
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 
   await nextTick()
-  fetchHotList()
+  fetchHotList(false)
   updateTime()
   timeUpdateInterval = setInterval(updateTime, 1000)
-  startAutoRefresh()
-
-  // 定期强化列表项
-  setInterval(enhanceListItems, 3000)
+  if (document.visibilityState === 'visible') {
+    startAutoRefresh()
+  }
 })
 
 onBeforeUnmount(() => {
@@ -933,6 +1154,7 @@ onBeforeUnmount(() => {
 
   // 移除滚动监听
   window.removeEventListener('scroll', handleScroll)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
@@ -943,9 +1165,9 @@ onBeforeUnmount(() => {
 .hot-search-container {
   width: 100%;
   min-height: 100vh;
-  background: #fff;
-  padding: 0.75rem;
-  border-radius: 0.75rem;
+  background: #f8fafc;
+  /* 更柔和的背景色 */
+  padding: 1.5rem;
   contain: content;
   animation: fadeIn 0.6s ease-out;
 }
@@ -967,107 +1189,121 @@ onBeforeUnmount(() => {
   max-width: 112.5rem;
   /* 1800px */
   margin: 0 auto;
-  padding: 0 0.75rem;
-  border-radius: 0.75rem;
+  padding: 0;
+  border-radius: 1rem;
   overflow: hidden;
+  background: transparent;
 }
 
 .hot-search-header {
-  padding: 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 1rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   position: sticky;
-  top: 0;
+  top: 1rem;
   z-index: 5;
-  background: #fff;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  transition: box-shadow 0.3s ease;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  transition: all 0.3s ease;
 }
 
 .hot-search-header.is-sticky {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.95);
 }
 
 .header-left {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .header-icon {
-  width: 1.25rem;
-  height: 1.25rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  filter: drop-shadow(0 2px 4px rgba(255, 77, 79, 0.2));
 }
 
 .header-title {
-  font-size: 1rem;
-  font-weight: 500;
-  color: #333;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
+  letter-spacing: -0.025em;
 }
 
 .header-subtitle {
-  font-size: 0.8125rem;
-  color: #666;
+  font-size: 0.875rem;
+  color: #64748b;
   margin-left: 0.5rem;
+  font-weight: 500;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .header-time {
-  font-size: 14px;
-  color: #666;
+  font-size: 0.875rem;
+  color: #64748b;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  background: #f1f5f9;
+  padding: 4px 12px;
+  border-radius: 20px;
 }
 
 .action-icon {
-  font-size: 16px;
-  color: #666;
+  font-size: 18px;
+  color: #64748b;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  width: 32px;
-  height: 32px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  background: transparent;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
 }
 
 .action-icon:hover {
-  background: rgba(24, 144, 255, 0.1);
-  transform: rotate(30deg);
+  background: #eff6ff;
+  color: #3b82f6;
+  border-color: #bfdbfe;
+  transform: translateY(-1px);
 }
 
 .action-icon.refreshing {
   animation: rotate 1s linear infinite;
-  color: #1890ff;
-  background: rgba(24, 144, 255, 0.1);
+  color: #3b82f6;
+  background: #eff6ff;
+  border-color: #bfdbfe;
 }
 
 .hot-search-content {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
-  padding: 1rem 0;
+  gap: 2.5rem;
+  padding: 0.5rem 0;
 }
 
 .category-section {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1.25rem;
 }
 
 .category-header {
-  padding: 1rem 1.25rem;
-  background: linear-gradient(to right, #f8f9fa, #ffffff);
-  border-radius: 0.75rem;
-  border: 1px solid #ebeef5;
+  padding: 0 0.5rem;
+  background: transparent;
+  border: none;
 }
 
 .category-info {
@@ -1078,44 +1314,60 @@ onBeforeUnmount(() => {
 
 .category-icon {
   font-size: 24px;
-  color: #1890ff;
+  color: #3b82f6;
+  background: #eff6ff;
+  padding: 6px;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .category-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #1f2937;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1e293b;
   margin: 0;
 }
 
 .category-description {
-  font-size: 14px;
-  color: #6b7280;
+  font-size: 0.875rem;
+  color: #94a3b8;
   margin-left: 8px;
+  padding-left: 12px;
+  border-left: 2px solid #e2e8f0;
 }
 
 .category-content {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 16px;
+  gap: 20px;
 }
 
-/* 保留热榜卡片样式 */
+/* 优化热榜卡片样式 */
 .hot-list-section {
   background: #fff;
-  border-radius: 12px;
-  border: 1px solid #ebeef5;
+  border-radius: 16px;
+  border: 1px solid #f1f5f9;
   display: flex;
   flex-direction: column;
-  height: 460px;
+  height: 480px;
   min-width: 0;
   position: relative;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 2px 4px -1px rgba(0, 0, 0, 0.02);
   overflow: hidden;
   contain: content;
   transform: translate3d(0, 0, 0);
   will-change: transform;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.hot-list-section:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02);
+  border-color: #e2e8f0;
 }
 
 .hot-list-section::after {
@@ -1124,55 +1376,57 @@ onBeforeUnmount(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
-  background: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
+  height: 80px;
+  background: linear-gradient(to top, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.8) 40%, rgba(255, 255, 255, 0) 100%);
   pointer-events: none;
   z-index: 1;
 }
 
 .section-header {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f0f0f0;
-  background: #fafafa;
+  padding: 16px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  background: #fff;
 }
 
 .platform-info {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   position: relative;
   padding: 2px 0;
 }
 
 .platform-icon {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
 }
 
 .platform-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: #333;
+  font-size: 15px;
+  font-weight: 600;
+  color: #334155;
   position: relative;
   z-index: 1;
 }
 
 .platform-type {
-  font-size: 12px;
-  color: #666;
+  font-size: 11px;
+  color: #3b82f6;
   padding: 2px 8px;
-  background: #f5f5f5;
-  border-radius: 4px;
+  background: #eff6ff;
+  border-radius: 12px;
   position: relative;
   overflow: hidden;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 /* 添加热榜列表容器基本样式 */
 .hot-list-container {
-  height: calc(100% - 52px);
+  height: calc(100% - 60px);
   overflow-y: auto;
-  padding: 8px 0;
+  padding: 12px 0;
   position: relative;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
@@ -1184,13 +1438,13 @@ onBeforeUnmount(() => {
 }
 
 .hot-list-container::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
 }
 
 .hot-list-container::-webkit-scrollbar-thumb {
-  border-radius: 3px;
-  background: rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  background: rgba(148, 163, 184, 0.3);
 }
 
 .hot-list-container::-webkit-scrollbar-track {
@@ -1199,85 +1453,89 @@ onBeforeUnmount(() => {
 
 /* 基本的列表项样式 */
 :deep(.io-hot-item) {
-  padding: 10px 12px 10px 12px;
+  padding: 10px 20px;
   border-bottom: 1px solid #f0f0f0;
   display: flex;
   align-items: flex-start;
   contain: content;
-  margin-bottom: 2px;
-  min-height: 68px;
-  border-radius: 4px;
-  margin: 0 6px 4px;
-  border-bottom: 1px solid transparent;
-  transition: background-color 0.2s ease;
+  margin-bottom: 0;
+  min-height: auto;
+  border-radius: 8px;
+  margin: 0 8px 2px;
+  border-bottom: none;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-/* 添加鼠标悬停基础交互效果 */
 :deep(.io-hot-item:hover) {
-  background-color: #f9f9f9;
+  background-color: #f8fafc;
 }
 
 :deep(.io-hot-index) {
-  width: 22px;
-  height: 22px;
-  line-height: 22px;
+  width: 20px;
+  height: 20px;
+  line-height: 20px;
   text-align: center;
   border-radius: 6px;
-  font-size: 13px;
-  font-weight: 500;
-  margin-right: 3px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-right: 12px;
   flex-shrink: 0;
-  margin-top: 3px;
+  margin-top: 2px;
+  color: #94a3b8;
+  background: #f1f5f9;
+  transition: all 0.2s ease;
 }
 
 :deep(.io-hot-index-1) {
-  background: #ff4d4f;
-  color: #fff;
+  background: #fee2e2;
+  color: #ef4444;
 }
 
 :deep(.io-hot-index-2) {
-  background: #ff7a45;
-  color: #fff;
+  background: #ffedd5;
+  color: #f97316;
 }
 
 :deep(.io-hot-index-3) {
-  background: #ffc53d;
-  color: #fff;
+  background: #fef3c7;
+  color: #f59e0b;
 }
 
 :deep(.io-hot-title) {
   font-size: 14px;
-  color: #333;
+  color: #475569;
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: pre-wrap;
+  white-space: normal;
   word-break: break-all;
-  line-height: 1.35;
+  line-height: 1.5;
   margin-right: 8px;
-  margin-left: 3px;
   display: -webkit-box;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
-  max-height: 4.05em;
+  max-height: 3em;
   transition: color 0.2s ease;
+  font-weight: 400;
 }
 
 /* 添加标题悬停效果 */
 :deep(.io-hot-item:hover .io-hot-title) {
-  color: #1890ff;
+  color: #3b82f6;
 }
 
 :deep(.io-hot-num) {
   font-size: 12px;
-  color: #999;
+  color: #94a3b8;
   flex-shrink: 0;
-  min-width: 45px;
+  min-width: 50px;
   text-align: right;
-  margin-top: 3px;
-  background: rgba(255, 255, 255, 0.8);
-  padding: 2px 4px;
-  border-radius: 4px;
+  margin-top: 2px;
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 响应式布局样式 */
@@ -1287,7 +1545,7 @@ onBeforeUnmount(() => {
   }
 }
 
-@media screen and (max-width: 1440px) {
+@media screen and (max-width: 1536px) {
   .category-content {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -1296,12 +1554,28 @@ onBeforeUnmount(() => {
 @media screen and (max-width: 1024px) {
   .category-content {
     grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .hot-search-container {
+    padding: 1rem;
   }
 }
 
-@media screen and (max-width: 768px) {
+@media screen and (max-width: 640px) {
   .category-content {
     grid-template-columns: 1fr;
+  }
+
+  .hot-search-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .header-right {
+    width: 100%;
+    justify-content: space-between;
   }
 }
 

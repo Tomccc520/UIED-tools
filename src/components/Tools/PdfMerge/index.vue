@@ -1,11 +1,10 @@
 <!--
- * @file PdfMerge.vue
- * @description PDF合并工具组件，支持多个PDF文件合并为一个，可拖拽调整顺序
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-26
- * @license MIT
+ * @createDate 2026.1.27
+ */
 -->
 
 <template>
@@ -14,33 +13,30 @@
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 标题区域 -->
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
-            </div>
-          </h2>
-          <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
+        <div class="text-center mb-8">
+          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="files.length === 0">
           <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
-            @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
+            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+            @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" multiple accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
-              <div class="w-8 h-8 mb-2 mx-auto">
-                <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
               </div>
-              <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽PDF文件到这里</div>
-              <p class="text-xs text-gray-400">请选择 2 至 30 个文件，单个文件最大 500MB</p>
+              <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
+              <p class="text-sm text-gray-400">请选择 {{ minFiles }} 至 {{ maxFiles }} 个文件，单个文件最大 {{
+                maxFileSizeMB }}MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
@@ -63,7 +59,7 @@
             </div>
 
             <!-- 文件列表 -->
-            <draggable v-model="files" item-key="name" @start="drag = true" @end="drag = false" class="space-y-4"
+            <draggable v-model="files" item-key="id" @start="drag = true" @end="drag = false" class="space-y-4"
               handle=".drag-handle">
               <template #item="{ element }">
                 <div
@@ -78,12 +74,18 @@
                         </svg>
                       </div>
 
-                      <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                      </svg>
+                      <div
+                        class="w-12 h-16 bg-gray-100 rounded overflow-hidden border border-gray-200 flex-shrink-0 relative">
+                        <img v-if="element.thumbnail" :src="element.thumbnail" class="w-full h-full object-contain" />
+                        <div v-else class="w-full h-full flex items-center justify-center text-gray-400">
+                          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                        </div>
+                      </div>
                       <div>
-                        <p class="text-sm text-gray-700">{{ element.name }}</p>
+                        <p class="text-sm text-gray-700 font-medium">{{ element.name }}</p>
                         <p class="text-xs text-gray-500">{{ formatFileSize(element.size) }}</p>
                       </div>
                     </div>
@@ -116,7 +118,7 @@
 
             <!-- 合并按钮 -->
             <div class="text-center mt-8">
-              <button @click="mergePDFs" :disabled="merging"
+              <button data-smoke="pdf-merge-start" @click="mergePDFs" :disabled="merging"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 <span class="flex items-center justify-center">
                   <span class="mr-2">{{ merging ? '⚙️' : '✨' }}</span>
@@ -193,9 +195,12 @@
         </div>
       </div>
 
-      <!-- 工具推荐 -->
-      <ToolsRecommend :currentPath="route.path" />
+      <!-- 使用说明 -->
+      <UsageGuide :steps="guideSteps" :notes="guideNotes" />
     </div>
+
+    <!-- 工具推荐 -->
+    <ToolsRecommend :currentPath="route.path" />
 
     <!-- PDF预览对话框 -->
     <el-dialog v-model="previewDialogVisible" :title="previewFile?.name" width="80%" destroy-on-close
@@ -208,28 +213,43 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { PDFDocument } from 'pdf-lib'
 import draggable from 'vuedraggable'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
+import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
 
 const route = useRoute()
 
 const info = reactive({
-  title: "免费在线PDF合并工具",
+  title: "PDF合并",
   subtitle: "将多个PDF文件合并为一个，支持拖拽调整顺序，本地处理更安全"
 })
 
+const maxFileSizeMB = 500
+const maxFiles = 30
+const minFiles = 2
 const files = ref<File[]>([])
 const merging = ref(false)
 const uploadRef = ref()
 const drag = ref(false)
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
+
+const guideSteps = [
+  { title: '上传PDF文件', description: '点击上传区域或直接拖拽多个PDF文件到指定区域，支持批量上传。' },
+  { title: '调整顺序', description: '通过拖拽文件列表中的项目，调整合并后的页面顺序。' },
+  { title: '合并下载', description: '点击“开始合并”按钮，系统将自动合并文件并在处理完成后下载。' }
+]
+
+const guideNotes = [
+  '所有文件处理均在本地浏览器完成，不会上传到服务器，确保您的文件安全。',
+  '合并加密的PDF文件前，请先移除密码。',
+  `建议单次合并文件总大小不超过${maxFileSizeMB}MB，以免浏览器内存不足。`
+]
 
 // 功能特点
 const features = [
@@ -278,10 +298,7 @@ const handleDrop = (e: DragEvent) => {
   const droppedFiles = e.dataTransfer?.files
   if (!droppedFiles) return
 
-  const pdfFiles = Array.from(droppedFiles).filter(file =>
-    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  )
-  handleFiles(pdfFiles)
+  handleFiles(Array.from(droppedFiles))
 }
 
 // 触发文件选择
@@ -294,46 +311,78 @@ const handleFileInputChange = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files) return
 
-  const selectedFiles = Array.from(input.files).filter(file =>
-    file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-  )
-  handleFiles(selectedFiles)
+  handleFiles(Array.from(input.files))
 
   // 清空 input 值，允许重复选择同一文件
   input.value = ''
 }
 
-// 处理文件
-const handleFiles = (newFiles: File[]) => {
-  // 检查文件类型
-  const invalidFiles = newFiles.filter(file =>
-    !(file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-  )
-  if (invalidFiles.length > 0) {
-    ElMessage.error('只能上传PDF文件')
-    return
-  }
+const generateThumbnail = async (file: File) => {
+  try {
+    const pdfjsLib = await ensurePdfjsRuntime()
+    const arrayBuffer = await file.arrayBuffer()
+    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
+    const pdf = await loadingTask.promise
+    const page = await pdf.getPage(1)
+    const viewport = page.getViewport({ scale: 0.5 })
 
-  // 检查文件大小
-  const oversizedFiles = newFiles.filter(file => file.size > 500 * 1024 * 1024)
-  if (oversizedFiles.length > 0) {
-    ElMessage.error('文件大小不能超过500MB')
-    return
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d')
+    canvas.height = viewport.height
+    canvas.width = viewport.width
+
+    if (context) {
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise
+      return canvas.toDataURL('image/jpeg')
+    }
+  } catch (error) {
+    console.error('Thumbnail generation failed:', error)
   }
+  return ''
+}
+
+// 处理文件
+const handleFiles = async (newFiles: File[]) => {
+  const validFiles: File[] = []
+  for (const file of newFiles) {
+    const err = getPdfFileError(file, maxFileSizeMB)
+    if (err) {
+      ElMessage.error(`${file.name} ${err}`)
+      continue
+    }
+    validFiles.push(file)
+  }
+  if (validFiles.length === 0) return
+
+  // 处理每个文件，生成缩略图
+  const filesWithThumbnails = await Promise.all(validFiles.map(async (file) => {
+    const thumbnail = await generateThumbnail(file)
+    return {
+      file,
+      id: Math.random().toString(36).substr(2, 9),
+      name: file.name,
+      size: file.size,
+      thumbnail
+    }
+  }))
 
   // 添加文件到列表
-  files.value.push(...newFiles)
+  // @ts-ignore
+  files.value.push(...filesWithThumbnails)
 
   // 检查文件数量
-  if (files.value.length > 30) {
-    files.value = files.value.slice(0, 30)
-    ElMessage.warning('最多只能选择30个文件')
+  if (files.value.length > maxFiles) {
+    files.value = files.value.slice(0, maxFiles)
+    ElMessage.warning(`最多只能选择${maxFiles}个文件`)
   }
 }
 
 // 移除文件
-const removeFile = (file: File) => {
-  const index = files.value.indexOf(file)
+const removeFile = (item: any) => {
+  const index = files.value.indexOf(item)
   if (index > -1) {
     files.value.splice(index, 1)
   }
@@ -356,9 +405,12 @@ const mergePDFs = async () => {
 
   try {
     merging.value = true
+    const { PDFDocument } = await ensurePdfLibRuntime()
     const mergedPdf = await PDFDocument.create()
 
-    for (const file of files.value) {
+    for (const item of files.value) {
+      // @ts-ignore
+      const file = item.file
       const arrayBuffer = await file.arrayBuffer()
       const pdf = await PDFDocument.load(arrayBuffer)
       const copiedPages = await mergedPdf.copyPages(pdf, pdf.getPageIndices())
@@ -370,7 +422,7 @@ const mergePDFs = async () => {
     const mergedPdfFile = await mergedPdf.save()
 
     // 创建下载链接
-    const blob = new Blob([mergedPdfFile], { type: 'application/pdf' })
+    const blob = new Blob([mergedPdfFile as BlobPart], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -396,9 +448,9 @@ const previewFile = ref<File | null>(null)
 const previewUrl = ref('')
 
 // 预览PDF
-const previewPDF = (file: File) => {
-  previewFile.value = file
-  previewUrl.value = URL.createObjectURL(file)
+const previewPDF = (item: any) => {
+  previewFile.value = item.file
+  previewUrl.value = URL.createObjectURL(item.file)
   previewDialogVisible.value = true
 }
 

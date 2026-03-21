@@ -22,7 +22,7 @@
         <div class="flex-1 w-full">
           <h1
             class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-            随机工具推荐
+            免费随机工具推荐
           </h1>
           <p class="text-gray-500 text-sm">每次为你精选不同的实用工具，助你提高效率</p>
         </div>
@@ -111,7 +111,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
-import type { Tool, ToolCategory } from '@/store/modules/tools'
+import type { Tool, ToolCategory } from '@/types/tools'
 import ToolIcon from '../ToolIcon.vue'
 
 const router = useRouter()

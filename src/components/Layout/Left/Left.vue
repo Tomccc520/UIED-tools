@@ -20,29 +20,7 @@ import { useToolsStore } from '@/store/modules/tools'
 import { useRouter, useRoute } from 'vue-router'
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-
-interface Category {
-  id: number
-  title: string
-  icon: string
-  list: Array<{
-    id: number
-    title: string
-    url: string
-    cateId: number
-    cate: string
-  }>
-}
-
-interface ToolCategory {
-  id: number
-  title: string
-  list: Array<{
-    id: number
-    title: string
-    url: string
-  }>
-}
+import type { ToolCategory } from '@/types/tools'
 
 // 路由实例
 const router: Router = useRouter()
@@ -251,7 +229,7 @@ onMounted(() => {
             <el-menu-item index="recommend-daily-article"
               @click="openExternalLink('https://hot.uied.cn/')">每日文章</el-menu-item>
             <el-menu-item index="recommend-ai-news" @click="gotoTool('/tools/ai-news')">实时资讯</el-menu-item>
-            <el-menu-item index="recommend-ai-ranking" @click="gotoTool('/tools/ai-ranking')">AI产品榜</el-menu-item>
+            <el-menu-item index="recommend-ai-ranking" @click="openExternalLink('https://hao.uied.cn/')">AI产品榜</el-menu-item>
           </el-menu-item-group>
         </el-sub-menu>
 
@@ -281,7 +259,7 @@ onMounted(() => {
             <span class="ml-2">AI工具箱</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === 'AI工具箱')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === 'AI工具箱')?.list"
               :key="category.id" :index="`ai-${category.id}`" @click="handleMenuClick(`ai-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
@@ -308,7 +286,7 @@ onMounted(() => {
             <span class="ml-2">设计工具</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '设计工具')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '设计工具')?.list"
               :key="category.id" :index="`design-${category.id}`" @click="handleMenuClick(`design-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
@@ -335,7 +313,7 @@ onMounted(() => {
             <span class="ml-2">图片处理</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '图片处理')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '图片处理')?.list"
               :key="category.id" :index="`image-${category.id}`" @click="handleMenuClick(`image-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
@@ -363,8 +341,30 @@ onMounted(() => {
             <span class="ml-2">办公工具</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '办公工具')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '办公工具')?.list"
               :key="category.id" :index="`office-${category.id}`" @click="handleMenuClick(`office-${category.id}`)">
+              {{ category.title }}
+            </el-menu-item>
+          </el-menu-item-group>
+        </el-sub-menu>
+
+        <!-- 生活常用菜单 -->
+        <el-sub-menu index="daily">
+          <template #title>
+            <div class="relative">
+              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+              </svg>
+              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            </div>
+            <span class="ml-2">生活常用</span>
+          </template>
+          <el-menu-item-group>
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '生活常用')?.list"
+              :key="category.id" :index="`daily-${category.id}`" @click="handleMenuClick(`daily-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
           </el-menu-item-group>
@@ -386,9 +386,53 @@ onMounted(() => {
             <span class="ml-2">文案工具</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '文案工具')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '文案工具')?.list"
               :key="category.id" :index="`copywriting-${category.id}`"
               @click="handleMenuClick(`copywriting-${category.id}`)">
+              {{ category.title }}
+            </el-menu-item>
+          </el-menu-item-group>
+        </el-sub-menu>
+
+        <!-- 潜能测试菜单 -->
+        <el-sub-menu index="psychology">
+          <template #title>
+            <div class="relative">
+              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zM9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            </div>
+            <span class="ml-2">潜能测试</span>
+          </template>
+          <el-menu-item-group>
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '潜能测试')?.list"
+              :key="category.id" :index="`psychology-${category.id}`"
+              @click="handleMenuClick(`psychology-${category.id}`)">
+              {{ category.title }}
+            </el-menu-item>
+          </el-menu-item-group>
+        </el-sub-menu>
+
+        <!-- 剪辑工具菜单 -->
+        <el-sub-menu index="video">
+          <template #title>
+            <div class="relative">
+              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14v-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <rect x="3" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            </div>
+            <span class="ml-2">剪辑工具</span>
+          </template>
+          <el-menu-item-group>
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '剪辑工具')?.list"
+              :key="category.id" :index="`video-${category.id}`" @click="handleMenuClick(`video-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
           </el-menu-item-group>
@@ -418,7 +462,7 @@ onMounted(() => {
             <span class="ml-2">开发工具</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '开发工具')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '开发工具')?.list"
               :key="category.id" :index="`dev-${category.id}`" @click="handleMenuClick(`dev-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
@@ -444,7 +488,7 @@ onMounted(() => {
             <span class="ml-2">摸鱼工具</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '摸鱼工具')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '摸鱼工具')?.list"
               :key="category.id" :index="`slacking-${category.id}`" @click="handleMenuClick(`slacking-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
@@ -465,13 +509,15 @@ onMounted(() => {
             <span class="ml-2">效率工具</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: Category) => cate.title === '效率工具')?.list"
+            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '效率工具')?.list"
               :key="category.id" :index="`efficiency-${category.id}`"
               @click="handleMenuClick(`efficiency-${category.id}`)">
               {{ category.title }}
             </el-menu-item>
           </el-menu-item-group>
         </el-sub-menu>
+
+
 
         <!-- 更新记录 -->
         <el-menu-item index="changelog" @click="handleMenuClick('changelog')">

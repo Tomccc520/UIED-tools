@@ -232,7 +232,7 @@ const downloadQRCode = () => {
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">生成精美的二维码，支持自定义样式和内容</p>
@@ -357,14 +357,14 @@ const downloadQRCode = () => {
                     }" :level="info.errorCorrectionLevel" render-as="svg" />
                 </div>
                 <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
-                  <button @click="gen"
+                  <button data-smoke="qrcode-generate" @click="gen"
                     class="w-full sm:w-auto px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-300 flex items-center justify-center">
                     <el-icon class="mr-1">
                       <Plus />
                     </el-icon>
                     生成二维码
                   </button>
-                  <button @click="downloadQRCode"
+                  <button data-smoke="qrcode-download" @click="downloadQRCode"
                     class="w-full sm:w-auto px-6 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-300 flex items-center justify-center">
                     <el-icon class="mr-1">
                       <Download />

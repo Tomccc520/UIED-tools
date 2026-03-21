@@ -14,13 +14,11 @@
 -->
 
 <script setup lang="ts">
-import { ref, shallowRef, onBeforeUnmount, onMounted } from '@vue/runtime-core'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { ref, shallowRef, onBeforeUnmount } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import AsyncWangEditor from '@/components/Common/AsyncWangEditor.vue'
+import AsyncWangToolbar from '@/components/Common/AsyncWangToolbar.vue'
 import { useRoute } from 'vue-router'
-import '@wangeditor/editor/dist/css/style.css'
-import { Editor, Toolbar } from '@wangeditor/editor-for-vue'
 import { copy } from '@/utils/string'
 
 const route = useRoute()
@@ -117,9 +115,6 @@ onBeforeUnmount(() => {
   editor.destroy()
 })
 
-onMounted(() => {
-  // 初始化操作（如果需要）
-})
 </script>
 
 <template>
@@ -131,7 +126,7 @@ onMounted(() => {
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -147,8 +142,8 @@ onMounted(() => {
           </div>
 
           <div class="border rounded-lg overflow-hidden shadow-sm">
-            <Toolbar class="border-b" :editor="editorRef" :defaultConfig="toolbarConfig" :mode="info.mode" />
-            <Editor class="min-h-[300px]" v-model="content" :defaultConfig="editorConfig" :mode="info.mode"
+            <AsyncWangToolbar class="border-b" :editor="editorRef" :defaultConfig="toolbarConfig" :mode="info.mode" />
+            <AsyncWangEditor class="min-h-[300px]" v-model="content" :defaultConfig="editorConfig" :mode="info.mode"
               @onCreated="handleCreated" @onChange="handleChange" />
           </div>
 

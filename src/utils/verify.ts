@@ -42,6 +42,11 @@ export function isHexadecimal(data: string): boolean {
   return   /^([0-9a-fA-F]+)$/g.test(data) ? true : false;
 }
 
+export const wechatVerifyConfig = {
+  password: 'uied2026',
+  maxFreeUsage: 5
+}
+
 const VerifyUtils = {
   isIp,
   isBinary,

@@ -425,7 +425,7 @@
                           <div class="flex justify-between items-center">
                             <h3 class="font-semibold text-gray-800">{{ exp.company || '公司名称' }}</h3>
                             <span class="text-gray-600 text-xs px-2 py-1 bg-gray-100 rounded">{{ exp.startDate || '开始日期'
-                            }} - {{ exp.endDate || '结束日期' }}</span>
+                              }} - {{ exp.endDate || '结束日期' }}</span>
                           </div>
                           <p class="text-gray-700 text-sm italic">{{ exp.position || '职位名称' }}</p>
                         </div>
@@ -442,7 +442,7 @@
                           <div class="flex justify-between items-center">
                             <h3 class="font-semibold text-gray-800">{{ edu.school || '学校名称' }}</h3>
                             <span class="text-gray-600 text-xs px-2 py-1 bg-gray-100 rounded">{{ edu.startDate || '开始日期'
-                            }} - {{ edu.endDate || '结束日期' }}</span>
+                              }} - {{ edu.endDate || '结束日期' }}</span>
                           </div>
                           <p class="text-gray-700 text-sm">{{ edu.degree || '学位专业' }}</p>
                         </div>
@@ -795,8 +795,7 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage, ElLoading, ElDialog, ElButton, ElInput, ElMessageBox } from 'element-plus'
-import html2canvas from 'html2canvas'
-import jspdf from 'jspdf'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 // 获取路由实例
 const router = useRouter()
@@ -835,6 +834,13 @@ const defaultAvatars = [
   '/src/assets/avatars/avatar-7.jpg',
   '/src/assets/avatars/avatar-8.jpg',
 ]
+
+const showDefaultAvatars = ref(false)
+
+const selectDefaultAvatar = (avatar: string) => {
+  resumeData.avatar = avatar
+  showDefaultAvatars.value = false
+}
 
 // 选中的模板
 const selectedTemplate = ref('minimal')
@@ -973,6 +979,11 @@ const generatePDF = async () => {
   })
 
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
+
     const element = document.getElementById('resume-container')
     if (!element) {
       ElMessage.error('无法找到简历容器元素')
@@ -986,7 +997,7 @@ const generatePDF = async () => {
     })
 
     const imgData = canvas.toDataURL('image/jpeg', 1.0)
-    const pdf = new jspdf({
+    const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'

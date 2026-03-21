@@ -20,14 +20,14 @@ const router = createRouter({
 })
 
 // _form: '_'表示占位变量，可以不被使用
-router.beforeEach((to, from, next) => {
-  // 处理标题
-  if (to.meta.title && to.meta.title != '') {
-    let oldTitle = document.title
-    document.title = <string>to.meta.title + '-' + oldTitle
-  }
-  next()
-})
+// router.beforeEach((to, from, next) => {
+//   // 处理标题
+//   if (to.meta.title && to.meta.title != '') {
+//     let oldTitle = document.title
+//     document.title = <string>to.meta.title + '-' + oldTitle
+//   }
+//   next()
+// })
 
 //路由后置卫士
 router.afterEach((to) => {

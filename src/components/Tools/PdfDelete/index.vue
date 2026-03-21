@@ -17,7 +17,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -40,7 +40,7 @@
                 </svg>
               </div>
               <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽PDF文件到这里</div>
-              <p class="text-xs text-gray-400">单个文件最大 200MB</p>
+              <p class="text-xs text-gray-400">单个文件最大 {{ maxFileSizeMB }}MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
             </div>
           </div>
@@ -48,11 +48,18 @@
 
         <!-- PDF页面预览和操作区域 -->
         <div v-if="currentFile && pdfPages.length > 0" class="mt-6">
+          <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 mb-4">
+            <div class="flex items-center gap-3 min-w-0">
+              <span class="text-sm font-medium text-gray-700 truncate">{{ currentFile.name }}</span>
+              <span class="text-xs text-gray-500">{{ formatFileSize(currentFile.size) }}</span>
+            </div>
+            <span class="text-xs text-gray-500">共 {{ pdfPages.length }} 页</span>
+          </div>
           <div class="flex justify-between items-center mb-6">
             <div class="flex items-center gap-4">
               <h2 class="text-lg font-medium">已选择的页面</h2>
               <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                共 {{ pdfPages.length }} 页，已标记删除 {{ pdfPages.filter(p => p.deleted).length }} 页
+                共 {{ pdfPages.length }} 页，已标记删除 {{pdfPages.filter(p => p.deleted).length}} 页
               </span>
             </div>
             <div class="flex space-x-3">
@@ -204,6 +211,9 @@
 
       <!-- 工具推荐 -->
       <ToolsRecommend :currentPath="route.path" />
+
+      <!-- 使用说明 -->
+      <UsageGuide :steps="guideSteps" :notes="guideNotes" />
     </div>
   </div>
 </template>
@@ -212,18 +222,32 @@
 import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { PDFDocument } from 'pdf-lib'
 import draggable from 'vuedraggable'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
+import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
 
 const route = useRoute()
 
 const info = reactive({
-  title: "免费在线删除PDF页面工具",
+  title: "PDF页面删除",
   subtitle: "选择删除PDF中的页面，可同时修改页面顺序、旋转页面，本地处理更安全"
 })
+
+const maxFileSizeMB = 200
+const guideSteps = [
+  { title: '上传PDF文件', description: `点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为${maxFileSizeMB}MB。` },
+  { title: '选择页面', description: '鼠标悬停在页面预览图上，点击“标记删除”按钮即可删除该页面。您也可以拖拽调整页面顺序。' },
+  { title: '保存并下载', description: '完成编辑后，点击“保存PDF”按钮，系统将自动生成并下载新的PDF文件。' }
+]
+
+const guideNotes = [
+  '删除的页面在保存前可以点击“恢复页面”撤销删除。',
+  '支持批量旋转页面，方便调整文档方向。',
+  '所有文件处理均在本地浏览器完成，不会上传到服务器，确保您的文件安全。'
+]
 
 // 功能特点
 const features = [
@@ -288,11 +312,7 @@ const handleDrop = async (e: DragEvent) => {
   if (!droppedFiles || droppedFiles.length === 0) return
 
   const file = droppedFiles[0]
-  if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
-    await handleFile(file)
-  } else {
-    ElMessage.error('请选择PDF文件')
-  }
+  await handleFile(file)
 }
 
 // 处理文件选择
@@ -319,14 +339,16 @@ const initializePages = (pageCount: number) => {
 
 // 处理文件
 const handleFile = async (file: File) => {
-  if (file.size > 200 * 1024 * 1024) {
-    ElMessage.error('文件大小不能超过200MB')
+  const err = getPdfFileError(file, maxFileSizeMB)
+  if (err) {
+    ElMessage.error(err)
     return
   }
 
   try {
     currentFile.value = file
     const arrayBuffer = await file.arrayBuffer()
+    const { PDFDocument } = await ensurePdfLibRuntime()
     pdfDoc.value = await PDFDocument.load(arrayBuffer)
 
     // 初始化页面数据
@@ -346,10 +368,8 @@ const renderPagePreviews = async () => {
   if (!pdfDoc.value) return
 
   try {
-    const pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-
     const pdfBytes = await pdfDoc.value.save()
+    const pdfjsLib = await ensurePdfjsRuntime()
     const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise
 
     // 使用Promise.all并行渲染所有页面
@@ -387,10 +407,8 @@ const renderPage = async (pageIndex: number) => {
   if (!pdfDoc.value || !canvasRefs.value.has(pageIndex)) return
 
   try {
-    const pdfjsLib = await import('pdfjs-dist')
-    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`
-
     const pdfBytes = await pdfDoc.value.save()
+    const pdfjsLib = await ensurePdfjsRuntime()
     const pdf = await pdfjsLib.getDocument({ data: pdfBytes }).promise
     const page = await pdf.getPage(pageIndex + 1)
     const canvas = canvasRefs.value.get(pageIndex)
@@ -478,6 +496,7 @@ const savePDF = async () => {
 
   try {
     saving.value = true
+    const { PDFDocument } = await ensurePdfLibRuntime()
     const newPdf = await PDFDocument.create()
 
     // 只复制未删除的页面
@@ -493,7 +512,7 @@ const savePDF = async () => {
     await Promise.all(copyPromises)
 
     const pdfBytes = await newPdf.save()
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' })
+    const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     const fileName = currentFile.value?.name.replace('.pdf', '') || 'document'

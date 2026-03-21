@@ -1,25 +1,11 @@
 <!--
- * @file PdfToImages.vue
- * @description PDF转图片工具组件，支持PDF文件转换为高质量图片
+/**
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-
- *
- * 功能特性：
- * 1. 支持拖拽和点击上传PDF
- * 2. 支持批量转换和单页下载
- * 3. 支持普通(150dpi)和高清(300dpi)两种质量
- * 4. 本地转换，无需上传服务器
- * 5. 支持大文件处理(最大500MB)
- *
- * 主要组件：
- * - 文件上传区域
- * - 转换质量控制
- * - 文件列表展示
- * - 转换进度显示
- * - 常见问题解答
- -->
+ * @createDate 2026.1.27
+ */
+-->
 
 <template>
   <div class="min-h-screen">
@@ -30,7 +16,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -244,19 +230,23 @@
 
       <!-- 工具推荐 -->
       <ToolsRecommend :currentPath="route.path" />
+
+      <!-- 使用说明 -->
+      <UsageGuide :steps="guideSteps" :notes="guideNotes" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from '@vue/runtime-core'
+import { ref, reactive } from '@vue/runtime-core'
 import { ElMessage } from 'element-plus'
 // @ts-ignore
 import JSZip from 'jszip'
-import * as pdfjsLib from 'pdfjs-dist'
+import { ensurePdfjsRuntime, getPdfFileError } from '@/utils/pdf'
 import { Document, Upload, Delete } from '@element-plus/icons-vue'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
@@ -274,6 +264,18 @@ const quality = ref(150)
 const converting = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
+const guideSteps = [
+  { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，支持批量上传。' },
+  { title: '选择质量', description: '选择普通(150dpi)或高清(300dpi)图片质量。' },
+  { title: '转换下载', description: '点击“开始转换”按钮，系统将自动转换并打包下载所有图片。' }
+]
+
+const guideNotes = [
+  '转换过程完全在本地进行，不会消耗您的流量，也不会上传文件。',
+  '单个文件限制500MB，页数不超过1000页。',
+  '转换后的图片格式为PNG。'
+]
+
 // 触发文件选择
 const triggerFileInput = () => {
   fileInput.value?.click()
@@ -288,12 +290,9 @@ const handleFileChange = (event: Event) => {
 
   // 验证文件
   for (const file of newFiles) {
-    if (file.size > 500 * 1024 * 1024) {
-      ElMessage.error(`文件 ${file.name} 超过500MB限制`)
-      continue
-    }
-    if (!file.type.includes('pdf')) {
-      ElMessage.error(`文件 ${file.name} 不是PDF格式`)
+    const err = getPdfFileError(file, 500)
+    if (err) {
+      ElMessage.error(`文件 ${file.name} ${err}`)
       continue
     }
     files.value.push(file)
@@ -331,6 +330,7 @@ const startConversion = async () => {
 
 // PDF转图片
 const convertPdfToImages = async (file: File) => {
+  const pdfjsLib = await ensurePdfjsRuntime()
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
   const zip = new JSZip()
@@ -368,37 +368,6 @@ const convertPdfToImages = async (file: File) => {
   URL.revokeObjectURL(link.href)
 }
 
-// 拖放处理
-onMounted(async () => {
-  const dropZone = document.querySelector('.border-dashed')
-  if (!dropZone) return
-
-  dropZone.addEventListener('dragover', ((e: Event) => {
-    e.preventDefault()
-    if (e instanceof DragEvent) {
-      dropZone.classList.add('border-blue-500')
-    }
-  }) as EventListener)
-
-  dropZone.addEventListener('dragleave', () => {
-    dropZone.classList.remove('border-blue-500')
-  })
-
-  dropZone.addEventListener('drop', ((e: Event) => {
-    e.preventDefault()
-    if (e instanceof DragEvent && e.dataTransfer) {
-      dropZone.classList.remove('border-blue-500')
-      const droppedFiles = e.dataTransfer.files
-      const pdfFiles = Array.from(droppedFiles).filter((file: File) => file.type.includes('pdf'))
-      files.value.push(...pdfFiles)
-    }
-  }) as EventListener)
-
-  // 动态加载 PDF Worker
-  const pdfjsWorker = await import('pdfjs-dist/build/pdf.worker.js')
-  pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker.default
-})
-
 /**
  * 格式化文件大小
  */
@@ -419,6 +388,16 @@ const clearFiles = () => {
 
 // 添加拖拽状态
 const isDragging = ref(false)
+
+const handleDragover = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = true
+}
+
+const handleDragleave = (e: DragEvent) => {
+  e.preventDefault()
+  isDragging.value = false
+}
 
 // 在 script setup 部分添加 handleDrop 方法
 const handleDrop = (e: DragEvent) => {

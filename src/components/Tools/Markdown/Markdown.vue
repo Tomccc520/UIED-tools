@@ -14,9 +14,7 @@
 -->
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 
@@ -29,6 +27,44 @@ const info = {
 }
 
 const content = ref('')
+const showEditor = ref(false)
+let editorMountTimer: ReturnType<typeof setTimeout> | null = null
+let editorMountIdleHandle: number | null = null
+
+type IdleWindow = Window & {
+  requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+  cancelIdleCallback?: (handle: number) => void
+}
+
+/**
+ * 立即挂载 Markdown 编辑器
+ * 在用户主动点击或延迟计时结束后触发，避免首屏立即加载重型编辑器依赖
+ */
+const activateEditor = () => {
+  if (showEditor.value) return
+  showEditor.value = true
+}
+
+/**
+ * 延迟挂载编辑器
+ * 让页面主结构先完成渲染，再在短暂空闲后初始化编辑器，降低首屏阻塞感
+ */
+const scheduleEditorMount = () => {
+  const idleWindow = window as IdleWindow
+
+  if (typeof idleWindow.requestIdleCallback === 'function') {
+    editorMountIdleHandle = idleWindow.requestIdleCallback(() => {
+      activateEditor()
+      editorMountIdleHandle = null
+    }, { timeout: 1600 })
+    return
+  }
+
+  editorMountTimer = setTimeout(() => {
+    activateEditor()
+    editorMountTimer = null
+  }, 700)
+}
 
 // 功能特点
 const features = [
@@ -73,6 +109,23 @@ const faqs = [
     answer: '您可以复制编辑器中的内容保存到本地文本文件中，或直接复制预览区域的格式化内容用于分享。'
   }
 ]
+
+onMounted(() => {
+  scheduleEditorMount()
+})
+
+onBeforeUnmount(() => {
+  const idleWindow = window as IdleWindow
+  if (editorMountIdleHandle !== null && typeof idleWindow.cancelIdleCallback === 'function') {
+    idleWindow.cancelIdleCallback(editorMountIdleHandle)
+    editorMountIdleHandle = null
+  }
+
+  if (editorMountTimer) {
+    clearTimeout(editorMountTimer)
+    editorMountTimer = null
+  }
+})
 </script>
 
 <template>
@@ -80,7 +133,7 @@ const faqs = [
     <div class="max-w-[1440px] mx-auto px-4">
       <!-- 标题区域 -->
       <div class="text-center mb-8">
-        <h1 class="text-[32px] font-medium text-gray-900 mb-3">{{ info.title }}</h1>
+        <h1 class="text-[32px] font-medium text-gray-900 mb-3">{{ $ensureFreeToolTitle(info.title) }}</h1>
         <p class="text-base text-gray-500">{{ info.subtitle }}</p>
       </div>
 
@@ -96,7 +149,16 @@ const faqs = [
           </div>
 
           <div class="border rounded-lg overflow-hidden">
-            <v-md-editor v-model="content" height="600px" :disabled-menus="[]" @save="() => { }"></v-md-editor>
+            <template v-if="showEditor">
+              <v-md-editor data-smoke="markdown-editor" v-model="content" height="600px" :disabled-menus="[]"
+                @save="() => { }"></v-md-editor>
+            </template>
+            <template v-else>
+              <div class="h-[600px] bg-gray-50 flex flex-col items-center justify-center text-gray-500">
+                <p class="text-sm mb-1">编辑器初始化中...</p>
+                <p class="text-xs text-gray-400">系统会自动加载，无需额外操作</p>
+              </div>
+            </template>
           </div>
         </div>
       </div>

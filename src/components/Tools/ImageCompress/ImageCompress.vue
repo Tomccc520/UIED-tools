@@ -29,7 +29,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -76,14 +76,14 @@
                 <el-slider v-model="quality" :min="1" :max="100" :step="1" />
               </div>
               <div class="flex space-x-3">
-                <el-button type="primary" size="large" :loading="isCompressing" @click="compressAll"
+                <el-button data-smoke="image-compress-start" type="primary" size="large" :loading="isCompressing" @click="compressAll"
                   class="flex-1 !h-10">
                   {{ isCompressing ? '压缩中...' : '开始压缩' }}
                 </el-button>
                 <el-button v-if="fileList.length > 0" size="large" @click="recompress" class="flex-1 !h-10">
                   重新压缩
                 </el-button>
-                <el-button v-if="fileList.length > 0" type="success" size="large" @click="downloadAll"
+                <el-button data-smoke="image-compress-download" v-if="fileList.length > 0" type="success" size="large" @click="downloadAll"
                   class="flex-1 !h-10">
                   打包下载
                 </el-button>
@@ -191,7 +191,7 @@
                   <el-button @click="clearFiles" size="large" class="flex-1 sm:flex-none !h-10">
                     清空文件列表
                   </el-button>
-                  <el-button v-if="compressedCount > 0" type="success" size="large" @click="downloadAll"
+                  <el-button data-smoke="image-compress-download" v-if="compressedCount > 0" type="success" size="large" @click="downloadAll"
                     class="flex-1 sm:flex-none !h-10">
                     打包下载 ({{ compressedCount }})
                   </el-button>
@@ -530,7 +530,7 @@ const compressPNG = async (file: File): Promise<Blob> => {
               colors
             )
 
-            resolve(new Blob([pngData], { type: 'image/png' }))
+            resolve(new Blob([pngData as BlobPart], { type: 'image/png' }))
           } catch (err) {
             reject(err)
           }

@@ -1431,13 +1431,13 @@ const getAIWritingListApi = async (page = 1, limit = 15) => {
   }
 }
 
-const parseToolsData = (html: string, category: string) => {
+const parseToolsData = (html: string | { data?: any } | null, category: string) => {
   if (!html) return []
 
   try {
     // 如果返回的是 JSON 数据
-    if (typeof html === 'object' && html !== null) {
-      return html.data || []
+    if (typeof html === 'object') {
+      return html?.data || []
     }
 
     // 如果返回的是 HTML

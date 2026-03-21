@@ -21,7 +21,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">专业的JSON格式化工具，支持语法高亮、校验、压缩等功能</p>
@@ -34,8 +34,15 @@
               <h3 class="text-base font-medium text-gray-700">JSON内容</h3>
             </div>
             <div class="border rounded-lg overflow-hidden bg-white">
-              <codemirror v-model="info.code" placeholder="在此输入JSON内容..." :style="{ height: '400px' }" :autofocus="true"
-                :indent-with-tab="true" :tabSize="2" :extensions="info.extensions" />
+              <AsyncCodemirror
+                v-model="info.code"
+                placeholder="在此输入JSON内容..."
+                :height="400"
+                :autofocus="true"
+                :indent-with-tab="true"
+                :tab-size="2"
+                :extensions="info.extensions"
+              />
             </div>
           </div>
 
@@ -125,16 +132,10 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from '@vue/runtime-core'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { reactive, onMounted } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import AsyncCodemirror from '@/components/Common/AsyncCodemirror.vue'
 import { transferred, copy } from '@/utils/string'
-import { Codemirror } from "vue-codemirror"
-import { json } from '@codemirror/lang-json'
-import '@codemirror/search'
-import '@codemirror/state'
-import '@codemirror/commands'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 
@@ -143,7 +144,7 @@ const route = useRoute()
 const info = reactive({
   title: "JSON在线转换",
   code: '',
-  extensions: [json()],
+  extensions: [] as unknown[],
   isParseErr: false,
   parseErr: ''
 })
@@ -171,6 +172,19 @@ const usageScenarios = [
   '开发调试：验证JSON语法正确性',
   '文档编写：生成格式化的JSON示例'
 ]
+
+/**
+ * 按需加载 JSON 语法扩展
+ * 避免页面初始化时直接引入语言包，降低工具页首次加载负担
+ */
+const loadJsonExtensions = async () => {
+  const { json } = await import('@codemirror/lang-json')
+  info.extensions = [json()]
+}
+
+onMounted(() => {
+  void loadJsonExtensions()
+})
 
 //格式化json
 const formatJson = () => {

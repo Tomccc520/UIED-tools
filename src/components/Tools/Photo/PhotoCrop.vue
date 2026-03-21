@@ -18,7 +18,7 @@
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3">证件照尺寸裁剪工具</h2>
+          <h2 class="text-4xl font-bold mb-3">免费证件照尺寸裁剪工具</h2>
           <p class="text-gray-500 text-sm">一键生成标准尺寸证件照，支持多种规格</p>
         </div>
 

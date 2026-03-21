@@ -9,7 +9,7 @@ const app = express();
 app.use(express.json());
 
 // 配置 CORS
-const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5173'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:5179'];
 app.use(cors({
   origin: function(origin, callback) {
     // 允许没有origin的请求（比如同源请求）

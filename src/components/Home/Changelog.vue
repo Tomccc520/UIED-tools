@@ -12,9 +12,9 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2025-12-01 14:30
- * @version Beta 2.2.8
- * @toolsCount 当前工具总数：88个
+ * @lastUpdate 2026-03-19 17:51
+ * @version Beta 2.7.14
+ * @toolsCount 当前工具总数：332个
  */
 
 const tocItems = ref<{ id: string; version: string; date: string; title: string }[]>([]);
@@ -23,6 +23,15 @@ const showMobileToc = ref(false);
 const showBackToTop = ref(false);
 const tocListRef = ref<HTMLElement | null>(null);
 const tocItemRefs = ref<Record<string, HTMLElement>>({});
+
+const headerLinks = [
+  { name: 'AI学习平台', url: 'https://www.uied.cn/' },
+  { name: 'AI免费工具', url: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜', url: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', url: 'https://hao.uied.cn/ai' },
+  { name: 'AI交流群', url: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
+  { name: 'AI知识库', url: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
+]
 
 const scrollToTop = () => {
   window.scrollTo({
@@ -242,8 +251,22 @@ onUnmounted(() => {
             UIED技术团队
           </a>
         </div>
-        <div class="text-gray-400 text-xs mt-2">
-          当前工具总数：88个 | 最后更新：2025-12-01 10:00
+
+        <!-- 快捷导航链接 -->
+        <div class="flex flex-wrap items-center gap-3 mt-4">
+          <a v-for="link in headerLinks" :key="link.name" :href="link.url" target="_blank" rel="noopener noreferrer"
+            class="flex items-center text-gray-600 hover:text-blue-600 transition-all bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm text-sm group">
+            <span class="font-medium">{{ link.name }}</span>
+            <svg
+              class="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity transform -translate-x-1 group-hover:translate-x-0"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+          </a>
+        </div>
+
+        <div class="text-gray-400 text-xs mt-4">
+          当前工具总数：332个 | 最后更新：2026-03-19 17:51
         </div>
       </div>
 
@@ -279,6 +302,2103 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 2.7.14 -->
+          <div class="timeline-item" id="v2.7.14">
+            <div class="version-tag">
+              <span class="version">2.7.14</span>
+              <span class="date">2026-03-19 17:51</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">工具优化</el-tag>
+                <span class="text-gray-700">视频工具总览跳转优化与新工具补齐</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">视频入口与可用能力更新</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频工具总览</router-link></strong>：工具卡片与能力核对区链接统一改为新窗口打开，降低处理中误切换风险。</li>
+                        <li><strong><router-link to="/tools/video/convert" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频格式转换</router-link></strong>：新增 MP4/WebM/MOV 常见格式转换，支持进度、ETA、取消处理和结果对比。</li>
+                        <li><strong><router-link to="/tools/video/resolution" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频分辨率重设</router-link></strong>：新增 1080p/720p/480p 与自定义尺寸重设，保持等比输出并支持结果对比。</li>
+                        <li><strong><router-link to="/tools/video/merge" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频拼接</router-link></strong>：新增多段视频顺序合并导出，支持片段排序、进度/ETA、取消处理与结果区下载。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.13 -->
+          <div class="timeline-item" id="v2.7.13">
+            <div class="version-tag">
+              <span class="version">2.7.13</span>
+              <span class="date">2026-03-18 23:40</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">工具优化</el-tag>
+                <span class="text-gray-700">GIF 压缩画质与交互升级</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">GIF 压缩体验升级</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/gif-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">GIF 压缩</router-link></strong>：新增“画质保护模式”（原尺寸/原帧率/256 色优先）与压缩预设，减少误操作带来的画质损失。</li>
+                        <li><strong><router-link to="/tools/gif-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">GIF 压缩</router-link></strong>：增加逐帧重复帧识别与延时合并统计，在尽量保持观感的前提下进一步压缩体积。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.12 -->
+          <div class="timeline-item" id="v2.7.12">
+            <div class="version-tag">
+              <span class="version">2.7.12</span>
+              <span class="date">2026-03-18 22:20</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">PDF工具组运行时加载优化（精简记录）</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">PDF 依赖链路懒加载</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>
+                          <strong><router-link to="/tools/pdf-compress" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 压缩</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-merge" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 合并</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-split" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 分割</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-delete" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 删除</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-rotate" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 旋转</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-encrypt" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 加密</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-watermark" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 水印</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-sign" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 签名</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-extract-text" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 提取文本</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-to-images" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 转图片</router-link></strong> /
+                          <strong><router-link to="/tools/pdf-page-number" target="_blank"
+                                class="hover:text-blue-600 transition-colors">PDF 加页码</router-link></strong>
+                          统一改为运行时按需加载 <code>pdfjs-dist</code> 与 <code>pdf-lib</code>。
+                        </li>
+                        <li>新增 <strong><router-link to="/tools/pdf-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">/tools/pdf-compress</router-link></strong> 冒烟项，持续校验路由可达与关键按钮可用。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.11 -->
+          <div class="timeline-item" id="v2.7.11">
+            <div class="version-tag">
+              <span class="version">2.7.11</span>
+              <span class="date">2026-03-18 20:40</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">导出工具重依赖按需加载（精简记录）</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">运行时加载收敛</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>
+                          <strong><router-link to="/tools/ai/resume" target="_blank"
+                                class="hover:text-blue-600 transition-colors">AI简历</router-link> /
+                            <router-link to="/tools/ai-outsource-quote" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI外包报价</router-link> /
+                            <router-link to="/tools/ai/prompt-editor" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI提示词编辑</router-link> /
+                            <router-link to="/tools/xiaohongshu" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书生成</router-link></strong> 与
+                          <strong><router-link to="/tools/design/DesignQuote" target="_blank"
+                                class="hover:text-blue-600 transition-colors">设计报价单</router-link> /
+                            <router-link to="/tools/design/logo-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Logo 规范</router-link> /
+                            <router-link to="/tools/fish-calendar" target="_blank"
+                              class="hover:text-blue-600 transition-colors">摸鱼日历</router-link> /
+                            <router-link to="/tools/horoscope" target="_blank"
+                              class="hover:text-blue-600 transition-colors">星座运势</router-link> /
+                            <router-link to="/tools/pdf-compress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF 压缩</router-link></strong>
+                          的 <code>html2canvas</code>、<code>jsPDF</code> 链路已统一切换为“触发导出时再加载”。
+                        </li>
+                        <li>清理无效静态导入，减少首页解析压力，原有功能与交互保持不变。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.10 -->
+          <div class="timeline-item" id="v2.7.10">
+            <div class="version-tag">
+              <span class="version">2.7.10</span>
+              <span class="date">2026-03-18 18:20</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">工具链路优化（精简记录）</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">AI产品榜外链调整</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>AI产品榜</strong>：站内页面下线，统一跳转至 <a href="https://hao.uied.cn/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700">https://hao.uied.cn/</a>，并保留原路由兼容访问。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">AI工具页加载优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>AI/Student 全量页面</strong>：统一接入结果编辑器按需挂载、分片缓冲 + `requestAnimationFrame` 流式输出、复制预览前编辑器就绪兜底与卸载清理。</li>
+                        <li><strong><router-link to="/tools/markdown" target="_blank" class="hover:text-blue-600 transition-colors">Markdown</router-link> / <router-link to="/tools/markdown-to-pdf" target="_blank" class="hover:text-blue-600 transition-colors">Markdown 转 PDF</router-link></strong>：优化编辑器初始化占位文案，默认自动加载，减少操作步骤；Markdown 转 PDF 增加渲染结果缓存，减少重复解析。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.9 -->
+          <div class="timeline-item" id="v2.7.9">
+            <div class="version-tag">
+              <span class="version">2.7.9</span>
+              <span class="date">2026-03-18 14:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">性能优化</el-tag>
+                <span class="text-gray-700">重工具页加载链路优化与回归加固</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">核心页面性能优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/chat" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI Chat</router-link></strong>：流式输出阶段采用纯文本展示，结束后再执行 Markdown 渲染；消息渲染增加 HTML 缓存，减少重复解析开销。</li>
+                        <li><strong><router-link to="/tools/ai/deepseek-r1" target="_blank"
+                              class="hover:text-blue-600 transition-colors">DeepSeek R1</router-link></strong>：流式响应改为分帧滚动更新，避免每个分片触发同步布局；消息渲染增加缓存并在流式结束后再做 Markdown 解析。</li>
+                        <li><strong><router-link to="/tools/ai/deepseek" target="_blank"
+                              class="hover:text-blue-600 transition-colors">DeepSeek</router-link></strong>：逐字符输出改为分帧批量写入，减少高频响应式更新；补充滚动调度与卸载清理，降低长回答卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/xunfei-spark" target="_blank"
+                              class="hover:text-blue-600 transition-colors">讯飞星火</router-link></strong>：打字机链路升级为分帧批量输出，修复“重新生成”状态阻塞问题，并优化对话区滚动性能。</li>
+                        <li><strong>搜索面板</strong>：流式响应改为按帧合并输出，历史回答增加 Markdown 解析缓存，降低高频渲染占用。</li>
+                        <li><strong><router-link to="/tools/markdown-to-pdf" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown 转 PDF</router-link></strong>：编辑器改为空闲时挂载，预览 HTML 改为导出前一次性解析，减少输入阶段主线程占用；修复分页位移按页面尺寸计算，提升 Letter/A4 一致性。</li>
+                        <li><strong><router-link to="/tools/text-to-pdf" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本转 PDF</router-link></strong>：修复多页导出时分页位移常量错误，统一按当前纸张尺寸分页；复用导出图片数据，减少重复编码开销。</li>
+                        <li><strong><router-link to="/tools/ai/office/code-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 代码生成</router-link></strong>：流式代码输出改为分片缓冲 + `requestAnimationFrame` 刷新，提升长内容生成流畅度。</li>
+                        <li><strong><router-link to="/tools/ai/work-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 工作总结</router-link></strong>：结果编辑器改为按需挂载，流式文本输出改为分片缓冲 + `requestAnimationFrame`，降低长文生成时编辑区卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/weekly-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 周报总结</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低连续长文生成时的主线程抖动。</li>
+                        <li><strong><router-link to="/tools/ai/debriefing-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 述职报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充卸载清理逻辑，减少状态残留风险。</li>
+                        <li><strong><router-link to="/tools/ai/speech-script" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 讲话稿</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低长稿生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/project-proposal" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 项目策划方案</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并完善流式状态清理逻辑，提升连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/article-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 摘要生成</router-link></strong>：结果编辑器切换为按需挂载，流式输出改为分片缓冲 + `requestAnimationFrame` 刷新，降低长文提炼时卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/article-outline" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 写作大纲</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/article-polishing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 降重润色</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升连续处理稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/literature-review" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 文献综述</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底，降低长文综述生成卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/novel-plot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 小说剧情创作</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升长剧情生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/practice-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 实践报告</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，减少连续生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/opening-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 开题报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低长报告生成期间的编辑器卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/essay-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 作文一键写作</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/speech-draft" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 演讲稿</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/intern-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 实习总结</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，降低连续生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 分析报告</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升长报告生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/literature-recommend" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 文献推荐</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/essay-contest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 征文</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，降低长稿生成过程中的编辑区重渲染抖动。</li>
+                        <li><strong><router-link to="/tools/ai/graduation-thesis" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 毕业长文/报告</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，并补充复制预览前的编辑器就绪兜底，提升长文连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/self-reflection" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 检讨书</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少连续生成时的卡顿与状态残留。</li>
+                        <li><strong><router-link to="/tools/ai/short-video-title" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 短视频标题</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低标题批量生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/spokesperson-speech" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 发言稿</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与卸载清理逻辑，提升连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/training-experience" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 培训心得</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/work-report-ppt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 工作汇报PPT</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，降低长内容生成时卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/research-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 研究报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低深度报告生成时编辑区高频重渲染。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/business-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 商业计划书</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升长内容连续生成稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/feasibility-study" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 可行性研究报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/swot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI SWOT分析</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少连续优化时的状态残留。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 分析报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低复杂分析生成时编辑区重渲染压力。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/activity-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 活动方案</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续调整时稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/survey-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 调研报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 行业报告</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少长内容生成阶段卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/project-application" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 立项申请报告</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，并补充复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/pest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI PEST分析</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续分析稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/transport-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 运输方案</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低长方案生成时编辑区卡顿。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/situation-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 情况报告</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与流式状态清理逻辑，减少连续生成时状态残留。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/seven-s" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 波士顿7S分析</router-link></strong>：同步接入结果编辑器按需挂载与分片缓冲输出，提升组织诊断长文生成流畅度。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/marketing-4p" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 4P营销分析</router-link></strong>：同步接入结果编辑器按需挂载、分帧流式输出与复制预览前的编辑器就绪兜底。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-consultant" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 产业顾问</router-link></strong>：同步接入结果编辑器按需挂载、分片缓冲输出与卸载清理逻辑，提升连续咨询场景稳定性。</li>
+                        <li><strong><router-link to="/tools/ai/analysis/startup-ideas" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI 创新创业金点子</router-link></strong>：同步接入结果编辑器按需挂载与分帧流式输出，降低创意扩展阶段重渲染开销。</li>
+                        <li><strong>AI Office 全量工具页</strong>：为 <router-link to="/tools/ai/office/notice-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">通知生成</router-link>、<router-link to="/tools/ai/office/resume-builder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">简历制作</router-link>、<router-link to="/tools/ai/office/okr-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">OKR 制定</router-link>、<router-link to="/tools/ai/office/contract-template" target="_blank"
+                              class="hover:text-blue-600 transition-colors">合同模版</router-link> 及同类 Office 页面统一接入结果编辑器按需挂载、分片缓冲 + `requestAnimationFrame` 流式输出、复制预览前编辑器就绪兜底与卸载清理，减少长内容生成卡顿并提升连续操作稳定性。</li>
+                        <li><strong>流程减负优化</strong>：对已改造的写作工具新增“高级选项（可选）”折叠区，并移除结果区“立即加载编辑器”显式按钮，改为“生成后自动加载”提示，减少页面步骤感与视觉负担。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">重依赖懒加载链路优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/markdown" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown 编辑器</router-link></strong>：编辑器改为空闲时挂载，支持用户手动立即加载，降低首屏阻塞。</li>
+                        <li><strong><router-link to="/tools/diff" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本对比</router-link></strong>：改为点击后初始化对比组件，并对快照输入做短延时防抖，减少长文本输入时重算压力。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.8 -->
+          <div class="timeline-item" id="v2.7.8">
+            <div class="version-tag">
+              <span class="version">2.7.8</span>
+              <span class="date">2025-12-20 20:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">热榜数据修复与系统优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">功能修复与优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>今日热榜</strong>：修复即梦AI和Nano-Banana数据获取异常问题（修正为Tag获取）；优化视觉设计，移除卡片阴影，提升阅读体验。</li>
+                        <li><strong>系统维护</strong>：移除已失效的抖音/小红书下载工具，精简路由配置，提升系统稳定性。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.6 -->
+          <div class="timeline-item" id="v2.7.6">
+            <div class="version-tag">
+              <span class="version">2.7.6</span>
+              <span class="date">2025-12-20 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">热榜聚合接口升级与工具优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">今日热榜 - 聚合接口升级</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">新增39个平台支持，覆盖科技、社区、游戏等多领域。</p>
+                      <p class="text-sm text-gray-500">
+                        包括：36氪、51CTO、吾爱破解、AcFun、酷安、CSDN、数字尾巴、极客公园、原神、果壳、HelloGitHub、虎扑、虎嗅、爱范儿、英雄联盟、NGA、什么值得买等。</p>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">工具优化与修复</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/font-copyright" target="_blank"
+                              class="hover:text-blue-600 transition-colors">字体版权查询</router-link></strong>：优化结果展示，支持列表式查看详细版权信息，增加使用说明。
+                        </li>
+                        <li><strong><router-link to="/tools/daily/car-price" target="_blank"
+                              class="hover:text-blue-600 transition-colors">车辆价格查询</router-link></strong>：修复API数据展示问题，增加空状态提示和使用说明。
+                        </li>
+                        <li><strong>工具推荐</strong>：优化相关工具推荐逻辑，提升匹配准确度。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.5 -->
+          <div class="timeline-item" id="v2.7.5">
+            <div class="version-tag">
+              <span class="version">2.7.5</span>
+              <span class="date">2025-12-19 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">新增AI学生助手分类与工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增AI学生助手分类</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">上线12款专为学生打造的AI辅助工具，覆盖实习、报告、求职等场景。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/student/internship-comments" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习评语</router-link></strong>：智能生成专业的实习评价内容。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/research-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">研究报告</router-link></strong>：辅助撰写深度研究报告。</li>
+                        <li><strong><router-link to="/tools/ai/student/internship-weekly" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习周记</router-link></strong>：快速记录实习周记心得。</li>
+                        <li><strong><router-link to="/tools/ai/student/internship-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习总结</router-link></strong>：一键生成高质量实习总结。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/social-practice-insight" target="_blank"
+                              class="hover:text-blue-600 transition-colors">暑假社会实践心得</router-link></strong>：分享社会实践感悟与收获。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/practice-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实践报告</router-link></strong>：规范化撰写社会实践报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">分析报告</router-link></strong>：提供多维度数据分析报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/interview-guide" target="_blank"
+                              class="hover:text-blue-600 transition-colors">面试指南</router-link></strong>：提供AI模拟面试与技巧指导。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/internship-experience" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习体验报告</router-link></strong>：记录真实的实习工作体验。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/internship-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">实习报告</router-link></strong>：生成标准格式的实习报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/resume-creation" target="_blank"
+                              class="hover:text-blue-600 transition-colors">简历制作</router-link></strong>：AI辅助优化简历内容与排版。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/student/activity-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">活动方案</router-link></strong>：创意生成校园活动策划方案。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">热门推荐更新</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600">新增Adobe全家桶与Gemini3相关热门工具推荐。</p>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.2 -->
+          <div class="timeline-item" id="v2.7.2">
+            <div class="version-tag">
+              <span class="version">2.7.2</span>
+              <span class="date">2025-12-17 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI分析报告工具矩阵扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增16个AI分析工具</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">深度覆盖商业分析、市场研究和战略规划场景。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/analysis/feasibility-study" target="_blank"
+                              class="hover:text-blue-600 transition-colors">可行性研究报告</router-link></strong>：智能生成包含市场、技术、经济维度的专业可行性报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/project-application" target="_blank"
+                              class="hover:text-blue-600 transition-colors">立项申请报告</router-link></strong>：生成规范的项目立项申请，助力项目快速获批。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/business-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">商业计划书</router-link></strong>：智能撰写专业商业计划书，涵盖市场分析、商业模式与财务预测。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">行业研究报告</router-link></strong>：深度分析行业现状、竞争格局与发展趋势，提供决策支持。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/research-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">调研报告</router-link></strong>：生成基于实地考察或数据收集的专业调研报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/analysis-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">竞品分析报告</router-link></strong>：多维度对比竞品优劣势，输出差异化竞争策略。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/survey-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">问卷调查报告</router-link></strong>：智能分析问卷数据，生成可视化的调查结论与建议。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/activity-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">活动策划方案</router-link></strong>：生成创意十足且执行性强的活动策划全案。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/pest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PEST分析</router-link></strong>：从政治、经济、社会、技术四个维度深度剖析宏观环境。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/swot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">SWOT分析</router-link></strong>：全面评估优势、劣势、机会与威胁，制定科学战略。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/transport-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">运输方案</router-link></strong>：智能规划最佳运输路线与方式，优化物流成本。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/situation-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">情况报告</router-link></strong>：客观陈述事实经过，分析原因并提出处理建议。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/seven-s" target="_blank"
+                              class="hover:text-blue-600 transition-colors">波士顿7S分析</router-link></strong>：基于麦肯锡7S模型，全方位诊断企业组织效能。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/marketing-4p" target="_blank"
+                              class="hover:text-blue-600 transition-colors">4P营销分析</router-link></strong>：制定产品、价格、渠道、推广的组合营销策略。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/industry-consultant" target="_blank"
+                              class="hover:text-blue-600 transition-colors">产业顾问</router-link></strong>：扮演资深专家，提供行业深度洞察与发展建议。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/analysis/startup-ideas" target="_blank"
+                              class="hover:text-blue-600 transition-colors">创新创业金点子</router-link></strong>：结合市场趋势，激发具有商业潜力的创业灵感。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.1 -->
+          <div class="timeline-item" id="v2.7.1">
+            <div class="version-tag">
+              <span class="version">2.7.1</span>
+              <span class="date">2025-12-16 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI办公工具矩阵进一步完善</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增13个AI办公工具</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">持续丰富办公场景，覆盖更多细分需求。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/office/custom-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">自定义总结</router-link></strong>：灵活生成各类总结文档，支持自定义主题和结构。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/holiday-notice" target="_blank"
+                              class="hover:text-blue-600 transition-colors">放假通知</router-link></strong>：智能生成规范、温馨的放假通知。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/work-report?type=daily" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作日报</router-link></strong>：快速生成今日工作总结、问题反馈和明日计划。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/work-report?type=weekly" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作周报</router-link></strong>：系统梳理本周工作进展，规划下周重点。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/meeting-minutes" target="_blank"
+                              class="hover:text-blue-600 transition-colors">会议记录润色</router-link></strong>：智能整理和润色会议记录，生成专业纪要。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/competitor-speech" target="_blank"
+                              class="hover:text-blue-600 transition-colors">竟聘演讲稿</router-link></strong>：生成专业、有感染力的岗位竞聘演讲稿。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/design-concept" target="_blank"
+                              class="hover:text-blue-600 transition-colors">设计理念</router-link></strong>：生成独特、有深度的设计理念阐述。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/resignation-letter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">离职申请</router-link></strong>：生成得体、专业的辞职报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/questionnaire-design" target="_blank"
+                              class="hover:text-blue-600 transition-colors">问卷设计</router-link></strong>：智能生成科学、合理的调查问卷。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-polishing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">通稿润色改写</router-link></strong>：智能改写文本，优化语言表达。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/tender-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">标书撰写</router-link></strong>：辅助撰写投标文件核心内容。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/cover-letter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">求职信</router-link></strong>：生成真诚、得体的求职信。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/interview-outline" target="_blank"
+                              class="hover:text-blue-600 transition-colors">访谈提纲</router-link></strong>：设计专业的访谈提纲，确保访谈高效深入。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.7.0 -->
+          <div class="timeline-item" id="v2.7.0">
+            <div class="version-tag">
+              <span class="version">2.7.0</span>
+              <span class="date">2025-12-16 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">新增AI办公工具分类，助力高效办公</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">全新上线「AI办公工具」分类</div>
+                    <div class="feature-desc">
+                      <p class="text-sm text-gray-600 mb-2">整合常用办公场景，提供一站式AI办公解决方案。</p>
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/office/contract-template" target="_blank"
+                              class="hover:text-blue-600 transition-colors">合同模版</router-link></strong>：智能生成各类常用合同，规避法律风险。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/meeting-minutes" target="_blank"
+                              class="hover:text-blue-600 transition-colors">润色会议纪要</router-link></strong>：智能整理会议记录，生成专业纪要。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/okr-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">OKR制定</router-link></strong>：智能协助制定目标与关键结果。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/code-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">写代码</router-link></strong>：智能生成高质量代码片段。</li>
+                        <li><strong><router-link to="/tools/ai/office/resume-creation" target="_blank"
+                              class="hover:text-blue-600 transition-colors">简历制作</router-link></strong>：智能生成专业简历，提升求职成功率。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/job-description" target="_blank"
+                              class="hover:text-blue-600 transition-colors">招聘JD</router-link></strong>：智能生成吸引人的职位描述。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/lawsuit-document" target="_blank"
+                              class="hover:text-blue-600 transition-colors">起诉书</router-link></strong>：智能辅助起草法律文书。</li>
+                        <li><strong><router-link to="/tools/ai/office/work-reflections" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作感想</router-link></strong>：记录工作感悟，总结经验。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/application-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">申请报告</router-link></strong>：智能生成各类规范的申请报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/resignation-letter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">辞职报告</router-link></strong>：智能生成得体的辞职信。</li>
+                        <li><strong><router-link to="/tools/ai/office/training-scheme" target="_blank"
+                              class="hover:text-blue-600 transition-colors">培训方案</router-link></strong>：智能设计员工培训计划。</li>
+                        <li><strong><router-link to="/tools/ai/office/notice-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">通知撰写</router-link></strong>：智能生成各类办公通知。</li>
+                        <li><strong><router-link to="/tools/ai/work-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">多样化总结</router-link></strong>：新增转正、晋升、考核、培训等多种总结类型。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/office/work-plan" target="_blank"
+                              class="hover:text-blue-600 transition-colors">多维度计划</router-link></strong>：新增部门计划、个人计划等多种计划类型。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.6.2 -->
+          <div class="timeline-item" id="v2.6.2">
+            <div class="version-tag">
+              <span class="version">2.6.2</span>
+              <span class="date">2025-12-16 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI写作工具持续扩充与优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增11个AI写作工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/literature-recommend" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文献推荐</router-link></strong>：智能推荐相关领域的高质量文献，助力学术研究。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/self-reflection" target="_blank"
+                              class="hover:text-blue-600 transition-colors">检讨书</router-link></strong>：智能生成态度诚恳的检讨书。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/project-proposal" target="_blank"
+                              class="hover:text-blue-600 transition-colors">项目策划方案</router-link></strong>：生成包含背景、目标、实施计划的完整策划案。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/speech-script" target="_blank"
+                              class="hover:text-blue-600 transition-colors">讲话稿</router-link></strong>：生成各类场合的致辞和讲话稿。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/short-video-title" target="_blank"
+                              class="hover:text-blue-600 transition-colors">短视频标题</router-link></strong>：生成吸引眼球的短视频爆款标题。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/short-video-script" target="_blank"
+                              class="hover:text-blue-600 transition-colors">短视频剧本</router-link></strong>：生成专业的分镜头脚本。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-summary" target="_blank"
+                              class="hover:text-blue-600 transition-colors">长文/报告摘要</router-link></strong>：智能提炼核心观点，生成精准摘要。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/opening-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">开题报告</router-link></strong>：生成标准规范的学术论文开题报告。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-outline" target="_blank"
+                              class="hover:text-blue-600 transition-colors">长文/报告大纲</router-link></strong>：生成逻辑清晰的文章/报告大纲。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/article-polishing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文章降重润色</router-link></strong>：智能改写降重，优化语言表达。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/graduation-thesis" target="_blank"
+                              class="hover:text-blue-600 transition-colors">毕业长文/报告</router-link></strong>：辅助生成毕业论文初稿。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>优化AI生成内容的标题层级，默认使用三级标题，提升阅读体验。</li>
+                        <li>修复生成按钮的加载动画效果。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.6.1 -->
+          <div class="timeline-item" id="v2.6.1">
+            <div class="version-tag">
+              <span class="version">2.6.1</span>
+              <span class="date">2025-12-15 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI写作工具大规模扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增13个AI写作工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/book-review" target="_blank"
+                              class="hover:text-blue-600 transition-colors">读后感/读书笔记</router-link></strong>：智能生成高质量读后感和读书笔记，支持多种书籍类型。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/literature-review" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文献综述</router-link></strong>：智能生成专业文献综述，支持多种学术领域。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/training-experience" target="_blank"
+                              class="hover:text-blue-600 transition-colors">培训心得</router-link></strong>：智能生成培训心得体会，总结学习收获和感悟。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/work-report-ppt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">工作汇报PPT</router-link></strong>：智能生成工作汇报PPT大纲和内容脚本，助力高效汇报。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/speech-draft" target="_blank"
+                              class="hover:text-blue-600 transition-colors">演讲稿</router-link></strong>：智能生成精彩演讲稿，支持多种场合和风格。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/novel-plot" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小说剧情创作</router-link></strong>：智能生成小说剧情大纲、角色设定和故事梗概。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/debriefing-report" target="_blank"
+                              class="hover:text-blue-600 transition-colors">述职报告</router-link></strong>：智能生成个人述职报告，突出工作业绩和职业亮点。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/essay-writing" target="_blank"
+                              class="hover:text-blue-600 transition-colors">作文一键写作</router-link></strong>：智能生成各类作文，支持不同年级和题材要求。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/xiaohongshu-note" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书笔记生成</router-link></strong>：智能生成小红书风格笔记，包含Emoji和种草文案。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/xiaohongshu-title" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书爆款标题</router-link></strong>：智能生成吸引眼球的小红书爆款标题，提升点击率。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/xiaohongshu-rewrite" target="_blank"
+                              class="hover:text-blue-600 transition-colors">小红书笔记改写</router-link></strong>：一键将普通文本改写为小红书风格笔记，增加吸引力。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/essay-contest" target="_blank"
+                              class="hover:text-blue-600 transition-colors">征文</router-link></strong>：智能生成各类征文稿件，紧扣主题，文采斐然。
+                        </li>
+                        <li><strong><router-link to="/tools/ai/spokesperson-speech" target="_blank"
+                              class="hover:text-blue-600 transition-colors">发言稿</router-link></strong>：智能生成各类会议、活动发言稿，得体大方。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">工具总数更新</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>工具总数从227个增加到240个，AI写作工具分类已达15个。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.6.0 -->
+          <div class="timeline-item" id="v2.6.0">
+            <div class="version-tag">
+              <span class="version">2.6.0</span>
+              <span class="date">2025-12-15 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI工具箱扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增AI工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/article-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">AI文章生成</router-link></strong>：智能生成高质量文章，支持多种风格和用途。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">分类优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增<strong>AI写作工具</strong>分类，整合写作类AI应用。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.9 -->
+          <div class="timeline-item" id="v2.5.9">
+            <div class="version-tag">
+              <span class="version">2.5.9</span>
+              <span class="date">2025-12-14 21:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">多媒体工具扩充与修复</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增与优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video/trimmer" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频时长剪辑</router-link></strong>：新增视频片段截取功能，支持双向滑块精确选择。
+                        </li>
+                        <li><strong><router-link to="/tools/video/rotate" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频旋转/翻转</router-link></strong>：新增视频旋转和镜像翻转工具，解决拍摄方向问题。
+                        </li>
+                        <li><strong><router-link to="/tools/video/crop" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频画面裁剪</router-link></strong>：优化裁剪工具体验，增加处理进度显示。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/merge" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频合并</router-link></strong>：UI
+                          全面升级，新增时长计算、拖拽上传和实时进度条。
+                        </li>
+                        <li><strong><router-link to="/tools/video/to-audio" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频提取音频</router-link></strong>：UI
+                          升级，优化格式支持和预览体验。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.8 -->
+          <div class="timeline-item" id="v2.5.8">
+            <div class="version-tag">
+              <span class="version">2.5.8</span>
+              <span class="date">2025-12-14 20:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">多媒体剪辑功能增强</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增剪辑工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video/crop" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频画面裁剪</router-link></strong>：在线裁剪视频画面区域，支持自由调整比例。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/volume-booster" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频音量放大</router-link></strong>：在线调整音频音量，支持最大
+                          300% 增益。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/recorder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">在线录音</router-link></strong>：免费在线录音工具，支持波形可视化与WebM导出。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.7 -->
+          <div class="timeline-item" id="v2.5.7">
+            <div class="version-tag">
+              <span class="version">2.5.7</span>
+              <span class="date">2025-12-14 19:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">音频处理工具上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增音频工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/audio/converter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频格式转换</router-link></strong>：在线音频格式转换工具，支持
+                          MP3、WAV、AAC、OGG 等格式互转。
+                        </li>
+                        <li><strong><router-link to="/tools/audio/trimmer" target="_blank"
+                              class="hover:text-blue-600 transition-colors">音频剪辑</router-link></strong>：在线音频剪辑工具，支持可视化的波形剪辑，精确裁剪音频片段。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.6 -->
+          <div class="timeline-item" id="v2.5.6">
+            <div class="version-tag">
+              <span class="version">2.5.6</span>
+              <span class="date">2025-12-14 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">优化</el-tag>
+                <span class="text-gray-700">视频工具体验优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">功能优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>全面优化视频工具系列的交互体验，增加详细的版权信息和功能注释。</li>
+                        <li>优化代码结构，提升工具运行稳定性。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.5 -->
+          <div class="timeline-item" id="v2.5.5">
+            <div class="version-tag">
+              <span class="version">2.5.5</span>
+              <span class="date">2025-12-14 17:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">剪辑工具分类上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增剪辑工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/video/frame" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频抽帧工具</router-link></strong>：在线提取视频画面，支持按时间点精确截图和批量导出，本地处理保护隐私。
+                        </li>
+                        <li><strong><router-link to="/tools/video/audio" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频提取音频</router-link></strong>：在线从视频中提取高质量音频，支持导出为
+                          WAV 格式。
+                        </li>
+                        <li><strong><router-link to="/tools/video/gif" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频转GIF</router-link></strong>：在线将视频转换为GIF动图，支持截取片段、调整尺寸和帧率。
+                        </li>
+                        <li><strong><router-link to="/tools/video/webcam" target="_blank"
+                              class="hover:text-blue-600 transition-colors">摄像头录制</router-link></strong>：在线录制摄像头视频，支持高清录制和音频采集，本地处理更安全。
+                        </li>
+                        <li><strong><router-link to="/tools/video/watermark" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频加水印</router-link></strong>：在线为视频添加文字或图片水印，支持拖拽调节位置，本地处理保护隐私。
+                        </li>
+                        <li><strong><router-link to="/tools/video/speed" target="_blank"
+                              class="hover:text-blue-600 transition-colors">视频倍速处理</router-link></strong>：在线调整视频播放速度（0.5x
+                          - 4.0x），支持导出处理后的视频，本地处理更安全。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.4 -->
+          <div class="timeline-item" id="v2.5.4">
+            <div class="version-tag">
+              <span class="version">2.5.4</span>
+              <span class="date">2025-12-14 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发者辅助工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/url-parser" target="_blank"
+                              class="hover:text-blue-600 transition-colors">URL 解析器</router-link></strong>：将 URL
+                          解析为协议、主机、路径、查询参数等组成部分。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/cron" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Cron 表达式生成器</router-link></strong>：可视化生成
+                          Cron 表达式，支持 Quartz 和 Linux Crontab 格式。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.3 -->
+          <div class="timeline-item" id="v2.5.3">
+            <div class="version-tag">
+              <span class="version">2.5.3</span>
+              <span class="date">2025-12-14 15:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发者辅助工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增辅助工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/keycode" target="_blank"
+                              class="hover:text-blue-600 transition-colors">键盘键值码查看器</router-link></strong>：在线查看键盘按键的
+                          KeyCode、Code 等详细信息，开发调试必备。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/user-agent" target="_blank"
+                              class="hover:text-blue-600 transition-colors">User Agent 解析</router-link></strong>：查看您的浏览器
+                          User Agent 字符串，解析操作系统、浏览器版本和设备类型。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.2 -->
+          <div class="timeline-item" id="v2.5.2">
+            <div class="version-tag">
+              <span class="version">2.5.2</span>
+              <span class="date">2025-12-14 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">办公规范工具更新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增办公规范工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/doc/spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">常用文档规范</router-link></strong>：提供公文写作与文档排版的标准规范参考，包含A4纸张尺寸、页边距、字体字号等详细参数。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.1 -->
+          <div class="timeline-item" id="v2.5.1">
+            <div class="version-tag">
+              <span class="version">2.5.1</span>
+              <span class="date">2025-12-14 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发者工具箱扩充</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发辅助工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/json-format" target="_blank"
+                              class="hover:text-blue-600 transition-colors">JSON 格式化工具</router-link></strong>：在线 JSON
+                          代码格式化、验证、压缩工具，支持错误检查和一键复制。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/diff-checker" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本对比工具</router-link></strong>：在线比较两段文本或代码的差异，高亮显示新增和删除的内容。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/url-encoder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">URL 编码/解码</router-link></strong>：在线 URL
+                          Encode / Decode 工具，支持 UTF-8 编码，自动处理特殊字符。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/timestamp-converter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">时间戳转换</router-link></strong>：在线 Unix
+                          时间戳与北京时间相互转换工具，支持秒和毫秒单位。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/md5-encrypt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">MD5 加密工具</router-link></strong>：在线 MD5
+                          加密工具，支持 32 位和 16 位加密，大小写可选。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增媒体工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/media/qrcode-generator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">二维码生成器</router-link></strong>：在线生成自定义二维码，支持设置颜色、尺寸、容错率，可下载
+                          PNG 图片。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.5.0 -->
+          <div class="timeline-item" id="v2.5.0">
+            <div class="version-tag">
+              <span class="version">2.5.0</span>
+              <span class="date">2025-12-14 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">设计与文档工具更新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增设计规范工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/web-ui-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Web端设计规范</router-link></strong>：提供Web端常用布局尺寸、栅格系统、文字排版等设计规范参考。
+                        </li>
+                        <li><strong><router-link to="/tools/design/typography-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">字体排版规范</router-link></strong>：提供Web端常用字体家族、字号层级、行高比例等排版规范。
+                        </li>
+                        <li><strong><router-link to="/tools/design/color-spec" target="_blank"
+                              class="hover:text-blue-600 transition-colors">色彩规范生成器</router-link></strong>：基于主色调自动生成完整的色彩系统，包含明暗色阶和辅助色。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增文档处理工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/doc/markdown-table" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown
+                              表格生成器</router-link></strong>：可视化编辑表格，自动生成 Markdown 格式代码。
+                        </li>
+                        <li><strong><router-link to="/tools/doc/text-cleaner" target="_blank"
+                              class="hover:text-blue-600 transition-colors">文本清洗工具</router-link></strong>：一键去除空行、重复行、HTML标签，支持大小写转换。
+                        </li>
+                        <li><strong><router-link to="/tools/doc/number-chinese" target="_blank"
+                              class="hover:text-blue-600 transition-colors">数字转中文大写</router-link></strong>：在线将数字转换为中文大写金额，适用于财务报销等场景。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增常用设计工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/css-flexbox" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS Flexbox 生成器</router-link></strong>：可视化调整
+                          Flexbox 布局属性，生成 CSS 代码。
+                        </li>
+                        <li><strong><router-link to="/tools/design/css-text-shadow" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 文本阴影生成器</router-link></strong>：在线可视化生成
+                          CSS text-shadow 代码。
+                        </li>
+                        <li><strong><router-link to="/tools/design/css-gradient-text" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS
+                              渐变文字生成器</router-link></strong>：快速生成炫酷的渐变色文字效果。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.8 -->
+          <div class="timeline-item" id="v2.4.8">
+            <div class="version-tag">
+              <span class="version">2.4.8</span>
+              <span class="date">2025-12-13 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">实用开发与计算工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/sql-format" target="_blank"
+                              class="hover:text-blue-600 transition-colors">SQL格式化</router-link></strong>：在线SQL代码格式化和美化工具，支持多种SQL方言。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/discount" target="_blank"
+                              class="hover:text-blue-600 transition-colors">折扣计算器</router-link></strong>：快速计算打折后的价格和节省的金额，支持折扣率和减免金额。
+                        </li>
+                        <li><strong><router-link to="/tools/design/gradient" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 渐变生成器</router-link></strong>：在线生成精美的 CSS
+                          线性渐变和径向渐变背景代码。
+                        </li>
+                        <li><strong><router-link to="/tools/web/meta-tags" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Meta 标签生成器</router-link></strong>：生成网页 SEO
+                          及社交媒体分享所需的 Meta 标签。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.7 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.7</span>
+              <span class="date">2025-12-13 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">设计规范优化与新工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增健康工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/calculation/bmr" target="_blank"
+                              class="hover:text-blue-600 transition-colors">BMR
+                              基础代谢计算器</router-link></strong>：计算基础代谢率(BMR)和每日热量消耗(TDEE)，科学管理身材。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">设计规范优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>优化了<strong>在线图片压缩</strong>工具的页面布局和视觉风格，使其与整体 UI 规范保持一致。</li>
+                        <li>优化了<strong>全屏翻页时钟</strong>的默认展示效果，增加了卡片容器和全屏切换动画。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.6 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.6</span>
+              <span class="date">2025-12-13 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">视觉与图片工具上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/daily/flip-clock" target="_blank"
+                              class="hover:text-blue-600 transition-colors">全屏翻页时钟</router-link></strong>：极简风格的翻页时钟，支持
+                          12/24 小时制，适合作为桌面屏保。
+                        </li>
+                        <li><strong><router-link to="/tools/design/image-compressor" target="_blank"
+                              class="hover:text-blue-600 transition-colors">在线图片压缩</router-link></strong>：支持
+                          JPG/PNG/WEBP 格式图片压缩，可调节质量和尺寸，本地处理更安全。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>优化了<strong>打字雨</strong>游戏的游戏区域高度，适配不同屏幕尺寸，提升游戏体验。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.5 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.5</span>
+              <span class="date">2025-12-13 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">前端开发工具上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/gradient" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 渐变生成器</router-link></strong>：在线生成精美的 CSS
+                          线性渐变和径向渐变背景代码。
+                        </li>
+                        <li><strong><router-link to="/tools/web/meta-tags" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Meta 标签生成器</router-link></strong>：生成网页 SEO
+                          及社交媒体分享所需的 Meta 标签，支持实时预览。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.4 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.4</span>
+              <span class="date">2025-12-13 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">开发、设计与生活工具上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增开发与设计工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/design/glassmorphism" target="_blank"
+                              class="hover:text-blue-600 transition-colors">CSS 玻璃拟态生成器</router-link></strong>：在线生成
+                          Glassmorphism 风格 CSS 代码。
+                        </li>
+                        <li><strong><router-link to="/tools/image-to-base64" target="_blank"
+                              class="hover:text-blue-600 transition-colors">图片转 Base64</router-link></strong>：在线将图片转换为
+                          Base64 编码，支持一键复制。
+                        </li>
+                        <li><strong><router-link to="/tools/dev/case-converter" target="_blank"
+                              class="hover:text-blue-600 transition-colors">命名风格转换</router-link></strong>：支持
+                          Camel、Pascal、Snake、Kebab 等多种变量命名风格互转。
+                        </li>
+                        <li><strong><router-link to="/tools/text/lorem-ipsum" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Lorem Ipsum
+                              生成器</router-link></strong>：快速生成中文、英文占位符文本。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增生活工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/image-color" target="_blank"
+                              class="hover:text-blue-600 transition-colors">图片主色调提取</router-link></strong>：上传图片自动提取主色调，生成配色方案。
+                        </li>
+                        <li><strong><router-link to="/tools/percentage" target="_blank"
+                              class="hover:text-blue-600 transition-colors">百分比计算器</router-link></strong>：在线百分比计算工具，支持计算占比、数值计算、增长率等。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增测试工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/dev/keyboard-test" target="_blank"
+                              class="hover:text-blue-600 transition-colors">键盘测试</router-link></strong>：在线检测键盘按键是否正常，支持全键位检测。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.3 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.3</span>
+              <span class="date">2025-12-12 12:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">生活工具与心理测试上新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增生活常用工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/daily/decision-maker" target="_blank"
+                              class="hover:text-blue-600 transition-colors">帮我决定</router-link></strong>：选择困难症福音，输入选项，让运气帮你做决定。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增潜能测试</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/psychology/color-test" target="_blank"
+                              class="hover:text-blue-600 transition-colors">色彩性格测试</router-link></strong>：基于哈特曼性格色彩密码，探索你的核心动力和性格优势。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">规范优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>全面检查并优化了生活常用类和潜能测试类工具的页面布局，确保符合统一的 UI 设计规范。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.2 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.2</span>
+              <span class="date">2025-12-12 11:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">游戏体验修复与新增</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增小游戏</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/memory-card" target="_blank"
+                              class="hover:text-blue-600 transition-colors">记忆翻牌</router-link></strong>：考验记忆力的翻牌配对游戏，支持
+                          4x4 和 6x6 两种难度。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">问题修复</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>打字雨</strong>：修复了全屏模式下输入框无法显示的问题，现在全屏体验更加完美。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.1 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.1</span>
+              <span class="date">2025-12-12 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">游戏功能升级与新工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增摸鱼工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/woodfish" target="_blank"
+                              class="hover:text-blue-600 transition-colors">电子木鱼</router-link></strong>：在线敲木鱼，积攒功德，净化心灵。
+                        </li>
+                        <li><strong><router-link to="/tools/games/2048" target="_blank"
+                              class="hover:text-blue-600 transition-colors">2048</router-link></strong>：经典的数字合成游戏，挑战合成2048。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>打字雨</strong>：新增全屏模式，提供更沉浸的打字体验。</li>
+                        <li><strong>界面优化</strong>：统一了扫雷、贪吃蛇、打字雨、电子木鱼、2048等小游戏页面的排版风格，增加工具推荐。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.4.0 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.4.0</span>
+              <span class="date">2025-12-11 20:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="warning" class="mr-2">娱乐</el-tag>
+                <span class="text-gray-700">摸鱼游戏再添新成员</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增经典小游戏</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/snake" target="_blank"
+                              class="hover:text-blue-600 transition-colors">贪吃蛇</router-link></strong>：经典怀旧游戏，控制小蛇吃食物变长，挑战反应速度与策略规划。
+                        </li>
+                        <li><strong><router-link to="/tools/games/minesweeper" target="_blank"
+                              class="hover:text-blue-600 transition-colors">扫雷</router-link></strong>：Windows
+                          经典再现，提供初级、中级、高级三种难度，支持右键插旗标记，锻炼逻辑推理能力。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.9 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.9</span>
+              <span class="date">2025-12-11 18:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="warning" class="mr-2">娱乐</el-tag>
+                <span class="text-gray-700">新增摸鱼小游戏</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增打字雨游戏</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/games/typing-rain-cn" target="_blank"
+                              class="hover:text-blue-600 transition-colors">打字雨
+                              (中文版)</router-link></strong>：经典打字游戏，支持中文词库，锻炼拼音输入速度。
+                        </li>
+                        <li><strong><router-link to="/tools/games/typing-rain-en" target="_blank"
+                              class="hover:text-blue-600 transition-colors">打字雨 (英文版)</router-link></strong>：Type the
+                          falling words before they hit the ground! 锻炼英文打字速度。
+                        </li>
+                        <li><strong>游戏特性</strong>：包含动态难度调整、连击系统、准确率统计以及炫酷的城市夜景雨滴效果。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.8 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.8</span>
+              <span class="date">2025-12-11 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">新增生活常用与开发工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增实用工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/relationship" target="_blank"
+                              class="hover:text-blue-600 transition-colors">亲戚称呼计算器</router-link></strong>：解决过年走亲戚不知如何称呼的尴尬，支持互查，逢年过节必备神器。
+                        </li>
+                        <li><strong><router-link to="/tools/base64" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Base64转换工具</router-link></strong>：支持文本与图片的Base64编码转换，支持UTF-8字符集与常见图片格式。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.7 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.7</span>
+              <span class="date">2025-12-11 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="danger" class="mr-2">重磅</el-tag>
+                <span class="text-gray-700">全面升级PDF工具箱与新增效率工具</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">PDF工具箱全面升级</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增
+                          <strong><router-link to="/tools/pdf-rotate" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF旋转</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-split" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF拆分</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-merge" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF合并</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-watermark" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF水印</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-encrypt" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF加密</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-page-number" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF页码</router-link></strong>、
+                          <strong><router-link to="/tools/pdf-extract-text" target="_blank"
+                              class="hover:text-blue-600 transition-colors">PDF文本提取</router-link></strong>
+                          等8大核心工具。
+                        </li>
+                        <li>统一全新的 <strong>UI设计规范</strong>，支持 <strong>实时预览</strong> 与 <strong>本地处理</strong>，保护隐私安全。</li>
+                        <li>优化 <strong><router-link to="/tools/markdown-to-pdf" target="_blank"
+                              class="hover:text-blue-600 transition-colors">Markdown转PDF</router-link></strong>
+                          工具，支持代码高亮与样式定制。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增效率办公工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增
+                          <strong><router-link to="/tools/word-count" target="_blank"
+                              class="hover:text-blue-600 transition-colors">字数统计</router-link></strong>、
+                          <strong><router-link to="/tools/date-calculator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">日期计算器</router-link></strong>、
+                          <strong><router-link to="/tools/screen-recorder" target="_blank"
+                              class="hover:text-blue-600 transition-colors">屏幕录制</router-link></strong>、
+                          <strong><router-link to="/tools/todo-list" target="_blank"
+                              class="hover:text-blue-600 transition-colors">待办清单</router-link></strong>、
+                          <strong><router-link to="/tools/pomodoro" target="_blank"
+                              class="hover:text-blue-600 transition-colors">番茄钟</router-link></strong>
+                          等实用工具。
+                        </li>
+                        <li>新增
+                          <strong><router-link to="/tools/daily/age-calculator" target="_blank"
+                              class="hover:text-blue-600 transition-colors">年龄计算器</router-link></strong> 与
+                          <strong><router-link to="/tools/daily/life-progress" target="_blank"
+                              class="hover:text-blue-600 transition-colors">人生进度条</router-link></strong>，可视化展示时间流逝。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.6 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.6</span>
+              <span class="date">2025-12-08 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">新增多款实用计算器与工具详情页优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增5款效率计算器</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/calculation/mortgage" target="_blank"
+                              class="hover:text-blue-600 transition-colors">房贷计算器</router-link></strong>：支持商业贷款、公积金贷款及组合贷款计算，提供等额本息与等额本金两种还款方式对比。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/mortgage-rate" target="_blank"
+                              class="hover:text-blue-600 transition-colors">房贷利率调整计算器</router-link></strong>：快速计算LPR利率调整前后的月供变化与利息节省情况。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/investment" target="_blank"
+                              class="hover:text-blue-600 transition-colors">投资收益计算器</router-link></strong>：支持复利计算与定投收益预测，辅助制定长期理财规划。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/social-insurance" target="_blank"
+                              class="hover:text-blue-600 transition-colors">五险一金计算器</router-link></strong>：依据2025最新政策，精准计算个人应缴社保公积金及税后收入。
+                        </li>
+                        <li><strong><router-link to="/tools/calculation/temperature" target="_blank"
+                              class="hover:text-blue-600 transition-colors">温度转换器</router-link></strong>：支持摄氏度、华氏度、开尔文温标的实时双向转换。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">工具详情页体验升级</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>新增工具指南</strong>：所有计算器页面新增详细的"工具介绍"与"使用方法"指南，帮助用户快速上手。</li>
+                        <li><strong>视觉与布局优化</strong>：统一优化页面布局与视觉风格，提升浏览体验。</li>
+                        <li><strong>智能推荐集成</strong>：底部集成智能工具推荐功能，方便用户发现更多实用工具。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.5 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.5</span>
+              <span class="date">2025-12-06 14:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">优化</el-tag>
+                <span class="text-gray-700">心理测试组件重构与架构标准化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">心理测试组件全面重构</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>组件标准化</strong>：完成 LeftRightBrain、EQTest、ProgrammerTest、BigFive、Enneagram、ABO、MBTI
+                          等7个核心测试组件的重构。</li>
+                        <li><strong>架构升级</strong>：统一采用 BaseTest 模板架构，移除冗余代码与重复依赖，大幅提升代码可维护性。</li>
+                        <li><strong>体验优化</strong>：优化组件加载逻辑与数据流转，确保测试过程更加流畅稳定。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.4 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.4</span>
+              <span class="date">2025-12-06 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">图片工具矩阵扩充与AI助手优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">新增数据图表工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/radar" target="_blank"
+                              class="hover:text-blue-600 transition-colors">雷达图</router-link></strong>：支持多维数据对比分析，适用于能力评估、绩效分析等场景。
+                        </li>
+                        <li><strong><router-link to="/tools/funnel" target="_blank"
+                              class="hover:text-blue-600 transition-colors">漏斗图</router-link></strong>：支持转化率分析，适用于销售漏斗、用户行为路径等场景。
+                        </li>
+                        <li><strong><router-link to="/tools/gauge" target="_blank"
+                              class="hover:text-blue-600 transition-colors">仪表盘</router-link></strong>：支持进度展示与完成率分析，适用于KPI监控、目标追踪等场景。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">新增图片处理工具</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>免费在线图片拼接</strong>：支持多张图片横向或纵向拼接，可自定义间距与背景色，制作长图神器。</li>
+                        <li><strong>免费图片合成GIF</strong>：在线将多张静态图片合成为动态GIF，支持自定义帧率、尺寸与画质。</li>
+                        <li><strong>免费九宫格切图</strong>：原"图片切割"工具升级，支持拖拽上传与自定义行列数，完美适配社交媒体配图。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">AI助手与搜索优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>AI智能搜索</strong>：大幅优化响应速度，移除冗余推理过程，提升UI交互体验，修复API超时问题。</li>
+                        <li><strong>AI对话助手</strong>：新增使用限制与密码验证功能，保障服务稳定性；优化图标与界面细节。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>证件照换底色</strong>：新增容差调节功能，优化抠图效果；调整UI布局提升易用性。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.3 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.3</span>
+              <span class="date">2025-12-03 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">更新</el-tag>
+                <span class="text-gray-700">AI对话助手与DeepSeek R1重大更新</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">
+                      <router-link to="/tools/ai/chat"
+                        class="hover:text-blue-600 transition-colors flex items-center gap-2 group" target="_blank">
+                        AI对话助手 (AIChat) 界面重构
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none"
+                          stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                      </router-link>
+                    </div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>界面升级</strong>：采用 Ant Design X 极简风格，优化输入框圆角与阴影，提升视觉体验。</li>
+                        <li><strong>交互优化</strong>：办公智能体移至主对话区“快速提示词”，新增代码解释、周报生成等8种常用场景。</li>
+                        <li><strong>功能增强</strong>：新增系统提示词与温度设置功能；顶部增加AI知识库等实用导航链接（新窗口打开）。</li>
+                        <li><strong>细节打磨</strong>：模型选择增加SVG图标，消息气泡样式微调，响应式布局优化。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">
+                      <router-link to="/tools/ai/deepseek-r1"
+                        class="hover:text-blue-600 transition-colors flex items-center gap-2 group" target="_blank">
+                        DeepSeek R1 修复与优化
+                        <svg class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" fill="none"
+                          stroke="currentColor" viewBox="0 0 24 24">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                        </svg>
+                      </router-link>
+                    </div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>修复 CSS 构建错误，优化思考动画与代码块样式。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.2 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.2</span>
+              <span class="date">2025-12-03 10:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="primary" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">免费在线文本配音工具上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">文本转语音功能</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>支持多种角色声音选择（少女音、阳光男声、成熟女声等）</li>
+                        <li>提供丰富的情感风格（愉快、悲伤、严肃等）</li>
+                        <li>一键生成自然流畅的语音，支持在线试听与下载</li>
+                        <router-link target="_blank" rel="noopener noreferrer" to="/tools/ai/text-to-speech"
+                          class="text-blue-500 hover:text-blue-600 ml-1">立即体验 →</router-link>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">功能优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong>图片提示词反推工具</strong>：优化UI设计，精简模型选择，提升反推体验</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.1 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.1</span>
+              <span class="date">2025-12-02 16:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">新增</el-tag>
+                <span class="text-gray-700">免费图片提示词反推工具上线</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">核心功能</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>支持图片上传与URL输入反推提示词</li>
+                        <li>通用模型精准识别，中文结果输出</li>
+                        <li>一键复制反推结果，便捷高效</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <router-link target="_blank" rel="noopener noreferrer" to="/tools/ai/prompt-reverse"
+                    class="text-blue-500 hover:text-blue-600 inline-block mt-1">立即体验 →</router-link>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.3.0 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.3.0</span>
+              <span class="date">2025-12-02 15:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="danger" class="mr-2">重磅</el-tag>
+                <span class="text-gray-700">星座运势工具全新升级</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">视觉与交互重构</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>全新 <strong>深空主题UI</strong>，融合毛玻璃拟态设计，沉浸感十足</li>
+                        <li>新增 <strong>横向滚动星座选择器</strong>，配合流畅动效，切换更丝滑</li>
+                        <li>重构 <strong>响应式网格布局</strong>，完美适配移动端与桌面端显示</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">功能与体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增 <strong>文案完整性智能检测</strong>，自动处理截断问题，确保内容完整</li>
+                        <li>优化 <strong>分享卡片生成算法</strong>，支持动态高度与高清渲染</li>
+                        <li>集成 <strong>SEO 结构化数据</strong> 与语义化文件名，提升搜索可见性</li>
+                        <router-link target="_blank" rel="noopener noreferrer" to="/tools/horoscope"
+                          class="text-blue-500 hover:text-blue-600 inline-block mt-1">立即体验 →</router-link>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 2.2.9 -->
+          <div class="timeline-item">
+            <div class="version-tag">
+              <span class="version">2.2.9</span>
+              <span class="date">2025-12-02 11:00</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="danger" class="mr-2">重磅</el-tag>
+                <span class="text-gray-700">免费应用图标生成器全新升级</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">核心功能增强</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>支持 <strong>多格式导出 (PNG/SVG/ICO)</strong>，满足全平台开发需求</li>
+                        <li>新增 <strong>自定义尺寸设置</strong> (16x16 至 1024x1024)，灵活适配各种场景</li>
+                        <li>支持 <strong>实时预览</strong> 与 <strong>多图层编辑</strong>，设计效果所见即所得</li>
+                        <li>内置 <strong>多平台预设</strong> (iOS/Android/Web)，一键生成标准图标包</li>
+                        <router-link target="_blank" rel="noopener noreferrer" to="/tools/design/icon-generator"
+                          class="text-blue-500 hover:text-blue-600 inline-block mt-1">立即体验 →</router-link>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">性能与体验优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>采用 <strong>异步渲染引擎</strong> 与 <strong>智能缓存机制</strong>，操作流畅无卡顿</li>
+                        <li>全新 <strong>响应式布局</strong>，完美适配移动端与桌面端操作</li>
+                        <li>纯前端处理，<strong>数据不上传</strong>，完全保护用户隐私</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.2.8 -->
           <div class="timeline-item">
@@ -3368,15 +5488,15 @@ body {
   /* Firefox */
   -webkit-overflow-scrolling: touch;
 }
-</style>
 
 /* Transitions */
 .fade-enter-active,
 .fade-leave-active {
-transition: opacity 0.3s ease;
+  transition: opacity 0.3s ease;
 }
 
 .fade-enter-from,
 .fade-leave-to {
-opacity: 0;
+  opacity: 0;
 }
+</style>

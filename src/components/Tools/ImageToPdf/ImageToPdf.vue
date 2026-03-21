@@ -7,17 +7,15 @@
 -->
 
 <script setup lang="ts">
-import { ref, reactive, onBeforeUnmount, watch } from '@vue/runtime-core'
+import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage, ElImage } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { genFileId } from 'element-plus'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { jsPDF } from 'jspdf'
+import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 // @ts-ignore
 import draggable from 'vuedraggable'
-import type { UploadRawFile } from 'element-plus'
 
 const route = useRoute()
 
@@ -102,7 +100,6 @@ const fileList = ref<FileItem[]>([])
 const uploadedFiles = new Set<string>()
 const isProcessing = ref(false)
 const isDragging = ref(false)
-const dataFileRef = ref<HTMLInputElement | null>(null)
 const previewUrls = ref<Map<string, string>>(new Map())
 
 // 转换配置
@@ -110,6 +107,19 @@ const config = reactive({
   mergeType: 'merge', // merge: 合并文件, separate: 独立文件
   pageSize: 'original', // original: 图像尺寸, a4-portrait: 竖版A4, a4-landscape: 横版A4
 })
+
+const guideSteps = [
+  { title: '上传图片', description: '点击上传区域或直接拖拽JPG/PNG图片到指定区域，支持批量上传。' },
+  { title: '调整顺序', description: '通过拖拽预览图调整图片顺序，这将决定合并后的页面顺序。' },
+  { title: '选择配置', description: '选择“合并为一个”或“单独生成”，并设置页面尺寸（原始/A4）。' },
+  { title: '开始转换', description: '点击“开始转换”按钮，系统将自动处理并下载PDF文件。' }
+]
+
+const guideNotes = [
+  '所有转换均在本地浏览器完成，不会上传到服务器，确保隐私安全。',
+  '支持JPG和PNG格式，建议单张图片不超过20MB。',
+  '合并模式下，所有图片将按顺序合并为一个PDF文件。'
+]
 
 // 支持的格式
 const supportedFormats = ['image/jpeg', 'image/png', 'image/jpg']
@@ -239,6 +249,7 @@ const convertToPdf = async () => {
 
 // 合并为单个PDF
 const convertMergedPdf = async () => {
+  const { jsPDF } = await ensureJsPdfRuntime()
   const pdf = new jsPDF({
     orientation: config.pageSize === 'a4-landscape' ? 'landscape' : 'portrait',
     unit: 'mm',
@@ -266,6 +277,7 @@ const convertMergedPdf = async () => {
 
 // 转换为独立PDF
 const convertSeparatePdfs = async () => {
+  const { jsPDF } = await ensureJsPdfRuntime()
   for (const item of fileList.value) {
     const pdf = new jsPDF({
       orientation: config.pageSize === 'a4-landscape' ? 'landscape' : 'portrait',
@@ -379,7 +391,7 @@ const formatFileSize = (bytes: number) => {
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
@@ -559,6 +571,9 @@ const formatFileSize = (bytes: number) => {
 
       <!-- 工具推荐 -->
       <ToolsRecommend :currentPath="route.path" />
+
+      <!-- 使用说明 -->
+      <UsageGuide :steps="guideSteps" :notes="guideNotes" />
     </div>
   </div>
 </template>

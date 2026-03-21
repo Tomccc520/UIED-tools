@@ -203,14 +203,25 @@ const showMessage = (message: string, type: 'success' | 'error') => {
 // 文字生成效果函数
 const typeText = (text: string) => {
   if (typingTimer) {
-    clearTimeout(typingTimer)
+    clearInterval(typingTimer)
+    typingTimer = null
   }
 
   displayText.value = ''
+  let index = 0
 
-  typingTimer = window.setTimeout(() => {
-    displayText.value = text
-  }, 300)
+  // 使用 setInterval 实现逐字显示
+  typingTimer = window.setInterval(() => {
+    if (index < text.length) {
+      displayText.value += text[index]
+      index++
+    } else {
+      if (typingTimer) {
+        clearInterval(typingTimer)
+        typingTimer = null
+      }
+    }
+  }, 50) // 50ms 打一个字
 }
 
 const getRandomDiary = async () => {

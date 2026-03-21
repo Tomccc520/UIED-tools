@@ -40,7 +40,7 @@
          - 展示8个同类工具
          - 仅支持站内路由跳转
     -->
-    <div class="bg-white rounded-xl shadow-sm">
+    <div class="bg-white rounded-xl border border-gray-100">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
@@ -56,7 +56,7 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-blue-500 transition-colors">{{ tool.title
-                }}</div>
+              }}</div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg"
@@ -75,7 +75,7 @@
          - 支持外部链接跳转
          - 使用isExternal属性区分链接类型
     -->
-    <div class="bg-white rounded-xl shadow-sm">
+    <div class="bg-white rounded-xl border border-gray-100">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24"
@@ -93,7 +93,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <div class="text-sm font-medium text-gray-800 group-hover:text-red-500 transition-colors">{{ tool.title
-                  }}</div>
+                }}</div>
                 <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg"
@@ -108,7 +108,7 @@
             <div class="flex items-center justify-between">
               <div>
                 <div class="text-sm font-medium text-gray-800 group-hover:text-red-500 transition-colors">{{ tool.title
-                  }}</div>
+                }}</div>
                 <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg"
@@ -145,7 +145,7 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-green-500 transition-colors">{{ tool.title
-                }}
+              }}
               </div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
@@ -181,7 +181,7 @@
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-purple-500 transition-colors">{{ tool.title
-                }}
+              }}
               </div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
@@ -200,14 +200,23 @@
 
 <script setup lang="ts">
 import { getHotTools, getNewTools, getUtilityTools, getRelatedTools } from '@/components/Tools/tools'
+import { computed, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
+import type { Tool } from '@/types/tools'
 
 // Props定义
 const props = defineProps<{
-  currentPath: string  // 当前页面路径,用于获取相关工具
+  currentPath?: string  // 当前页面路径,用于获取相关工具
 }>()
 
-// 工具点击处理函数
-const handleToolClick = (tool: any) => {
+const route = useRoute()
+const currentPath = computed(() => props.currentPath || route.path)
+
+/**
+ * 处理工具点击跳转
+ * 外链使用新窗口打开，站内工具使用完整地址打开新标签
+ */
+const handleToolClick = (tool: Tool) => {
   if (tool.isExternal) {
     window.open(tool.url, '_blank')
   } else {
@@ -215,10 +224,30 @@ const handleToolClick = (tool: any) => {
   }
 }
 
-// 获取各类推荐工具数据
-// 注意: 每个区块必须返回8个工具
-const hotTools = getHotTools(8)  // 热门工具: 8个固定外部链接
-const newTools = getNewTools(8)  // 新品工具: 随机8个
-const utilityTools = getUtilityTools(8)  // 实用工具: 随机8个
-const relatedTools = getRelatedTools(props.currentPath, 8, 0)  // 相关工具: 8个同类工具
+const hotTools = ref<Tool[]>(getHotTools(8))
+const newTools = ref<Tool[]>(getNewTools(8))
+const utilityTools = ref<Tool[]>(getUtilityTools(8))
+const relatedTools = ref<Tool[]>([])
+
+/**
+ * 刷新“相关工具”数据
+ * 根据当前页面路径重新计算推荐列表，并按 URL 去重
+ */
+const refreshRelatedTools = () => {
+  const recommended = getRelatedTools(currentPath.value, 8, 8)
+  const seen = new Set<string>()
+  const deduped: Tool[] = []
+
+  for (const item of recommended) {
+    const uniqueKey = item.url || `id:${item.id}`
+    if (seen.has(uniqueKey)) continue
+    seen.add(uniqueKey)
+    deduped.push(item)
+    if (deduped.length >= 8) break
+  }
+
+  relatedTools.value = deduped
+}
+
+watch(currentPath, refreshRelatedTools, { immediate: true })
 </script>

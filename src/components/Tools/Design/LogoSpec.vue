@@ -41,7 +41,7 @@
 
       <!-- 标题区域优化 -->
       <div class="text-center mb-12">
-        <h2 class="text-3xl font-bold mb-4 text-gray-900">Logo设计规范生成器</h2>
+        <h2 class="text-3xl font-bold mb-4 text-gray-900">免费 Logo设计规范生成器</h2>
         <p class="text-base text-gray-500">快速生成专业的Logo使用规范说明书，帮助品牌建立统一的视觉形象</p>
       </div>
 
@@ -311,8 +311,7 @@ import { ref, reactive, watch } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import { useHead } from '@vueuse/head'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import html2canvas from 'html2canvas'
-import { jsPDF } from 'jspdf'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 const route = useRoute()
 
@@ -537,6 +536,11 @@ const generateSpec = async () => {
 
 const downloadSpec = async () => {
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
+
     const element = document.querySelector('.preview-content') as HTMLElement
     if (!element) {
       alert('预览内容不存在')

@@ -1,4 +1,9 @@
+import 'vue'
+
 declare module 'vue' {
-  export * from '@vue/runtime-core'
-  export * from '@vue/runtime-dom'
+  interface ComponentCustomProperties {
+    $ensureFreeToolTitle: (title: string) => string
+  }
 }
+
+export {}

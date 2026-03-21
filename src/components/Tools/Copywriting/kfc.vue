@@ -17,7 +17,7 @@
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-12 shadow-sm min-h-[600px]">
         <div class="text-center mb-12">
-          <h2 class="text-[32px] font-bold mb-3">疯狂星期四文案生成器</h2>
+          <h2 class="text-[32px] font-bold mb-3">免费疯狂星期四文案生成器</h2>
           <p class="text-gray-500">生成疯狂星期四文案</p>
         </div>
 
@@ -110,63 +110,29 @@ async function typeText(text: string) {
 }
 
 // 生成文案
-async function generate(retryCount = 0) {
+async function generate() {
   try {
-    // 检查是否是生产环境
-    const isProd = import.meta.env.PROD
-
-    // 直接使用备用API
-    const apiUrl = '/api/kfc-backup'  // 统一使用备用API
+    const apiUrl = 'https://api.pearktrue.cn/api/kfc?type=json'
 
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
-        'Accept': 'application/json',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
-      },
-      mode: 'cors',
-      credentials: 'omit'
+        'Accept': 'application/json'
+      }
     })
 
     if (!response.ok) {
       throw new Error(`请求失败: ${response.status}`)
     }
 
-    const text = await response.text()
-    console.log('API response raw text:', text)
-
-    // 检查是否返回了HTML而非JSON
-    if (text.trim().toLowerCase().startsWith('<!doctype') ||
-      text.trim().toLowerCase().startsWith('<html') ||
-      text.includes('</html>') ||
-      text.includes('<head>')) {
-      console.warn('备用API1返回了HTML，尝试第二备用API')
-      // 尝试另一个直接API
-      return tryDirectBackupAPI()
-    }
-
-    // 尝试清理响应文本
-    const cleanText = text.trim().replace(/^\uFEFF/, '')
-
-    let data
-    try {
-      data = JSON.parse(cleanText)
-    } catch (e) {
-      console.error('JSON parse error:', e)
-      // 尝试另一个直接API
-      return tryDirectBackupAPI()
-    }
-
+    const data = await response.json()
     console.log('KFC API response:', data)
 
-    // 获取内容
-    let content = data.msg || ''
+    // 获取内容 (根据新接口文档，字段为 text)
+    let content = data.text || data.msg || ''
 
-    // 如果没有获取到内容，使用默认文案
     if (!content) {
-      console.warn('API未返回内容，尝试第二备用API')
-      return tryDirectBackupAPI()
+      throw new Error('未获取到文案内容')
     }
 
     state.displayText = content
@@ -176,58 +142,18 @@ async function generate(retryCount = 0) {
     state.translatedText = ''
     ElMessage.success('生成成功')
 
-  } catch (error: any) { // 显式类型标注
+  } catch (error: any) {
     console.error('KFC API error:', error)
-    // 尝试直接备用API
-    return tryDirectBackupAPI()
-  }
-}
-
-// 直接使用第三方API作为备用
-async function tryDirectBackupAPI() {
-  try {
-    console.log('尝试直接备用API')
-    // 使用另一个完全不同的API - 随机语录API
-    const backupApiUrl = 'https://api.uomg.com/api/rand.qinghua'
-
-    const response = await fetch(backupApiUrl, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Cache-Control': 'no-cache'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error('备用API2请求失败')
-    }
-
-    const data = await response.json()
-    console.log('备用API2响应:', data)
-
-    // 处理返回内容
-    if (data && data.code === 1 && data.content) {
-      // 添加KFC相关文字
-      const kfcPrefix = "今天是肯德基疯狂星期四V我50!\n\n"
-      const content = kfcPrefix + data.content
-
-      state.displayText = content
-      typeText(content)
-      state.translatedText = ''
-      ElMessage.success('生成成功')
-    } else {
-      throw new Error('备用API2未返回有效内容')
-    }
-  } catch (error) {
-    console.error('备用API2错误:', error)
-    // 所有API都失败，使用默认文案
+    // 失败使用默认文案
     const defaultText = "V我50，请我吃肯德基疯狂星期四。\n今天是肯德基疯狂星期四，谁请我吃？\n伞兵，你妈妈喊你回家吃肯德基！\n小时候妈妈说我吃饭不专心，吃得不多，长不高。现在KFC疯狂星期四，我更加专心，吃得更多，个子也长得更高了。"
     state.displayText = defaultText
     typeText(defaultText)
     state.translatedText = ''
-    ElMessage.success('生成成功')
+    ElMessage.success('已加载默认文案')
   }
 }
+
+// 移除不再需要的备用 API 函数 tryDirectBackupAPI
 
 // 翻译文本
 async function translateText() {

@@ -20,7 +20,7 @@
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3">栅格计算器</h2>
+          <h2 class="text-4xl font-bold mb-3">免费栅格计算器</h2>
           <p class="text-gray-500 text-sm">快速计算和预览网页栅格布局</p>
         </div>
 
@@ -178,16 +178,16 @@
               <div v-if="showGuides" class="absolute inset-0">
                 <!-- 垂直参考线 -->
                 <div class="absolute inset-0 grid-lines-vertical" :style="{
-                  backgroundSize: `${(containerWidth.value - totalMarginWidth.value) / columns.value + gutterWidth.value}px 100%`,
-                  backgroundPosition: `${margin.value}px 0`,
+                  backgroundSize: `${(containerWidth - totalMarginWidth) / columns + gutterWidth}px 100%`,
+                  backgroundPosition: `${margin}px 0`,
                   opacity: 0.1
                 }">
                 </div>
                 <!-- 水平参考线 -->
                 <div class="absolute inset-0 grid-lines-horizontal"></div>
                 <!-- 外边距参考线 -->
-                <div class="absolute inset-y-0 left-0 margin-line" :style="{ left: `${margin.value}px` }"></div>
-                <div class="absolute inset-y-0 right-0 margin-line" :style="{ right: `${margin.value}px` }"></div>
+                <div class="absolute inset-y-0 left-0 margin-line" :style="{ left: `${margin}px` }"></div>
+                <div class="absolute inset-y-0 right-0 margin-line" :style="{ right: `${margin}px` }"></div>
               </div>
 
               <!-- 预览区域 -->
@@ -242,7 +242,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from '@vue/runtime-core'
+import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
@@ -326,7 +326,8 @@ const contentWidth = computed(() => containerWidth.value - totalMarginWidth.valu
 const columnWidth = computed(() => (contentWidth.value - totalGutterWidth.value) / columns.value)
 
 // 设备预览相关
-const currentDevice = ref('desktop')
+type DeviceType = 'mobile' | 'tablet' | 'desktop'
+const currentDevice = ref<DeviceType>('desktop')
 const showGuides = ref(true)
 const showColumnWidth = ref(true)
 const isResizing = ref(false)
@@ -343,7 +344,7 @@ const devices = {
 }
 
 // 修改切换设备方法
-const switchDevice = (device: string) => {
+const switchDevice = (device: DeviceType) => {
   currentDevice.value = device
   if (device !== 'desktop') {
     const deviceConfig = devices[device as keyof typeof devices]
@@ -378,6 +379,10 @@ const previewStyles = computed(() => ({
   minHeight: '200px',
   margin: '0 auto',
   transition: isResizing.value ? 'none' : 'all 0.3s ease'
+}))
+
+const columnStyle = computed(() => ({
+  minHeight: '120px'
 }))
 
 // 修改列宽计算

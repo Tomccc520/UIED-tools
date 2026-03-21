@@ -18,7 +18,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
               <div class="absolute -top-1 right-0 transform translate-x-full">
                 <span
                   class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
@@ -301,7 +301,7 @@
                         <div
                           class="flex items-start gap-3 p-3 rounded-lg bg-white/50 hover:bg-white/70 transition-colors duration-200">
                           <div class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                            <span class="text-sm text-blue-600">{{ index + 1 }}</span>
+                            <span class="text-sm text-blue-600">{{ Number(index) + 1 }}</span>
                           </div>
                           <div class="flex-1">
                             <p class="text-gray-700 whitespace-pre-wrap leading-relaxed">{{ step }}</p>
@@ -534,8 +534,7 @@
     <div class="preview-container bg-white p-8 mx-auto" ref="previewRef" style="width: 794px;">
       <!-- 报价单头部 -->
       <div class="text-center mb-6">
-        <h2 class="text-2xl font-bold mb-2">{{projectTypeOptions.find((item: any) => item.value ===
-          projectType)?.label}}项目报价单</h2>
+        <h2 class="text-2xl font-bold mb-2">{{ selectedType?.label }}项目报价单</h2>
         <div class="text-sm text-gray-500">报价日期：{{ new Date().toLocaleDateString() }}</div>
       </div>
 
@@ -658,13 +657,11 @@
 import { ref, reactive, watch, computed, h, onMounted, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Delete } from '@element-plus/icons-vue'
-import html2canvas from 'html2canvas'
-import html2pdf from 'html2pdf.js'
-import { jsPDF } from 'jspdf'
 import { debounce } from 'lodash-es'
 import { useRouter, useRoute } from 'vue-router'
 import type { CascaderOption } from 'element-plus'
 import { ElCascader } from 'element-plus'
+import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
 // 初始化路由
 const router = useRouter()
@@ -1004,7 +1001,7 @@ const generate = async () => {
           },
           {
             role: 'user',
-            content: `项目类型: ${projectTypeOptions.find(item => item.value === projectType.value)?.label}\n项目需求: ${requirements.value}\n报价偏好: ${pricePreferenceOptions.find(item => item.value === pricePreference.value)?.label}`
+            content: `项目类型: ${selectedType.value?.label}\n项目需求: ${requirements.value}\n报价偏好: ${pricePreferenceOptions.find(item => item.value === pricePreference.value)?.label}`
           }
         ],
         temperature: 0.7,
@@ -1138,6 +1135,11 @@ const exportToPDF = async () => {
   if (!validateForm()) return
 
   try {
+    const [{ html2canvas }, { jsPDF }] = await Promise.all([
+      ensureHtml2canvasRuntime(),
+      ensureJsPdfRuntime()
+    ])
+
     exporting.value = true
     const element = previewRef.value
     if (!element) {
@@ -1216,6 +1218,8 @@ const exportToImage = async () => {
   if (!validateForm()) return
 
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     exporting.value = true
     const element = previewRef.value
     if (!element) {
@@ -1351,6 +1355,8 @@ const handleExport = async () => {
   if (!validateForm()) return
 
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     exporting.value = true
     const element = previewRef.value
     if (!element) {
@@ -1408,6 +1414,7 @@ const handleExport = async () => {
 
     if (exportType.value === 'pdf') {
       // 导出为PDF
+      const { jsPDF } = await ensureJsPdfRuntime()
       const imgData = canvas.toDataURL('image/jpeg', 1.0)
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -1685,35 +1692,27 @@ const parseReasoningSteps = (content) => {
     .map(step => step.trim())
 }
 
-// 快速选择标签
 const getQuickTags = computed(() => {
-  const selectedType = projectTypeOptions.find(type => type.value === projectType.value)
-  return selectedType?.commonRequirements || []
+  const current = selectedType.value
+  return current?.commonRequirements || []
 })
 
-// 获取输入提示
 const getPlaceholder = () => {
   const baseText = '请详细描述您的项目需求，例如：\n'
-  const selectedType = projectTypeOptions.find(type => type.value === projectType.value)
-  if (!selectedType) return baseText
-
-  return `${baseText}1. 项目类型：${selectedType.label}\n2. 主要功能：${selectedType.commonRequirements.join('、')}\n3. 其他要求：性能、安全性、维护等`
+  const current = selectedType.value
+  if (!current) return baseText
+  return `${baseText}1. 项目类型：${current.label}\n2. 主要功能：${current.commonRequirements.join('、')}\n3. 其他要求：性能、安全性、维护等`
 }
 
-// 智能建议
-const suggestions = ref([])
-const updateSuggestions = (input) => {
+const suggestions = ref<string[]>([])
+const updateSuggestions = (input: string) => {
   if (!input) {
     suggestions.value = []
     return
   }
+  if (!selectedType.value) return
 
-  const selectedType = projectTypeOptions.find(type => type.value === projectType.value)
-  if (!selectedType) return
-
-  const missingInfo = []
-
-  // 检查是否包含关键信息
+  const missingInfo: string[] = []
   if (!input.includes('预算')) {
     missingInfo.push('💰 项目预算范围')
   }
@@ -1723,7 +1722,6 @@ const updateSuggestions = (input) => {
   if (!input.includes('维护')) {
     missingInfo.push('🔧 后期维护需求')
   }
-
   suggestions.value = missingInfo
 }
 

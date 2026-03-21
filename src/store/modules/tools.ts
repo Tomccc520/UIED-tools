@@ -1,29 +1,13 @@
 import { defineStore } from 'pinia'
 import { getToolsCate } from '../../components/Tools/tools'
+import { getWebInfo } from '../../api/webinfo'
+import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
-export interface Tool {
-  id: number
-  title: string
-  logo: string | { type: 'svg', name: string }
-  desc: string
-  url: string
+interface ToolInfoQuery {
+  id?: number
+  title?: string
+  route?: string
   cateId?: number
-  cate?: string
-  children?: Tool[]
-  isExternal?: boolean
-}
-
-export interface ToolSubCategory {
-  id: number
-  title: string
-  list: Tool[]
-}
-
-export interface ToolCategory {
-  id: number
-  title: string
-  icon?: string
-  list: ToolSubCategory[]
 }
 
 interface State {
@@ -84,7 +68,7 @@ export const useToolsStore = defineStore('tools', {
         {
           id: 1009,
           title: "AI导航",
-          desc: "聚合导航工具，包含AI工具、AI学习网站、AI新闻、AI产品榜等",
+          desc: "聚合导航工具，包含AI工具、AI学习网站、AI新闻与应用导航等",
           url: "https://www.88sheji.cn/ai",
           logo: { type: 'svg', name: 'palette' },
           cate: "热门工具",
@@ -137,8 +121,8 @@ export const useToolsStore = defineStore('tools', {
         },
         {
           id: 1007,
-          title: "GPT-5.0",
-          desc: "最新版GPT-5.0智能对话工具",
+          title: "GPT-5.2",
+          desc: "最新版GPT-5.2智能对话工具",
           url: "https://nf.video/oemcwv/?gid=18",
           logo: { type: 'svg', name: 'code' },
           cate: "热门工具",
@@ -160,6 +144,52 @@ export const useToolsStore = defineStore('tools', {
         // 热门工具（广告）
         ...adTools
       ]
+    },
+    async getWebInfo(params: any) {
+      try {
+        const res: any = await getWebInfo(params)
+        if (res.code == 200) {
+          this.webInfo = res.data
+        } else {
+          // 处理错误，或者清空 webInfo
+          console.error('Web info fetch failed:', res.message)
+          this.webInfo = {} // 或者 null
+        }
+      } catch (error) {
+        console.error('Web info fetch error:', error)
+        this.webInfo = {}
+      }
+    },
+    async getToolInfo(params: ToolInfoQuery) {
+      try {
+        if (!this.cates.length) {
+          await this.getToolCate()
+        }
+        const routeValue = params.route?.trim()
+        const toolId = params.id
+        const titleValue = params.title?.trim()
+
+        const allTools = this.toolsList()
+        const matchedTool = allTools.find(tool => {
+          if (routeValue) {
+            return tool.url === routeValue
+          }
+          if (typeof toolId === 'number') {
+            return tool.id === toolId
+          }
+          if (titleValue) {
+            return tool.title === titleValue
+          }
+          return false
+        })
+
+        this.toolInfo = matchedTool || null
+        return this.toolInfo
+      } catch (error) {
+        console.error('获取工具详情失败:', error)
+        this.toolInfo = null
+        return null
+      }
     },
     async getToolCate() {
       try {

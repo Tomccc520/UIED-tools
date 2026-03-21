@@ -5,7 +5,7 @@ import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
 import 'element-plus/theme-chalk/display.css'
-import type { Tool } from '@/components/Tools/tools.type'
+import type { Tool } from '@/types/tools'
 import axios from 'axios'
 import quotes from '@/assets/designer_quotes_api.json'
 import SearchPanel from '@/components/Search/Search.vue'
@@ -573,10 +573,12 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   color: #515151;
+  border-radius: 8px;
 }
 
 .menu-icon-btn:hover {
   color: #6C54FF;
+  background-color: #f0edff;
   transform: translateY(-1px);
 }
 

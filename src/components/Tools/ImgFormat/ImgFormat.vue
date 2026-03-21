@@ -631,7 +631,7 @@ const getPreviewUrl = (file: any): string => {
     <div class="max-w-[1440px] mx-auto px-4">
       <!-- 标题区域 - 替换原来的 DetailHeader -->
       <div class="text-center mb-8">
-        <h1 class="text-[32px] font-medium text-gray-900 mb-3">{{ info.title }}</h1>
+        <h1 class="text-[32px] font-medium text-gray-900 mb-3">{{ $ensureFreeToolTitle(info.title) }}</h1>
         <p class="text-base text-gray-500">{{ info.subtitle }}</p>
       </div>
 

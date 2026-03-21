@@ -12,7 +12,7 @@
         <div class="text-center mb-8 relative">
           <h2 class="text-3xl md:text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ info.title }}</span>
+              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-4 max-w-2xl mx-auto">{{ info.subtitle }}</p>
@@ -88,6 +88,47 @@
                         </el-icon> 压缩参数设置
                       </h3>
 
+                      <!-- 画质保护模式 -->
+                      <div class="mb-6 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50 p-4">
+                        <div class="flex items-start justify-between gap-3">
+                          <div>
+                            <p class="text-sm font-semibold text-gray-900">画质保护模式</p>
+                            <p class="text-xs text-gray-500 mt-1">开启后默认保留原尺寸、原帧率与 256 色，仅做逐帧去重压缩。</p>
+                          </div>
+                          <el-switch v-model="preserveQuality" @change="handlePreserveQualityChange" />
+                        </div>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                          <span class="px-2.5 py-1 rounded-full text-xs font-medium"
+                            :class="preserveQuality ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'">
+                            {{ preserveQuality ? '当前：画质优先' : '当前：自定义压缩' }}
+                          </span>
+                          <span class="px-2.5 py-1 rounded-full text-xs text-blue-700 bg-blue-100">建议先尝试画质优先，再按需降低参数</span>
+                        </div>
+                      </div>
+
+                      <!-- 压缩预设 -->
+                      <div class="mb-8">
+                        <div class="flex justify-between items-center mb-3">
+                          <span class="text-gray-700 font-medium">压缩策略预设</span>
+                          <span class="text-xs text-gray-400">可在下方继续微调</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2">
+                          <button
+                            v-for="(preset, key) in compressionPresets"
+                            :key="key"
+                            type="button"
+                            class="rounded-lg px-3 py-2 text-left transition-all border"
+                            :class="activePreset === key
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'"
+                            @click="applyCompressionPreset(key)"
+                          >
+                            <p class="text-sm font-medium leading-none">{{ preset.label }}</p>
+                            <p class="text-[11px] mt-1 opacity-80">{{ preset.desc }}</p>
+                          </button>
+                        </div>
+                      </div>
+
                       <!-- 尺寸设置 (Scale & Input) -->
                       <div class="mb-8">
                         <div class="flex justify-between items-center mb-3">
@@ -103,21 +144,23 @@
                             Math.round(options.scale * 100) }}%</span>
                         </div>
                         <el-slider v-model="options.scale" :min="0.1" :max="1" :step="0.05" show-stops
-                          @input="handleScaleChange" />
+                          @input="handleScaleChange" :disabled="preserveQuality" />
 
                         <div class="grid grid-cols-2 gap-4 mt-4">
                           <div>
                             <label class="text-xs text-gray-500 mb-1 block">宽度 (px)</label>
-                            <el-input-number v-model="customDimensions.width" :min="1" :max="originalDimensions.width"
-                              size="small" class="!w-full" @change="handleDimensionChange('width')" :controls="false" />
+                            <el-input-number v-model="customDimensions.width" :min="1" :max="Math.max(originalDimensions.width, 1)"
+                              size="small" class="!w-full" @change="handleDimensionChange('width')" :controls="false"
+                              :disabled="preserveQuality" />
                           </div>
                           <div>
                             <label class="text-xs text-gray-500 mb-1 block">高度 (px)</label>
-                            <el-input-number v-model="customDimensions.height" :min="1" :max="originalDimensions.height"
+                            <el-input-number v-model="customDimensions.height" :min="1" :max="Math.max(originalDimensions.height, 1)"
                               size="small" class="!w-full" @change="handleDimensionChange('height')"
-                              :controls="false" />
+                              :controls="false" :disabled="preserveQuality" />
                           </div>
                         </div>
+                        <p v-if="preserveQuality" class="text-xs text-green-600 mt-2">画质保护模式下已锁定为原始尺寸。</p>
                       </div>
 
                       <!-- 色彩与抖动 -->
@@ -128,7 +171,7 @@
                         <div class="space-y-4">
                           <div>
                             <div class="text-xs text-gray-500 mb-1.5">色彩数量</div>
-                            <el-select v-model="options.colors" class="w-full">
+                            <el-select v-model="options.colors" class="w-full" :disabled="preserveQuality">
                               <el-option label="256 色 (原画)" :value="256" />
                               <el-option label="128 色" :value="128" />
                               <el-option label="64 色" :value="64" />
@@ -147,7 +190,7 @@
                                 </el-icon>
                               </el-tooltip>
                             </div>
-                            <el-select v-model="options.dither" class="w-full">
+                            <el-select v-model="options.dither" class="w-full" :disabled="preserveQuality">
                               <el-option label="无抖动 (文件最小)" :value="false" />
                               <el-option label="Floyd-Steinberg" value="FloydSteinberg" />
                               <el-option label="False Floyd-Steinberg" value="FalseFloydSteinberg" />
@@ -167,8 +210,9 @@
                           </span>
                         </div>
                         <el-slider v-model="options.fpsReduction" :min="1" :max="5" :step="1" show-stops
-                          :marks="{ 1: '原', 3: '中', 5: '高' }" />
+                          :marks="{ 1: '原', 3: '中', 5: '高' }" :disabled="preserveQuality" />
                         <div class="text-xs text-gray-400 mt-2">值越高丢弃的帧越多，体积越小但动画越卡顿</div>
+                        <div v-if="preserveQuality" class="text-xs text-green-600 mt-2">画质保护模式下已锁定全帧输出。</div>
                       </div>
 
                       <!-- 质量参数 -->
@@ -177,7 +221,7 @@
                           <span class="text-gray-700 font-medium">压缩质量 (Quality)</span>
                           <span class="text-blue-600 font-bold">{{ options.quality }}</span>
                         </div>
-                        <el-slider v-model="options.quality" :min="1" :max="30" :step="1" />
+                        <el-slider v-model="options.quality" :min="1" :max="30" :step="1" :disabled="preserveQuality" />
                         <div class="text-xs text-gray-400 mt-1">1 (最佳画质/最慢) - 30 (最低画质/最快)</div>
                       </div>
                     </div>
@@ -193,15 +237,15 @@
                           <div>原始图片</div>
                           <div class="flex items-center gap-2 text-xs">
                             <span class="bg-gray-100 px-2 py-0.5 rounded text-gray-600">{{ originalDimensions.width
-                              }}x{{ originalDimensions.height }}</span>
+                            }}x{{ originalDimensions.height }}</span>
                             <span v-if="originalSize > 0" class="bg-gray-100 px-2 py-0.5 rounded text-gray-600">{{
                               formatSize(originalSize) }}</span>
                           </div>
                         </div>
                         <div
                           class="bg-gray-50 rounded-xl overflow-hidden border border-gray-200 flex items-center justify-center flex-1 min-h-[300px] relative group p-4">
-                          <div
-                            class="absolute inset-0 bg-[url('@/assets/transparent-bg.png')] opacity-10 pointer-events-none">
+                          <div class="absolute inset-0 opacity-10 pointer-events-none"
+                            style="background-image: linear-gradient(45deg, #808080 25%, transparent 25%), linear-gradient(-45deg, #808080 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #808080 75%), linear-gradient(-45deg, transparent 75%, #808080 75%); background-size: 20px 20px; background-position: 0 0, 0 10px, 10px -10px, -10px 0px;">
                           </div> <!-- 透明背景纹理 -->
                           <el-image :src="originalSrc" class="max-w-full max-h-[400px] rounded-lg z-0"
                             :preview-src-list="[originalSrc]" fit="contain">
@@ -225,12 +269,15 @@
                           <div class="flex items-center gap-2 text-xs" v-if="compressedSrc">
                             <span class="bg-green-50 text-green-600 px-2 py-0.5 rounded border border-green-100">{{
                               customDimensions.width
-                              }}x{{ customDimensions.height }}</span>
+                            }}x{{ customDimensions.height }}</span>
                             <span class="bg-green-50 text-green-600 px-2 py-0.5 rounded border border-green-100">{{
                               formatSize(compressedSize)
-                              }}</span>
+                            }}</span>
                             <span class="bg-green-500 text-white px-2 py-0.5 rounded font-bold">-{{ calculateReduction()
-                              }}%</span>
+                            }}%</span>
+                            <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">帧 {{
+                              compressionStats.encodedFrames
+                            }}/{{ compressionStats.decodedFrames }}</span>
                           </div>
                         </div>
                         <div
@@ -246,7 +293,7 @@
                                 <span class="text-xs font-bold text-blue-600">{{ progress }}%</span>
                               </div>
                             </div>
-                            <p class="text-blue-600 mt-4 text-sm font-medium animate-pulse">正在智能压缩每一帧...</p>
+                            <p class="text-blue-600 mt-4 text-sm font-medium animate-pulse">{{ processingStage || '正在智能压缩每一帧...' }}</p>
                             <p class="text-gray-400 text-xs mt-1">大文件可能需要几秒钟，请耐心等待</p>
                           </div>
 
@@ -272,13 +319,20 @@
                     </div>
                   </div>
                 </div>
+                <div v-if="compressionStats.decodedFrames > 0"
+                  class="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
+                  <span class="px-2 py-1 rounded bg-white border border-gray-200">解析帧数：{{ compressionStats.decodedFrames }}</span>
+                  <span class="px-2 py-1 rounded bg-white border border-gray-200">输出帧数：{{ compressionStats.encodedFrames }}</span>
+                  <span class="px-2 py-1 rounded bg-white border border-gray-200">合并重复帧：{{ compressionStats.mergedFrames }}</span>
+                  <span class="px-2 py-1 rounded bg-white border border-gray-200">模式：{{ compressionStats.modeLabel || '未开始' }}</span>
+                </div>
               </div>
             </div>
           </transition>
         </div>
 
         <!-- 功能说明 -->
-        <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="mt-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           <div v-for="(feature, index) in features" :key="index"
             class="flex items-start space-x-3 p-4 rounded-lg bg-gray-50 border border-gray-100">
             <div
@@ -311,15 +365,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onUnmounted, watch } from 'vue'
+import { ref, reactive, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHead } from '@vueuse/head'
-import { UploadFilled, Setting, DataLine, ArrowLeft, Download, Document, Picture, MagicStick, InfoFilled, Lock } from '@element-plus/icons-vue'
+import { UploadFilled, Setting, ArrowLeft, Download, Document, Picture, MagicStick, InfoFilled, Lock } from '@element-plus/icons-vue'
 import {
   ElMessage,
   ElIcon,
   ElButton,
   ElTooltip,
+  ElSwitch,
   ElSlider,
   ElInputNumber,
   ElSelect,
@@ -328,9 +383,7 @@ import {
   ElImage
 } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-// 引入 GIF 处理库
-import GIF from 'gif.js'
-import { parseGIF, decompressFrames } from 'gifuct-js'
+import { ensureGifRuntime } from '@/utils/toolRuntimeLoaders'
 
 const route = useRoute()
 const info = {
@@ -339,15 +392,17 @@ const info = {
 }
 
 const features = [
-  { title: '智能压缩算法', desc: '保持动画流畅度的同时，最大程度减小文件体积' },
+  { title: '画质优先模式', desc: '默认保留原尺寸、原帧率与 256 色，优先保证动画观感一致性' },
+  { title: '逐帧智能压缩', desc: '支持帧合成与 disposal 还原，并自动合并重复帧减少体积' },
   { title: '灵活参数调节', desc: '支持自定义尺寸、色彩数量、抖动算法和抽帧策略' },
   { title: '安全本地处理', desc: '所有压缩过程在浏览器本地完成，保护数据安全' }
 ]
 
 const faq = [
-  { q: '为什么压缩后变模糊了？', a: '减少色彩数量或尺寸会导致画质损失，请尝试增加色彩数或使用抖动算法。' },
+  { q: '为什么压缩后变模糊了？', a: '减少色彩数量、尺寸或抽帧都会带来画质损失。建议先开启“画质保护模式”再压缩。' },
   { q: '支持多大的文件？', a: '理论上支持任意大小，但受浏览器内存限制，建议不超过 50MB。' },
-  { q: '压缩需要多久？', a: '取决于文件大小和电脑性能，通常只需几秒钟。' }
+  { q: '压缩需要多久？', a: '取决于文件大小和电脑性能，通常只需几秒钟。' },
+  { q: '为什么有时“压缩后更大”？', a: '某些原图已经高度优化，重复编码可能变大。工具会自动保留原图，避免负优化。' }
 ]
 
 // SEO 配置
@@ -377,24 +432,247 @@ const originalSize = ref(0)
 const compressedSize = ref(0)
 const originalDimensions = reactive({ width: 0, height: 0 })
 const customDimensions = reactive({ width: 0, height: 0 })
+const MAX_GIF_FILE_SIZE = 50 * 1024 * 1024
 
 // 压缩选项
 const options = reactive({
   scale: 1,
   colors: 256,
   fpsReduction: 1,
-  quality: 10,
+  quality: 1,
   dither: false as boolean | string
 })
+
+const compressionPresets = {
+  quality: {
+    label: '画质优先',
+    desc: '保画质',
+    scale: 1,
+    colors: 256,
+    fpsReduction: 1,
+    quality: 1,
+    dither: false as boolean | string,
+    preserveQuality: true
+  },
+  balanced: {
+    label: '平衡',
+    desc: '体积/画质',
+    scale: 1,
+    colors: 128,
+    fpsReduction: 1,
+    quality: 8,
+    dither: 'FalseFloydSteinberg' as boolean | string,
+    preserveQuality: false
+  },
+  strong: {
+    label: '高压缩',
+    desc: '明显减小',
+    scale: 0.85,
+    colors: 64,
+    fpsReduction: 2,
+    quality: 12,
+    dither: false as boolean | string,
+    preserveQuality: false
+  },
+  extreme: {
+    label: '极限',
+    desc: '体积优先',
+    scale: 0.7,
+    colors: 32,
+    fpsReduction: 3,
+    quality: 18,
+    dither: false as boolean | string,
+    preserveQuality: false
+  }
+} as const
+
+const activePreset = ref<keyof typeof compressionPresets>('quality')
+const preserveQuality = ref(true)
+const processingStage = ref('')
+
+const compressionStats = reactive({
+  decodedFrames: 0,
+  encodedFrames: 0,
+  mergedFrames: 0,
+  modeLabel: ''
+})
+
+/**
+ * 按缩放比例更新尺寸
+ * @description 统一维护 scale 与自定义宽高，避免多处重复计算
+ * @param scale 缩放比例
+ */
+const updateDimensionsByScale = (scale: number) => {
+  options.scale = Number(scale.toFixed(2))
+  if (!originalDimensions.width || !originalDimensions.height) return
+  customDimensions.width = Math.max(1, Math.round(originalDimensions.width * options.scale))
+  customDimensions.height = Math.max(1, Math.round(originalDimensions.height * options.scale))
+}
+
+/**
+ * 应用压缩预设
+ * @description 一键切换压缩参数组合，用户仍可继续手动微调
+ * @param preset 预设名称
+ */
+const applyCompressionPreset = (preset: keyof typeof compressionPresets | string) => {
+  const normalizedPreset = (preset in compressionPresets ? preset : 'balanced') as keyof typeof compressionPresets
+  activePreset.value = normalizedPreset
+  const target = compressionPresets[normalizedPreset]
+  preserveQuality.value = target.preserveQuality
+  updateDimensionsByScale(target.scale)
+  options.colors = target.colors
+  options.fpsReduction = target.fpsReduction
+  options.quality = target.quality
+  options.dither = target.dither
+}
+
+/**
+ * 处理画质保护模式切换
+ * @description 开启后切换到画质优先方案；关闭后切回平衡方案便于继续调参
+ * @param enabled 是否启用画质保护
+ */
+const handlePreserveQualityChange = (enabled: boolean) => {
+  applyCompressionPreset(enabled ? 'quality' : 'balanced')
+}
+
+// 默认应用画质优先，优先保证观感一致性
+applyCompressionPreset(activePreset.value)
+
+/**
+ * 释放 blob URL 资源
+ * @description 统一回收 URL.createObjectURL 创建的临时地址，避免内存泄漏
+ * @param objectUrl blob URL
+ */
+const revokeObjectUrl = (objectUrl: string) => {
+  if (objectUrl && objectUrl.startsWith('blob:')) {
+    URL.revokeObjectURL(objectUrl)
+  }
+}
+
+/**
+ * 校验 GIF 文件
+ * @description 校验文件格式与大小，防止不可用输入触发后续压缩异常
+ * @param inputFile 用户上传文件
+ * @returns 错误信息，空字符串表示校验通过
+ */
+const getGifFileError = (inputFile: File) => {
+  if (inputFile.type !== 'image/gif' && !inputFile.name.toLowerCase().endsWith('.gif')) {
+    return '请上传 GIF 格式文件'
+  }
+  if (inputFile.size > MAX_GIF_FILE_SIZE) {
+    return 'GIF 文件不能超过 50MB'
+  }
+  return ''
+}
+
+/**
+ * 获取 GIF 编码 worker 数量
+ * @description 根据设备并发能力动态分配 worker，兼顾性能与资源占用
+ * @returns worker 数量
+ */
+const getGifWorkerCount = () => {
+  const concurrency = navigator.hardwareConcurrency || 4
+  return Math.min(4, Math.max(2, Math.floor(concurrency / 2)))
+}
+
+/**
+ * 归一化帧延迟
+ * @description 保障帧延时在合理范围，避免极小/异常值导致动画闪烁
+ * @param delay 原始延时（毫秒）
+ * @returns 归一化后的延时（毫秒）
+ */
+const normalizeFrameDelay = (delay: number) => {
+  const safeDelay = Number(delay) || 100
+  return Math.max(20, safeDelay)
+}
+
+/**
+ * 计算 RGB 三通道的量化位数
+ * @description 将目标颜色数映射为 r/g/b 位深组合，确保总颜色数不超过用户设置
+ * @param maxColors 目标最大颜色数
+ * @returns RGB 三通道量化位数
+ */
+const getRgbQuantizeBits = (maxColors: number) => {
+  const safeColors = Math.min(256, Math.max(8, Math.round(maxColors)))
+  const totalBits = Math.max(3, Math.floor(Math.log2(safeColors)))
+  const baseBits = Math.floor(totalBits / 3)
+  const remainder = totalBits % 3
+  return {
+    rBits: baseBits + (remainder > 0 ? 1 : 0),
+    gBits: baseBits + (remainder > 1 ? 1 : 0),
+    bBits: baseBits
+  }
+}
+
+/**
+ * 将单通道值映射到指定位深
+ * @description 通过均匀量化压缩颜色空间，降低编码复杂度与最终体积
+ * @param value 原始通道值
+ * @param bits 通道位深
+ * @returns 量化后的通道值
+ */
+const quantizeColorChannel = (value: number, bits: number) => {
+  if (bits >= 8) return value
+  const levels = (1 << bits) - 1
+  const normalized = Math.round((value / 255) * levels)
+  return Math.round((normalized / levels) * 255)
+}
+
+/**
+ * 对当前画布进行颜色量化
+ * @description 真正消费“色彩数量”参数，按帧降色后再进入 GIF 编码
+ * @param ctx 目标画布上下文
+ * @param width 画布宽度
+ * @param height 画布高度
+ * @param maxColors 目标最大颜色数
+ */
+const applyColorQuantization = (
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  maxColors: number
+) => {
+  if (maxColors >= 256 || width <= 0 || height <= 0) return
+  const imageData = ctx.getImageData(0, 0, width, height)
+  const data = imageData.data
+  const { rBits, gBits, bBits } = getRgbQuantizeBits(maxColors)
+  for (let i = 0; i < data.length; i += 4) {
+    data[i] = quantizeColorChannel(data[i], rBits)
+    data[i + 1] = quantizeColorChannel(data[i + 1], gBits)
+    data[i + 2] = quantizeColorChannel(data[i + 2], bBits)
+  }
+  ctx.putImageData(imageData, 0, 0)
+}
+
+/**
+ * 判断两帧像素是否一致
+ * @description 用于识别重复帧，重复帧仅累积延时而不重复编码，减少体积且不损失画质
+ * @param currentPixels 当前帧像素
+ * @param previousPixels 上一已编码帧像素
+ * @returns 是否为相同帧
+ */
+const isSameFramePixels = (currentPixels: Uint8ClampedArray, previousPixels: Uint8ClampedArray | null) => {
+  if (!previousPixels || previousPixels.length !== currentPixels.length) return false
+  for (let i = 0; i < currentPixels.length; i++) {
+    if (currentPixels[i] !== previousPixels[i]) return false
+  }
+  return true
+}
+
+/**
+ * 主线程让渡
+ * @description 分帧处理时主动让出控制权，减少长任务造成的页面卡顿
+ */
+const yieldToMainThread = async () => {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+}
 
 /**
  * 处理缩放比例变化
  * @param val 新的缩放比例 (0-1)
  */
 const handleScaleChange = (val: any) => {
-  const scale = Number(val)
-  customDimensions.width = Math.round(originalDimensions.width * scale)
-  customDimensions.height = Math.round(originalDimensions.height * scale)
+  updateDimensionsByScale(Number(val))
 }
 
 /**
@@ -430,7 +708,7 @@ const triggerFileInput = () => {
 const handleDrop = (e: DragEvent) => {
   isDragging.value = false
   const droppedFile = e.dataTransfer?.files[0]
-  if (droppedFile && droppedFile.type === 'image/gif') {
+  if (droppedFile) {
     processFile(droppedFile)
   } else {
     ElMessage.warning('请上传 GIF 格式的文件')
@@ -454,21 +732,38 @@ const handleFileChange = (e: Event) => {
  * @param f 上传的文件对象
  */
 const processFile = (f: File) => {
+  const error = getGifFileError(f)
+  if (error) {
+    ElMessage.warning(error)
+    return
+  }
+
+  // 释放上一次处理残留的 URL，避免频繁上传造成内存占用增长
+  if (compressedSrc.value && compressedSrc.value !== originalSrc.value) {
+    revokeObjectUrl(compressedSrc.value)
+  }
+  if (originalSrc.value) {
+    revokeObjectUrl(originalSrc.value)
+  }
+
   file.value = f
   originalSize.value = f.size
   originalSrc.value = URL.createObjectURL(f)
   compressedSrc.value = ''
   compressedSize.value = 0
+  processingStage.value = ''
+  compressionStats.decodedFrames = 0
+  compressionStats.encodedFrames = 0
+  compressionStats.mergedFrames = 0
+  compressionStats.modeLabel = ''
 
   // 获取图片尺寸
   const img = new Image()
   img.onload = () => {
     originalDimensions.width = img.width
     originalDimensions.height = img.height
-    // 初始化自定义尺寸
-    customDimensions.width = img.width
-    customDimensions.height = img.height
-    options.scale = 1
+    // 根据当前模式初始化参数，确保首次压缩行为可预期
+    applyCompressionPreset(activePreset.value)
   }
   img.src = originalSrc.value
 }
@@ -499,9 +794,29 @@ const calculateReduction = () => {
  * 重置所有状态，准备重新上传
  */
 const reset = () => {
+  if (compressedSrc.value && compressedSrc.value !== originalSrc.value) {
+    revokeObjectUrl(compressedSrc.value)
+  }
+  if (originalSrc.value) {
+    revokeObjectUrl(originalSrc.value)
+  }
+
   file.value = null
   originalSrc.value = ''
   compressedSrc.value = ''
+  compressedSize.value = 0
+  originalSize.value = 0
+  originalDimensions.width = 0
+  originalDimensions.height = 0
+  customDimensions.width = 0
+  customDimensions.height = 0
+  processingStage.value = ''
+  compressionStats.decodedFrames = 0
+  compressionStats.encodedFrames = 0
+  compressionStats.mergedFrames = 0
+  compressionStats.modeLabel = ''
+  applyCompressionPreset('quality')
+  options.scale = 1
   isProcessing.value = false
   progress.value = 0
   if (fileInput.value) fileInput.value.value = ''
@@ -514,10 +829,24 @@ const downloadFile = () => {
   if (!compressedSrc.value) return
   const link = document.createElement('a')
   link.href = compressedSrc.value
-  link.download = `uiedtool_${file.value?.name || 'image.gif'}`
+  const sourceName = file.value?.name || 'image.gif'
+  const safeName = sourceName.toLowerCase().endsWith('.gif') ? sourceName : `${sourceName}.gif`
+  link.download = `uiedtool_${safeName}`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+}
+
+interface DecodedGifFrame {
+  patch: Uint8ClampedArray
+  dims: {
+    width: number
+    height: number
+    top: number
+    left: number
+  }
+  delay: number
+  disposalType: number
 }
 
 /**
@@ -527,24 +856,34 @@ const downloadFile = () => {
  * 3. 使用 gif.js 重新编码
  */
 const startCompression = async () => {
-  if (!file.value) return
+  if (!file.value || isProcessing.value) return
+  if (!customDimensions.width || !customDimensions.height) {
+    ElMessage.warning('请等待 GIF 预览加载完成后再压缩')
+    return
+  }
 
   isProcessing.value = true
   progress.value = 0
+  processingStage.value = '正在解析 GIF 帧...'
+  compressionStats.decodedFrames = 0
+  compressionStats.encodedFrames = 0
+  compressionStats.mergedFrames = 0
+  compressionStats.modeLabel = preserveQuality.value ? '画质优先' : '自定义压缩'
 
   try {
-    // 1. 读取文件 ArrayBuffer
+    const { GIF: GIFEncoder, parseGIF, decompressFrames } = await ensureGifRuntime()
     const arrayBuffer = await file.value.arrayBuffer()
-
-    // 2. 解析 GIF
     const gif = parseGIF(arrayBuffer)
-    const frames = decompressFrames(gif, true)
+    const frames = decompressFrames(gif, true) as DecodedGifFrame[]
+    compressionStats.decodedFrames = frames.length
 
-    console.log('Parsed frames:', frames.length)
+    if (!frames.length) {
+      throw new Error('未解析到可用帧')
+    }
 
-    // 3. 准备 GIF 编码器
-    const gifEncoder = new GIF({
-      workers: 2,
+    // 准备 GIF 编码器
+    const gifEncoder = new GIFEncoder({
+      workers: getGifWorkerCount(),
       quality: options.quality,
       width: customDimensions.width,
       height: customDimensions.height,
@@ -552,96 +891,167 @@ const startCompression = async () => {
       dither: options.dither
     })
 
-    // 4. 处理每一帧
+    // 主画布用于还原 GIF 每一帧，缩放画布用于输出目标尺寸
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d', { willReadFrequently: true })
-    if (!ctx) throw new Error('Canvas context not supported')
+    if (!ctx) throw new Error('浏览器不支持 Canvas 上下文')
 
-    // 设置画布尺寸为原始尺寸（绘制帧）
     canvas.width = originalDimensions.width
     canvas.height = originalDimensions.height
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // 用于缩放的临时画布
     const scaleCanvas = document.createElement('canvas')
     const scaleCtx = scaleCanvas.getContext('2d')
+    if (!scaleCtx) throw new Error('浏览器不支持缩放画布上下文')
     scaleCanvas.width = customDimensions.width
     scaleCanvas.height = customDimensions.height
 
-    // 异步处理帧，避免阻塞主线程
-    const processFrames = async () => {
-      for (let i = 0; i < frames.length; i++) {
-        // 每处理 5 帧让出一次主线程，保证 UI 响应
-        if (i % 5 === 0) await new Promise(resolve => setTimeout(resolve, 0))
+    // 逐帧合成时累积跳过帧的延时，保持整体动画时长不漂移
+    let pendingDelay = 0
+    let encodedFrameCount = 0
+    let mergedFrameCount = 0
+    const enableDuplicateMerge = preserveQuality.value
+    let previousEncodedPixels: Uint8ClampedArray | null = null
+    let hasTrailingDuplicateDelay = false
+    processingStage.value = '正在逐帧合成与分析...'
 
-        // 抽帧逻辑
-        if (i % options.fpsReduction !== 0) continue
+    for (let i = 0; i < frames.length; i++) {
+      const frame = frames[i]
+      pendingDelay += normalizeFrameDelay(frame.delay)
 
-        const frame = frames[i]
+      let restoreSnapshot: ImageData | null = null
+      if (frame.disposalType === 3) {
+        restoreSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height)
+      }
 
-        // 绘制当前帧像素数据到 canvas
-        const frameImageData = new ImageData(
-          new Uint8ClampedArray(frame.patch),
-          frame.dims.width,
-          frame.dims.height
-        )
+      const frameImageData = new ImageData(
+        new Uint8ClampedArray(frame.patch),
+        frame.dims.width,
+        frame.dims.height
+      )
+      ctx.putImageData(frameImageData, frame.dims.left, frame.dims.top)
 
-        // 创建临时 canvas 来绘制当前帧 patch (处理偏移)
-        const patchCanvas = document.createElement('canvas')
-        patchCanvas.width = frame.dims.width
-        patchCanvas.height = frame.dims.height
-        const patchCtx = patchCanvas.getContext('2d')
-        patchCtx?.putImageData(frameImageData, 0, 0)
+      const isLastFrame = i === frames.length - 1
+      const shouldEncode = i % options.fpsReduction === 0 || isLastFrame
 
-        // 将 patch 绘制到主 canvas
-        ctx.drawImage(patchCanvas, frame.dims.left, frame.dims.top)
+      if (shouldEncode) {
+        scaleCtx.clearRect(0, 0, scaleCanvas.width, scaleCanvas.height)
+        scaleCtx.drawImage(canvas, 0, 0, scaleCanvas.width, scaleCanvas.height)
+        if (!preserveQuality.value) {
+          applyColorQuantization(scaleCtx, scaleCanvas.width, scaleCanvas.height, options.colors)
+        }
 
-        // 缩放并添加到编码器
-        if (scaleCtx) {
-          scaleCtx.clearRect(0, 0, scaleCanvas.width, scaleCanvas.height)
-          scaleCtx.drawImage(canvas, 0, 0, scaleCanvas.width, scaleCanvas.height)
-
+        if (enableDuplicateMerge) {
+          const scaledImageData = scaleCtx.getImageData(0, 0, scaleCanvas.width, scaleCanvas.height)
+          const currentPixels = scaledImageData.data
+          if (isSameFramePixels(currentPixels, previousEncodedPixels)) {
+            mergedFrameCount += 1
+            compressionStats.mergedFrames = mergedFrameCount
+            hasTrailingDuplicateDelay = true
+          } else {
+            gifEncoder.addFrame(scaleCtx, {
+              delay: pendingDelay,
+              copy: true
+            })
+            pendingDelay = 0
+            encodedFrameCount += 1
+            compressionStats.encodedFrames = encodedFrameCount
+            previousEncodedPixels = new Uint8ClampedArray(currentPixels)
+            hasTrailingDuplicateDelay = false
+          }
+        } else {
           gifEncoder.addFrame(scaleCtx, {
-            delay: frame.delay * options.fpsReduction,
+            delay: pendingDelay,
             copy: true
           })
+          pendingDelay = 0
+          encodedFrameCount += 1
+          compressionStats.encodedFrames = encodedFrameCount
+          hasTrailingDuplicateDelay = false
         }
+      }
 
-        // 处理 disposal (简化版)
-        if (frame.disposalType === 2) {
-          ctx.clearRect(frame.dims.left, frame.dims.top, frame.dims.width, frame.dims.height)
-        }
+      // 处理 disposal 逻辑，确保下一帧合成基底正确
+      if (frame.disposalType === 2) {
+        ctx.clearRect(frame.dims.left, frame.dims.top, frame.dims.width, frame.dims.height)
+      } else if (frame.disposalType === 3 && restoreSnapshot) {
+        ctx.putImageData(restoreSnapshot, 0, 0)
+      }
 
-        // 更新进度
-        progress.value = Math.round(((i + 1) / frames.length) * 50)
+      progress.value = Math.round(((i + 1) / frames.length) * 45)
+      if (i % 6 === 0) {
+        await yieldToMainThread()
       }
     }
 
-    await processFrames()
+    if (pendingDelay > 0 && encodedFrameCount > 0) {
+      gifEncoder.addFrame(scaleCtx, {
+        delay: pendingDelay,
+        copy: true
+      })
+      pendingDelay = 0
+      encodedFrameCount += 1
+      compressionStats.encodedFrames = encodedFrameCount
+      if (hasTrailingDuplicateDelay && mergedFrameCount > 0) {
+        mergedFrameCount -= 1
+        compressionStats.mergedFrames = mergedFrameCount
+      }
+    }
 
-    // 5. 渲染
+    if (encodedFrameCount === 0) {
+      throw new Error('没有可编码的 GIF 帧')
+    }
+
+    // 渲染阶段进度
+    processingStage.value = '正在编码输出 GIF...'
     gifEncoder.on('progress', (p: number) => {
-      progress.value = 50 + Math.round(p * 50)
+      progress.value = 45 + Math.round(p * 55)
     })
 
-    gifEncoder.on('finished', (blob: Blob) => {
-      compressedSrc.value = URL.createObjectURL(blob)
-      compressedSize.value = blob.size
-      isProcessing.value = false
-      ElMessage.success('压缩完成！')
+    const resultBlob = await new Promise<Blob>((resolve, reject) => {
+      gifEncoder.on('finished', (blob: Blob) => resolve(blob))
+      gifEncoder.on('abort', () => reject(new Error('GIF 编码已中断')))
+      gifEncoder.render()
     })
 
-    gifEncoder.render()
+    if (compressedSrc.value && compressedSrc.value !== originalSrc.value) {
+      revokeObjectUrl(compressedSrc.value)
+    }
+
+    // 如果体积未减小，保留原图，避免“压缩后更大”的反效果
+    if (resultBlob.size >= originalSize.value) {
+      compressedSrc.value = originalSrc.value
+      compressedSize.value = originalSize.value
+      progress.value = 100
+      processingStage.value = '已保留原图'
+      ElMessage.warning('当前参数未减小体积，已保留原图。可尝试提高抽帧或降低色彩数量。')
+      return
+    }
+
+    compressedSrc.value = URL.createObjectURL(resultBlob)
+    compressedSize.value = resultBlob.size
+    progress.value = 100
+    compressionStats.encodedFrames = encodedFrameCount
+    compressionStats.mergedFrames = mergedFrameCount
+    processingStage.value = '压缩完成'
+    ElMessage.success('压缩完成！')
 
   } catch (error) {
     console.error(error)
-    ElMessage.error('压缩失败，请检查文件是否损坏')
+    processingStage.value = ''
+    ElMessage.error('压缩失败，请尝试降低尺寸、降低色彩数量或减少文件大小')
+  } finally {
     isProcessing.value = false
   }
 }
 
 onUnmounted(() => {
-  if (originalSrc.value) URL.revokeObjectURL(originalSrc.value)
-  if (compressedSrc.value) URL.revokeObjectURL(compressedSrc.value)
+  if (compressedSrc.value && compressedSrc.value !== originalSrc.value) {
+    revokeObjectUrl(compressedSrc.value)
+  }
+  if (originalSrc.value) {
+    revokeObjectUrl(originalSrc.value)
+  }
 })
 </script>
 

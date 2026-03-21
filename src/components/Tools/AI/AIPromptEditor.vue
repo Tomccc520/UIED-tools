@@ -209,9 +209,9 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import html2canvas from 'html2canvas'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import CryptoJS from 'crypto-js'
+import { ensureHtml2canvasRuntime } from '@/utils/toolRuntimeLoaders'
 
 // 更新标签颜色映射
 const getTagColorClass = (type?: string) => {
@@ -503,6 +503,8 @@ const translatedPrompt = computed(() => {
 const saveAsImage = async () => {
   loading.value = true
   try {
+    const { html2canvas } = await ensureHtml2canvasRuntime()
+
     const element = document.querySelector('.preview-content') as HTMLElement
     if (!element) {
       throw new Error('预览内容不存在')

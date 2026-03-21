@@ -1,0 +1,424 @@
+<!--
+ * @file IndustryConsultant.vue
+ * @description 产业顾问工具
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2025-12-16
+ -->
+
+<template>
+  <div class="min-h-screen">
+    <div class="mx-auto">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+        <div class="text-center mb-10 relative">
+          <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+            <div class="w-64 h-64 bg-teal-400 rounded-full blur-3xl"></div>
+            <div class="w-64 h-64 bg-emerald-400 rounded-full blur-3xl -ml-20"></div>
+          </div>
+          <h2
+            class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-teal-500 to-emerald-500">
+            免费产业顾问
+          </h2>
+          <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">模拟资深产业顾问，为您解答行业疑惑，提供专业见解与发展建议</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div class="lg:col-span-4 space-y-6">
+            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+              <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
+                <span class="w-8 h-8 rounded-lg bg-teal-100 text-teal-600 flex items-center justify-center mr-3">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                </span>
+                咨询信息
+              </h3>
+
+              <div class="space-y-5">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">咨询行业 <span
+                      class="text-red-500">*</span></label>
+                  <el-input v-model="form.industry" placeholder="例如：新能源汽车、生物医药、人工智能" size="large" clearable
+                    class="custom-input" />
+                </div>
+
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">问题描述</label>
+                  <el-input v-model="form.question" type="textarea" :rows="5"
+                    placeholder="请详细描述您想咨询的问题，例如行业趋势、竞争格局、技术瓶颈等..." class="custom-input" />
+                </div>
+
+                <div class="pt-4">
+                  <button @click="generateContent" :disabled="isGenerating || !form.industry"
+                    class="group w-full py-3.5 px-4 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-teal-500/30 hover:shadow-teal-500/40 transform active:scale-[0.98]">
+                    <span v-if="!isGenerating" class="flex items-center">
+                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      开始咨询
+                    </span>
+                    <span v-else class="flex items-center">
+                      <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                        </circle>
+                        <path class="opacity-75" fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                        </path>
+                      </svg>
+                      AI正在思考中...
+                    </span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lg:col-span-8">
+            <div class="border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[900px] bg-white shadow-sm">
+              <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <div class="flex items-center space-x-3">
+                  <div class="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </div>
+                  <h3 class="font-medium text-gray-700">咨询回复</h3>
+                </div>
+
+                <div class="flex items-center gap-2">
+                  <button v-if="resultText && mode !== 'preview'" @click="copyResult"
+                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                    </svg>
+                    复制Markdown
+                  </button>
+                  <button v-if="resultText" @click="copyPreviewHtml"
+                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-green-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    复制预览样式
+                  </button>
+                  <button v-if="resultText" @click="clearResult"
+                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
+                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    清空
+                  </button>
+                </div>
+              </div>
+
+              <div class="px-3 py-2 border-b border-gray-100 bg-gray-50 flex flex-wrap gap-2">
+                <button @click="handleAiAssist('trend')" :disabled="isGenerating || !resultText"
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-teal-50 hover:text-teal-600 hover:border-teal-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  分析未来趋势
+                </button>
+                <button @click="handleAiAssist('advice')" :disabled="isGenerating || !resultText"
+                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  给出行动建议
+                </button>
+              </div>
+
+              <div class="flex-1 relative bg-white min-h-0">
+                <template v-if="showResultEditor">
+                  <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI产业顾问的回复将在这里显示..."
+                    :disabled-menus="[]" @save="save"></v-md-editor>
+                </template>
+                <template v-else>
+                  <div class="h-full flex flex-col items-center justify-center text-gray-500 bg-gray-50/70">
+                    <p class="text-sm mb-1">点击“开始生成”后将自动加载编辑器并显示结果</p>
+                    <p class="text-xs text-gray-400">无需额外操作</p>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
+          <h3 class="text-lg font-semibold text-gray-800 mb-4">使用说明</h3>
+          <ul class="space-y-2 list-disc list-inside text-gray-600 text-sm">
+            <li>输入您关注的行业和具体问题，AI将化身资深产业顾问为您解答。</li>
+            <li>问题越具体，获得的回答越有针对性和深度。</li>
+            <li>适用于行业研究、投资分析、企业战略转型等场景。</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <ToolsRecommend :currentPath="route.path" />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
+import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { generateAIWriting } from '@/services/ai'
+
+const route = useRoute()
+const mode = ref<'editable' | 'preview' | 'edit'>('editable')
+const form = reactive({
+  industry: '',
+  question: ''
+})
+
+const isGenerating = ref(false)
+const resultText = ref('')
+const showResultEditor = ref(false)
+let pendingResultChunk = ''
+let resultStreamFlushRafId: number | null = null
+
+/**
+ * 刷新待写入的流式文本分片
+ * 在动画帧内合并分片写入，减少编辑器高频响应式更新导致的卡顿
+ */
+const flushPendingResultChunk = () => {
+  resultStreamFlushRafId = null
+  if (!pendingResultChunk) return
+  resultText.value += pendingResultChunk
+  pendingResultChunk = ''
+}
+
+/**
+ * 强制刷新剩余分片
+ * 请求结束或异常时立即清空缓冲，确保结果区内容完整
+ */
+const forceFlushPendingResultChunk = () => {
+  if (resultStreamFlushRafId !== null) {
+    window.cancelAnimationFrame(resultStreamFlushRafId)
+    resultStreamFlushRafId = null
+  }
+  flushPendingResultChunk()
+}
+
+/**
+ * 调度流式分片刷新
+ * 单帧内最多刷新一次，平衡输出流畅度与主线程开销
+ */
+const scheduleResultStreamFlush = () => {
+  if (resultStreamFlushRafId !== null) return
+  resultStreamFlushRafId = window.requestAnimationFrame(() => {
+    flushPendingResultChunk()
+  })
+}
+
+/**
+ * 追加流式返回分片
+ * 先写入缓冲再统一刷新，避免每个 chunk 都触发编辑器重渲染
+ *  chunk 流式返回文本
+ */
+const appendResultChunk = (chunk: string) => {
+  if (!chunk) return
+  pendingResultChunk += chunk
+  scheduleResultStreamFlush()
+}
+
+/**
+ * 重置流式输出状态
+ * 在新请求开始或组件卸载时清空缓冲与动画帧状态，避免串流污染
+ */
+const resetResultStreamState = () => {
+  pendingResultChunk = ''
+  if (resultStreamFlushRafId !== null) {
+    window.cancelAnimationFrame(resultStreamFlushRafId)
+    resultStreamFlushRafId = null
+  }
+}
+
+/**
+ * 确保结果编辑器已就绪
+ * 仅在用户实际使用结果区时挂载编辑器，降低页面初始化成本
+ */
+const ensureResultEditorReady = () => {
+  if (showResultEditor.value) return
+  showResultEditor.value = true
+}
+
+
+const generateContent = async () => {
+  if (!form.industry) {
+    ElMessage.warning('请输入咨询行业')
+    return
+  }
+
+  try {
+    ensureResultEditorReady()
+    isGenerating.value = true
+    resetResultStreamState()
+    resultText.value = ''
+
+    const prompt = `你是一位资深的${form.industry}产业顾问，请回答以下问题：
+${form.question ? `问题描述：${form.question}` : ''}
+
+要求：
+1. 回答要专业、深入，引用行业数据或案例（可模拟真实情况）。
+2. 分析要有逻辑性，观点鲜明。
+3. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号。`
+
+    await generateAIWriting({
+      prompt,
+      systemPrompt: `你是一位资深的${form.industry}产业顾问，拥有丰富的行业经验和敏锐的洞察力。`,
+      temperature: 0.8
+    }, (content) => {
+      appendResultChunk(content)
+        })
+    forceFlushPendingResultChunk()
+
+    ElMessage.success('生成完成')
+  } catch (error) {
+    forceFlushPendingResultChunk()
+    ElMessage.error('生成失败，请稍后重试')
+  } finally {
+    isGenerating.value = false
+    resetResultStreamState()
+  }
+}
+
+const handleAiAssist = async (type: string) => {
+  if (!resultText.value) return
+
+  ensureResultEditorReady()
+  isGenerating.value = true
+  const originalText = resultText.value
+  let prompt = ''
+
+  switch (type) {
+    case 'trend':
+      prompt = `请基于之前的回答，进一步预测${form.industry}行业的未来3-5年发展趋势，包括技术、市场和政策等方面：\n\n${originalText}`
+      break
+    case 'advice':
+      prompt = `请基于之前的回答，为相关从业者或企业提出具体的可操作性建议，以抓住机遇或规避风险：\n\n${originalText}`
+      break
+  }
+
+  try {
+    resetResultStreamState()
+    resultText.value = ''
+    await generateAIWriting({
+      prompt,
+      systemPrompt: `你是一位资深的${form.industry}产业顾问，拥有丰富的行业经验和敏锐的洞察力。`
+    }, (chunk) => {
+      appendResultChunk(chunk)
+        })
+    forceFlushPendingResultChunk()
+  } catch (error) {
+    forceFlushPendingResultChunk()
+    ElMessage.error('AI助手处理失败，请重试')
+    resultText.value = originalText
+  } finally {
+    isGenerating.value = false
+    resetResultStreamState()
+  }
+}
+
+const copyResult = async () => {
+  if (!resultText.value) return
+  try {
+    await navigator.clipboard.writeText(resultText.value)
+    ElMessage.success('已复制 Markdown 源码')
+  } catch (err) {
+    ElMessage.error('复制失败')
+  }
+}
+
+const copyPreviewHtml = async () => {
+  if (!resultText.value) return
+  try {
+    if (!showResultEditor.value) {
+      ensureResultEditorReady()
+      await nextTick()
+    }
+    const previewElement = document.querySelector('.vuepress-markdown-body')
+    if (previewElement) {
+      const htmlContent = previewElement.innerHTML
+      const blob = new Blob([htmlContent], { type: 'text/html' })
+      const textBlob = new Blob([resultText.value], { type: 'text/plain' })
+      const data = [new ClipboardItem({
+        'text/html': blob,
+        'text/plain': textBlob
+      })]
+      await navigator.clipboard.write(data)
+      ElMessage.success('已复制预览样式内容')
+    }
+  } catch (err) {
+    ElMessage.error('复制预览内容失败')
+  }
+}
+
+const clearResult = () => {
+  resetResultStreamState()
+  resultText.value = ''
+  isGenerating.value = false
+}
+
+onBeforeUnmount(() => {
+  resetResultStreamState()
+})
+
+const save = (text: string, html: string) => {
+  console.log('save', text, html)
+}
+</script>
+
+<style scoped>
+.custom-input :deep(.el-input__wrapper) {
+  box-shadow: 0 0 0 1px #e5e7eb inset;
+  padding: 8px 12px;
+}
+
+.custom-input :deep(.el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 2px #14b8a6 inset;
+}
+
+:deep(.v-md-editor) {
+  box-shadow: none;
+  border: none;
+}
+
+:deep(.v-md-editor__toolbar) {
+  border-bottom: 1px solid #f3f4f6;
+  background-color: #f9fafb;
+}
+
+:deep(.vuepress-markdown-body) {
+  font-size: 14px;
+  padding: 20px;
+}
+
+:deep(.v-md-textarea-editor pre),
+:deep(.v-md-textarea-editor textarea) {
+  font-size: 14px;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+</style>
