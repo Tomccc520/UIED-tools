@@ -98,6 +98,22 @@ const summaryText = computed(() => {
 })
 
 /**
+ * 函数说明：将 AI 分组映射为卡片展示数据，统一补齐数量与简介文案
+ */
+const groupCards = computed(() => {
+  return aiGroups.value.map((group) => {
+    const tools = Array.isArray(group.list) ? group.list : []
+    return {
+      id: group.id,
+      title: group.title,
+      tools,
+      count: tools.length,
+      summary: `覆盖 ${tools.length} 个工具入口，支持新窗口快速打开`
+    }
+  })
+})
+
+/**
  * 函数说明：解析站内路由为可新窗口访问的 href
  */
 const resolveToolHref = (path: string): string => {
@@ -121,97 +137,96 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="ai-toolbox-hub min-h-screen space-y-4">
-    <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-      <div class="hero relative px-6 py-8 sm:px-8 sm:py-10">
-        <div class="absolute inset-0 bg-gradient-to-br from-cyan-50 via-sky-50 to-emerald-50" />
-        <div class="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-cyan-200/45 blur-3xl" />
-        <div class="absolute -left-16 bottom-0 h-52 w-52 rounded-full bg-emerald-200/45 blur-3xl" />
-
-        <div class="relative z-10">
-          <div
-            class="mb-4 inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/90 px-3 py-1 text-xs font-medium text-cyan-700"
-          >
-            <span class="inline-block h-1.5 w-1.5 rounded-full bg-cyan-500" />
-            AI 工具箱聚合页
-          </div>
-          <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">免费 AI 工具箱导航</h1>
-          <p class="mt-3 max-w-3xl text-sm leading-7 text-slate-600 sm:text-base">
-            把写作、办公、图像、对话、提示词等 AI 工具集中到一个页面，按分组快速定位，避免在左侧菜单里逐层翻找。
-          </p>
-          <div class="mt-6 flex flex-wrap gap-2 text-xs text-slate-600">
-            <span class="rounded-full border border-slate-200 bg-white px-3 py-1">一页聚合</span>
-            <span class="rounded-full border border-slate-200 bg-white px-3 py-1">分组查找</span>
-            <span class="rounded-full border border-slate-200 bg-white px-3 py-1">新窗口打开</span>
-            <span class="rounded-full border border-slate-200 bg-white px-3 py-1">持续扩展</span>
-          </div>
+  <div class="ai-toolbox-hub min-h-screen">
+    <section class="hero-card">
+      <div class="hero-intro">
+        <p class="hero-badge">AI 导航中心</p>
+        <h1 class="hero-title">免费 AI 工具箱</h1>
+        <p class="hero-desc">
+          集中收纳写作、办公、图像、对话、提示词等 AI 工具。保持卡片式入口，减少翻页与查找成本，所有工具支持一键新窗口打开。
+        </p>
+        <div class="hero-tags">
+          <span class="hero-tag">卡片聚合</span>
+          <span class="hero-tag">分组检索</span>
+          <span class="hero-tag">即点即用</span>
+          <span class="hero-tag">持续更新</span>
         </div>
+      </div>
+      <div class="hero-metrics">
+        <article class="metric-card">
+          <p class="metric-label">分组数量</p>
+          <p class="metric-value">{{ aiGroups.length }}</p>
+        </article>
+        <article class="metric-card">
+          <p class="metric-label">工具数量</p>
+          <p class="metric-value">{{ aiTools.length }}</p>
+        </article>
+        <article class="metric-card metric-card-wide">
+          <p class="metric-label">当前概览</p>
+          <p class="metric-value metric-small">{{ summaryText }}</p>
+        </article>
       </div>
     </section>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-      <div class="mb-4 flex items-center justify-between gap-4">
-        <h2 class="text-lg font-semibold text-slate-900 sm:text-xl">核心入口</h2>
-        <div class="inline-flex rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600 sm:text-sm">
-          {{ summaryText }}
-        </div>
+    <section class="block-card">
+      <div class="block-head">
+        <h2 class="block-title">热门 AI 工具</h2>
+        <span class="block-tip">优先推荐高频入口</span>
       </div>
-      <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div class="quick-grid">
         <button
           v-for="tool in quickTools"
           :key="tool.id"
           type="button"
-          class="quick-card group rounded-xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-cyan-300"
+          class="quick-tool-card"
           @click="openTool(tool)"
         >
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
+          <div class="quick-tool-head">
+            <div class="quick-tool-title-wrap">
               <ToolIcon v-if="tool.logo" :icon="tool.logo" />
-              <h3 class="font-semibold text-slate-900">{{ tool.title }}</h3>
+              <h3 class="quick-tool-title">{{ tool.title }}</h3>
             </div>
-            <span class="rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700">推荐</span>
+            <span class="quick-badge">推荐</span>
           </div>
-          <p class="text-sm leading-6 text-slate-600">{{ tool.desc || '进入工具开始使用' }}</p>
-          <div class="mt-3 text-sm font-medium text-cyan-700">打开工具 →</div>
+          <p class="quick-tool-desc">{{ tool.desc || '进入工具开始使用' }}</p>
+          <p class="quick-tool-link">打开工具</p>
         </button>
       </div>
     </section>
 
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
-      <div class="mb-4 flex items-center justify-between gap-4">
-        <h2 class="text-lg font-semibold text-slate-900 sm:text-xl">全部分组</h2>
-        <span class="text-xs text-slate-500">点击工具名称将以新窗口打开</span>
+    <section class="block-card">
+      <div class="block-head">
+        <h2 class="block-title">全部分组</h2>
+        <span class="block-tip">点击卡片中的工具按钮可直接打开</span>
       </div>
 
-      <div v-if="aiGroups.length > 0" class="space-y-4">
+      <div v-if="groupCards.length > 0" class="group-grid">
         <article
-          v-for="group in aiGroups"
+          v-for="group in groupCards"
           :key="group.id"
-          class="group-panel rounded-xl border border-slate-200 bg-slate-50 p-4"
+          class="group-card"
         >
-          <div class="mb-3 flex items-center justify-between gap-3">
-            <h3 class="text-base font-semibold text-slate-900">{{ group.title }}</h3>
-            <span class="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-500">
-              {{ Array.isArray(group.list) ? group.list.length : 0 }} 个工具
-            </span>
-          </div>
-
-          <div class="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
+          <header class="group-head">
+            <h3 class="group-title">{{ group.title }}</h3>
+            <span class="group-count">{{ group.count }} 个</span>
+          </header>
+          <p class="group-summary">{{ group.summary }}</p>
+          <div class="group-tool-list">
             <button
-              v-for="tool in group.list"
+              v-for="tool in group.tools"
               :key="tool.id"
               type="button"
-              class="tool-entry flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-left transition-colors hover:border-cyan-300"
+              class="group-tool-item"
               @click="openTool(tool)"
             >
-              <span class="truncate text-sm text-slate-700">{{ tool.title }}</span>
-              <span class="ml-3 shrink-0 text-xs text-cyan-700">进入</span>
+              <span class="group-tool-name">{{ tool.title }}</span>
+              <span class="group-tool-action">打开</span>
             </button>
           </div>
         </article>
       </div>
 
-      <div v-else class="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+      <div v-else class="empty-card">
         AI 工具数据加载中，请稍后刷新重试。
       </div>
     </section>
@@ -221,7 +236,320 @@ onMounted(() => {
 </template>
 
 <style scoped>
-.hero {
-  isolation: isolate;
+.ai-toolbox-hub {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hero-card {
+  border: 1px solid #dce7f4;
+  border-radius: 16px;
+  background:
+    radial-gradient(130% 180% at 0% 0%, rgba(16, 185, 129, 0.13) 0%, rgba(16, 185, 129, 0) 60%),
+    radial-gradient(120% 160% at 100% 0%, rgba(14, 165, 233, 0.16) 0%, rgba(14, 165, 233, 0) 55%),
+    #ffffff;
+  padding: 22px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 16px;
+}
+
+.hero-intro {
+  min-width: 0;
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #b9d7f2;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.88);
+  color: #0b72b0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  margin: 0 0 10px;
+}
+
+.hero-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: clamp(26px, 4vw, 34px);
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+}
+
+.hero-desc {
+  margin: 10px 0 0;
+  color: #334155;
+  font-size: 14px;
+  line-height: 1.85;
+  max-width: 720px;
+}
+
+.hero-tags {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.hero-tag {
+  border: 1px solid #d6e3ee;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+  padding: 5px 10px;
+}
+
+.hero-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.metric-card {
+  border: 1px solid #d8e6f5;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 12px;
+}
+
+.metric-card-wide {
+  grid-column: 1 / -1;
+}
+
+.metric-label {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.metric-value {
+  margin: 6px 0 0;
+  color: #0f172a;
+  font-size: 24px;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.metric-small {
+  font-size: 14px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.block-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.block-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 20px;
+  line-height: 1.3;
+  font-weight: 700;
+}
+
+.block-tip {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.quick-tool-card {
+  width: 100%;
+  border: 1px solid #dbe7f3;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  padding: 14px;
+  text-align: left;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.quick-tool-card:hover {
+  border-color: #8ec5ea;
+  transform: translateY(-1px);
+}
+
+.quick-tool-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quick-tool-title-wrap {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.quick-tool-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+.quick-badge {
+  border: 1px solid #b4dcf4;
+  border-radius: 999px;
+  background: #ecf8ff;
+  color: #0b72b0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  flex-shrink: 0;
+}
+
+.quick-tool-desc {
+  margin: 10px 0 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.7;
+  min-height: 44px;
+}
+
+.quick-tool-link {
+  margin: 10px 0 0;
+  color: #0f7ab8;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.group-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 14px;
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.group-title {
+  margin: 0;
+  color: #0f172a;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.group-count {
+  border: 1px solid #cfe0f0;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #64748b;
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+.group-summary {
+  margin: 8px 0 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.group-tool-list {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.group-tool-item {
+  width: 100%;
+  border: 1px solid #d9e4ef;
+  border-radius: 10px;
+  background: #ffffff;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  transition: border-color 0.2s ease;
+}
+
+.group-tool-item:hover {
+  border-color: #8ec5ea;
+}
+
+.group-tool-name {
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.group-tool-action {
+  color: #0f7ab8;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.empty-card {
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  text-align: center;
+  padding: 26px 14px;
+  font-size: 14px;
+}
+
+@media (max-width: 1200px) {
+  .hero-card {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .group-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quick-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

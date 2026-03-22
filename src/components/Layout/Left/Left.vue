@@ -73,6 +73,32 @@ interface DisplaySidebarCategoryMenu extends SiteSidebarCategoryMenu {
   list: ToolSubCategory[]
   isDirectLink: boolean
   resolvedLink: string
+  resolvedIcon: string
+}
+
+const defaultSidebarMenuIconMap: Record<string, string> = {
+  ai: '/icons/sidebar/ai.svg',
+  design: '/icons/sidebar/design.svg',
+  image: '/icons/sidebar/image.svg',
+  office: '/icons/sidebar/office.svg',
+  daily: '/icons/sidebar/daily.svg',
+  copywriting: '/icons/sidebar/copywriting.svg',
+  psychology: '/icons/sidebar/psychology.svg',
+  video: '/icons/sidebar/video.svg',
+  dev: '/icons/sidebar/dev.svg',
+  slacking: '/icons/sidebar/slacking.svg',
+  efficiency: '/icons/sidebar/efficiency.svg'
+}
+
+/**
+ * 函数说明：解析侧边栏菜单图标地址，优先使用后台配置图标，未配置时回退内置 SVG 图标
+ */
+const resolveCategoryIcon = (menu: SiteSidebarCategoryMenu): string => {
+  const customIcon = String(menu.icon || '').trim()
+  if (customIcon) {
+    return customIcon
+  }
+  return defaultSidebarMenuIconMap[menu.key] || '/icons/sidebar/default.svg'
 }
 
 /**
@@ -108,7 +134,8 @@ const displaySidebarCategoryMenus = computed<DisplaySidebarCategoryMenu[]>(() =>
         ...menu,
         list: resolveCategoryList(menu.cateTitle),
         resolvedLink,
-        isDirectLink: Boolean(resolvedLink)
+        isDirectLink: Boolean(resolvedLink),
+        resolvedIcon: resolveCategoryIcon(menu)
       }
     })
     .filter((menu) => menu.isDirectLink || menu.list.length > 0)
@@ -400,22 +427,8 @@ onMounted(() => {
             :index="`category-link-${menu.key}`"
             @click="handleCategoryMenuClick(menu)"
           >
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M4 5C4 3.89543 4.89543 3 6 3H10C11.1046 3 12 3.89543 12 5V9C12 10.1046 11.1046 11 10 11H6C4.89543 11 4 10.1046 4 9V5Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M12 15C12 13.8954 12.8954 13 14 13H18C19.1046 13 20 13.8954 20 15V19C20 20.1046 19.1046 21 18 21H14C12.8954 21 12 20.1046 12 19V15Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M4 15C4 13.8954 4.89543 13 6 13H10C11.1046 13 12 13.8954 12 15V19C12 20.1046 11.1046 21 10 21H6C4.89543 21 4 20.1046 4 19V15Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M12 5C12 3.89543 12.8954 3 14 3H18C19.1046 3 20 3.89543 20 5V9C20 10.1046 19.1046 11 18 11H14C12.8954 11 12 10.1046 12 9V5Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+            <div class="relative menu-icon-wrap">
+              <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
               <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
             </div>
             <span class="ml-2">{{ menu.title }}</span>
@@ -423,22 +436,8 @@ onMounted(() => {
 
           <el-sub-menu v-else :index="menu.key">
             <template #title>
-              <div class="relative">
-                <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                  xmlns="http://www.w3.org/2000/svg">
-                  <path
-                    d="M4 5C4 3.89543 4.89543 3 6 3H10C11.1046 3 12 3.89543 12 5V9C12 10.1046 11.1046 11 10 11H6C4.89543 11 4 10.1046 4 9V5Z"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  <path
-                    d="M12 15C12 13.8954 12.8954 13 14 13H18C19.1046 13 20 13.8954 20 15V19C20 20.1046 19.1046 21 18 21H14C12.8954 21 12 20.1046 12 19V15Z"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  <path
-                    d="M4 15C4 13.8954 4.89543 13 6 13H10C11.1046 13 12 13.8954 12 15V19C12 20.1046 11.1046 21 10 21H6C4.89543 21 4 20.1046 4 19V15Z"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                  <path
-                    d="M12 5C12 3.89543 12.8954 3 14 3H18C19.1046 3 20 3.89543 20 5V9C20 10.1046 19.1046 11 18 11H14C12.8954 11 12 10.1046 12 9V5Z"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
+              <div class="relative menu-icon-wrap">
+                <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
                 <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
               </div>
               <span class="ml-2">{{ menu.title }}</span>
@@ -529,6 +528,18 @@ onMounted(() => {
   transition: var(--menu-transition);
 }
 
+.menu-icon-wrap {
+  width: var(--menu-icon-size);
+  height: var(--menu-icon-size);
+}
+
+.menu-image-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transition: var(--menu-transition);
+}
+
 /* 子菜单样式 */
 .el-sub-menu {
   margin: 2px 0 !important;
@@ -607,6 +618,12 @@ onMounted(() => {
 .el-menu-item.is-active .menu-icon,
 .el-sub-menu :deep(.el-sub-menu__title:hover) .menu-icon {
   color: var(--menu-hover-color);
+  transform: var(--icon-hover-transform);
+}
+
+.el-menu-item:hover .menu-image-icon,
+.el-menu-item.is-active .menu-image-icon,
+.el-sub-menu :deep(.el-sub-menu__title:hover) .menu-image-icon {
   transform: var(--icon-hover-transform);
 }
 

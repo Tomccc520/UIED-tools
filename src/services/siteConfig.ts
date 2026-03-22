@@ -22,6 +22,7 @@ export interface SiteSidebarCategoryMenu {
   title: string
   cateTitle: string
   link?: string
+  icon?: string
 }
 
 export interface SiteHotToolItem {
@@ -171,13 +172,17 @@ const normalizeSidebarCategoryMenus = (input: unknown): SiteSidebarCategoryMenu[
       const title = String(record.title || '').trim()
       const cateTitle = String(record.cateTitle || '').trim()
       const link = String(record.link || '').trim()
+      const icon = String(record.icon || '').trim()
       if (!title || !cateTitle) {
         return null
       }
-      if (link) {
-        return { key, title, cateTitle, link }
+      return {
+        key,
+        title,
+        cateTitle,
+        ...(link ? { link } : {}),
+        ...(icon ? { icon } : {})
       }
-      return { key, title, cateTitle }
     })
     .filter(Boolean) as SiteSidebarCategoryMenu[]
 }
