@@ -2475,6 +2475,16 @@ export const constantRoute: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/tools/ai/toolbox',
+    component: () => import('@/components/Tools/AI/AIToolboxHub.vue'),
+    name: 'aiToolboxHub',
+    meta: {
+      title: '免费 AI 工具箱导航',
+      keywords: 'AI工具箱,AI工具导航,AI写作工具,AI办公工具,AI图片工具,AI工具聚合页',
+      description: '免费 AI 工具箱聚合导航页，集中展示对话、写作、办公、图像等 AI 工具入口，支持按分组快速访问。'
+    }
+  },
+  {
     path: '/tools/ai/deepseek',
     component: () => import('@/components/Tools/AI/DeepSeek.vue'),
     name: 'deepseek',

@@ -2,6 +2,7 @@
 * @file Left.vue
 * @description 左侧菜单组件，提供工具分类导航和快速访问功能
 * @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
 * @createDate 2025-1-8
 *
@@ -15,13 +16,13 @@
 -->
 
 <script setup lang="ts">
-import { ref, onMounted, nextTick } from '@vue/runtime-core'
+import { computed, ref, onMounted, nextTick } from '@vue/runtime-core'
 import { useToolsStore } from '@/store/modules/tools'
 import { useRouter, useRoute } from 'vue-router'
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import type { ToolCategory } from '@/types/tools'
-import { getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig'
+import type { ToolCategory, ToolSubCategory } from '@/types/tools'
+import { getSitePublicConfig, type SiteLinkItem, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
 
 // 路由实例
 const router: Router = useRouter()
@@ -40,6 +41,26 @@ const defaultRecommendLinks: SiteLinkItem[] = [
   { name: 'AI产品榜', link: 'https://hao.uied.cn/' }
 ]
 const recommendLinks = ref<SiteLinkItem[]>(defaultRecommendLinks)
+const defaultSidebarCategoryMenus: SiteSidebarCategoryMenu[] = [
+  { key: 'ai', title: 'AI工具箱', cateTitle: 'AI工具箱', link: '/tools/ai/toolbox' },
+  { key: 'design', title: '设计工具', cateTitle: '设计工具' },
+  { key: 'image', title: '图片处理', cateTitle: '图片处理' },
+  { key: 'office', title: '办公工具', cateTitle: '办公工具' },
+  { key: 'daily', title: '生活常用', cateTitle: '生活常用' },
+  { key: 'copywriting', title: '文案工具', cateTitle: '文案工具' },
+  { key: 'psychology', title: '潜能测试', cateTitle: '潜能测试' },
+  { key: 'video', title: '剪辑工具', cateTitle: '剪辑工具' },
+  { key: 'dev', title: '开发工具', cateTitle: '开发工具' },
+  { key: 'slacking', title: '摸鱼工具', cateTitle: '摸鱼工具' },
+  { key: 'efficiency', title: '效率工具', cateTitle: '效率工具' }
+]
+const defaultSidebarBottomLinks: SiteLinkItem[] = [
+  { name: '更新记录', link: '/changelog' },
+  { name: '意见反馈', link: 'https://uiedtool.com/' },
+  { name: '关于我们', link: '/about' }
+]
+const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>(defaultSidebarCategoryMenus)
+const sidebarBottomLinks = ref<SiteLinkItem[]>(defaultSidebarBottomLinks)
 
 // 菜单状态配置
 const defaultActive = ref('')
@@ -47,6 +68,58 @@ const defaultOpeneds: string[] = ['recommend'] // 默认展开推荐工具菜单
 
 // store实例
 const toolsStore = useToolsStore()
+
+interface DisplaySidebarCategoryMenu extends SiteSidebarCategoryMenu {
+  list: ToolSubCategory[]
+  isDirectLink: boolean
+  resolvedLink: string
+}
+
+/**
+ * 函数说明：根据配置中的分类标题匹配工具分类列表，匹配不到时返回空数组
+ */
+const resolveCategoryList = (cateTitle: string): ToolSubCategory[] => {
+  return toolsStore.cates.find((cate: ToolCategory) => cate.title === cateTitle)?.list || []
+}
+
+/**
+ * 函数说明：解析分类菜单的直达链接，优先使用后台配置，AI工具箱默认跳聚合页
+ */
+const resolveCategoryDirectLink = (menu: SiteSidebarCategoryMenu): string => {
+  const rawLink = String(menu.link || '').trim()
+  if (rawLink) {
+    return rawLink
+  }
+  if (menu.key === 'ai') {
+    return '/tools/ai/toolbox'
+  }
+  return ''
+}
+
+/**
+ * 函数说明：构建可渲染的侧边栏分类菜单，过滤掉未匹配到工具分类的分组
+ */
+const displaySidebarCategoryMenus = computed<DisplaySidebarCategoryMenu[]>(() => {
+  const source = sidebarCategoryMenus.value.length ? sidebarCategoryMenus.value : defaultSidebarCategoryMenus
+  return source
+    .map((menu) => {
+      const resolvedLink = resolveCategoryDirectLink(menu)
+      return {
+        ...menu,
+        list: resolveCategoryList(menu.cateTitle),
+        resolvedLink,
+        isDirectLink: Boolean(resolvedLink)
+      }
+    })
+    .filter((menu) => menu.isDirectLink || menu.list.length > 0)
+})
+
+/**
+ * 函数说明：获取最终用于渲染的侧栏底部链接列表，空配置时回退默认值
+ */
+const displaySidebarBottomLinks = computed<SiteLinkItem[]>(() => {
+  return sidebarBottomLinks.value.length ? sidebarBottomLinks.value : defaultSidebarBottomLinks
+})
 
 /**
  * 获取工具分类数据
@@ -76,6 +149,12 @@ const loadSiteConfig = async () => {
   }
   if (siteConfig.sidebarRecommendLinks.length) {
     recommendLinks.value = siteConfig.sidebarRecommendLinks
+  }
+  if (siteConfig.sidebarCategoryMenus.length) {
+    sidebarCategoryMenus.value = siteConfig.sidebarCategoryMenus
+  }
+  if (siteConfig.sidebarBottomLinks.length) {
+    sidebarBottomLinks.value = siteConfig.sidebarBottomLinks
   }
 }
 
@@ -122,14 +201,6 @@ const gotoTool = (url: string) => {
 }
 
 /**
- * 关于页面跳转
- * @description 跳转到关于页面
- */
-const gotoAbout = () => {
-  router.push('about')
-}
-
-/**
  * 外部链接跳转
  * @description 在新标签页打开外部链接
  * @param url 目标链接
@@ -143,6 +214,44 @@ const openExternalLink = (url: string) => {
  */
 const handleRecommendItemClick = (link: SiteLinkItem) => {
   const targetLink = link.link.trim()
+  if (!targetLink) {
+    return
+  }
+  if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
+    openExternalLink(targetLink)
+    return
+  }
+  if (targetLink.startsWith('#')) {
+    gotoAnchor(targetLink.slice(1))
+    return
+  }
+  gotoTool(targetLink)
+}
+
+/**
+ * 函数说明：处理侧栏底部链接点击，自动判断内链、外链和锚点跳转
+ */
+const handleBottomLinkItemClick = (link: SiteLinkItem) => {
+  const targetLink = link.link.trim()
+  if (!targetLink) {
+    return
+  }
+  if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
+    openExternalLink(targetLink)
+    return
+  }
+  if (targetLink.startsWith('#')) {
+    gotoAnchor(targetLink.slice(1))
+    return
+  }
+  gotoTool(targetLink)
+}
+
+/**
+ * 函数说明：处理分类菜单点击，支持直达聚合页或外链
+ */
+const handleCategoryMenuClick = (menu: DisplaySidebarCategoryMenu) => {
+  const targetLink = menu.resolvedLink.trim()
   if (!targetLink) {
     return
   }
@@ -283,294 +392,76 @@ onMounted(() => {
           </el-menu-item-group>
         </el-sub-menu>
 
-        <!-- AI工具箱 -->
-        <el-sub-menu index="ai">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M12 8v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M5 3a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2 1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M19 3a2 2 0 0 1 2 2v2c0 1.1-.9 2-2 2-1.1 0-2-.9-2-2V5c0-1.1.9-2 2-2z" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M12 16a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-2a2 2 0 0 1 2-2z" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M5 15a2 2 0 0 0-2 2v2c0 1.1.9 2 2 2 1.1 0 2-.9 2-2v-2c0-1.1-.9-2-2-2z" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M19 15a2 2 0 0 1 2 2v2c0 1.1-.9 2-2 2-1.1 0-2-.9-2-2v-2c0-1.1.9-2 2-2z" stroke="currentColor"
-                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">AI工具箱</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === 'AI工具箱')?.list"
-              :key="category.id" :index="`ai-${category.id}`" @click="handleMenuClick(`ai-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 设计工具菜单 -->
-        <el-sub-menu index="design">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 19l7-7 3 3-7 7-3-3z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M2 2l7.586 7.586" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <circle cx="11" cy="11" r="2" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">设计工具</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '设计工具')?.list"
-              :key="category.id" :index="`design-${category.id}`" @click="handleMenuClick(`design-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 图片处理菜单 -->
-        <el-sub-menu index="image">
-          <template #title>
+        <!-- 分类菜单（后台可配置） -->
+        <template v-for="menu in displaySidebarCategoryMenus" :key="`category-${menu.key}`">
+          <el-menu-item
+            v-if="menu.isDirectLink"
+            class="menu-top-item"
+            :index="`category-link-${menu.key}`"
+            @click="handleCategoryMenuClick(menu)"
+          >
             <div class="relative">
               <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 xmlns="http://www.w3.org/2000/svg">
                 <path
-                  d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z"
+                  d="M4 5C4 3.89543 4.89543 3 6 3H10C11.1046 3 12 3.89543 12 5V9C12 10.1046 11.1046 11 10 11H6C4.89543 11 4 10.1046 4 9V5Z"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                 <path
-                  d="M8.5 10C9.32843 10 10 9.32843 10 8.5C10 7.67157 9.32843 7 8.5 7C7.67157 7 7 7.67157 7 8.5C7 9.32843 7.67157 10 8.5 10Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M21 15L16 10L5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">图片处理</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '图片处理')?.list"
-              :key="category.id" :index="`image-${category.id}`" @click="handleMenuClick(`image-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 办公工具菜单 -->
-        <el-sub-menu index="office">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8.342C20 8.07556 19.9467 7.81181 19.8433 7.56624C19.7399 7.32068 19.5885 7.09824 19.398 6.912L14.958 2.57C14.5844 2.20466 14.0826 2 13.56 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M8 13H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M8 17H16" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">办公工具</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '办公工具')?.list"
-              :key="category.id" :index="`office-${category.id}`" @click="handleMenuClick(`office-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 生活常用菜单 -->
-        <el-sub-menu index="daily">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2v20M2 12h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">生活常用</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '生活常用')?.list"
-              :key="category.id" :index="`daily-${category.id}`" @click="handleMenuClick(`daily-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 文案工具 -->
-        <el-sub-menu index="copywriting">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" stroke-width="2"
-                  stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M15 5L19 9" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">文案工具</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '文案工具')?.list"
-              :key="category.id" :index="`copywriting-${category.id}`"
-              @click="handleMenuClick(`copywriting-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 潜能测试菜单 -->
-        <el-sub-menu index="psychology">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zM9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">潜能测试</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '潜能测试')?.list"
-              :key="category.id" :index="`psychology-${category.id}`"
-              @click="handleMenuClick(`psychology-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 剪辑工具菜单 -->
-        <el-sub-menu index="video">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14v-4z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <rect x="3" y="6" width="12" height="12" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">剪辑工具</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '剪辑工具')?.list"
-              :key="category.id" :index="`video-${category.id}`" @click="handleMenuClick(`video-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 开发工具菜单 -->
-        <el-sub-menu index="dev">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M8 3H7C5.89543 3 5 3.89543 5 5V7C5 8.10457 5.89543 9 7 9H8C9.10457 9 10 8.10457 10 7V5C10 3.89543 9.10457 3 8 3Z"
+                  d="M12 15C12 13.8954 12.8954 13 14 13H18C19.1046 13 20 13.8954 20 15V19C20 20.1046 19.1046 21 18 21H14C12.8954 21 12 20.1046 12 19V15Z"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                 <path
-                  d="M17 3H16C14.8954 3 14 3.89543 14 5V7C14 8.10457 14.8954 9 16 9H17C18.1046 9 19 8.10457 19 7V5C19 3.89543 18.1046 3 17 3Z"
+                  d="M4 15C4 13.8954 4.89543 13 6 13H10C11.1046 13 12 13.8954 12 15V19C12 20.1046 11.1046 21 10 21H6C4.89543 21 4 20.1046 4 19V15Z"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                 <path
-                  d="M8 15H7C5.89543 15 5 15.8954 5 17V19C5 20.1046 5.89543 21 7 21H8C9.10457 21 10 20.1046 10 19V17C10 15.8954 9.10457 15 8 15Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path
-                  d="M17 15H16C14.8954 15 14 15.8954 14 17V19C14 20.1046 14.8954 21 16 21H17C18.1046 21 19 20.1046 19 19V17C19 15.8954 18.1046 15 17 15Z"
+                  d="M12 5C12 3.89543 12.8954 3 14 3H18C19.1046 3 20 3.89543 20 5V9C20 10.1046 19.1046 11 18 11H14C12.8954 11 12 10.1046 12 9V5Z"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
               <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
             </div>
-            <span class="ml-2">开发工具</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '开发工具')?.list"
-              :key="category.id" :index="`dev-${category.id}`" @click="handleMenuClick(`dev-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
+            <span class="ml-2">{{ menu.title }}</span>
+          </el-menu-item>
 
-        <!-- 摸鱼工具菜单 -->
-        <el-sub-menu index="slacking">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 8c4-2 7-2 10 0s6 2 8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M3 16c4-2 7-2 10 0s6 2 8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M3 12c4-2 7-2 10 0s6 2 8 0" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <circle cx="16" cy="9" r="1" fill="currentColor" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">摸鱼工具</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '摸鱼工具')?.list"
-              :key="category.id" :index="`slacking-${category.id}`" @click="handleMenuClick(`slacking-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-        <!-- 效率工具菜单 -->
-        <el-sub-menu index="efficiency">
-          <template #title>
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="ml-2">效率工具</span>
-          </template>
-          <el-menu-item-group>
-            <el-menu-item v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '效率工具')?.list"
-              :key="category.id" :index="`efficiency-${category.id}`"
-              @click="handleMenuClick(`efficiency-${category.id}`)">
-              {{ category.title }}
-            </el-menu-item>
-          </el-menu-item-group>
-        </el-sub-menu>
-
-
-
-        <!-- 更新记录 -->
-        <el-menu-item index="changelog" @click="handleMenuClick('changelog')">
+          <el-sub-menu v-else :index="menu.key">
+            <template #title>
+              <div class="relative">
+                <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                  xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M4 5C4 3.89543 4.89543 3 6 3H10C11.1046 3 12 3.89543 12 5V9C12 10.1046 11.1046 11 10 11H6C4.89543 11 4 10.1046 4 9V5Z"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                  <path
+                    d="M12 15C12 13.8954 12.8954 13 14 13H18C19.1046 13 20 13.8954 20 15V19C20 20.1046 19.1046 21 18 21H14C12.8954 21 12 20.1046 12 19V15Z"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                  <path
+                    d="M4 15C4 13.8954 4.89543 13 6 13H10C11.1046 13 12 13.8954 12 15V19C12 20.1046 11.1046 21 10 21H6C4.89543 21 4 20.1046 4 19V15Z"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                  <path
+                    d="M12 5C12 3.89543 12.8954 3 14 3H18C19.1046 3 20 3.89543 20 5V9C20 10.1046 19.1046 11 18 11H14C12.8954 11 12 10.1046 12 9V5Z"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+                <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+              </div>
+              <span class="ml-2">{{ menu.title }}</span>
+            </template>
+            <el-menu-item-group>
+              <el-menu-item
+                v-for="category in menu.list"
+                :key="category.id"
+                :index="`${menu.key}-${category.id}`"
+                @click="handleMenuClick(`${menu.key}-${category.id}`)"
+              >
+                {{ category.title }}
+              </el-menu-item>
+            </el-menu-item-group>
+          </el-sub-menu>
+        </template>
+        <!-- 侧栏底部链接（后台可配置） -->
+        <el-menu-item
+          v-for="(item, index) in displaySidebarBottomLinks"
+          :key="`${item.name}-${item.link}-${index}`"
+          :index="`bottom-${index}`"
+          @click="handleBottomLinkItemClick(item)"
+        >
           <div class="relative">
             <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
               xmlns="http://www.w3.org/2000/svg">
@@ -588,43 +479,7 @@ onMounted(() => {
             </svg>
             <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
           </div>
-          <span class="ml-2">更新记录</span>
-        </el-menu-item>
-
-        <!-- Bug反馈 -->
-        <el-menu-item index="bug-report" @click="openExternalLink('https://www.uied.cn/circle/uiedtool')">
-          <div class="relative">
-            <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2Z"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M12 16V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-              <path d="M12 8H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-            </svg>
-            <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-          </div>
-          <span class="ml-2">Bug反馈</span>
-        </el-menu-item>
-
-        <!-- 关于我们 -->
-        <el-menu-item index="about" @click="gotoAbout">
-          <div class="relative">
-            <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M12 16V12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-              <path d="M12 8H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-            </svg>
-            <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-          </div>
-          <span class="ml-2">关于我们</span>
+          <span class="ml-2">{{ item.name }}</span>
         </el-menu-item>
 
       </el-menu>
@@ -713,6 +568,13 @@ onMounted(() => {
   border-radius: var(--menu-border-radius);
   transition: var(--menu-transition);
   color: var(--menu-text-color);
+}
+
+/* 顶级直达菜单（如 AI 工具箱聚合页） */
+.menu-top-item {
+  font-size: 0.95rem;
+  font-weight: 500;
+  padding: 0 20px !important;
 }
 
 /* 菜单组标题 */

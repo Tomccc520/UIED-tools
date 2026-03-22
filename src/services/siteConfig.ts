@@ -17,6 +17,13 @@ export interface SiteLinkSection {
   items: SiteLinkItem[]
 }
 
+export interface SiteSidebarCategoryMenu {
+  key: string
+  title: string
+  cateTitle: string
+  link?: string
+}
+
 export interface SiteHotToolItem {
   title: string
   desc: string
@@ -41,6 +48,8 @@ export interface SitePublicConfig {
   hotTools: SiteHotToolItem[]
   headerLinks: SiteLinkItem[]
   sidebarRecommendLinks: SiteLinkItem[]
+  sidebarCategoryMenus: SiteSidebarCategoryMenu[]
+  sidebarBottomLinks: SiteLinkItem[]
   footerQuickSections: SiteLinkSection[]
   footerFriendSections: SiteLinkSection[]
   officialMediaLinks: SiteLinkItem[]
@@ -74,6 +83,8 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   hotTools: [],
   headerLinks: [],
   sidebarRecommendLinks: [],
+  sidebarCategoryMenus: [],
+  sidebarBottomLinks: [],
   footerQuickSections: [],
   footerFriendSections: [],
   officialMediaLinks: []
@@ -147,6 +158,31 @@ const normalizeHotToolItems = (input: unknown): SiteHotToolItem[] => {
 }
 
 /**
+ * 函数说明：清洗侧边栏分类菜单配置，过滤无效项并补齐菜单标识
+ */
+const normalizeSidebarCategoryMenus = (input: unknown): SiteSidebarCategoryMenu[] => {
+  return normalizeArrayInput(input)
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const key = String(record.key || '').trim() || `menu-${index + 1}`
+      const title = String(record.title || '').trim()
+      const cateTitle = String(record.cateTitle || '').trim()
+      const link = String(record.link || '').trim()
+      if (!title || !cateTitle) {
+        return null
+      }
+      if (link) {
+        return { key, title, cateTitle, link }
+      }
+      return { key, title, cateTitle }
+    })
+    .filter(Boolean) as SiteSidebarCategoryMenu[]
+}
+
+/**
  * 函数说明：清洗链接分组配置，用于页脚快捷入口和友情链接
  */
 const normalizeLinkSections = (input: unknown): SiteLinkSection[] => {
@@ -214,6 +250,8 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     hotTools: normalizeHotToolItems(record.toolsHotTools),
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
+    sidebarCategoryMenus: normalizeSidebarCategoryMenus(record.toolsSidebarCategoryMenus),
+    sidebarBottomLinks: normalizeLinkItems(record.toolsSidebarBottomLinks),
     footerQuickSections: normalizeLinkSections(record.toolsFooterQuickSections),
     footerFriendSections: normalizeLinkSections(record.toolsFooterFriendSections),
     officialMediaLinks: normalizeLinkItems(record.toolsOfficialMediaLinks)
