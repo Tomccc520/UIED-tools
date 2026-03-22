@@ -157,10 +157,10 @@ const footerSupportLabel = computed(() => {
 })
 
 /**
- * 函数说明：备案与版权链接固定使用工具站默认值，避免复用后台管理端备案配置
+ * 函数说明：优先使用 Tools 前端布局配置的备案链接，缺省时回退默认值
  */
 const footerLinks = computed(() => {
-  return defaultFooterLinks
+  return siteConfig.value.footerRecordLinks.length ? siteConfig.value.footerRecordLinks : defaultFooterLinks
 })
 const quickSections = computed(() => {
   return siteConfig.value.footerQuickSections.length ? siteConfig.value.footerQuickSections : defaultQuickSections

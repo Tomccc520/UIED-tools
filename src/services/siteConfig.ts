@@ -37,6 +37,7 @@ export interface SitePublicConfig {
   officialMediaTitle: string
   footerSupportLabel: string
   footerSupportLinks: SiteLinkItem[]
+  footerRecordLinks: SiteLinkItem[]
   hotTools: SiteHotToolItem[]
   headerLinks: SiteLinkItem[]
   sidebarRecommendLinks: SiteLinkItem[]
@@ -69,6 +70,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   officialMediaTitle: '官方媒体',
   footerSupportLabel: '技术支持',
   footerSupportLinks: [],
+  footerRecordLinks: [],
   hotTools: [],
   headerLinks: [],
   sidebarRecommendLinks: [],
@@ -208,6 +210,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
       String(record.toolsFooterSupportLabel || DEFAULT_SITE_PUBLIC_CONFIG.footerSupportLabel).trim() ||
       DEFAULT_SITE_PUBLIC_CONFIG.footerSupportLabel,
     footerSupportLinks: normalizeLinkItems(record.toolsFooterSupportLinks),
+    footerRecordLinks: normalizeLinkItems(record.toolsFooterRecordLinks),
     hotTools: normalizeHotToolItems(record.toolsHotTools),
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
