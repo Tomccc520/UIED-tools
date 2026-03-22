@@ -2523,6 +2523,16 @@ export const constantRoute: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/tools/ai/matting-hub',
+    component: () => import('@/components/Tools/AI/AIMattingHub.vue'),
+    name: 'aiMattingHub',
+    meta: {
+      title: '免费AI抠图聚合工具',
+      keywords: 'AI抠图,通用抠图,AI人像抠图,商品抠图,透明PNG,在线抠图工具',
+      description: '免费在线 AI 抠图聚合工具，支持 AI 人像抠图与 AI 通用抠图，可处理商品、人物、动物、植物、汽车等主体，输出透明 PNG。'
+    }
+  },
+  {
     path: '/tools/ai/portrait-matting',
     component: () => import('@/components/Tools/AI/AIPortraitMatting.vue'),
     name: 'aiPortraitMatting',

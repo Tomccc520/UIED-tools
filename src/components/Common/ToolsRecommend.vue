@@ -200,9 +200,10 @@
 
 <script setup lang="ts">
 import { getHotTools, getNewTools, getUtilityTools, getRelatedTools } from '@/components/Tools/tools'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { Tool } from '@/types/tools'
+import { getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
 
 // Props定义
 const props = defineProps<{
@@ -230,6 +231,43 @@ const utilityTools = ref<Tool[]>(getUtilityTools(8))
 const relatedTools = ref<Tool[]>([])
 
 /**
+ * 函数说明：判断链接是否为外链，支持 http/https 协议
+ */
+const isExternalLink = (url: string): boolean => /^https?:\/\//i.test(url)
+
+/**
+ * 函数说明：把后台热门工具配置映射为推荐组件可渲染的工具数据结构
+ */
+const mapHotToolsToRecommendTools = (items: SiteHotToolItem[]): Tool[] => {
+  return items.map((item, index) => ({
+    id: 8000 + index,
+    title: item.title,
+    desc: item.desc || item.title,
+    url: item.link,
+    logo: { type: 'svg', name: 'palette' },
+    cate: '热门工具',
+    isExternal: isExternalLink(item.link)
+  }))
+}
+
+/**
+ * 函数说明：读取后台热门工具配置并刷新推荐区数据
+ */
+const loadHotToolsFromSiteConfig = async () => {
+  try {
+    const siteConfig = await getSitePublicConfig()
+    if (siteConfig.hotTools.length > 0) {
+      hotTools.value = mapHotToolsToRecommendTools(siteConfig.hotTools).slice(0, 8)
+      return
+    }
+    hotTools.value = getHotTools(8)
+  } catch (error) {
+    console.error('获取后台热门工具配置失败，回退本地默认推荐:', error)
+    hotTools.value = getHotTools(8)
+  }
+}
+
+/**
  * 刷新“相关工具”数据
  * 根据当前页面路径重新计算推荐列表，并按 URL 去重
  */
@@ -250,4 +288,8 @@ const refreshRelatedTools = () => {
 }
 
 watch(currentPath, refreshRelatedTools, { immediate: true })
+
+onMounted(() => {
+  void loadHotToolsFromSiteConfig()
+})
 </script>

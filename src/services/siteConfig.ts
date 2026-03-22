@@ -7,11 +7,6 @@
  * @createDate 2026-03-22
  */
 
-export interface SiteCopyrightItem {
-  name: string
-  link: string
-}
-
 export interface SiteLinkItem {
   name: string
   link: string
@@ -22,13 +17,18 @@ export interface SiteLinkSection {
   items: SiteLinkItem[]
 }
 
+export interface SiteHotToolItem {
+  title: string
+  desc: string
+  link: string
+}
+
 export interface SitePublicConfig {
   webName: string
   webLogo: string
   webFavicon: string
   webBackdrop: string
   ossDomain: string
-  copyright: SiteCopyrightItem[]
   siteSlogan: string
   sidebarRecommendTitle: string
   footerIntro: string
@@ -37,6 +37,7 @@ export interface SitePublicConfig {
   officialMediaTitle: string
   footerSupportLabel: string
   footerSupportLinks: SiteLinkItem[]
+  hotTools: SiteHotToolItem[]
   headerLinks: SiteLinkItem[]
   sidebarRecommendLinks: SiteLinkItem[]
   footerQuickSections: SiteLinkSection[]
@@ -60,7 +61,6 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webFavicon: '',
   webBackdrop: '',
   ossDomain: '',
-  copyright: [],
   siteSlogan: '免费在线工具集',
   sidebarRecommendTitle: '推荐工具',
   footerIntro: '在线工具平台',
@@ -69,6 +69,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   officialMediaTitle: '官方媒体',
   footerSupportLabel: '技术支持',
   footerSupportLinks: [],
+  hotTools: [],
   headerLinks: [],
   sidebarRecommendLinks: [],
   footerQuickSections: [],
@@ -123,6 +124,27 @@ const normalizeLinkItems = (input: unknown): SiteLinkItem[] => {
 }
 
 /**
+ * 函数说明：清洗热门工具列表配置，支持 title/name 与 link/url 字段兼容
+ */
+const normalizeHotToolItems = (input: unknown): SiteHotToolItem[] => {
+  return normalizeArrayInput(input)
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const title = String(record.title || record.name || '').trim()
+      const desc = String(record.desc || record.description || '').trim()
+      const link = String(record.link || record.url || '').trim()
+      if (!title || !link) {
+        return null
+      }
+      return { title, desc, link }
+    })
+    .filter((item): item is SiteHotToolItem => Boolean(item))
+}
+
+/**
  * 函数说明：清洗链接分组配置，用于页脚快捷入口和友情链接
  */
 const normalizeLinkSections = (input: unknown): SiteLinkSection[] => {
@@ -140,30 +162,6 @@ const normalizeLinkSections = (input: unknown): SiteLinkSection[] => {
       return { title, items }
     })
     .filter((section): section is SiteLinkSection => Boolean(section))
-}
-
-/**
- * 函数说明：清洗版权链接配置，过滤非法项并标准化字符串字段
- */
-const normalizeCopyrightItems = (input: unknown): SiteCopyrightItem[] => {
-  if (!Array.isArray(input)) {
-    return []
-  }
-
-  return input
-    .map((item) => {
-      if (!item || typeof item !== 'object') {
-        return null
-      }
-      const record = item as Record<string, unknown>
-      const name = String(record.name || '').trim()
-      const link = String(record.link || '').trim()
-      if (!name) {
-        return null
-      }
-      return { name, link }
-    })
-    .filter((item): item is SiteCopyrightItem => Boolean(item))
 }
 
 /**
@@ -192,7 +190,6 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     webFavicon: String(record.webFavicon || '').trim(),
     webBackdrop: String(record.webBackdrop || '').trim(),
     ossDomain: String(record.ossDomain || '').trim(),
-    copyright: normalizeCopyrightItems(record.copyright),
     siteSlogan: String(record.toolsSiteSlogan || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan).trim() || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan,
     sidebarRecommendTitle:
       String(record.toolsSidebarRecommendTitle || DEFAULT_SITE_PUBLIC_CONFIG.sidebarRecommendTitle).trim() ||
@@ -211,6 +208,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
       String(record.toolsFooterSupportLabel || DEFAULT_SITE_PUBLIC_CONFIG.footerSupportLabel).trim() ||
       DEFAULT_SITE_PUBLIC_CONFIG.footerSupportLabel,
     footerSupportLinks: normalizeLinkItems(record.toolsFooterSupportLinks),
+    hotTools: normalizeHotToolItems(record.toolsHotTools),
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
     footerQuickSections: normalizeLinkSections(record.toolsFooterQuickSections),

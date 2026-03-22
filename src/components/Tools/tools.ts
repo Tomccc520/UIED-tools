@@ -910,6 +910,17 @@ const toolsCategories: ToolCategory[] = [
               isNew: true
             },
             {
+              id: 409,
+              title: '免费 AI 抠图聚合',
+              logo: { type: 'svg', name: 'idPhotoBackground' },
+              desc: '聚合人像抠图与通用万物抠图，支持商品、人物、动物、植物、汽车等主体，输出透明 PNG',
+              url: '/tools/ai/matting-hub',
+              cate: 'AI图像工具',
+              releaseDate: '2026/03/22 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
               id: 408,
               title: '免费AI人像抠图',
               logo: { type: 'svg', name: 'idPhotoMaker' },

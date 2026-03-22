@@ -155,8 +155,12 @@ const officialMediaTitle = computed(() => {
 const footerSupportLabel = computed(() => {
   return (siteConfig.value.footerSupportLabel || defaultFooterSupportLabel).trim() || defaultFooterSupportLabel
 })
+
+/**
+ * 函数说明：备案与版权链接固定使用工具站默认值，避免复用后台管理端备案配置
+ */
 const footerLinks = computed(() => {
-  return siteConfig.value.copyright.length ? siteConfig.value.copyright : defaultFooterLinks
+  return defaultFooterLinks
 })
 const quickSections = computed(() => {
   return siteConfig.value.footerQuickSections.length ? siteConfig.value.footerQuickSections : defaultQuickSections
