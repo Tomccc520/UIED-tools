@@ -2523,6 +2523,16 @@ export const constantRoute: RouteRecordRaw[] = [
     }
   },
   {
+    path: '/tools/ai/portrait-matting',
+    component: () => import('@/components/Tools/AI/AIPortraitMatting.vue'),
+    name: 'aiPortraitMatting',
+    meta: {
+      title: '免费AI人像抠图工具',
+      keywords: 'AI人像抠图,人像抠图,AI抠图,透明PNG,证件照抠图,头像抠图',
+      description: '免费在线 AI 人像抠图工具，固定使用人物抠像模型，快速输出透明 PNG，适用于证件照、头像和设计合成场景。'
+    }
+  },
+  {
     path: '/tools/ai/deepseek-r1',
     component: () => import('@/components/Tools/AI/DeepSeekR1.vue'),
     name: 'deepseekR1',

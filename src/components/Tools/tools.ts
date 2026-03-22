@@ -910,6 +910,17 @@ const toolsCategories: ToolCategory[] = [
               isNew: true
             },
             {
+              id: 408,
+              title: '免费AI人像抠图',
+              logo: { type: 'svg', name: 'idPhotoMaker' },
+              desc: '固定使用人物抠像模型，快速输出透明PNG，适合头像和证件照人像场景',
+              url: '/tools/ai/portrait-matting',
+              cate: 'AI图像工具',
+              releaseDate: '2026/03/22 00:00:00',
+              tags: ['免费', '新品'],
+              isNew: true
+            },
+            {
               id: 405,
               title: '小红书风格图片生成',
               logo: { type: 'svg', name: 'xiaohongshu' },
