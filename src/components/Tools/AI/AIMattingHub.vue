@@ -128,25 +128,40 @@
             </template>
 
             <template v-else-if="currentImage && processedImageUrl">
-              <img :src="currentImage" class="compare-image" alt="抠图前原图" />
+              <div
+                ref="compareWrapRef"
+                class="compare-stage"
+                @pointerdown="handleComparePointerDown"
+                @pointermove="handleComparePointerMove"
+                @pointerup="handleComparePointerUp"
+                @pointercancel="handleComparePointerUp"
+                @lostpointercapture="handleComparePointerUp"
+              >
+                <img :src="currentImage" class="compare-image" alt="抠图前原图" />
+                <div class="compare-tag compare-tag--before">原图</div>
+                <div class="compare-tag compare-tag--after">抠图结果</div>
 
-              <div class="compare-after" :style="{ width: `${compareRatio}%` }">
-                <div class="checker-bg"></div>
-                <img :src="processedImageUrl" class="compare-image" alt="抠图后图片" />
+                <div class="compare-after" :style="compareAfterStyle">
+                  <div class="checker-bg"></div>
+                  <img :src="processedImageUrl" class="compare-image" alt="抠图后图片" />
+                </div>
+
+                <div class="compare-line" :style="{ left: `${compareRatio}%` }">
+                  <div class="compare-dot">↔</div>
+                </div>
               </div>
 
-              <div class="compare-line" :style="{ left: `${compareRatio}%` }">
-                <div class="compare-dot">↔</div>
+              <div class="compare-range-panel">
+                <span class="compare-range-label">拖动查看对比位置</span>
+                <input
+                  v-model.number="compareRatio"
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="1"
+                  class="compare-range-input"
+                />
               </div>
-
-              <input
-                v-model.number="compareRatio"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                class="compare-range"
-              />
             </template>
 
             <div v-else class="compare-empty">
@@ -285,10 +300,96 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const currentImageObjectUrl = ref('')
 const processedImageObjectUrl = ref('')
+const compareWrapRef = ref<HTMLElement | null>(null)
+const comparePointerId = ref<number | null>(null)
+const isCompareDragging = ref(false)
 
 const activeMode = computed(() => {
   return modeOptions.find((item) => item.id === selectedModeId.value) || modeOptions[0]
 })
+
+const compareAfterStyle = computed(() => {
+  return {
+    clipPath: `inset(0 ${100 - compareRatio.value}% 0 0)`
+  }
+})
+
+/**
+ * 函数说明：限制对比滑块百分比在 0-100 区间，避免异常值导致 UI 错位
+ */
+const clampCompareRatio = (value: number) => {
+  return Math.min(100, Math.max(0, value))
+}
+
+/**
+ * 函数说明：根据指针横向坐标计算前后对比比例，统一鼠标与触摸拖拽行为
+ */
+const updateCompareRatioByClientX = (clientX: number) => {
+  const wrapEl = compareWrapRef.value
+  if (!wrapEl) {
+    return
+  }
+  const rect = wrapEl.getBoundingClientRect()
+  if (!rect.width) {
+    return
+  }
+  const rawRatio = ((clientX - rect.left) / rect.width) * 100
+  compareRatio.value = clampCompareRatio(rawRatio)
+}
+
+/**
+ * 函数说明：结束对比拖拽并释放指针捕获，避免切换页面后残留拖拽状态
+ */
+const stopCompareDragging = (pointerId?: number) => {
+  const wrapEl = compareWrapRef.value
+  const targetPointerId = pointerId ?? comparePointerId.value
+  if (wrapEl && targetPointerId !== null && wrapEl.hasPointerCapture?.(targetPointerId)) {
+    wrapEl.releasePointerCapture(targetPointerId)
+  }
+  isCompareDragging.value = false
+  comparePointerId.value = null
+}
+
+/**
+ * 函数说明：开始拖拽前后对比线，仅响应左键或触摸输入
+ */
+const handleComparePointerDown = (event: PointerEvent) => {
+  if (!currentImage.value || !processedImageUrl.value) {
+    return
+  }
+  if (event.pointerType === 'mouse' && event.button !== 0) {
+    return
+  }
+  event.preventDefault()
+  isCompareDragging.value = true
+  comparePointerId.value = event.pointerId
+  compareWrapRef.value?.setPointerCapture?.(event.pointerId)
+  updateCompareRatioByClientX(event.clientX)
+}
+
+/**
+ * 函数说明：拖拽过程中实时更新对比位置，保证滑块与遮罩同步
+ */
+const handleComparePointerMove = (event: PointerEvent) => {
+  if (!isCompareDragging.value || comparePointerId.value !== event.pointerId) {
+    return
+  }
+  event.preventDefault()
+  updateCompareRatioByClientX(event.clientX)
+}
+
+/**
+ * 函数说明：结束拖拽时清理状态，处理 pointerup/pointercancel/lostpointercapture
+ */
+const handleComparePointerUp = (event: PointerEvent) => {
+  if (!isCompareDragging.value) {
+    return
+  }
+  if (comparePointerId.value !== null && event.pointerId !== comparePointerId.value) {
+    return
+  }
+  stopCompareDragging(event.pointerId)
+}
 
 /**
  * 函数说明：释放对象 URL，避免多次上传后内存累积
@@ -304,6 +405,7 @@ const revokeObjectUrl = (url: string) => {
  * 函数说明：重置当前图片与抠图结果，恢复初始状态
  */
 const resetCurrentImage = () => {
+  stopCompareDragging()
   revokeObjectUrl(currentImageObjectUrl.value)
   revokeObjectUrl(processedImageObjectUrl.value)
   currentImageObjectUrl.value = ''
@@ -448,6 +550,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  stopCompareDragging()
   resetCurrentImage()
 })
 </script>
@@ -497,6 +600,12 @@ onBeforeUnmount(() => {
   background: #ffffff;
 }
 
+.compare-stage {
+  position: relative;
+  touch-action: none;
+  cursor: ew-resize;
+}
+
 .compare-image {
   width: 100%;
   height: min(66vh, 700px);
@@ -508,19 +617,51 @@ onBeforeUnmount(() => {
 
 .compare-after {
   position: absolute;
-  inset: 0 auto 0 0;
+  inset: 0;
   overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+  will-change: clip-path;
+  isolation: isolate;
 }
 
 .checker-bg {
   position: absolute;
   inset: 0;
-  background-image: linear-gradient(45deg, #edf2f7 25%, transparent 25%),
-    linear-gradient(-45deg, #edf2f7 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #edf2f7 75%),
-    linear-gradient(-45deg, transparent 75%, #edf2f7 75%);
-  background-size: 18px 18px;
-  background-position: 0 0, 0 9px, 9px -9px, -9px 0;
+  z-index: 1;
+  background-color: #ffffff;
+  background-image: linear-gradient(45deg, #e7edf5 25%, transparent 25%, transparent 75%, #e7edf5 75%, #e7edf5),
+    linear-gradient(45deg, #e7edf5 25%, transparent 25%, transparent 75%, #e7edf5 75%, #e7edf5);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+
+.compare-after .compare-image {
+  position: relative;
+  z-index: 2;
+  background: transparent;
+}
+
+.compare-tag {
+  position: absolute;
+  top: 12px;
+  z-index: 4;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 4px 10px;
+  font-size: 12px;
+  line-height: 1;
+  color: #334155;
+  backdrop-filter: blur(2px);
+}
+
+.compare-tag--before {
+  left: 12px;
+}
+
+.compare-tag--after {
+  right: 12px;
 }
 
 .compare-line {
@@ -531,7 +672,7 @@ onBeforeUnmount(() => {
   background: #0ea5e9;
   transform: translateX(-50%);
   pointer-events: none;
-  z-index: 3;
+  z-index: 5;
 }
 
 .compare-dot {
@@ -550,14 +691,24 @@ onBeforeUnmount(() => {
   justify-content: center;
 }
 
-.compare-range {
-  position: absolute;
-  inset: 0;
+.compare-range-panel {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 0;
+}
+
+.compare-range-label {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: #64748b;
+}
+
+.compare-range-input {
   width: 100%;
-  height: 100%;
-  opacity: 0;
+  flex: 1;
+  accent-color: #0ea5e9;
   cursor: ew-resize;
-  z-index: 6;
 }
 
 .compare-empty {
