@@ -18,6 +18,7 @@ LIKEADMIN_ADMIN_DIR="${LIKEADMIN_DIR}/admin"
 COMPOSE_PROJECT="${COMPOSE_PROJECT:-uiedtool_stack}"
 COMPOSE_ENV_FILE="${RUNTIME_DIR}/compose.env"
 PORTS_ENV_FILE="${RUNTIME_DIR}/ports.env"
+STRICT_FIXED_PORTS="${STRICT_FIXED_PORTS:-1}"
 
 TOOLS_PORT="${TOOLS_PORT:-}"
 ADMIN_PORT="${ADMIN_PORT:-}"
@@ -104,7 +105,7 @@ find_available_port() {
   log_error_and_exit "${label} 在 ${preferred} 附近未找到可用端口。"
 }
 
-# 函数说明：当端口被占用时自动避让；若对应服务已在运行则保持当前端口
+# 函数说明：固定端口模式下遇到占用直接报错；仅在关闭严格模式时才自动避让
 resolve_port_conflict() {
   local current_port="$1"
   local label="$2"
@@ -121,6 +122,9 @@ resolve_port_conflict() {
   fi
 
   if port_in_use "${current_port}"; then
+    if [[ "${STRICT_FIXED_PORTS}" == "1" ]]; then
+      log_error_and_exit "${label} 端口 ${current_port} 已被占用。请先执行 bash scripts/dev/stop-fullstack.sh 释放端口后重试。"
+    fi
     find_available_port "${current_port}" "${label}"
     return
   fi
@@ -152,36 +156,17 @@ load_previous_ports() {
 
 # 函数说明：确定所有服务端口与数据库参数，优先使用环境变量，其次复用历史值
 resolve_runtime_settings() {
-  TOOLS_PORT="${TOOLS_PORT:-${PREV_TOOLS_PORT}}"
-  ADMIN_PORT="${ADMIN_PORT:-${PREV_ADMIN_PORT}}"
-  GO_API_PORT="${GO_API_PORT:-${PREV_GO_API_PORT}}"
-  MATTING_PORT="${MATTING_PORT:-${PREV_MATTING_PORT}}"
-  MYSQL_PORT="${MYSQL_PORT:-${PREV_MYSQL_PORT}}"
-  REDIS_PORT="${REDIS_PORT:-${PREV_REDIS_PORT}}"
+  TOOLS_PORT="${TOOLS_PORT:-${PREV_TOOLS_PORT:-5179}}"
+  ADMIN_PORT="${ADMIN_PORT:-${PREV_ADMIN_PORT:-5180}}"
+  GO_API_PORT="${GO_API_PORT:-${PREV_GO_API_PORT:-8003}}"
+  MATTING_PORT="${MATTING_PORT:-${PREV_MATTING_PORT:-8091}}"
+  MYSQL_PORT="${MYSQL_PORT:-${PREV_MYSQL_PORT:-33069}}"
+  REDIS_PORT="${REDIS_PORT:-${PREV_REDIS_PORT:-16379}}"
 
   DB_NAME="${DB_NAME:-${PREV_DB_NAME:-uiedtool}}"
   MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-${PREV_MYSQL_ROOT_PASSWORD:-root123456}}"
   MYSQL_USER="${MYSQL_USER:-${PREV_MYSQL_USER:-uiedtool}}"
   MYSQL_PASSWORD="${MYSQL_PASSWORD:-${PREV_MYSQL_PASSWORD:-uiedtool123}}"
-
-  if [[ -z "${TOOLS_PORT}" ]]; then
-    TOOLS_PORT="$(find_available_port 5179 "tools-frontend")"
-  fi
-  if [[ -z "${ADMIN_PORT}" ]]; then
-    ADMIN_PORT="$(find_available_port 5180 "likeadmin-admin")"
-  fi
-  if [[ -z "${GO_API_PORT}" ]]; then
-    GO_API_PORT="$(find_available_port 8001 "likeadmin-server")"
-  fi
-  if [[ -z "${MATTING_PORT}" ]]; then
-    MATTING_PORT="$(find_available_port 8091 "matting-service")"
-  fi
-  if [[ -z "${MYSQL_PORT}" ]]; then
-    MYSQL_PORT="$(find_available_port 33069 "mysql")"
-  fi
-  if [[ -z "${REDIS_PORT}" ]]; then
-    REDIS_PORT="$(find_available_port 16379 "redis")"
-  fi
 
   TOOLS_PORT="$(resolve_port_conflict "${TOOLS_PORT}" "tools-frontend" "${PID_DIR}/tools-frontend.pid")"
   ADMIN_PORT="$(resolve_port_conflict "${ADMIN_PORT}" "likeadmin-admin" "${PID_DIR}/likeadmin-admin.pid")"
@@ -298,15 +283,21 @@ EOF
 
 # 函数说明：自动检测并初始化 likeadmin 数据库表结构
 init_likeadmin_database() {
-  local has_table
+  local has_core_table
   compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "CREATE DATABASE IF NOT EXISTS \`${DB_NAME}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;" >/dev/null
-  has_table="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}' AND table_name='la_admin';" 2>/dev/null || echo "0")"
-  if [[ "${has_table}" == "1" ]]; then
+
+  # 函数说明：仅在检测不到 likeadmin 核心表时执行首次导库，避免重复启动覆盖业务数据
+  has_core_table="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='${DB_NAME}' AND table_name='la_system_auth_admin';" 2>/dev/null || echo "0")"
+  if [[ "${FORCE_DB_INIT:-0}" != "1" ]] && [[ "${has_core_table}" -ge 1 ]]; then
     log_info "检测到 ${DB_NAME} 数据表已存在，跳过 SQL 初始化。"
     return
   fi
 
-  log_info "首次初始化 ${DB_NAME} 数据库..."
+  if [[ "${FORCE_DB_INIT:-0}" == "1" ]]; then
+    log_info "检测到 FORCE_DB_INIT=1，将强制重置并初始化 ${DB_NAME} 数据库..."
+  else
+    log_info "首次初始化 ${DB_NAME} 数据库..."
+  fi
   compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot "${DB_NAME}" < "${LIKEADMIN_DIR}/sql/install.sql"
   log_info "${DB_NAME} 数据库初始化完成。"
 }
@@ -369,7 +360,7 @@ start_matting_service() {
 
 # 函数说明：启动当前 tools-web 前端开发服务
 start_tools_frontend() {
-  local cmd="npm run dev -- --host 0.0.0.0 --port ${TOOLS_PORT}"
+  local cmd="VITE_BACKEND_PROXY_TARGET=http://127.0.0.1:${GO_API_PORT} VITE_MATTING_PROXY_TARGET=http://127.0.0.1:${MATTING_PORT} npm run dev -- --host 0.0.0.0 --port ${TOOLS_PORT}"
   start_background_process "tools-frontend" "${cmd}" "${ROOT_DIR}"
 }
 

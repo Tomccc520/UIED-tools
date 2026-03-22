@@ -266,7 +266,7 @@ onUnmounted(() => {
         </div>
 
         <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：332个 | 最后更新：2026-03-19 17:51
+          当前工具总数：332个 | 最后更新：2026-03-22 21:30
         </div>
       </div>
 
@@ -302,6 +302,41 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 1.0.1-Fullstack -->
+          <div class="timeline-item" id="v1.0.1-fullstack">
+            <div class="version-tag">
+              <span class="version">1.0.1-Fullstack</span>
+              <span class="date">2026-03-22 21:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="warning" class="mr-2">版本发布</el-tag>
+                <span class="text-gray-700">UIEDTool 正式接入后台（likeadmin-go）</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">后台模型管理分级与前台联动</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>后台菜单升级为 <strong>AI模型管理（一级）</strong> + <strong>AI抠图模型（二级）</strong>，便于后续扩展更多模型类型。</li>
+                        <li>
+                          <strong><router-link to="/tools/photo/background" target="_blank"
+                              class="hover:text-blue-600 transition-colors">证件照换底色</router-link></strong>：
+                          首次抠图后缓存透明 PNG，后续换底色本地渲染，不重复调用抠图模型。
+                        </li>
+                        <li>
+                          头部、侧栏、页脚已接入后端站点配置（<code>/api/common/index/config</code>），并在后台网站设置新增
+                          <code>Tools 前端布局 JSON</code> 配置项，支持按链接分组动态下发。
+                        </li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 2.7.14 -->
           <div class="timeline-item" id="v2.7.14">

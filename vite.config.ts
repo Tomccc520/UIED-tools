@@ -54,6 +54,8 @@ import { nodePolyfills } from 'vite-plugin-node-polyfills'
 const isProd = process.env.NODE_ENV === 'production'
 const BASE_API = isProd ? '' : ''  // 移除生产环境的基础URL
 const enableCoep = process.env.VITE_ENABLE_COEP === 'true'
+const mattingProxyTarget = process.env.VITE_MATTING_PROXY_TARGET || 'http://127.0.0.1:8091'
+const backendProxyTarget = process.env.VITE_BACKEND_PROXY_TARGET || 'http://127.0.0.1:8848'
 
 /**
  * 修复第三方样式中的历史拼写错误
@@ -474,9 +476,17 @@ export default defineConfig({
         }
       },
 
+      // AI 抠图服务代理配置
+      '/api/matting': {
+        target: mattingProxyTarget,
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/api\/matting/, '')
+      },
+
       // 本地后端API代理配置
       '/api': {
-        target: 'http://localhost:8848', // 你的后端服务地址
+        target: backendProxyTarget,
         changeOrigin: true,
         // 如果后台接口没有/api前缀，可以取消下面注释来重写路径
         // rewrite: (path) => path.replace(/^\/api/, ''),
@@ -514,6 +524,7 @@ export default defineConfig({
       '/rss-proxy': {
         target: 'https://www.ithome.com',
         changeOrigin: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/rss-proxy/, ''),
         headers: {
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
@@ -615,6 +626,7 @@ export default defineConfig({
       '/sspai-proxy': {
         target: 'https://sspai.com',
         changeOrigin: true,
+        secure: false,
         rewrite: (path) => path.replace(/^\/sspai-proxy/, ''),
         headers: {
           'Accept': 'application/rss+xml, application/xml, text/xml, */*',
@@ -691,6 +703,7 @@ export default defineConfig({
       '/api/rss/ithome': {
         target: 'https://www.ithome.com',
         changeOrigin: true,
+        secure: false,
         rewrite: () => '/rss',
         headers: {
           'Accept': 'application/xml, text/xml, application/rss+xml',
@@ -700,6 +713,7 @@ export default defineConfig({
       '/api/rss/sspai': {
         target: 'https://sspai.com',
         changeOrigin: true,
+        secure: false,
         rewrite: () => '/feed',
         headers: {
           'Accept': 'application/xml, text/xml, application/rss+xml',
@@ -709,6 +723,7 @@ export default defineConfig({
       '/api/rss/jqzx': {
         target: 'https://www.jiqizhixin.com',
         changeOrigin: true,
+        secure: false,
         rewrite: () => '/rss',
         headers: {
           'Accept': 'application/xml, text/xml, application/rss+xml',
@@ -718,6 +733,7 @@ export default defineConfig({
       '/api/rss/uied': {
         target: 'https://www.uied.cn',
         changeOrigin: true,
+        secure: false,
         rewrite: () => '/feed',
         headers: {
           'Accept': 'application/xml, text/xml, application/rss+xml',
@@ -727,6 +743,7 @@ export default defineConfig({
       '/api/rss/quantumu': {
         target: 'https://www.qbitai.com',
         changeOrigin: true,
+        secure: false,
         rewrite: () => '/feed',
         headers: {
           'Accept': 'application/xml, text/xml, application/rss+xml',

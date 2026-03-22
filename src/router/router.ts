@@ -2439,9 +2439,9 @@ export const constantRoute: RouteRecordRaw[] = [
     component: () => import('@/components/Tools/Photo/PhotoBackground.vue'),
     name: 'photoBackground',
     meta: {
-      title: "免费证件照换底色工具",
-      keywords: '证件照换底色,证件照制作,证件照在线处理,证件照背景颜色,证件照换色',
-      description: '一键智能更换证件照背景颜色，支持白底、红底、蓝底等多种规格，本地处理更安全。',
+      title: "免费AI证件照换底色工具",
+      keywords: 'AI证件照换底色,证件照换底色,证件照制作,证件照在线处理,证件照背景颜色,证件照换色',
+      description: '基于AI抠图模型先生成透明PNG，再自由切换证件照底色，支持白底、红底、蓝底等多种规格。',
     }
   },
   {
@@ -2451,7 +2451,7 @@ export const constantRoute: RouteRecordRaw[] = [
     meta: {
       title: "证件照免冠处理工具",
       keywords: '证件照免冠,证件照抠图,证件照透明背景,证件照PNG,证件照处理',
-      description: '智能生成标准PNG透明证件照，支持多种证件类型，本地处理更安全。',
+      description: '智能生成标准PNG透明证件照，支持多种证件类型与后续裁剪排版。',
     }
   },
   {

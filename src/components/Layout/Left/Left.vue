@@ -19,8 +19,9 @@ import { ref, onMounted, nextTick } from '@vue/runtime-core'
 import { useToolsStore } from '@/store/modules/tools'
 import { useRouter, useRoute } from 'vue-router'
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import type { ToolCategory } from '@/types/tools'
+import { getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig'
 
 // 路由实例
 const router: Router = useRouter()
@@ -29,6 +30,15 @@ const route: RouteLocationNormalizedLoaded = useRoute()
 // 应用信息配置
 const appName = ref('UIED-Tools')
 const appNet = ref('免费在线工具集')
+const defaultRecommendLinks: SiteLinkItem[] = [
+  { name: '热门工具', link: '#recommend-hot' },
+  { name: '随机推荐', link: '/tools/random-tools' },
+  { name: '每日热榜', link: '/tools/hot-ranking' },
+  { name: '每日文章', link: 'https://hot.uied.cn/' },
+  { name: '实时资讯', link: '/tools/ai-news' },
+  { name: 'AI产品榜', link: 'https://hao.uied.cn/' }
+]
+const recommendLinks = ref<SiteLinkItem[]>(defaultRecommendLinks)
 
 // 菜单状态配置
 const defaultActive = ref('')
@@ -46,6 +56,19 @@ const getToolCates = async () => {
     await toolsStore.getToolCate()
   } catch (error) {
     console.log('获取工具分类失败:', error)
+  }
+}
+
+/**
+ * 函数说明：读取后台站点基础配置并更新侧栏品牌信息
+ */
+const loadSiteConfig = async () => {
+  const siteConfig = await getSitePublicConfig()
+  if (siteConfig.webName) {
+    appName.value = siteConfig.webName
+  }
+  if (siteConfig.sidebarRecommendLinks.length) {
+    recommendLinks.value = siteConfig.sidebarRecommendLinks
   }
 }
 
@@ -109,6 +132,25 @@ const openExternalLink = (url: string) => {
 }
 
 /**
+ * 函数说明：处理推荐工具菜单点击，按链接类型执行路由跳转、锚点滚动或外链打开
+ */
+const handleRecommendItemClick = (link: SiteLinkItem) => {
+  const targetLink = link.link.trim()
+  if (!targetLink) {
+    return
+  }
+  if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
+    openExternalLink(targetLink)
+    return
+  }
+  if (targetLink.startsWith('#')) {
+    gotoAnchor(targetLink.slice(1))
+    return
+  }
+  gotoTool(targetLink)
+}
+
+/**
  * 菜单项点击处理
  * @description 处理菜单项点击事件，清理 URL 参数并进行跳转
  * @param key 菜单项的唯一标识
@@ -146,6 +188,7 @@ const handleMenuClick = async (key: string) => {
 
 // 生命周期钩子
 onMounted(() => {
+  void loadSiteConfig()
   getToolCates()
   toolsStore.getRecommends()  // 获取推荐工具数据
 })
@@ -155,7 +198,7 @@ onMounted(() => {
   <el-scrollbar class="h-screen flex flex-col">
     <!-- Logo区域 -->
     <div class="flex justify-center py-6">
-      <router-link class="logo-container group" to="/">
+      <router-link class="logo-container group" to="/" :title="`${appName} 首页`">
         <div class="flex items-center">
           <div class="logo-wrapper flex items-center">
             <svg width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg"
@@ -198,7 +241,7 @@ onMounted(() => {
               </g>
             </svg>
           </div>
-          <div class="tools-text font-bold ml-2">Tools</div>
+          <div class="tools-text font-bold ml-2">{{ appName }}</div>
         </div>
         <div class="text-xs text-gray-400 mt-2 text-center">{{ appNet }}</div>
       </router-link>
@@ -222,14 +265,14 @@ onMounted(() => {
             <span class="ml-2">推荐工具</span>
           </template>
           <el-menu-item-group>
-            <el-menu-item index="recommend-hot" @click="handleMenuClick('recommend-hot')">热门工具</el-menu-item>
-            <el-menu-item index="recommend-random" @click="handleMenuClick('recommend-random')">随机推荐</el-menu-item>
-            <el-menu-item index="recommend-hot-ranking"
-              @click="handleMenuClick('recommend-hot-ranking')">每日热榜</el-menu-item>
-            <el-menu-item index="recommend-daily-article"
-              @click="openExternalLink('https://hot.uied.cn/')">每日文章</el-menu-item>
-            <el-menu-item index="recommend-ai-news" @click="gotoTool('/tools/ai-news')">实时资讯</el-menu-item>
-            <el-menu-item index="recommend-ai-ranking" @click="openExternalLink('https://hao.uied.cn/')">AI产品榜</el-menu-item>
+            <el-menu-item
+              v-for="(item, index) in recommendLinks"
+              :key="`${item.name}-${item.link}-${index}`"
+              :index="`recommend-${index}`"
+              @click="handleRecommendItemClick(item)"
+            >
+              {{ item.name }}
+            </el-menu-item>
           </el-menu-item-group>
         </el-sub-menu>
 

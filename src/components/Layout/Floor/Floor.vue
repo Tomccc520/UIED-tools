@@ -3,8 +3,161 @@
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-12-22
+ * @createDate 2026-03-22
  */
+import { computed, onMounted, ref } from 'vue'
+import {
+  getDefaultSitePublicConfig,
+  getSitePublicConfig,
+  type SiteLinkItem,
+  type SiteLinkSection,
+  type SitePublicConfig
+} from '@/services/siteConfig'
+
+const siteConfig = ref<SitePublicConfig>(getDefaultSitePublicConfig())
+
+const defaultFooterLinks = [
+  { name: '粤ICP备2022056875号', link: 'https://beian.miit.gov.cn/' },
+  { name: '网站地图', link: '/sitemap.xml' }
+]
+
+const defaultQuickSections: SiteLinkSection[] = [
+  {
+    title: '设计',
+    items: [
+      { name: '色彩对比度', link: '/tools/design/contrast-checker' },
+      { name: 'CSS阴影', link: '/tools/design/box-shadow' },
+      { name: '黄金比例', link: '/tools/design/golden-ratio' },
+      { name: 'Blob生成器', link: '/tools/design/blob-maker' },
+      { name: '玻璃拟态', link: '/tools/design/glassmorphism' }
+    ]
+  },
+  {
+    title: '图像',
+    items: [
+      { name: '图片压缩', link: '/tools/image-compress' },
+      { name: '二维码生成', link: '/tools/qrcode' },
+      { name: '图片切割', link: '/tools/img-cut' },
+      { name: '图片处理', link: '/tools/signimage' },
+      { name: 'GIF压缩', link: '/tools/gif-compress' }
+    ]
+  },
+  {
+    title: 'PDF',
+    items: [
+      { name: '图片转PDF', link: '/tools/img-to-pdf' },
+      { name: 'PDF转图片', link: '/tools/pdf-to-images' },
+      { name: 'PDF合并', link: '/tools/pdf-merge' },
+      { name: 'PDF分割', link: '/tools/pdf-split' }
+    ]
+  },
+  {
+    title: '文本',
+    items: [
+      { name: '文本对比', link: '/tools/diff' },
+      { name: 'Markdown编辑', link: '/tools/markdown' },
+      { name: '字数统计', link: '/tools/wordcount' }
+    ]
+  },
+  {
+    title: '开发',
+    items: [
+      { name: 'JSON转换', link: '/tools/json' },
+      { name: '正则测试', link: '/tools/reg' },
+      { name: '时间戳', link: '/tools/timetran' }
+    ]
+  },
+  {
+    title: '文案',
+    items: [
+      { name: '疯狂星期四', link: '/tools/copywriting/kfc' },
+      { name: '今日诗词', link: '/tools/copywriting/daily-poem' },
+      { name: '舔狗日记', link: '/tools/copywriting/dog-diary' },
+      { name: '朋友圈文案', link: '/tools/copywriting/moments' }
+    ]
+  }
+]
+
+const defaultFriendSections: SiteLinkSection[] = [
+  {
+    title: 'AI',
+    items: [
+      { name: 'AI文章', link: 'https://www.uied.cn/category/aigc/ai' },
+      { name: 'AI资讯', link: 'https://hot.uied.cn/ai-realtime' },
+      { name: 'AI工具', link: 'https://hao.uied.cn/ai' },
+      { name: 'AI知识库', link: 'https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink' },
+      { name: 'AI交流群', link: 'https://www.uied.cn/wechat' }
+    ]
+  },
+  {
+    title: '教程',
+    items: [
+      { name: 'UI文章', link: 'https://www.uied.cn/category/wenzhang/ui-wenzhang' },
+      { name: '平面文章', link: 'https://www.uied.cn/category/wenzhang/pingmian-wenzhang' },
+      { name: '设计干货', link: 'https://www.uied.cn/category/wenzhang/ganhuo' },
+      { name: '效率工具', link: 'https://www.uied.cn/category/wenzhang/tool' },
+      { name: 'AI文章', link: 'https://www.uied.cn/category/aigc/ai' },
+      { name: '开源项目', link: 'https://www.uied.cn/category/code/kaiyuan' }
+    ]
+  },
+  {
+    title: '设计',
+    items: [
+      { name: '设计文章', link: 'https://www.uied.cn/category/wenzhang/ui-wenzhang' },
+      { name: '设计导航', link: 'https://hao.uied.cn/' },
+      { name: '设计工具', link: 'https://uiedtool.com/' },
+      { name: '设计资讯', link: 'https://hot.uied.cn/' }
+    ]
+  },
+  {
+    title: '其他',
+    items: [
+      { name: 'AIGC学习网站', link: 'https://uied.cn' },
+      { name: 'UIED技术团队', link: 'https://fsuied.com' },
+      { name: '拜拜导航', link: 'https://www.88sheji.cn/' },
+      { name: 'Tomda', link: 'https://www.tomda.top/' },
+      { name: '申请友链', link: 'https://fsuied.com/contact.html' }
+    ]
+  }
+]
+
+const defaultOfficialMediaLinks: SiteLinkItem[] = [
+  { name: '知乎', link: 'https://www.zhihu.com/org/uiedyong-hu-ti-yan-jiao-liu-xue-xi' },
+  { name: '小红书', link: 'https://www.xiaohongshu.com/user/profile/5dc2ccb0000000000100ba83' },
+  { name: '微博', link: 'https://weibo.com/u/7542146005' },
+  { name: 'B站', link: 'https://space.bilibili.com/3493135908866790?spm_id_from=333.1007.0.0' }
+]
+
+const displayWebName = computed(() => siteConfig.value.webName || 'UIED-Tools')
+const footerLinks = computed(() => {
+  return siteConfig.value.copyright.length ? siteConfig.value.copyright : defaultFooterLinks
+})
+const quickSections = computed(() => {
+  return siteConfig.value.footerQuickSections.length ? siteConfig.value.footerQuickSections : defaultQuickSections
+})
+const friendSections = computed(() => {
+  return siteConfig.value.footerFriendSections.length ? siteConfig.value.footerFriendSections : defaultFriendSections
+})
+const officialMediaLinks = computed(() => {
+  return siteConfig.value.officialMediaLinks.length ? siteConfig.value.officialMediaLinks : defaultOfficialMediaLinks
+})
+const currentYear = computed(() => String(new Date().getFullYear()))
+
+/**
+ * 函数说明：判断链接是否为外部地址，用于控制跳转目标
+ */
+const isExternalLink = (link: string) => link.startsWith('http://') || link.startsWith('https://')
+
+/**
+ * 函数说明：加载后台公共站点配置并更新页脚展示内容
+ */
+const loadSiteConfig = async () => {
+  siteConfig.value = await getSitePublicConfig()
+}
+
+onMounted(() => {
+  void loadSiteConfig()
+})
 </script>
 
 <template>
@@ -12,8 +165,7 @@
     itemtype="http://schema.org/WPFooter">
     <div class="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6">
       <div class="flex flex-col items-center justify-center space-y-6">
-        <!-- Logo和标题 -->
-        <router-link class="logo-container group" to="/" aria-label="返回首页" title="UIED Tools 首页">
+        <router-link class="logo-container group" to="/" aria-label="返回首页" :title="`${displayWebName} 首页`">
           <div class="flex items-center gap-3">
             <div class="logo-wrapper flex items-center" aria-hidden="true">
               <svg width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg"
@@ -25,10 +177,7 @@
 
                 <g id="page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
                   <g id="logo-3">
-                    <!-- 背景填充 -->
                     <rect id="background-rect" x="0" y="0" width="204" height="96" rx="48"></rect>
-
-                    <!-- 新Logo 使用从左到右的描边和填充动画 -->
                     <g id="logo-copy" transform="translate(19, 24)">
                       <path
                         d="M118,0 L115.645416,11.671646 L89.1332623,11.6686726 L87.7228145,17.840708 L112.989339,17.840708 C113.408529,18.1263717 113.114499,18.8863009 113.032836,19.3722478 C112.438806,22.9040708 111.360981,26.3980885 110.730064,29.9260885 L85.5115139,29.9743009 C84.8626866,30.1945487 84.4307036,35.0482832 83.8848614,35.8938053 L110.750533,35.8938053 L108.191898,48 L68,48 L78.1279318,0 L118,0 Z"
@@ -60,320 +209,71 @@
           </div>
         </router-link>
 
-        <!-- 主要内容区域 -->
         <div class="w-full max-w-6xl mx-auto grid grid-cols-1 gap-6">
-          <!-- 快捷链接区域 -->
           <nav class="grid grid-cols-1 md:grid-cols-2 gap-6" aria-label="底部导航">
-            <!-- 工具快捷入口 -->
             <section class="w-full" aria-labelledby="quick-tools">
               <h2 id="quick-tools" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
                 工具快捷入口
               </h2>
               <div class="flex flex-col space-y-4">
-                <!-- 设计工具 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0">设计：</span>
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4" v-for="section in quickSections"
+                  :key="`quick-${section.title}`">
+                  <span class="text-sm font-medium text-gray-900 shrink-0">{{ section.title }}：</span>
                   <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="/tools/design/contrast-checker"
+                    <a v-for="item in section.items" :key="`${section.title}-${item.name}-${item.link}`" :href="item.link"
+                      :target="isExternalLink(item.link) ? '_blank' : '_self'"
+                      :rel="isExternalLink(item.link) ? 'noopener noreferrer' : undefined"
                       class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      色彩对比度
-                    </a>
-                    <a href="/tools/design/box-shadow"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      CSS阴影
-                    </a>
-                    <a href="/tools/design/golden-ratio"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      黄金比例
-                    </a>
-                    <a href="/tools/design/blob-maker"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      Blob生成器
-                    </a>
-                    <a href="/tools/design/glassmorphism"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      玻璃拟态
-                    </a>
-                  </div>
-                </div>
-
-                <!-- 图像工具 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0">图像：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="/tools/image-compress"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      图片压缩
-                    </a>
-                    <a href="/tools/qrcode"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      二维码生成
-                    </a>
-                    <a href="/tools/img-cut"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      图片切割
-                    </a>
-                    <a href="/tools/signimage"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      图片处理
-                    </a>
-                    <a href="/tools/gif-compress"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      GIF压缩
-                    </a>
-                  </div>
-                </div>
-
-                <!-- PDF工具 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0">PDF：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="/tools/img-to-pdf"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      图片转PDF
-                    </a>
-                    <a href="/tools/pdf-to-images"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      PDF转图片
-                    </a>
-                    <a href="/tools/pdf-merge"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      PDF合并
-                    </a>
-                    <a href="/tools/pdf-split"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      PDF分割
-                    </a>
-                  </div>
-                </div>
-
-                <!-- 文本工具 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0">文本：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="/tools/diff"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      文本对比
-                    </a>
-                    <a href="/tools/markdown"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      Markdown编辑
-                    </a>
-                    <a href="/tools/wordcount"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      字数统计
-                    </a>
-                  </div>
-                </div>
-
-                <!-- 开发工具 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0">开发：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="/tools/json"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      JSON转换
-                    </a>
-                    <a href="/tools/reg"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      正则测试
-                    </a>
-                    <a href="/tools/timetran"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      时间戳
-                    </a>
-                  </div>
-                </div>
-
-                <!-- 文案工具 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0">文案：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="/tools/copywriting/kfc"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      疯狂星期四
-                    </a>
-                    <a href="/tools/copywriting/daily-poem"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      今日诗词
-                    </a>
-                    <a href="/tools/copywriting/dog-diary"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      舔狗日记
-                    </a>
-                    <a href="/tools/copywriting/moments"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      朋友圈文案
+                      {{ item.name }}
                     </a>
                   </div>
                 </div>
               </div>
             </section>
 
-            <!-- 友情链接 -->
             <section class="w-full" aria-labelledby="friend-links">
               <h2 id="friend-links" class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
                 <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
                 友情链接
               </h2>
               <div class="space-y-6">
-                <!-- AI相关链接 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0">AI：</span>
+                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4" v-for="section in friendSections"
+                  :key="`friend-${section.title}`">
+                  <span class="text-sm font-medium text-gray-900 shrink-0 mt-1">{{ section.title }}：</span>
                   <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="https://www.uied.cn/category/aigc/ai" target="_blank" rel="noopener noreferrer"
+                    <a v-for="item in section.items" :key="`${section.title}-${item.name}-${item.link}`" :href="item.link"
+                      target="_blank" rel="noopener noreferrer"
                       class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AI文章
-                    </a>
-                    <a href="https://hot.uied.cn/ai-realtime" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AI资讯
-                    </a>
-                    <a href="https://hao.uied.cn/ai" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AI工具
-                    </a>
-                    <a href="https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink" target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AI知识库
-                    </a>
-                    <a href="https://www.uied.cn/wechat" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AI交流群
-                    </a>
-                  </div>
-                </div>
-
-                <!-- 学习教程 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0 mt-1">教程：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="https://www.uied.cn/category/wenzhang/ui-wenzhang" target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      UI文章
-                    </a>
-                    <a href="https://www.uied.cn/category/wenzhang/pingmian-wenzhang" target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      平面文章
-                    </a>
-                    <a href="https://www.uied.cn/category/wenzhang/ganhuo" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      设计干货
-                    </a>
-                    <a href="https://www.uied.cn/category/wenzhang/tool" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      效率工具
-                    </a>
-                    <a href="https://www.uied.cn/category/aigc/ai" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AI文章
-                    </a>
-                    <a href="https://www.uied.cn/category/code/kaiyuan" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      开源项目
-                    </a>
-                  </div>
-                </div>
-
-                <!-- 设计相关链接 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0 mt-1">设计：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="https://www.uied.cn/category/wenzhang/ui-wenzhang" target="_blank"
-                      rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      设计文章
-                    </a>
-                    <a href="https://hao.uied.cn/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      设计导航
-                    </a>
-                    <a href="https://uiedtool.com/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      设计工具
-                    </a>
-                    <a href="https://hot.uied.cn/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      设计资讯
-                    </a>
-                  </div>
-                </div>
-
-                <!-- 其他友情链接 -->
-                <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4">
-                  <span class="text-sm font-medium text-gray-900 shrink-0 mt-1">其他：</span>
-                  <div class="flex flex-wrap gap-x-4 gap-y-2">
-                    <a href="https://uied.cn" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      AIGC学习网站
-                    </a>
-                    <a href="https://fsuied.com" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      UIED技术团队
-                    </a>
-                    <a href="https://www.88sheji.cn/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      拜拜导航
-                    </a>
-                    <a href="https://www.tomda.top/" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      Tomda
-                    </a>
-                    <a href="https://fsuied.com/contact.html" target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                      申请友链
+                      {{ item.name }}
                     </a>
                   </div>
                 </div>
               </div>
             </section>
 
-            <!-- 官方媒体 -->
-            <section class="w-full" aria-labelledby="official-media">
+            <section class="w-full md:col-span-2" aria-labelledby="official-media">
               <h2 id="official-media" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
                 官方媒体
               </h2>
               <div class="flex flex-wrap gap-x-6 gap-y-3">
-                <a href="https://www.zhihu.com/org/uiedyong-hu-ti-yan-jiao-liu-xue-xi" target="_blank"
+                <a v-for="item in officialMediaLinks" :key="`${item.name}-${item.link}`" :href="item.link" target="_blank"
                   rel="noopener noreferrer"
                   class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
                   <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
-                  知乎
-                </a>
-                <a href="https://www.xiaohongshu.com/user/profile/5dc2ccb0000000000100ba83" target="_blank"
-                  rel="noopener noreferrer"
-                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
-                  小红书
-                </a>
-                <a href="https://weibo.com/u/7542146005" target="_blank" rel="noopener noreferrer"
-                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
-                  微博
-                </a>
-                <a href="https://space.bilibili.com/3493135908866790?spm_id_from=333.1007.0.0" target="_blank"
-                  rel="noopener noreferrer"
-                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
-                  B站
+                  {{ item.name }}
                 </a>
               </div>
             </section>
           </nav>
         </div>
 
-        <!-- 底部信息 -->
         <div class="w-full flex flex-col items-center text-sm text-gray-500 border-t border-gray-100 pt-8 space-y-4">
           <div class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-6">
-            <!-- 左侧信息 -->
             <div class="flex flex-col space-y-3 text-center md:text-left">
               <div class="leading-relaxed">
-                <span itemprop="name" class="font-medium text-gray-700">UIED-Tools</span> 是由
+                <span itemprop="name" class="font-medium text-gray-700">{{ displayWebName }}</span> 是由
                 <a href="https://fsuied.com" target="_blank" rel="noopener noreferrer"
                   class="text-[#6C54FF] hover:text-[#5842cc] transition-colors font-medium" itemprop="creator">
                   UIED技术团队
@@ -394,20 +294,17 @@
               </div>
             </div>
 
-            <!-- 右侧信息 -->
             <div class="flex flex-col items-center md:items-end space-y-3">
               <div class="text-gray-400" itemprop="copyrightNotice">
-                <meta itemprop="copyrightYear" content="2025">
-                © 2025 UIED-Tools. All rights reserved.
+                <meta itemprop="copyrightYear" :content="currentYear">
+                © {{ currentYear }} {{ displayWebName }}. All rights reserved.
               </div>
               <div class="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
-                <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer"
+                <a v-for="link in footerLinks" :key="`${link.name}-${link.link}`" :href="link.link || '#'"
+                  :target="isExternalLink(link.link) ? '_blank' : '_self'"
+                  :rel="isExternalLink(link.link) ? 'noopener noreferrer' : undefined"
                   class="hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                  粤ICP备2022056875号
-                </a>
-                <a href="/sitemap.xml" target="_blank" rel="noopener noreferrer"
-                  class="hover:text-[#6C54FF] transition-colors whitespace-nowrap">
-                  网站地图
+                  {{ link.name }}
                 </a>
               </div>
             </div>
@@ -452,7 +349,6 @@
   transition-duration: 150ms;
 }
 
-/* Logo 相关样式 */
 .logo-container {
   display: flex;
   flex-direction: column;

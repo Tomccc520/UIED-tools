@@ -10,6 +10,7 @@ import axios from 'axios'
 import quotes from '@/assets/designer_quotes_api.json'
 import SearchPanel from '@/components/Search/Search.vue'
 import router from '@/router';
+import { getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig'
 
 // 每日一言数据结构
 interface DailyWord {
@@ -114,12 +115,31 @@ const initDailyWord = () => {
   }, 60 * 60 * 1000) // 60分钟 * 60秒 * 1000毫秒
 }
 
+/**
+ * 函数说明：读取后台站点配置并更新顶部展示名称
+ */
+const loadSiteConfig = async () => {
+  const siteConfig = await getSitePublicConfig()
+  if (siteConfig.webName) {
+    siteName.value = siteConfig.webName
+  }
+  if (siteConfig.headerLinks.length) {
+    headerLinks.value = siteConfig.headerLinks
+  }
+}
+
 // const isNavDrawer = ref(false)
 const loading = ref(false)
 const options = ref<Tool[]>([])
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
+const siteName = ref('UIED-Tools')
+const defaultHeaderLinks: SiteLinkItem[] = [
+  { name: '个人网站', link: 'https://tomda.top/' }
+]
+const headerLinks = ref<SiteLinkItem[]>(defaultHeaderLinks)
+const displayHeaderLinks = computed(() => (headerLinks.value.length ? headerLinks.value : defaultHeaderLinks))
 //查询参数
 const searchParam = reactive({
   cateId: 0,
@@ -266,6 +286,13 @@ const handleSearchSelect = (url: string) => {
   }
 }
 
+/**
+ * 函数说明：判断链接是否为外部地址，用于顶部快捷入口跳转策略
+ */
+const isExternalLink = (url: string) => {
+  return url.startsWith('http://') || url.startsWith('https://')
+}
+
 // 切换搜索面板
 const toggleSearch = () => {
   showSearch.value = !showSearch.value
@@ -364,6 +391,7 @@ const toggleSidebar = () => {
 }
 
 onMounted(() => {
+  void loadSiteConfig()
   initDailyWord()
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
@@ -427,7 +455,7 @@ onUnmounted(() => {
             </div>
 
             <router-link to="/about" class="menu-icon-btn hover:text-blue-500">
-              <el-tooltip content="关于UIED-Tools">
+              <el-tooltip :content="`关于${siteName}`">
                 <svg class="w-5 h-5" viewBox="0 0 1024 1024">
                   <path
                     d="M511.899716 948.506609c-241.310951 0-437.636339-196.318224-437.636339-437.636339 0-241.323231 196.325387-437.639408 437.636339-437.639408s437.636339 196.316178 437.636339 437.639408C949.536055 752.188384 753.210667 948.506609 511.899716 948.506609zM511.899716 113.944122c-218.866776 0-396.926148 178.064488-396.926148 396.926148 0 218.856543 178.059372 396.926148 396.926148 396.926148 218.868823 0 396.926148-178.069605 396.926148-396.926148C908.825864 292.00861 730.768539 113.944122 511.899716 113.944122zM561.15656 335.324138c-29.853935 0-54.03773-24.189935-54.03773-54.047963 0-29.855982 24.184819-54.047963 54.03773-54.047963 29.838585 0 54.0408 24.191982 54.0408 54.047963C615.19736 311.134203 590.995145 335.324138 561.15656 335.324138zM424.962691 430.321746c0-4.394077 0-8.806573 0-13.19758 42.878576-17.016559 108.943224-10.793834 153.201218-26.418696 1.75804 0 3.510964 0 5.27719 0-21.329794 108.134813-66.391083 206.496028-76.599585 316.955792 2.425236 1.850138 2.086521 1.473561 5.287423 2.623757 33.247218 11.155061 52.320623-66.110697 73.948199-60.727083 21.644973 5.38873-13.548574 43.733037-18.47784 50.193169-19.400862 25.362644-56.465013 68.439742-100.376105 68.657706-31.008224 0.181125-63.159482-19.378349-58.101279-71.301929 5.056156-51.981908 34.219359-124.319423 50.172703-182.263114C472.184179 468.050022 488.801648 429.049776 424.962691 430.321746z"
@@ -436,13 +464,16 @@ onUnmounted(() => {
               </el-tooltip>
             </router-link>
 
-            <a href="https://tomda.top/" target="_blank" class="menu-icon-btn hover:text-blue-500">
-              <el-tooltip content="个人网站">
-                <svg class="w-5 h-5" viewBox="0 0 1024 1024">
-                  <path
-                    d="M290.0992 409.6H155.136a371.4048 371.4048 0 0 0-14.2848 102.4c0 35.5328 4.9664 69.888 14.336 102.4h134.9632c-5.632-32.768-8.4992-66.9184-8.4992-102.4 0-35.4816 2.8672-69.632 8.4992-102.4z m52.0704 0a542.1056 542.1056 0 0 0-9.3696 102.4c0 35.7376 3.072 69.888 9.3696 102.4H486.4V409.6H342.1696z m75.008 461.3632A491.8784 491.8784 0 0 1 301.568 665.6H173.9776a372.0704 372.0704 0 0 0 243.2 205.3632z m69.2224-3.584V665.6H354.9696c24.064 77.1072 67.84 144.2304 131.4304 201.8304zM417.1776 153.088A372.0704 372.0704 0 0 0 173.9776 358.4H301.568a491.8784 491.8784 0 0 1 115.5584-205.3632z m69.2224 3.584C422.8096 214.1184 379.0848 281.2416 354.9696 358.4H486.4V156.5696zM733.9008 409.6c5.632 32.768 8.4992 66.9184 8.4992 102.4 0 35.4816-2.8672 69.632-8.4992 102.4h135.0144c9.3184-32.512 14.2848-66.8672 14.2848-102.4s-4.9664-69.888-14.336-102.4h-134.9632z m-52.0704 0H537.6v204.8h144.2304c6.2464-32.512 9.3696-66.6624 9.3696-102.4s-3.072-69.888-9.3696-102.4z m-75.008 461.3632A372.0704 372.0704 0 0 0 850.0224 665.6H722.432a491.8784 491.8784 0 0 1-115.5584 205.3632z m-69.2224-3.584c63.5904-57.5488 107.3152-124.672 131.4304-201.7792H537.6v201.8304zM606.8224 153.088A491.8784 491.8784 0 0 1 722.432 358.4h127.6416a372.0704 372.0704 0 0 0-243.2-205.3632z m-69.2224 3.584V358.4h131.4304c-24.064-77.1072-67.84-144.2304-131.4304-201.8304zM512 947.2a435.2 435.2 0 1 1 0-870.4 435.2 435.2 0 0 1 0 870.4z"
-                    fill="currentColor"></path>
-                </svg>
+            <a
+              v-for="(item, index) in displayHeaderLinks"
+              :key="`${item.name}-${item.link}-${index}`"
+              :href="item.link"
+              :target="isExternalLink(item.link) ? '_blank' : '_self'"
+              :rel="isExternalLink(item.link) ? 'noopener noreferrer' : undefined"
+              class="hidden md:flex items-center text-sm text-gray-500 hover:text-blue-500 transition-colors"
+            >
+              <el-tooltip :content="item.name">
+                <span>{{ item.name }}</span>
               </el-tooltip>
             </a>
 

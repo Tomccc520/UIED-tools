@@ -56,3 +56,21 @@ license: Internal project skill
 - 大版本阶段先保持“前端站点稳定”，后台能力增量接入。
 - AI 模型推理放 Python 服务，likeadmin-go 专注业务与运营管理。
 
+## AI 模型管理对接模板
+
+适用于“前台工具页调用可切换 AI 模型”的场景（如抠图、OCR、文生图）：
+
+1. 后台接口先落地  
+- 管理端（登录）：`GET /api/setting/ai/model/detail`、`POST /api/setting/ai/model/save`  
+- 前台读取（免登录）：`GET /api/common/ai/model/current`
+
+2. 权限与菜单同步  
+- 菜单查看权限：`setting:ai:model:detail`  
+- 菜单保存权限：`setting:ai:model:save`  
+- 新装库写入：`backend/likeadmin-go/sql/install.sql`  
+- 存量库增量：`backend/likeadmin-go/sql/upgrade/20260321_ai_model_menu.sql`
+
+3. 前端工具页接入约定  
+- 工具页先读 `/api/common/ai/model/current` 再发起推理请求  
+- 读取失败必须回退默认模型，避免页面不可用  
+- 推理请求透传 `modelId` 到 Python AI 服务
