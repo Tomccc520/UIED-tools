@@ -29,6 +29,14 @@ export interface SitePublicConfig {
   webBackdrop: string
   ossDomain: string
   copyright: SiteCopyrightItem[]
+  siteSlogan: string
+  sidebarRecommendTitle: string
+  footerIntro: string
+  footerQuickTitle: string
+  footerFriendTitle: string
+  officialMediaTitle: string
+  footerSupportLabel: string
+  footerSupportLinks: SiteLinkItem[]
   headerLinks: SiteLinkItem[]
   sidebarRecommendLinks: SiteLinkItem[]
   footerQuickSections: SiteLinkSection[]
@@ -53,6 +61,14 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webBackdrop: '',
   ossDomain: '',
   copyright: [],
+  siteSlogan: '免费在线工具集',
+  sidebarRecommendTitle: '推荐工具',
+  footerIntro: '在线工具平台',
+  footerQuickTitle: '工具快捷入口',
+  footerFriendTitle: '友情链接',
+  officialMediaTitle: '官方媒体',
+  footerSupportLabel: '技术支持',
+  footerSupportLinks: [],
   headerLinks: [],
   sidebarRecommendLinks: [],
   footerQuickSections: [],
@@ -177,6 +193,24 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     webBackdrop: String(record.webBackdrop || '').trim(),
     ossDomain: String(record.ossDomain || '').trim(),
     copyright: normalizeCopyrightItems(record.copyright),
+    siteSlogan: String(record.toolsSiteSlogan || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan).trim() || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan,
+    sidebarRecommendTitle:
+      String(record.toolsSidebarRecommendTitle || DEFAULT_SITE_PUBLIC_CONFIG.sidebarRecommendTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.sidebarRecommendTitle,
+    footerIntro: String(record.toolsFooterIntro || DEFAULT_SITE_PUBLIC_CONFIG.footerIntro).trim() || DEFAULT_SITE_PUBLIC_CONFIG.footerIntro,
+    footerQuickTitle:
+      String(record.toolsFooterQuickTitle || DEFAULT_SITE_PUBLIC_CONFIG.footerQuickTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.footerQuickTitle,
+    footerFriendTitle:
+      String(record.toolsFooterFriendTitle || DEFAULT_SITE_PUBLIC_CONFIG.footerFriendTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.footerFriendTitle,
+    officialMediaTitle:
+      String(record.toolsOfficialMediaTitle || DEFAULT_SITE_PUBLIC_CONFIG.officialMediaTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.officialMediaTitle,
+    footerSupportLabel:
+      String(record.toolsFooterSupportLabel || DEFAULT_SITE_PUBLIC_CONFIG.footerSupportLabel).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.footerSupportLabel,
+    footerSupportLinks: normalizeLinkItems(record.toolsFooterSupportLinks),
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
     footerQuickSections: normalizeLinkSections(record.toolsFooterQuickSections),

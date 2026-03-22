@@ -30,6 +30,7 @@ const route: RouteLocationNormalizedLoaded = useRoute()
 // 应用信息配置
 const appName = ref('UIED-Tools')
 const appNet = ref('免费在线工具集')
+const recommendTitle = ref('推荐工具')
 const defaultRecommendLinks: SiteLinkItem[] = [
   { name: '热门工具', link: '#recommend-hot' },
   { name: '随机推荐', link: '/tools/random-tools' },
@@ -66,6 +67,12 @@ const loadSiteConfig = async () => {
   const siteConfig = await getSitePublicConfig()
   if (siteConfig.webName) {
     appName.value = siteConfig.webName
+  }
+  if (siteConfig.siteSlogan) {
+    appNet.value = siteConfig.siteSlogan
+  }
+  if (siteConfig.sidebarRecommendTitle) {
+    recommendTitle.value = siteConfig.sidebarRecommendTitle
   }
   if (siteConfig.sidebarRecommendLinks.length) {
     recommendLinks.value = siteConfig.sidebarRecommendLinks
@@ -262,7 +269,7 @@ onMounted(() => {
               </svg>
               <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
             </div>
-            <span class="ml-2">推荐工具</span>
+            <span class="ml-2">{{ recommendTitle }}</span>
           </template>
           <el-menu-item-group>
             <el-menu-item

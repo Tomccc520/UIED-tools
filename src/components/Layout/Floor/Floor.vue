@@ -128,7 +128,33 @@ const defaultOfficialMediaLinks: SiteLinkItem[] = [
   { name: 'B站', link: 'https://space.bilibili.com/3493135908866790?spm_id_from=333.1007.0.0' }
 ]
 
+const defaultFooterIntro = '{webName} 是由 UIED技术团队 设计开发的在线工具平台'
+const defaultFooterQuickTitle = '工具快捷入口'
+const defaultFooterFriendTitle = '友情链接'
+const defaultOfficialMediaTitle = '官方媒体'
+const defaultFooterSupportLabel = '技术支持'
+const defaultFooterSupportLinks: SiteLinkItem[] = [
+  { name: 'Tomda', link: 'https://www.tomda.top/' },
+  { name: 'UIED技术团队', link: 'https://fsuied.com' }
+]
+
 const displayWebName = computed(() => siteConfig.value.webName || 'UIED-Tools')
+const footerIntroText = computed(() => {
+  const introText = (siteConfig.value.footerIntro || defaultFooterIntro).trim() || defaultFooterIntro
+  return introText.replace(/\{webName\}/g, displayWebName.value)
+})
+const footerQuickTitle = computed(() => {
+  return (siteConfig.value.footerQuickTitle || defaultFooterQuickTitle).trim() || defaultFooterQuickTitle
+})
+const footerFriendTitle = computed(() => {
+  return (siteConfig.value.footerFriendTitle || defaultFooterFriendTitle).trim() || defaultFooterFriendTitle
+})
+const officialMediaTitle = computed(() => {
+  return (siteConfig.value.officialMediaTitle || defaultOfficialMediaTitle).trim() || defaultOfficialMediaTitle
+})
+const footerSupportLabel = computed(() => {
+  return (siteConfig.value.footerSupportLabel || defaultFooterSupportLabel).trim() || defaultFooterSupportLabel
+})
 const footerLinks = computed(() => {
   return siteConfig.value.copyright.length ? siteConfig.value.copyright : defaultFooterLinks
 })
@@ -140,6 +166,9 @@ const friendSections = computed(() => {
 })
 const officialMediaLinks = computed(() => {
   return siteConfig.value.officialMediaLinks.length ? siteConfig.value.officialMediaLinks : defaultOfficialMediaLinks
+})
+const footerSupportLinks = computed(() => {
+  return siteConfig.value.footerSupportLinks.length ? siteConfig.value.footerSupportLinks : defaultFooterSupportLinks
 })
 const currentYear = computed(() => String(new Date().getFullYear()))
 
@@ -214,7 +243,7 @@ onMounted(() => {
             <section class="w-full" aria-labelledby="quick-tools">
               <h2 id="quick-tools" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
-                工具快捷入口
+                {{ footerQuickTitle }}
               </h2>
               <div class="flex flex-col space-y-4">
                 <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4" v-for="section in quickSections"
@@ -235,7 +264,7 @@ onMounted(() => {
             <section class="w-full" aria-labelledby="friend-links">
               <h2 id="friend-links" class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
                 <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
-                友情链接
+                {{ footerFriendTitle }}
               </h2>
               <div class="space-y-6">
                 <div class="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-4" v-for="section in friendSections"
@@ -255,7 +284,7 @@ onMounted(() => {
             <section class="w-full md:col-span-2" aria-labelledby="official-media">
               <h2 id="official-media" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
                 <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
-                官方媒体
+                {{ officialMediaTitle }}
               </h2>
               <div class="flex flex-wrap gap-x-6 gap-y-3">
                 <a v-for="item in officialMediaLinks" :key="`${item.name}-${item.link}`" :href="item.link" target="_blank"
@@ -273,23 +302,19 @@ onMounted(() => {
           <div class="w-full max-w-6xl flex flex-col md:flex-row justify-between items-center gap-6">
             <div class="flex flex-col space-y-3 text-center md:text-left">
               <div class="leading-relaxed">
-                <span itemprop="name" class="font-medium text-gray-700">{{ displayWebName }}</span> 是由
-                <a href="https://fsuied.com" target="_blank" rel="noopener noreferrer"
-                  class="text-[#6C54FF] hover:text-[#5842cc] transition-colors font-medium" itemprop="creator">
-                  UIED技术团队
-                </a>
-                设计开发的在线工具平台
+                {{ footerIntroText }}
               </div>
-              <div class="flex items-center justify-center md:justify-start gap-2 text-gray-400">
-                <span>技术支持：</span>
-                <a href="https://www.tomda.top/" target="_blank" rel="noopener noreferrer"
-                  class="text-gray-500 hover:text-[#6C54FF] transition-colors">
-                  Tomda
-                </a>
-                <span>&</span>
-                <a href="https://fsuied.com" target="_blank" rel="noopener noreferrer"
-                  class="text-gray-500 hover:text-[#6C54FF] transition-colors">
-                  UIED技术团队
+              <div class="flex items-center justify-center md:justify-start gap-2 text-gray-400 flex-wrap">
+                <span>{{ footerSupportLabel }}：</span>
+                <a
+                  v-for="(item, index) in footerSupportLinks"
+                  :key="`${item.name}-${item.link}`"
+                  :href="item.link"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="text-gray-500 hover:text-[#6C54FF] transition-colors"
+                >
+                  {{ item.name }}
                 </a>
               </div>
             </div>
