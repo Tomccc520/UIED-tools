@@ -116,10 +116,17 @@ const resolveCategoryDirectLink = (menu: SiteSidebarCategoryMenu): string => {
   if (rawLink) {
     return rawLink
   }
-  if (menu.key === 'ai') {
+  if (menu.key === 'ai' || menu.cateTitle === 'AI工具箱') {
     return '/tools/ai/toolbox'
   }
   return ''
+}
+
+/**
+ * 函数说明：判断当前分类菜单是否为 AI 工具箱入口，兼容后台自定义 key 与标题
+ */
+const isAiToolboxCategoryMenu = (menu: DisplaySidebarCategoryMenu): boolean => {
+  return menu.key === 'ai' || menu.cateTitle === 'AI工具箱' || menu.resolvedLink === '/tools/ai/toolbox'
 }
 
 /**
@@ -151,7 +158,7 @@ const displaySidebarBottomLinks = computed<SiteLinkItem[]>(() => {
 /**
  * 获取工具分类数据
  * @description 从服务器获取工具分类列表
- */
+*/
 const getToolCates = async () => {
   try {
     await toolsStore.getToolCate()
@@ -164,7 +171,7 @@ const getToolCates = async () => {
  * 函数说明：读取后台站点基础配置并更新侧栏品牌信息
  */
 const loadSiteConfig = async () => {
-  const siteConfig = await getSitePublicConfig()
+  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
   if (siteConfig.webName) {
     appName.value = siteConfig.webName
   }
@@ -237,6 +244,15 @@ const openExternalLink = (url: string) => {
 }
 
 /**
+ * 函数说明：在新标签页打开站内路由，适用于需要“新页面打开”的导航入口
+ * @param path 站内路由地址
+ */
+const openInternalRouteInNewPage = (path: string): void => {
+  const href = router.resolve(path).href
+  window.open(href, '_blank', 'noopener,noreferrer')
+}
+
+/**
  * 函数说明：处理推荐工具菜单点击，按链接类型执行路由跳转、锚点滚动或外链打开
  */
 const handleRecommendItemClick = (link: SiteLinkItem) => {
@@ -288,6 +304,10 @@ const handleCategoryMenuClick = (menu: DisplaySidebarCategoryMenu) => {
   }
   if (targetLink.startsWith('#')) {
     gotoAnchor(targetLink.slice(1))
+    return
+  }
+  if (isAiToolboxCategoryMenu(menu)) {
+    openInternalRouteInNewPage(targetLink)
     return
   }
   gotoTool(targetLink)
@@ -537,6 +557,7 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: contain;
+  filter: none;
   transition: var(--menu-transition);
 }
 
@@ -624,6 +645,7 @@ onMounted(() => {
 .el-menu-item:hover .menu-image-icon,
 .el-menu-item.is-active .menu-image-icon,
 .el-sub-menu :deep(.el-sub-menu__title:hover) .menu-image-icon {
+  filter: brightness(0) invert(1);
   transform: var(--icon-hover-transform);
 }
 

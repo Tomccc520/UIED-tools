@@ -51,6 +51,19 @@ const buildHotTools = (items: SiteHotToolItem[]): Tool[] => {
   }))
 }
 
+/**
+ * 函数说明：深拷贝工具分类数据，避免组件层对 store 原始数据产生引用污染
+ */
+const cloneToolCategories = (categories: ToolCategory[]): ToolCategory[] => {
+  return categories.map((category) => ({
+    ...category,
+    list: category.list.map((subCategory) => ({
+      ...subCategory,
+      list: subCategory.list.map((tool) => ({ ...tool }))
+    }))
+  }))
+}
+
 export const useToolsStore = defineStore('tools', {
   state: (): State => ({
     list: [],
@@ -66,7 +79,7 @@ export const useToolsStore = defineStore('tools', {
       this.recommends = buildHotTools(getFallbackHotTools())
 
       try {
-        const siteConfig = await getSitePublicConfig()
+        const siteConfig = await getSitePublicConfig({ forceRefresh: true })
         if (siteConfig.hotTools.length > 0) {
           this.recommends = buildHotTools(siteConfig.hotTools)
         }
@@ -122,11 +135,17 @@ export const useToolsStore = defineStore('tools', {
     },
     async getToolCate() {
       try {
-        // 使用 tools.ts 中定义的完整工具列表数据
-        this.cates = getToolsCate()
+        // 先回填前端内置工具库，保证接口不可用时功能不受影响
+        this.cates = cloneToolCategories(getToolsCate())
+
+        // 再尝试读取后台配置化工具分类，优先使用运营配置
+        const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+        if (siteConfig.toolCategories.length > 0) {
+          this.cates = cloneToolCategories(siteConfig.toolCategories)
+        }
       } catch (error) {
         console.error('获取工具分类失败:', error)
-        this.cates = []
+        this.cates = cloneToolCategories(getToolsCate())
       }
     },
     toolsList(): Tool[] {

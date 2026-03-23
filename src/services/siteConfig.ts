@@ -7,6 +7,8 @@
  * @createDate 2026-03-22
  */
 
+import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
+
 export interface SiteLinkItem {
   name: string
   link: string
@@ -31,12 +33,20 @@ export interface SiteHotToolItem {
   link: string
 }
 
+export interface SiteBannerSlideItem {
+  badge: string
+  text: string
+  link: string
+  gradient: string
+}
+
 export interface SitePublicConfig {
   webName: string
   webLogo: string
   webFavicon: string
   webBackdrop: string
   ossDomain: string
+  bannerSlides: SiteBannerSlideItem[]
   siteSlogan: string
   sidebarRecommendTitle: string
   footerIntro: string
@@ -50,7 +60,9 @@ export interface SitePublicConfig {
   headerLinks: SiteLinkItem[]
   sidebarRecommendLinks: SiteLinkItem[]
   sidebarCategoryMenus: SiteSidebarCategoryMenu[]
+  toolCategories: ToolCategory[]
   sidebarBottomLinks: SiteLinkItem[]
+  aiToolboxSidebarMenus: SiteLinkItem[]
   footerQuickSections: SiteLinkSection[]
   footerFriendSections: SiteLinkSection[]
   officialMediaLinks: SiteLinkItem[]
@@ -72,6 +84,50 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webFavicon: '',
   webBackdrop: '',
   ossDomain: '',
+  bannerSlides: [
+    {
+      badge: '推荐',
+      text: '一人企业Vibe Coding社区！',
+      link: 'https://fsuied.com',
+      gradient: 'linear-gradient(to right,#6366f1,#e0e7ff,#edf2ff,#8b5cf6)'
+    },
+    {
+      badge: '热门',
+      text: 'GPT-5.4重回巅峰 智能对话',
+      link: 'https://nf.video/mbx1u6/?gid=18',
+      gradient: 'linear-gradient(to right,#ec4899,#fbe7ef,#fdf2f8,#f472b6)'
+    },
+    {
+      badge: '新品',
+      text: '免费AI编程工具 Trae - 智能编码助手',
+      link: 'https://www.trae.com.cn/?utm_source=advertising&utm_medium=uied_ug_cpa&utm_term=hw_trae_uied',
+      gradient: 'linear-gradient(to right,#a855f7,#f3e8ff,#f5f3ff,#c084fc)'
+    },
+    {
+      badge: '新品',
+      text: '腾讯元宝 智能对话新体验',
+      link: 'https://yuanbao.paluai.com/uied',
+      gradient: 'linear-gradient(to right,#ffc800,#ffed99,#fff8cc,#ffaa00)'
+    },
+    {
+      badge: '高效',
+      text: '免费AI生成PPT - 一键生成演示文稿',
+      link: 'https://www.aippt.cn/?utm_type=Navweb&utm_source=bbdh&utm_page=aippt&utm_plan=ppt&utm_unit=AIPPT&utm_keyword=40471047',
+      gradient: 'linear-gradient(to right,#10b981,#d1fae5,#ecfdf5,#34d399)'
+    },
+    {
+      badge: '特惠',
+      text: 'Adobe 正版全家桶可用AI',
+      link: 'https://universalbus.cn/?s=lPLG02aydo',
+      gradient: 'linear-gradient(to right,#f97316,#ffedd5,#fff7ed,#fb923c)'
+    },
+    {
+      badge: '新品',
+      text: 'Gemini3 可用 nanobanana',
+      link: 'https://universalbus.cn/?s=lPLG02aydo',
+      gradient: 'linear-gradient(to right,#0ea5e9,#e0f2fe,#f0f9ff,#38bdf8)'
+    }
+  ],
   siteSlogan: '免费在线工具集',
   sidebarRecommendTitle: '推荐工具',
   footerIntro: '在线工具平台',
@@ -85,7 +141,9 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   headerLinks: [],
   sidebarRecommendLinks: [],
   sidebarCategoryMenus: [],
+  toolCategories: [],
   sidebarBottomLinks: [],
+  aiToolboxSidebarMenus: [],
   footerQuickSections: [],
   footerFriendSections: [],
   officialMediaLinks: []
@@ -159,6 +217,29 @@ const normalizeHotToolItems = (input: unknown): SiteHotToolItem[] => {
 }
 
 /**
+ * 函数说明：清洗顶部 Banner 轮播配置，确保每条包含文案、链接和背景渐变
+ */
+const normalizeBannerSlides = (input: unknown): SiteBannerSlideItem[] => {
+  const parsed = normalizeArrayInput(input)
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const badge = String(record.badge || '').trim()
+      const text = String(record.text || '').trim()
+      const link = String(record.link || record.url || '').trim()
+      const gradient = String(record.gradient || '').trim()
+      if (!badge || !text || !link || !gradient) {
+        return null
+      }
+      return { badge, text, link, gradient }
+    })
+    .filter((item): item is SiteBannerSlideItem => Boolean(item))
+  return parsed.length ? parsed : DEFAULT_SITE_PUBLIC_CONFIG.bannerSlides
+}
+
+/**
  * 函数说明：清洗侧边栏分类菜单配置，过滤无效项并补齐菜单标识
  */
 const normalizeSidebarCategoryMenus = (input: unknown): SiteSidebarCategoryMenu[] => {
@@ -208,6 +289,116 @@ const normalizeLinkSections = (input: unknown): SiteLinkSection[] => {
 }
 
 /**
+ * 函数说明：清洗工具图标配置，兼容图片 URL 与 SVG 图标对象
+ */
+const normalizeToolLogo = (input: unknown): Tool['logo'] => {
+  if (typeof input === 'string' && input.trim()) {
+    return input.trim()
+  }
+  if (input && typeof input === 'object') {
+    const record = input as Record<string, unknown>
+    const type = String(record.type || '').trim()
+    const name = String(record.name || '').trim()
+    if (type === 'svg' && name) {
+      return { type: 'svg', name }
+    }
+  }
+  return { type: 'svg', name: 'palette' }
+}
+
+/**
+ * 函数说明：清洗后台工具分类树配置，仅保留前端渲染所需字段
+ */
+const normalizeToolCategories = (input: unknown): ToolCategory[] => {
+  return normalizeArrayInput(input)
+    .map((category, categoryIndex) => {
+      if (!category || typeof category !== 'object') {
+        return null
+      }
+      const categoryRecord = category as Record<string, unknown>
+      const categoryTitle = String(categoryRecord.title || '').trim()
+      const categoryIcon = String(categoryRecord.icon || '').trim()
+      const categoryIdRaw = Number(categoryRecord.id)
+      const categoryId =
+        Number.isFinite(categoryIdRaw) && categoryIdRaw > 0 ? categoryIdRaw : categoryIndex + 1
+
+      const subCategories = normalizeArrayInput(categoryRecord.list)
+        .map((subCategory, subCategoryIndex) => {
+          if (!subCategory || typeof subCategory !== 'object') {
+            return null
+          }
+          const subCategoryRecord = subCategory as Record<string, unknown>
+          const subCategoryTitle = String(subCategoryRecord.title || '').trim()
+          const subCategoryIdRaw = Number(subCategoryRecord.id)
+          const subCategoryId =
+            Number.isFinite(subCategoryIdRaw) && subCategoryIdRaw > 0
+              ? subCategoryIdRaw
+              : categoryId * 100 + subCategoryIndex + 1
+
+          const toolList = normalizeArrayInput(subCategoryRecord.list)
+            .map((tool, toolIndex) => {
+              if (!tool || typeof tool !== 'object') {
+                return null
+              }
+              const toolRecord = tool as Record<string, unknown>
+              const toolTitle = String(toolRecord.title || '').trim()
+              const toolUrl = String(toolRecord.url || '').trim()
+              if (!toolTitle || !toolUrl) {
+                return null
+              }
+
+              const toolIdRaw = Number(toolRecord.id)
+              const toolId =
+                Number.isFinite(toolIdRaw) && toolIdRaw > 0
+                  ? toolIdRaw
+                  : categoryId * 10000 + subCategoryId * 100 + toolIndex + 1
+
+              const toolDesc = String(toolRecord.desc || toolTitle).trim() || toolTitle
+              const isExternal = /^https?:\/\//i.test(toolUrl)
+              const cate = String(toolRecord.cate || subCategoryTitle).trim() || subCategoryTitle
+
+              const normalizedTool: Tool = {
+                id: toolId,
+                title: toolTitle,
+                logo: normalizeToolLogo(toolRecord.logo),
+                desc: toolDesc,
+                url: toolUrl,
+                cate,
+                isExternal
+              }
+              return normalizedTool
+            })
+            .filter((tool): tool is Tool => Boolean(tool))
+
+          if (!subCategoryTitle || toolList.length === 0) {
+            return null
+          }
+
+          const normalizedSubCategory: ToolSubCategory = {
+            id: subCategoryId,
+            title: subCategoryTitle,
+            list: toolList
+          }
+          return normalizedSubCategory
+        })
+        .filter((subCategory): subCategory is ToolSubCategory => Boolean(subCategory))
+
+      if (!categoryTitle || subCategories.length === 0) {
+        return null
+      }
+
+      const normalizedCategory: ToolCategory = {
+        id: categoryId,
+        title: categoryTitle,
+        list: subCategories,
+        ...(categoryIcon ? { icon: categoryIcon } : {})
+      }
+      return normalizedCategory
+    })
+    .filter((category): category is ToolCategory => Boolean(category))
+}
+
+/**
  * 函数说明：兼容后端响应包装结构，提取实际业务数据对象
  */
 const extractResponseData = (payload: unknown): Record<string, unknown> => {
@@ -233,6 +424,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     webFavicon: String(record.webFavicon || '').trim(),
     webBackdrop: String(record.webBackdrop || '').trim(),
     ossDomain: String(record.ossDomain || '').trim(),
+    bannerSlides: normalizeBannerSlides(record.toolsBannerSlides),
     siteSlogan: String(record.toolsSiteSlogan || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan).trim() || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan,
     sidebarRecommendTitle:
       String(record.toolsSidebarRecommendTitle || DEFAULT_SITE_PUBLIC_CONFIG.sidebarRecommendTitle).trim() ||
@@ -256,7 +448,9 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
     sidebarCategoryMenus: normalizeSidebarCategoryMenus(record.toolsSidebarCategoryMenus),
+    toolCategories: normalizeToolCategories(record.toolsCategoryTree),
     sidebarBottomLinks: normalizeLinkItems(record.toolsSidebarBottomLinks),
+    aiToolboxSidebarMenus: normalizeLinkItems(record.toolsAiToolboxSidebarMenus),
     footerQuickSections: normalizeLinkSections(record.toolsFooterQuickSections),
     footerFriendSections: normalizeLinkSections(record.toolsFooterFriendSections),
     officialMediaLinks: normalizeLinkItems(record.toolsOfficialMediaLinks)
@@ -296,7 +490,7 @@ export const getSitePublicConfig = async (options: SiteConfigOptions = {}): Prom
     return siteConfigCacheState.data
   }
 
-  if (!options.forceRefresh && siteConfigPromise) {
+  if (siteConfigPromise) {
     return siteConfigPromise
   }
 
