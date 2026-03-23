@@ -19,25 +19,10 @@
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
           <!-- 推荐链接 -->
           <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-6 text-sm">
-            <a href="https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink" target="_blank"
+            <a v-for="link in headerLinks" :key="link.name" :href="link.link"
+              :target="isExternalSiteLink(link.link) ? '_blank' : undefined" rel="noopener noreferrer"
               class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              每日免费分享最新AI资讯
-            </a>
-            <a href="https://www.uied.cn/" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI学习平台
-            </a>
-            <a href="https://uiedtool.com" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI免费工具uiedtool.com
-            </a>
-            <a href="https://hot.uied.cn" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI资讯热榜hot.uied.cn
-            </a>
-            <a href="https://hao.uied.cn/ai" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI工具导航
+              {{ link.name }}
             </a>
           </div>
         </div>
@@ -164,17 +149,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElButton, ElInput, ElSelect, ElOption } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
+import type { SiteLinkItem } from '@/services/siteConfig'
+import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
 
 // 组件配置信息
 const info = {
   title: "免费图片提示词反推",
   subtitle: "上传图片，AI智能反推提示词，通用模型精准识别"
 }
+
+const defaultHeaderLinks: SiteLinkItem[] = [
+  { name: '每日免费分享最新AI资讯', link: 'https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink' },
+  { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+  { name: 'AI免费工具uiedtool.com', link: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜hot.uied.cn', link: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' }
+]
+const { headerLinks, loadHeaderLinks } = useSiteHeaderLinks('aiCommonHeaderLinks', defaultHeaderLinks)
 
 // 功能特点
 const features = [
@@ -212,6 +208,10 @@ const selectedFile = ref<File | null>(null)
 const params = reactive({
   type: 'normal',
   lang: 'zh-CN'
+})
+
+onMounted(async () => {
+  await loadHeaderLinks()
 })
 
 // 触发文件选择

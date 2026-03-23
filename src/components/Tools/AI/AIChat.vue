@@ -129,7 +129,8 @@
 
             <!-- Header Links -->
             <div class="hidden md:flex items-center space-x-4">
-              <a v-for="link in headerLinks" :key="link.name" :href="link.url" target="_blank" rel="noopener noreferrer"
+              <a v-for="link in headerLinks" :key="link.name" :href="link.link"
+                :target="isExternalSiteLink(link.link) ? '_blank' : undefined" rel="noopener noreferrer"
                 class="text-sm text-gray-600 hover:text-blue-600 transition-colors font-medium">
                 {{ link.name }}
               </a>
@@ -419,6 +420,8 @@ import { v4 as uuidv4 } from 'uuid'
 import dayjs from 'dayjs'
 import uiedLogo from '@/assets/uiedlogo.png'
 import { ensureHighlightRuntime, ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
+import type { SiteLinkItem } from '@/services/siteConfig'
+import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
 
 // Types
 interface Message {
@@ -573,14 +576,15 @@ const quickPrompts: Agent[] = [
 ]
 
 // Header Links
-const headerLinks = [
-  { name: 'AI学习平台', url: 'https://www.uied.cn/' },
-  { name: 'AI免费工具', url: 'https://uiedtool.com' },
-  { name: 'AI资讯热榜', url: 'https://hot.uied.cn' },
-  { name: 'AI工具导航', url: 'https://hao.uied.cn/ai' },
-  { name: 'AI交流群', url: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
-  { name: 'AI知识库', url: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
+const defaultHeaderLinks: SiteLinkItem[] = [
+  { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+  { name: 'AI免费工具', link: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜', link: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' },
+  { name: 'AI交流群', link: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
+  { name: 'AI知识库', link: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
 ]
+const { headerLinks, loadHeaderLinks } = useSiteHeaderLinks('aiChatHeaderLinks', defaultHeaderLinks)
 
 // Computed
 const currentSession = computed(() => {
@@ -1075,6 +1079,7 @@ const sendMessage = async () => {
 onMounted(async () => {
   loadHistory()
   loadSettings()
+  await loadHeaderLinks()
   await fetchModels()
 })
 </script>

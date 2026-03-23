@@ -1,6 +1,6 @@
-# 创建新文件
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from 'vue';
+import { getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig';
 
 /**
  * @file Changelog.vue
@@ -12,8 +12,8 @@ import { ref, onMounted, onUnmounted, watch, type ComponentPublicInstance } from
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2026-03-19 17:51
- * @version Beta 2.7.14
+ * @lastUpdate 2026-03-23 10:30
+ * @version 3.0.1
  * @toolsCount 当前工具总数：332个
  */
 
@@ -24,14 +24,64 @@ const showBackToTop = ref(false);
 const tocListRef = ref<HTMLElement | null>(null);
 const tocItemRefs = ref<Record<string, HTMLElement>>({});
 
-const headerLinks = [
-  { name: 'AI学习平台', url: 'https://www.uied.cn/' },
-  { name: 'AI免费工具', url: 'https://uiedtool.com' },
-  { name: 'AI资讯热榜', url: 'https://hot.uied.cn' },
-  { name: 'AI工具导航', url: 'https://hao.uied.cn/ai' },
-  { name: 'AI交流群', url: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
-  { name: 'AI知识库', url: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
-]
+const defaultHeaderLinks: SiteLinkItem[] = [
+  { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+  { name: 'AI免费工具', link: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜', link: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' },
+  { name: 'AI交流群', link: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
+  { name: 'AI知识库', link: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
+];
+const headerLinks = ref<SiteLinkItem[]>(defaultHeaderLinks);
+const defaultMetaLinks: SiteLinkItem[] = [
+  { name: 'GitHub（开源版）', link: 'https://github.com/Tomccc520/UIED-tools' },
+  { name: 'Gitee（闭源版）', link: 'https://gitee.com/tomdac/tool' },
+  { name: 'CSDN 博客', link: 'https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343' },
+  { name: 'UIED技术团队', link: 'https://fsuied.com/' }
+];
+const changelogIntroText = ref('由 Tomda 开发（AI协助）并记录 UIED-Tools 的开发历程和功能更新。公众号：Tomda');
+const changelogMetaLinks = ref<SiteLinkItem[]>(defaultMetaLinks);
+const changelogSplitTitle = ref('工具箱 3.0.0 版本分岔提醒');
+const changelogSplitDesc = ref('纯前端开源版在 3.0.0 后进入维护态；包含后台运营、会员与模型管理能力的版本为商业源码版。');
+const changelogSplitLink = ref('https://fsuied.com/');
+const changelogSplitLinkText = ref('购买源码与服务支持（fsuied.com）');
+const changelogStatsText = ref('当前工具总数：332个 | 最后更新：2026-03-23 10:30');
+
+/**
+ * 函数说明：判断链接是否为外部地址，用于资料链接决定是否新开标签页
+ */
+const isExternalLink = (link: string) => /^https?:\/\//i.test(String(link || '').trim());
+
+/**
+ * 函数说明：读取后台公共配置并更新更新记录页顶部说明、资料入口与版本分岔提示文案
+ */
+const loadSiteConfig = async () => {
+  const siteConfig = await getSitePublicConfig({ forceRefresh: true });
+  if (siteConfig.changelogHeaderLinks.length) {
+    headerLinks.value = siteConfig.changelogHeaderLinks;
+  }
+  if (siteConfig.changelogIntroText) {
+    changelogIntroText.value = siteConfig.changelogIntroText;
+  }
+  if (siteConfig.changelogMetaLinks.length) {
+    changelogMetaLinks.value = siteConfig.changelogMetaLinks;
+  }
+  if (siteConfig.changelogSplitTitle) {
+    changelogSplitTitle.value = siteConfig.changelogSplitTitle;
+  }
+  if (siteConfig.changelogSplitDesc) {
+    changelogSplitDesc.value = siteConfig.changelogSplitDesc;
+  }
+  if (siteConfig.changelogSplitLink) {
+    changelogSplitLink.value = siteConfig.changelogSplitLink;
+  }
+  if (siteConfig.changelogSplitLinkText) {
+    changelogSplitLinkText.value = siteConfig.changelogSplitLinkText;
+  }
+  if (siteConfig.changelogStatsText) {
+    changelogStatsText.value = siteConfig.changelogStatsText;
+  }
+};
 
 const scrollToTop = () => {
   window.scrollTo({
@@ -109,6 +159,8 @@ const initObserver = () => {
 };
 
 onMounted(() => {
+  void loadSiteConfig();
+
   // Generate TOC from DOM
   const items = document.querySelectorAll('.timeline-item');
   const newToc: typeof tocItems.value = [];
@@ -206,55 +258,24 @@ onUnmounted(() => {
       <div class="header-section mb-8">
         <h1 class="text-2xl font-bold mb-4">更新日志</h1>
         <div class="text-gray-500 text-sm">
-          由 <a href="https://tomda.top/" target="_blank" rel="noopener noreferrer"
-            class="text-blue-500 hover:text-blue-600">Tomda</a> 开发（AI协助）并记录
-          UIED-Tools 的开发历程和功能更新。公众号：Tomda
+          {{ changelogIntroText }}
         </div>
-        <div class="flex items-center space-x-4 mt-2 text-gray-500 text-sm">
-          <a href="https://github.com/Tomccc520/UIED-tools" target="_blank" rel="noopener noreferrer"
+        <div class="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 text-gray-500 text-sm">
+          <a v-for="link in changelogMetaLinks" :key="link.name" :href="link.link"
+            :target="isExternalLink(link.link) ? '_blank' : undefined" rel="noopener noreferrer"
             class="flex items-center hover:text-blue-600 transition-colors">
-            <svg class="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
+            <svg class="w-4 h-4 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 11-5.656-5.656l1.5-1.5M10.172 13.828a4 4 0 010-5.656l3-3a4 4 0 115.656 5.656l-1.5 1.5" />
             </svg>
-            GitHub 仓库
-          </a>
-          <a href="https://gitee.com/tomdac/uied-tools" target="_blank" rel="noopener noreferrer"
-            class="flex items-center hover:text-blue-600 transition-colors">
-            <svg class="w-5 h-5 mr-1" viewBox="0 0 24 24" fill="currentColor">
-              <path
-                d="M11.984 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.016 0zm6.09 5.333c.328 0 .593.266.592.593v1.482a.594.594 0 0 1-.593.592H9.777c-.982 0-1.778.796-1.778 1.778v5.63c0 .327.266.592.593.592h5.63c.982 0 1.778-.796 1.778-1.778v-.296a.593.593 0 0 0-.592-.593h-4.15a.592.592 0 0 1-.592-.592v-1.482a.593.593 0 0 1 .593-.592h6.815c.327 0 .593.265.593.592v3.408a4 4 0 0 1-4 4H5.926a.593.593 0 0 1-.593-.593V9.778a4.444 4.444 0 0 1 4.445-4.444h8.296z" />
-            </svg>
-            Gitee 仓库
-          </a>
-          <a href="https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343" target="_blank" rel="noopener noreferrer"
-            class="flex items-center hover:text-blue-600 transition-colors">
-            <svg class="w-5 h-5 mr-1" viewBox="0 0 1024 1024" fill="currentColor">
-              <path d="M0 0h1024v1024H0z" fill="#FF6633"></path>
-              <path
-                d="M698.9824 42.3936c-158.8736-32.5632-289.536 31.2832-324.9152 48.5888-94.72 46.2848-147.712 108.288-174.4896 140.288-25.9584 31.0272-82.7392 105.9328-108.288 215.8592-21.6576 93.1328-10.752 167.7824-6.0416 194.2528 11.4688 64.3072 33.28 186.88 150.4256 275.2 132.5056 99.8912 293.4784 85.5552 342.9888 80.9472 107.264-10.0352 289.4848-57.2928 300.8512-145.7152 5.1712-39.936-24.4224-89.4464-66.2016-102.5024-65.6384-20.5312-108.3392 63.5392-228.6592 80.9472-8.5504 1.2288-126.5664 16.6912-216.6272-48.5888-105.8816-76.6976-98.9696-211.3024-96.256-264.3968 1.536-30.5664 5.5808-93.5424 48.128-161.8944 14.7968-23.7568 60.3136-94.5664 156.4672-134.912 25.2928-10.5984 76.8512-31.5904 144.4352-26.9824 70.0416 4.7616 120.9856 34.5088 144.4352 48.5888 75.8272 45.4144 86.528 90.0608 120.3712 86.3232 35.8912-3.9424 69.9904-59.2896 66.2016-107.9296-7.424-93.7984-155.5968-158.1056-252.8256-178.0736z"
-                fill="#FFFFFF"></path>
-            </svg>
-            CSDN 博客
-          </a>
-          <a href="https://fsuied.com/" target="_blank" rel="noopener noreferrer"
-            class="flex items-center hover:text-blue-600 transition-colors">
-            <svg class="w-5 h-5 mr-1" viewBox="0 0 500 500" fill="currentColor">
-              <g id="520" stroke="none" stroke-width="1" fill-rule="evenodd">
-                <g id="uied">
-                  <path
-                    d="M50,0 L450,0 C477.614237,-5.07265313e-15 500,22.3857625 500,50 L500,450 C500,477.614237 477.614237,500 450,500 L50,500 C22.3857625,500 1.69088438e-15,477.614237 0,450 L0,50 C-3.38176876e-15,22.3857625 22.3857625,3.38176876e-15 50,0 Z M212.021661,187 L196.281588,299.620652 C195.703971,303.602926 193.947052,306.881017 191.01083,309.454926 C188.074609,312.028835 184.632972,313.315789 180.685921,313.315789 L167.400722,313.315789 L183.429603,198.655436 C183.910951,195.255934 185.427196,192.463486 187.978339,190.278091 C190.529483,188.092697 193.489771,187 196.859206,187 L212.021661,187 Z M87.1119134,187 L77.1480144,257.515389 C76.8592058,259.846476 76.7148014,262.03187 76.7148014,264.071572 C76.7148014,272.618892 79.3140794,279.077946 84.5126354,283.448734 C89.6149218,287.819523 96.3056558,290.004917 104.584838,290.004917 C113.056558,290.004917 120.036101,287.67383 125.523466,283.011655 C131.01083,278.252352 134.33213,271.356219 135.487365,262.323256 L144.151625,200.695137 C144.729242,196.712863 146.486161,193.434772 149.422383,190.860863 C152.358604,188.286954 155.752106,187 159.602888,187 L172.166065,187 L161.33574,264.508651 C156.907341,296.852486 137.990373,313.024404 104.584838,313.024404 C87.0637786,313.024404 73.5860409,309.04213 64.1516245,301.077581 C54.7172082,293.015905 50,281.894676 50,267.713895 C50,264.508651 50.2406739,261.206277 50.7220217,257.806775 L58.9530686,200.549445 C59.6269555,196.567171 61.4079422,193.313361 64.2960289,190.788017 C67.1841155,188.262672 70.5535499,187 74.4043321,187 L87.1119134,187 Z M326.534296,187 L325.234657,196.178656 C324.849579,198.704 323.742479,200.767984 321.913357,202.370606 C320.084236,203.973229 317.966306,204.77454 315.559567,204.77454 L258.519856,204.77454 L254.043321,237.409761 L312.238267,237.409761 L309.350181,258.098161 L251.155235,258.098161 L245.812274,292.773083 L311.805054,292.773083 L311.083032,299.912038 C310.505415,303.797183 308.820698,307.002428 306.028881,309.527773 C303.237064,312.053117 299.963899,313.315789 296.209386,313.315789 L216.209386,313.315789 L231.516245,204.337461 C232.286402,199.286772 234.524669,195.134523 238.231047,191.880714 C241.937425,188.626905 246.293622,187 251.299639,187 L326.534296,187 Z M385.451264,187.145693 C406.341757,187.145693 422.322503,192.827718 433.393502,204.191768 C444.464501,215.652947 450,230.4165 450,248.482426 C450,267.033995 444.320096,282.477448 432.960289,294.812785 C421.696751,307.050993 407.689531,313.170097 390.938628,313.170097 L326.534296,313.170097 L341.98556,200.986523 L342.06209,200.552325 C342.789822,196.670463 344.569366,193.48854 347.400722,191.006556 C350.336943,188.432647 353.77858,187.145693 357.725632,187.145693 Z M380.397112,208.271171 L367.545126,208.271171 L355.99278,292.190311 L380.974729,292.190311 C393.971119,292.190311 404.127557,288.062344 411.444043,279.80641 C418.856799,271.550477 422.563177,261.01202 422.563177,248.19104 C422.563177,236.341346 418.760529,226.725612 411.155235,219.343835 C403.54994,211.962059 393.297232,208.271171 380.397112,208.271171 Z">
-                  </path>
-                </g>
-              </g>
-            </svg>
-            UIED技术团队
+            {{ link.name }}
           </a>
         </div>
 
         <!-- 快捷导航链接 -->
         <div class="flex flex-wrap items-center gap-3 mt-4">
-          <a v-for="link in headerLinks" :key="link.name" :href="link.url" target="_blank" rel="noopener noreferrer"
+          <a v-for="link in headerLinks" :key="link.name" :href="link.link"
+            :target="isExternalLink(link.link) ? '_blank' : undefined" rel="noopener noreferrer"
             class="flex items-center text-gray-600 hover:text-blue-600 transition-all bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50 hover:shadow-sm text-sm group">
             <span class="font-medium">{{ link.name }}</span>
             <svg
@@ -265,9 +286,16 @@ onUnmounted(() => {
           </a>
         </div>
 
-        <div class="text-gray-400 text-xs mt-4">
-          当前工具总数：332个 | 最后更新：2026-03-22 21:30
+        <div class="version-split-alert mt-4">
+          <div class="split-alert-title">{{ changelogSplitTitle }}</div>
+          <div class="split-alert-desc">{{ changelogSplitDesc }}</div>
+          <a :href="changelogSplitLink" :target="isExternalLink(changelogSplitLink) ? '_blank' : undefined"
+            rel="noopener noreferrer" class="split-alert-link">
+            {{ changelogSplitLinkText }}
+          </a>
         </div>
+
+        <div class="text-gray-400 text-xs mt-4">{{ changelogStatsText }}</div>
       </div>
 
       <!-- 主要内容区域：时间线 + 目录 -->
@@ -302,6 +330,82 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 3.0.1 -->
+          <div class="timeline-item" id="v3.0.1">
+            <div class="version-tag">
+              <span class="version">3.0.1</span>
+              <span class="date">2026-03-23 10:30</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">交互优化</el-tag>
+                <span class="text-gray-700">AI 工具箱左侧导航与全栈脚本稳定性优化</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">左侧菜单逻辑优化</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li><strong><router-link to="/tools/ai/toolbox" target="_blank" class="hover:text-blue-600 transition-colors">AI工具箱</router-link></strong> 打开时不再整栏切换，继续保留全局分类导航，减少“页面结构突变”的违和感。</li>
+                        <li>AI 分类升级为分层导航：在分类内按“页面导航 / 工具分组”组织入口，避免二级菜单被平铺成一级菜单。</li>
+                        <li>AI 分组锚点与工具路由跳转逻辑统一，定位更稳定。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">开发环境启动稳定性修复</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>一键脚本强化 PID 与端口双重校验，修复“显示已运行但端口未监听”的误判问题。</li>
+                        <li>停止脚本新增端口兜底清理，避免 PID 过期时残留占端口进程。</li>
+                        <li>启动阶段增加端口就绪等待，降低抠图服务慢启动导致整体中断的概率。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Version 3.0.0 -->
+          <div class="timeline-item" id="v3.0.0">
+            <div class="version-tag">
+              <span class="version">3.0.0</span>
+              <span class="date">2026-03-22 23:40</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="danger" class="mr-2">版本分岔</el-tag>
+                <span class="text-gray-700">纯前端开源版与后台商业版正式分离</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">版本策略调整</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>纯前端开源版在 3.0.0 作为分岔节点，后续仅做稳定维护与安全修复。</li>
+                        <li>后台运营配置、模型管理、会员支付等能力归入商业源码版。</li>
+                        <li>商业版获取与服务支持统一入口：<a href="https://fsuied.com/" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700">fsuied.com</a>。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">本次同步内容</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>顶部 Banner 支持后台动态配置，前端不再写死。</li>
+                        <li>首页热门推荐、头部快捷链接、页脚分组继续向后台运营化推进。</li>
+                        <li>素材中心补齐“图标库”入口，支持侧边栏 SVG 图标运营配置。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 1.0.1-Fullstack -->
           <div class="timeline-item" id="v1.0.1-fullstack">
@@ -5251,6 +5355,38 @@ onUnmounted(() => {
   font-size: 2rem;
   color: #333;
   margin-bottom: 1rem;
+}
+
+.version-split-alert {
+  border: 1px solid #fecd6f;
+  background: #fff8e6;
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+
+.split-alert-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.split-alert-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #78350f;
+}
+
+.split-alert-link {
+  margin-top: 8px;
+  display: inline-flex;
+  font-size: 13px;
+  color: #1d4ed8;
+  text-decoration: none;
+}
+
+.split-alert-link:hover {
+  color: #1e40af;
 }
 
 .version {

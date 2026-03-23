@@ -40,23 +40,11 @@
                     target="_blank" class="text-blue-500 hover:text-blue-600">硅基流动x华为云联合SiliconFlow</a> 平台，支持多模型智能对话</p>
                 <!-- 链接导航 -->
                 <div class="flex flex-wrap justify-center items-center gap-x-4 gap-y-1 mt-3">
-                  <a href="https://www.uied.cn/" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI学习平台</a>
-                  <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="https://uiedtool.com/" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI免费工具</a>
-                  <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="https://hot.uied.cn/" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI资讯热榜</a>
-                  <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="https://hao.uied.cn/ai" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI工具导航</a>
-                  <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink" target="_blank"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600">AI交流群</a>
-                  <span class="text-gray-300 hidden md:inline">|</span>
-                  <a href="https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink"
-                    class="text-xs md:text-sm text-blue-500 hover:text-blue-600" target="_blank">AI知识库</a>
+                  <template v-for="(link, index) in headerLinks" :key="link.name">
+                    <a :href="link.link" :target="isExternalSiteLink(link.link) ? '_blank' : undefined"
+                      rel="noopener noreferrer" class="text-xs md:text-sm text-blue-500 hover:text-blue-600">{{ link.name }}</a>
+                    <span v-if="index !== headerLinks.length - 1" class="text-gray-300 hidden md:inline">|</span>
+                  </template>
                 </div>
                 <!-- 状态提示 -->
                 <div class="flex flex-col md:flex-row justify-center items-center gap-2 mt-3">
@@ -385,6 +373,8 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useHead } from '@vueuse/head'
 import { wechatVerifyConfig } from '@/utils/verify'
 import { ensureHighlightRuntime, ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
+import type { SiteLinkItem } from '@/services/siteConfig'
+import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
 
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
@@ -501,6 +491,16 @@ const info = {
   title: "DeepSeek R1 对话",
   subtitle: "基于 SiliconFlow 平台的 DeepSeek R1 模型，支持上下文记忆，最大输出长度2000 tokens"
 }
+
+const defaultHeaderLinks: SiteLinkItem[] = [
+  { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+  { name: 'AI免费工具', link: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜', link: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' },
+  { name: 'AI交流群', link: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
+  { name: 'AI知识库', link: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
+]
+const { headerLinks, loadHeaderLinks } = useSiteHeaderLinks('aiChatHeaderLinks', defaultHeaderLinks)
 
 // 定义接口
 interface Message {
@@ -1155,6 +1155,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 }
 
 onMounted(async () => {
+  await loadHeaderLinks()
   await ensureHighlightCore()
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)

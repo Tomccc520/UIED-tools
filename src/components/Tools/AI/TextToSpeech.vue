@@ -10,13 +10,24 @@ import { ElMessage, ElButton, ElInput, ElSelect, ElOption } from 'element-plus'
 import { useRoute } from 'vue-router'
 import axios from 'axios'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import type { SiteLinkItem } from '@/services/siteConfig'
+import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
 
 const route = useRoute()
 
 const info = {
-  title: "免费在线文本配音生成工具",
-  subtitle: "输入文本，选择喜欢的角色和风格，一键生成自然流畅的语音配音"
+    title: "免费在线文本配音生成工具",
+    subtitle: "输入文本，选择喜欢的角色和风格，一键生成自然流畅的语音配音"
 }
+
+const defaultHeaderLinks: SiteLinkItem[] = [
+  { name: '每日免费分享最新AI资讯', link: 'https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink' },
+  { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+  { name: 'AI免费工具uiedtool.com', link: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜hot.uied.cn', link: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' }
+]
+const { headerLinks, loadHeaderLinks } = useSiteHeaderLinks('aiCommonHeaderLinks', defaultHeaderLinks)
 
 const text = ref('')
 const loading = ref(false)
@@ -89,6 +100,7 @@ styles.value = defaultStyles
 
 onMounted(() => {
   // Future: fetchOptions() if API supports dynamic listing
+  void loadHeaderLinks()
 })
 </script>
 
@@ -110,25 +122,10 @@ onMounted(() => {
 
           <!-- 推荐链接 -->
           <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm">
-            <a href="https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink" target="_blank"
+            <a v-for="link in headerLinks" :key="link.name" :href="link.link"
+              :target="isExternalSiteLink(link.link) ? '_blank' : undefined" rel="noopener noreferrer"
               class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              每日免费分享最新AI资讯
-            </a>
-            <a href="https://www.uied.cn/" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI学习平台
-            </a>
-            <a href="https://uiedtool.com" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI免费工具uiedtool.com
-            </a>
-            <a href="https://hot.uied.cn" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI资讯热榜hot.uied.cn
-            </a>
-            <a href="https://hao.uied.cn/ai" target="_blank"
-              class="text-gray-600 hover:text-blue-600 transition-colors flex items-center gap-1">
-              AI工具导航
+              {{ link.name }}
             </a>
           </div>
         </div>

@@ -63,6 +63,16 @@ export interface SitePublicConfig {
   toolCategories: ToolCategory[]
   sidebarBottomLinks: SiteLinkItem[]
   aiToolboxSidebarMenus: SiteLinkItem[]
+  changelogHeaderLinks: SiteLinkItem[]
+  changelogIntroText: string
+  changelogMetaLinks: SiteLinkItem[]
+  changelogSplitTitle: string
+  changelogSplitDesc: string
+  changelogSplitLink: string
+  changelogSplitLinkText: string
+  changelogStatsText: string
+  aiChatHeaderLinks: SiteLinkItem[]
+  aiCommonHeaderLinks: SiteLinkItem[]
   footerQuickSections: SiteLinkSection[]
   footerFriendSections: SiteLinkSection[]
   officialMediaLinks: SiteLinkItem[]
@@ -144,6 +154,27 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   toolCategories: [],
   sidebarBottomLinks: [],
   aiToolboxSidebarMenus: [],
+  changelogHeaderLinks: [],
+  changelogIntroText: '由 Tomda 开发（AI协助）并记录 UIED-Tools 的开发历程和功能更新。公众号：Tomda',
+  changelogMetaLinks: [
+    { name: 'GitHub（开源版）', link: 'https://github.com/Tomccc520/UIED-tools' },
+    { name: 'Gitee（闭源版）', link: 'https://gitee.com/tomdac/tool' },
+    { name: 'CSDN 博客', link: 'https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343' },
+    { name: 'UIED技术团队', link: 'https://fsuied.com/' }
+  ],
+  changelogSplitTitle: '工具箱 3.0.0 版本分岔提醒',
+  changelogSplitDesc: '纯前端开源版在 3.0.0 后进入维护态；包含后台运营、会员与模型管理能力的版本为商业源码版。',
+  changelogSplitLink: 'https://fsuied.com/',
+  changelogSplitLinkText: '购买源码与服务支持（fsuied.com）',
+  changelogStatsText: '当前工具总数：332个 | 最后更新：2026-03-23 10:30',
+  aiChatHeaderLinks: [],
+  aiCommonHeaderLinks: [
+    { name: '每日免费分享最新AI资讯', link: 'https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink' },
+    { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+    { name: 'AI免费工具uiedtool.com', link: 'https://uiedtool.com' },
+    { name: 'AI资讯热榜hot.uied.cn', link: 'https://hot.uied.cn' },
+    { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' }
+  ],
   footerQuickSections: [],
   footerFriendSections: [],
   officialMediaLinks: []
@@ -451,6 +482,28 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     toolCategories: normalizeToolCategories(record.toolsCategoryTree),
     sidebarBottomLinks: normalizeLinkItems(record.toolsSidebarBottomLinks),
     aiToolboxSidebarMenus: normalizeLinkItems(record.toolsAiToolboxSidebarMenus),
+    changelogHeaderLinks: normalizeLinkItems(record.toolsChangelogHeaderLinks),
+    changelogIntroText:
+      String(record.toolsChangelogIntroText || DEFAULT_SITE_PUBLIC_CONFIG.changelogIntroText).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.changelogIntroText,
+    changelogMetaLinks: normalizeLinkItems(record.toolsChangelogMetaLinks),
+    changelogSplitTitle:
+      String(record.toolsChangelogSplitTitle || DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitTitle,
+    changelogSplitDesc:
+      String(record.toolsChangelogSplitDesc || DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitDesc).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitDesc,
+    changelogSplitLink:
+      String(record.toolsChangelogSplitLink || DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitLink).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitLink,
+    changelogSplitLinkText:
+      String(record.toolsChangelogSplitLinkText || DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitLinkText).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitLinkText,
+    changelogStatsText:
+      String(record.toolsChangelogStatsText || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText,
+    aiChatHeaderLinks: normalizeLinkItems(record.toolsAiChatHeaderLinks),
+    aiCommonHeaderLinks: normalizeLinkItems(record.toolsAiCommonHeaderLinks),
     footerQuickSections: normalizeLinkSections(record.toolsFooterQuickSections),
     footerFriendSections: normalizeLinkSections(record.toolsFooterFriendSections),
     officialMediaLinks: normalizeLinkItems(record.toolsOfficialMediaLinks)
