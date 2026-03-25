@@ -119,7 +119,7 @@ const initDailyWord = () => {
  * 函数说明：读取后台站点配置并更新顶部展示名称
  */
 const loadSiteConfig = async () => {
-  const siteConfig = await getSitePublicConfig()
+  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
   if (siteConfig.webName) {
     siteName.value = siteConfig.webName
   }

@@ -16,20 +16,42 @@
 -->
 
 <script setup lang="ts">
-import { onMounted, ref, computed } from '@vue/runtime-core'
-import { useRouter } from "vue-router"
+import { onMounted, ref, computed, nextTick, watch } from '@vue/runtime-core'
 import { useToolsStore } from '@/store/modules/tools'
 import { useRoute } from "vue-router"
 import HotSearch from '@/components/HotSearch/HotSearch.vue'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
-import type { Tool, ToolCategory } from '@/types/tools'
+import { getSitePublicConfig, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
+import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 // 初始化 store 和路由
 const toolsStore = useToolsStore()
 const route = useRoute()
-const router = useRouter()
+const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>([])
+const defaultHomeSectionKeyMap: Record<string, string> = {
+  'AI工具箱': 'ai',
+  '设计工具': 'design',
+  '图片处理': 'image',
+  '办公工具': 'office',
+  '生活常用': 'daily',
+  '文案工具': 'copywriting',
+  '潜能测试': 'psychology',
+  '剪辑工具': 'video',
+  '开发工具': 'dev',
+  '摸鱼工具': 'slacking',
+  '效率工具': 'efficiency'
+}
 
-// 获取工具分类数据
+interface HomeCategorySection {
+  id: number | string
+  title: string
+  sectionKey: string
+  list: ToolSubCategory[]
+}
+
+/**
+ * 函数说明：获取工具分类数据，优先读取后台配置化工具分类
+ */
 const getToolsCate = async () => {
   try {
     await toolsStore.getToolCate()
@@ -38,7 +60,63 @@ const getToolsCate = async () => {
   }
 }
 
-// 处理工具点击事件
+/**
+ * 函数说明：读取后台侧栏分类菜单配置，用于同步首页分类区锚点 key
+ */
+const loadHomeSiteConfig = async () => {
+  try {
+    const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+    sidebarCategoryMenus.value = siteConfig.sidebarCategoryMenus
+  } catch (error) {
+    console.error('Failed to get home site config:', error)
+    sidebarCategoryMenus.value = []
+  }
+}
+
+/**
+ * 函数说明：根据分类标题解析首页区块 key，优先与后台侧栏菜单 key 对齐，保证菜单锚点一致
+ */
+const resolveHomeSectionKey = (categoryTitle: string): string => {
+  const normalizedTitle = String(categoryTitle || '').trim()
+  const matchedMenu = sidebarCategoryMenus.value.find((menu) => String(menu.cateTitle || '').trim() === normalizedTitle)
+  if (matchedMenu?.key) {
+    return String(matchedMenu.key).trim()
+  }
+  if (defaultHomeSectionKeyMap[normalizedTitle]) {
+    return defaultHomeSectionKeyMap[normalizedTitle]
+  }
+  return normalizedTitle
+    .toLowerCase()
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z0-9-\u4e00-\u9fa5]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '') || 'tools'
+}
+
+/**
+ * 函数说明：提取首页热门工具列表，保持推荐区与后台热门工具配置一致
+ */
+const hotRecommendTools = computed<Tool[]>(() => {
+  return toolsStore.recommends.filter((tool: Tool) => tool.cate === '热门工具')
+})
+
+/**
+ * 函数说明：按后台工具分类动态构建首页分类区，避免前端模板写死分类顺序和名称
+ */
+const homeCategorySections = computed<HomeCategorySection[]>(() => {
+  return toolsStore.cates
+    .map((category: ToolCategory, index: number) => ({
+      id: category.id || index + 1,
+      title: category.title,
+      sectionKey: resolveHomeSectionKey(category.title),
+      list: Array.isArray(category.list) ? category.list : []
+    }))
+    .filter((section) => section.list.length > 0)
+})
+
+/**
+ * 函数说明：处理工具点击事件，外链新开页，站内工具保留当前“新窗口使用”的原有行为
+ */
 const handleToolClick = (item: Tool) => {
   if (item.isExternal) {
     window.open(item.url, '_blank')
@@ -76,18 +154,38 @@ const getCardStyle = computed(() => {
   }
 })
 
-// 组件挂载时初始化数据和滚动位置
-onMounted(() => {
-  getToolsCate()
-  toolsStore.getRecommends()
+/**
+ * 函数说明：根据路由参数滚动到首页对应锚点，未指定时默认定位热门工具区
+ */
+const scrollToRouteAnchor = async () => {
+  const queryValue = route.query?.value
+  const anchorId = typeof queryValue === 'string' && queryValue.trim() ? queryValue.trim() : 'recommend-hot'
+  await nextTick()
+  document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
 
-  // 根据路由参数滚动到指定位置
-  if (route.query && route.query.value) {
-    document?.querySelector('#' + `${route.query.value}`)?.scrollIntoView();
-  } else {
-    document?.querySelector('#collect')?.scrollIntoView()
-  }
+/**
+ * 函数说明：首页初始化时加载工具分类、热门工具与后台菜单配置，并完成锚点定位
+ */
+const initHomePage = async () => {
+  await Promise.all([
+    getToolsCate(),
+    toolsStore.getRecommends(),
+    loadHomeSiteConfig()
+  ])
+  await scrollToRouteAnchor()
+}
+
+onMounted(() => {
+  void initHomePage()
 })
+
+watch(
+  () => [route.query?.value, toolsStore.cates.length, sidebarCategoryMenus.value.length],
+  () => {
+    void scrollToRouteAnchor()
+  }
+)
 </script>
 
 <template>
@@ -108,8 +206,7 @@ onMounted(() => {
             <div class="title-line"></div>
           </div>
           <div class="grid gap-4">
-            <div v-for="(item, index) in toolsStore.recommends.filter((tool: Tool) =>
-              tool.cate === '热门工具')" :key="index" class="tool-card-container" @mousemove="handleMouseMove"
+            <div v-for="(item, index) in hotRecommendTools" :key="index" class="tool-card-container" @mousemove="handleMouseMove"
               @mouseleave="handleMouseLeave">
               <div
                 class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
@@ -142,26 +239,37 @@ onMounted(() => {
           </div>
         </div>
 
-        <!-- AI工具箱区域 -->
-        <div id="ai">
-          <!-- 主标题样式 -->
+        <section
+          v-for="section in homeCategorySections"
+          :key="section.sectionKey"
+          :id="section.sectionKey"
+        >
           <div class="section-title">
-            <div class="title-text">AI工具箱</div>
+            <div class="title-text">{{ section.title }}</div>
             <div class="title-line"></div>
           </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === 'AI工具箱')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`ai-${category.id}`" class="sub-title">
+          <div
+            v-for="(category, categoryIndex) in section.list"
+            :key="category.id || `${section.sectionKey}-${categoryIndex}`"
+          >
+            <div :id="`${section.sectionKey}-${category.id || categoryIndex + 1}`" class="sub-title">
               <div class="sub-title-indicator"></div>
               <div class="sub-title-text">{{ category.title }}</div>
             </div>
             <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
+              <div
+                v-for="item in category.list"
+                :key="item.id"
+                :id="`tool-${item.id}`"
+                class="tool-card-container"
+                @mousemove="handleMouseMove"
+                @mouseleave="handleMouseLeave"
+              >
                 <div
                   class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
+                  :style="getCardStyle"
+                  @click="handleToolClick(item)"
+                >
                   <div class="flex items-center border-b pb-2 relative z-10">
                     <ToolIcon v-if="item.logo" :icon="item.logo" />
                     <div class="flex flex-col ml-2 w-full">
@@ -176,9 +284,7 @@ onMounted(() => {
                   <div class="flex mt-2 relative z-10">
                     <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
                   </div>
-                  <!-- 卡片光效 -->
                   <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
                   <div class="card-arrow">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -189,497 +295,7 @@ onMounted(() => {
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- 设计工具区域 -->
-        <div id="design">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">设计工具</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '设计工具')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`design-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon v-if="item.logo" :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 图片处理区域 -->
-        <div id="image-processing">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">图片处理</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '图片处理')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`image-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon v-if="item.logo" :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 剪辑工具区域 -->
-        <div id="video">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">剪辑工具</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '剪辑工具')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`video-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon v-if="item.logo" :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 办公工具区域 -->
-        <div id="office">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">办公工具</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '办公工具')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`office-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 生活常用区域 -->
-        <div id="daily">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">生活常用</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '生活常用')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`daily-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 文案工具区域 -->
-        <div id="copywriting">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">文案工具</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '文案工具')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`copywriting-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 潜能测试区域 -->
-        <div id="psychology">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">潜能测试</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '潜能测试')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`psychology-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 开发工具区域 -->
-        <div id="dev">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">开发工具</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '开发工具')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`dev-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 摸鱼工具区域 -->
-        <div id="slacking">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">摸鱼工具</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '摸鱼工具')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`slacking-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 效率工具区域 -->
-        <div id="efficiency">
-          <!-- 主标题样式 -->
-          <div class="section-title">
-            <div class="title-text">效率工具</div>
-            <div class="title-line"></div>
-          </div>
-          <div v-for="category in toolsStore.cates.find((cate: ToolCategory) => cate.title === '效率工具')?.list"
-            :key="category.id">
-            <!-- 子标题样式 -->
-            <div :id="`efficiency-${category.id}`" class="sub-title">
-              <div class="sub-title-indicator"></div>
-              <div class="sub-title-text">{{ category.title }}</div>
-            </div>
-            <div class="grid gap-4">
-              <div v-for="item in category.list" :key="item.id" :id="`tool-${item.id}`" class="tool-card-container"
-                @mousemove="handleMouseMove" @mouseleave="handleMouseLeave">
-                <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                  :style="getCardStyle" @click="handleToolClick(item)">
-                  <div class="flex items-center border-b pb-2 relative z-10">
-                    <ToolIcon :icon="item.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="flex flex-col">
-                        <div class="font-semibold text-lg truncate mb-1">{{ item.title }}</div>
-                      </div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ item.cate }}</el-text>
-                      </div>
-                    </div>
-                  </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ item.desc }}</el-text>
-                  </div>
-                  <!-- 卡片光效 -->
-                  <div class="card-shine"></div>
-                  <!-- 添加箭头元素 -->
-                  <div class="card-arrow">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M7 17L17 7M17 7H7M17 7V17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
 
 
         <!-- 返回顶部 -->

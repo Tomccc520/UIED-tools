@@ -49,7 +49,7 @@ log_info() {
 
 # 函数说明：统一输出错误并退出，避免后续步骤继续执行
 log_error_and_exit() {
-  printf "\033[31m[ERROR]\033[0m %s\n" "$1"
+  printf "\033[31m[ERROR]\033[0m %s\n" "$1" >&2
   exit 1
 }
 
@@ -83,6 +83,38 @@ port_in_use() {
   lsof -iTCP:"${port}" -sTCP:LISTEN -Pn >/dev/null 2>&1
 }
 
+# 函数说明：读取指定端口的监听 PID，供 PID 文件修复与冲突定位使用
+get_listener_pid_by_port() {
+  local port="$1"
+  lsof -tiTCP:"${port}" -sTCP:LISTEN -Pn 2>/dev/null | head -n 1
+}
+
+# 函数说明：校验 PID 是否监听目标端口，避免 PID 复用导致误判
+pid_listens_on_port() {
+  local pid="$1"
+  local port="$2"
+  lsof -nP -a -p "${pid}" -iTCP:"${port}" -sTCP:LISTEN >/dev/null 2>&1
+}
+
+# 函数说明：判断目标 PID 是否属于当前项目目录，避免把无关进程当作本项目进程
+pid_belongs_to_workspace() {
+  local pid="$1"
+  local pid_cwd
+  local cmdline
+
+  pid_cwd="$(lsof -a -p "${pid}" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' | head -n 1)"
+  if [[ -n "${pid_cwd}" ]] && [[ "${pid_cwd}" == "${ROOT_DIR}"* ]]; then
+    return 0
+  fi
+
+  cmdline="$(ps -p "${pid}" -o command= 2>/dev/null || true)"
+  if [[ -n "${cmdline}" ]] && [[ "${cmdline}" == *"${ROOT_DIR}"* ]]; then
+    return 0
+  fi
+
+  return 1
+}
+
 # 函数说明：在给定起始端口基础上自动找到可用端口，避免冲突
 find_available_port() {
   local preferred="$1"
@@ -110,18 +142,28 @@ resolve_port_conflict() {
   local current_port="$1"
   local label="$2"
   local pid_file="$3"
+  local listener_pid=""
 
   if [[ -z "${current_port}" ]]; then
     echo ""
     return
   fi
 
-  if is_pid_running "${pid_file}"; then
+  if is_pid_running "${pid_file}" "${current_port}"; then
     echo "${current_port}"
     return
   fi
 
   if port_in_use "${current_port}"; then
+    listener_pid="$(get_listener_pid_by_port "${current_port}")"
+    # 函数说明：当端口被“当前项目旧进程”占用时自动修复 PID 文件，避免固定端口模式误报冲突
+    if [[ -n "${listener_pid}" ]] && pid_belongs_to_workspace "${listener_pid}"; then
+      echo "${listener_pid}" > "${pid_file}"
+      log_info "${label} 检测到历史 PID 已失效，端口 ${current_port} 正由本项目进程占用 (pid=${listener_pid})，已自动修复。"
+      echo "${current_port}"
+      return
+    fi
+
     if [[ "${STRICT_FIXED_PORTS}" == "1" ]]; then
       log_error_and_exit "${label} 端口 ${current_port} 已被占用。请先执行 bash scripts/dev/stop-fullstack.sh 释放端口后重试。"
     fi
@@ -302,8 +344,60 @@ init_likeadmin_database() {
   log_info "${DB_NAME} 数据库初始化完成。"
 }
 
-# 函数说明：检测 PID 文件对应进程是否存活
+# 函数说明：检测 PID 文件对应进程是否存活，可选校验端口监听，避免 PID 复用误判
 is_pid_running() {
+  local pid_file="$1"
+  local expected_port="${2:-}"
+  local pid=""
+  local listener_pid=""
+
+  if [[ ! -f "${pid_file}" ]]; then
+    return 1
+  fi
+
+  pid="$(cat "${pid_file}")"
+  if [[ -z "${pid}" ]]; then
+    return 1
+  fi
+
+  # 函数说明：优先判断 PID 存活，后续会结合端口监听与监听 PID 自修复，兼容 npm/vite 子进程监听端口的场景
+  if ! kill -0 "${pid}" >/dev/null 2>&1; then
+    if [[ -z "${expected_port}" ]]; then
+      return 1
+    fi
+    if ! port_in_use "${expected_port}"; then
+      return 1
+    fi
+    listener_pid="$(get_listener_pid_by_port "${expected_port}")"
+    if [[ -n "${listener_pid}" ]] && pid_belongs_to_workspace "${listener_pid}"; then
+      echo "${listener_pid}" > "${pid_file}"
+      return 0
+    fi
+    return 1
+  fi
+
+  if [[ -n "${expected_port}" ]]; then
+    if ! port_in_use "${expected_port}"; then
+      return 1
+    fi
+    if pid_listens_on_port "${pid}" "${expected_port}"; then
+      return 0
+    fi
+
+    # 函数说明：当 PID 是启动壳进程而非真正监听进程时，自动绑定到端口监听 PID，避免“已启动却判定超时”
+    listener_pid="$(get_listener_pid_by_port "${expected_port}")"
+    if [[ -n "${listener_pid}" ]] && pid_belongs_to_workspace "${listener_pid}"; then
+      echo "${listener_pid}" > "${pid_file}"
+      return 0
+    fi
+    return 1
+  fi
+
+  return 0
+}
+
+# 函数说明：仅校验 PID 是否存活，不包含端口判断，供启动等待阶段使用
+is_pid_alive() {
   local pid_file="$1"
   if [[ ! -f "${pid_file}" ]]; then
     return 1
@@ -321,10 +415,11 @@ start_background_process() {
   local name="$1"
   local cmd="$2"
   local cwd="$3"
+  local expected_port="${4:-}"
   local pid_file="${PID_DIR}/${name}.pid"
   local log_file="${LOG_DIR}/${name}.log"
 
-  if is_pid_running "${pid_file}"; then
+  if is_pid_running "${pid_file}" "${expected_port}"; then
     log_info "${name} 已在运行，跳过启动。"
     return
   fi
@@ -335,33 +430,50 @@ start_background_process() {
   nohup bash -lc "cd '${cwd}' && ${cmd}" >"${log_file}" 2>&1 &
   echo "$!" >"${pid_file}"
 
-  sleep 2
-  if ! is_pid_running "${pid_file}"; then
-    log_error_and_exit "${name} 启动失败，请查看日志: ${log_file}"
+  if [[ -z "${expected_port}" ]]; then
+    sleep 2
+    if ! is_pid_alive "${pid_file}"; then
+      log_error_and_exit "${name} 启动失败，请查看日志: ${log_file}"
+    fi
+    return
   fi
+
+  local retries="${START_READY_RETRIES:-60}"
+  local i
+  for ((i = 1; i <= retries; i++)); do
+    if is_pid_running "${pid_file}" "${expected_port}"; then
+      return
+    fi
+    if ! is_pid_alive "${pid_file}"; then
+      log_error_and_exit "${name} 启动失败，请查看日志: ${log_file}"
+    fi
+    sleep 1
+  done
+
+  log_error_and_exit "${name} 启动超时（端口 ${expected_port} 未就绪），请查看日志: ${log_file}"
 }
 
 # 函数说明：启动 likeadmin-go 服务端 API
 start_likeadmin_server() {
-  start_background_process "likeadmin-server" "go run main.go" "${LIKEADMIN_SERVER_DIR}"
+  start_background_process "likeadmin-server" "go run main.go" "${LIKEADMIN_SERVER_DIR}" "${GO_API_PORT}"
 }
 
 # 函数说明：启动 likeadmin-go 管理后台前端
 start_likeadmin_admin() {
   local cmd="[ -d node_modules ] || npm install; npm run dev -- --host 0.0.0.0 --port ${ADMIN_PORT}"
-  start_background_process "likeadmin-admin" "${cmd}" "${LIKEADMIN_ADMIN_DIR}"
+  start_background_process "likeadmin-admin" "${cmd}" "${LIKEADMIN_ADMIN_DIR}" "${ADMIN_PORT}"
 }
 
 # 函数说明：启动 AI 抠图 Python 服务
 start_matting_service() {
   local cmd="MATTING_HOST=0.0.0.0 MATTING_PORT=${MATTING_PORT} bash '${ROOT_DIR}/scripts/backend/run-matting-service.sh'"
-  start_background_process "matting-service" "${cmd}" "${ROOT_DIR}"
+  start_background_process "matting-service" "${cmd}" "${ROOT_DIR}" "${MATTING_PORT}"
 }
 
 # 函数说明：启动当前 tools-web 前端开发服务
 start_tools_frontend() {
   local cmd="VITE_BACKEND_PROXY_TARGET=http://127.0.0.1:${GO_API_PORT} VITE_MATTING_PROXY_TARGET=http://127.0.0.1:${MATTING_PORT} npm run dev -- --host 0.0.0.0 --port ${TOOLS_PORT}"
-  start_background_process "tools-frontend" "${cmd}" "${ROOT_DIR}"
+  start_background_process "tools-frontend" "${cmd}" "${ROOT_DIR}" "${TOOLS_PORT}"
 }
 
 # 函数说明：输出本次一键启动后的访问入口，便于直接验证

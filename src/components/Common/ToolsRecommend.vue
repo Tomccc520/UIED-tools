@@ -255,7 +255,7 @@ const mapHotToolsToRecommendTools = (items: SiteHotToolItem[]): Tool[] => {
  */
 const loadHotToolsFromSiteConfig = async () => {
   try {
-    const siteConfig = await getSitePublicConfig()
+    const siteConfig = await getSitePublicConfig({ forceRefresh: true })
     if (siteConfig.hotTools.length > 0) {
       hotTools.value = mapHotToolsToRecommendTools(siteConfig.hotTools).slice(0, 8)
       return

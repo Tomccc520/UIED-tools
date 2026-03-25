@@ -185,7 +185,7 @@ const isExternalLink = (link: string) => link.startsWith('http://') || link.star
  * 函数说明：加载后台公共站点配置并更新页脚展示内容
  */
 const loadSiteConfig = async () => {
-  siteConfig.value = await getSitePublicConfig()
+  siteConfig.value = await getSitePublicConfig({ forceRefresh: true })
 }
 
 onMounted(() => {

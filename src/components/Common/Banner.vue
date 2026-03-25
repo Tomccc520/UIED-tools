@@ -8,73 +8,72 @@
  * @createDate 2025-03-21
  */
 
-import { ref } from 'vue'
+import { onMounted, onUnmounted, ref, watch } from 'vue'
+import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteBannerSlideItem } from '@/services/siteConfig'
 
 /**
  * 广告项数据类型
  */
-interface BannerItem {
+interface BannerItem extends SiteBannerSlideItem {
   id: number
-  link: string
-  gradient: string
-  text: string
-  badge: string
+}
+
+const slideDurationMs = 4000
+const activeIndex = ref(0)
+const bannerList = ref<BannerItem[]>([])
+let autoPlayTimer: number | null = null
+
+/**
+ * 函数说明：把站点配置中的 Banner 项转换为组件可渲染结构并补齐 id
+ */
+const mapBannerList = (slides: SiteBannerSlideItem[]): BannerItem[] => {
+  return slides.map((item, index) => ({
+    id: index + 1,
+    badge: item.badge,
+    text: item.text,
+    link: item.link,
+    gradient: item.gradient
+  }))
 }
 
 /**
- * 横幅广告数据
+ * 函数说明：清理轮播自动播放定时器，避免重复创建导致切换错乱
  */
-const bannerList = ref<BannerItem[]>([
-  {
-    id: 1,
-    link: 'https://fsuied.com',
-    gradient: 'linear-gradient(to right,#6366f1,#e0e7ff,#edf2ff,#8b5cf6)',
-    badge: '推荐',
-    text: '一人企业Vibe Coding社区！'
-  },
-  {
-    id: 2,
-    link: 'https://nf.video/mbx1u6/?gid=18',
-    gradient: 'linear-gradient(to right,#ec4899,#fbe7ef,#fdf2f8,#f472b6)',
-    badge: '热门',
-    text: 'GPT-5.4重回巅峰 智能对话'
-  },
-  {
-    id: 3,
-    link: 'https://www.trae.com.cn/?utm_source=advertising&utm_medium=uied_ug_cpa&utm_term=hw_trae_uied',
-    gradient: 'linear-gradient(to right,#a855f7,#f3e8ff,#f5f3ff,#c084fc)',
-    badge: '新品',
-    text: '免费AI编程工具 Trae - 智能编码助手'
-  },
-  {
-    id: 4,
-    link: 'https://yuanbao.paluai.com/uied',
-    gradient: 'linear-gradient(to right,#ffc800,#ffed99,#fff8cc,#ffaa00)',
-    badge: '新品',
-    text: '腾讯元宝 智能对话新体验'
-  },
-  {
-    id: 5,
-    link: 'https://www.aippt.cn/?utm_type=Navweb&utm_source=bbdh&utm_page=aippt&utm_plan=ppt&utm_unit=AIPPT&utm_keyword=40471047',
-    gradient: 'linear-gradient(to right,#10b981,#d1fae5,#ecfdf5,#34d399)',
-    badge: '高效',
-    text: '免费AI生成PPT - 一键生成演示文稿'
-  },
-  {
-    id: 6,
-    link: 'https://universalbus.cn/?s=lPLG02aydo',
-    gradient: 'linear-gradient(to right,#f97316,#ffedd5,#fff7ed,#fb923c)',
-    badge: '特惠',
-    text: 'Adobe 正版全家桶可用AI'
-  },
-  {
-    id: 7,
-    link: 'https://universalbus.cn/?s=lPLG02aydo',
-    gradient: 'linear-gradient(to right,#0ea5e9,#e0f2fe,#f0f9ff,#38bdf8)',
-    badge: '新品',
-    text: 'Gemini3 可用 nanobanana'
+const clearAutoPlayTimer = () => {
+  if (autoPlayTimer) {
+    window.clearInterval(autoPlayTimer)
+    autoPlayTimer = null
   }
-])
+}
+
+/**
+ * 函数说明：根据当前 Banner 数量重建自动轮播定时器，仅多条数据时自动轮播
+ */
+const resetAutoPlayTimer = () => {
+  clearAutoPlayTimer()
+  if (bannerList.value.length <= 1) {
+    activeIndex.value = 0
+    return
+  }
+  autoPlayTimer = window.setInterval(() => {
+    activeIndex.value = (activeIndex.value + 1) % bannerList.value.length
+  }, slideDurationMs)
+}
+
+/**
+ * 函数说明：初始化默认 Banner 配置，确保接口失败时仍可正常展示
+ */
+const initDefaultBannerList = () => {
+  bannerList.value = mapBannerList(getDefaultSitePublicConfig().bannerSlides)
+}
+
+/**
+ * 函数说明：读取后台 Banner 配置并替换本地展示列表
+ */
+const loadSiteConfig = async () => {
+  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+  bannerList.value = mapBannerList(siteConfig.bannerSlides)
+}
 
 /**
  * 获取广告项的行内样式
@@ -84,14 +83,35 @@ const bannerList = ref<BannerItem[]>([
 const getSlideStyle = (item: BannerItem) => {
   return { backgroundImage: item.gradient }
 }
+
+watch(
+  () => bannerList.value.length,
+  () => {
+    if (activeIndex.value >= bannerList.value.length) {
+      activeIndex.value = 0
+    }
+    resetAutoPlayTimer()
+  }
+)
+
+onMounted(() => {
+  initDefaultBannerList()
+  resetAutoPlayTimer()
+  void loadSiteConfig()
+})
+
+onUnmounted(() => {
+  clearAutoPlayTimer()
+})
 </script>
 
 <template>
   <div class="uied-banner-carousel">
     <a
-      v-for="item in bannerList"
+      v-for="(item, index) in bannerList"
       :key="item.id"
       class="uied-banner-slide"
+      :class="{ 'is-active': index === activeIndex }"
       :href="item.link"
       target="_blank"
       rel="noopener noreferrer"
@@ -126,42 +146,14 @@ const getSlideStyle = (item: BannerItem) => {
   padding: 0 8px;
   opacity: 0;
   visibility: hidden;
-  animation: banner 28s infinite;
+  transition: opacity 320ms ease;
+  pointer-events: none;
 }
 
-.uied-banner-slide:nth-child(1) { animation-delay: 0s; }
-.uied-banner-slide:nth-child(2) { animation-delay: 4s; }
-.uied-banner-slide:nth-child(3) { animation-delay: 8s; }
-.uied-banner-slide:nth-child(4) { animation-delay: 12s; }
-.uied-banner-slide:nth-child(5) { animation-delay: 16s; }
-.uied-banner-slide:nth-child(6) { animation-delay: 20s; }
-.uied-banner-slide:nth-child(7) { animation-delay: 24s; }
-
-@keyframes banner {
-  0% {
-    opacity: 0;
-    visibility: hidden;
-  }
-
-  3% {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  20% {
-    opacity: 1;
-    visibility: visible;
-  }
-
-  23% {
-    opacity: 0;
-    visibility: hidden;
-  }
-
-  100% {
-    opacity: 0;
-    visibility: hidden;
-  }
+.uied-banner-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
 }
 
 .uied-banner-content {

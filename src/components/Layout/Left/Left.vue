@@ -59,12 +59,20 @@ const defaultSidebarBottomLinks: SiteLinkItem[] = [
   { name: '意见反馈', link: 'https://uiedtool.com/' },
   { name: '关于我们', link: '/about' }
 ]
+const defaultAiToolboxSidebarMenus: SiteLinkItem[] = [
+  { name: 'AI精选工具', link: '#ai-highlight' },
+  { name: 'AI分组总览', link: '#ai-groups' }
+]
 const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>(defaultSidebarCategoryMenus)
 const sidebarBottomLinks = ref<SiteLinkItem[]>(defaultSidebarBottomLinks)
+const aiToolboxSidebarMenus = ref<SiteLinkItem[]>(defaultAiToolboxSidebarMenus)
 
 // 菜单状态配置
 const defaultActive = ref('')
-const defaultOpeneds: string[] = ['recommend'] // 默认展开推荐工具菜单
+const isAiToolboxRoute = computed<boolean>(() => route.path === '/tools/ai/toolbox')
+const defaultOpeneds = computed<string[]>(() => {
+  return ['recommend']
+})
 
 // store实例
 const toolsStore = useToolsStore()
@@ -74,6 +82,10 @@ interface DisplaySidebarCategoryMenu extends SiteSidebarCategoryMenu {
   isDirectLink: boolean
   resolvedLink: string
   resolvedIcon: string
+}
+
+interface AiToolboxSidebarMenuItem extends SiteLinkItem {
+  icon: string
 }
 
 const defaultSidebarMenuIconMap: Record<string, string> = {
@@ -156,6 +168,179 @@ const displaySidebarBottomLinks = computed<SiteLinkItem[]>(() => {
 })
 
 /**
+ * 函数说明：获取 AI 工具箱独立侧栏菜单，优先后台配置，未配置时回退默认值
+ */
+const displayAiToolboxSidebarMenus = computed<SiteLinkItem[]>(() => {
+  const source = aiToolboxSidebarMenus.value.length ? aiToolboxSidebarMenus.value : defaultAiToolboxSidebarMenus
+  const fixedMenus: SiteLinkItem[] = []
+
+  source.forEach((item) => {
+    const name = String(item.name || '').trim()
+    const link = String(item.link || '').trim()
+    if (!name || !link) {
+      return
+    }
+    if (!isExternalMenuLink(link) && !isAnchorMenuLink(link)) {
+      return
+    }
+    fixedMenus.push({ name, link })
+  })
+
+  if (!fixedMenus.length) {
+    fixedMenus.push(
+      { name: 'AI精选工具', link: '#ai-highlight' },
+      { name: 'AI分组总览', link: '#ai-groups' }
+    )
+  }
+
+  const aiGroups = resolveCategoryList('AI工具箱')
+  const categoryAnchorMenus = aiGroups
+    .map((group, index) => {
+      const title = String(group.title || '').trim()
+      if (!title) {
+        return null
+      }
+      const groupId = String(group.id || '').trim() || String(index + 1)
+      return {
+        name: title,
+        link: `#ai-group-${groupId}`
+      } as SiteLinkItem
+    })
+    .filter((item): item is SiteLinkItem => Boolean(item))
+
+  const mergedMenus = [...fixedMenus, ...categoryAnchorMenus]
+  const uniqueMenus: SiteLinkItem[] = []
+  const seenKey = new Set<string>()
+
+  mergedMenus.forEach((item) => {
+    const key = `${item.name}__${item.link}`
+    if (seenKey.has(key)) {
+      return
+    }
+    seenKey.add(key)
+    uniqueMenus.push(item)
+  })
+
+  return uniqueMenus
+})
+
+/**
+ * 函数说明：判断 AI 工具箱菜单链接是否为外部链接
+ */
+const isExternalMenuLink = (link: string): boolean => {
+  return link.startsWith('http://') || link.startsWith('https://')
+}
+
+/**
+ * 函数说明：从 AI 工具箱菜单链接中提取锚点，兼容 #anchor 与 /tools/ai/toolbox?value=anchor 历史格式
+ */
+const resolveAiToolboxAnchor = (link: string): string => {
+  const target = String(link || '').trim()
+  if (!target) {
+    return ''
+  }
+  if (target.startsWith('#')) {
+    return target.slice(1).trim()
+  }
+  if (!target.startsWith('/tools/ai/toolbox')) {
+    return ''
+  }
+  try {
+    const parsedUrl = new URL(target, window.location.origin)
+    const queryAnchor = String(parsedUrl.searchParams.get('value') || parsedUrl.searchParams.get('anchor') || '').trim()
+    if (queryAnchor) {
+      return queryAnchor
+    }
+    const hashAnchor = String(parsedUrl.hash || '').replace(/^#/, '').trim()
+    return hashAnchor || 'ai-highlight'
+  } catch {
+    const queryPart = target.split('?')[1] || ''
+    const searchParams = new URLSearchParams(queryPart)
+    const queryAnchor = String(searchParams.get('value') || searchParams.get('anchor') || '').trim()
+    if (queryAnchor) {
+      return queryAnchor
+    }
+    const hashPart = target.split('#')[1] || ''
+    return hashPart.trim() || 'ai-highlight'
+  }
+}
+
+/**
+ * 函数说明：判断 AI 工具箱菜单链接是否属于页面内导航
+ */
+const isAnchorMenuLink = (link: string): boolean => {
+  return Boolean(resolveAiToolboxAnchor(link))
+}
+
+/**
+ * 函数说明：根据菜单文案关键词匹配图标，确保 AI 工具箱左栏不同入口有差异化图标
+ */
+const resolveAiToolboxMenuIconByName = (name: string): string => {
+  const normalizedName = String(name || '').toLowerCase()
+  if (normalizedName.includes('抠图') || normalizedName.includes('图像') || normalizedName.includes('图片')) {
+    return '/icons/sidebar/image.svg'
+  }
+  if (normalizedName.includes('视频') || normalizedName.includes('音频')) {
+    return '/icons/sidebar/video.svg'
+  }
+  if (normalizedName.includes('写作') || normalizedName.includes('文案')) {
+    return '/icons/sidebar/copywriting.svg'
+  }
+  if (normalizedName.includes('办公') || normalizedName.includes('效率')) {
+    return '/icons/sidebar/office.svg'
+  }
+  if (normalizedName.includes('开发') || normalizedName.includes('代码')) {
+    return '/icons/sidebar/dev.svg'
+  }
+  if (normalizedName.includes('设计') || normalizedName.includes('绘图') || normalizedName.includes('logo')) {
+    return '/icons/sidebar/design.svg'
+  }
+  return '/icons/sidebar/ai.svg'
+}
+
+/**
+ * 函数说明：按 AI 菜单类型匹配侧栏图标，固定入口、自动分组、外链入口分别使用不同图标
+ */
+const resolveAiToolboxMenuIcon = (item: SiteLinkItem): string => {
+  const lowerLink = String(item.link || '').trim().toLowerCase()
+  const anchor = resolveAiToolboxAnchor(lowerLink).toLowerCase()
+
+  if (anchor === 'ai-highlight') {
+    return '/icons/sidebar/ai.svg'
+  }
+  if (anchor === 'ai-groups') {
+    return '/icons/sidebar/office.svg'
+  }
+  if (anchor.startsWith('ai-group-')) {
+    return resolveAiToolboxMenuIconByName(item.name)
+  }
+
+  if (lowerLink.includes('matting') || lowerLink.includes('background') || lowerLink.includes('remove-watermark')) {
+    return '/icons/sidebar/image.svg'
+  }
+  if (lowerLink.includes('video') || lowerLink.includes('audio')) {
+    return '/icons/sidebar/video.svg'
+  }
+  if (lowerLink.includes('chat') || lowerLink.includes('deepseek')) {
+    return '/icons/sidebar/ai.svg'
+  }
+  if (isExternalMenuLink(lowerLink)) {
+    return '/icons/sidebar/efficiency.svg'
+  }
+  return '/icons/sidebar/dev.svg'
+}
+
+/**
+ * 函数说明：构建 AI 工具箱左侧菜单显示数据，补齐每项图标配置
+ */
+const displayAiToolboxSidebarMenuItems = computed<AiToolboxSidebarMenuItem[]>(() => {
+  return displayAiToolboxSidebarMenus.value.map((item) => ({
+    ...item,
+    icon: resolveAiToolboxMenuIcon(item)
+  }))
+})
+
+/**
  * 获取工具分类数据
  * @description 从服务器获取工具分类列表
 */
@@ -190,6 +375,9 @@ const loadSiteConfig = async () => {
   if (siteConfig.sidebarBottomLinks.length) {
     sidebarBottomLinks.value = siteConfig.sidebarBottomLinks
   }
+  if (siteConfig.aiToolboxSidebarMenus.length) {
+    aiToolboxSidebarMenus.value = siteConfig.aiToolboxSidebarMenus
+  }
 }
 
 // 菜单事件处理
@@ -205,17 +393,30 @@ const handleClose = (key: string, keyPath: string[]) => {
  * @description 实现页面内锚点平滑滚动和跨页面锚点跳转
  * @param id 目标锚点ID
  */
-const gotoAnchor = (id: string) => {
-  // 如果当前路由不是首页，先跳转到首页
-  if (route.path !== '/') {
-    router.push('/')
+const gotoAnchor = async (id: string) => {
+  const targetId = String(id || '').trim()
+  if (!targetId) {
+    return
   }
 
-  // 等待 DOM 更新
+  // 如果当前路由不是首页，先带锚点参数跳回首页，再由首页逻辑滚动定位
+  if (route.path !== '/') {
+    await router.push({ path: '/', query: { value: targetId } })
+    return
+  }
+
+  // 当前就在首页时，直接执行平滑滚动
+  gotoCurrentPageAnchor(targetId)
+}
+
+/**
+ * 函数说明：当前页面锚点跳转，不切换路由，仅滚动到当前文档指定位置
+ */
+const gotoCurrentPageAnchor = (id: string) => {
   nextTick(() => {
     const element = document.getElementById(id)
     if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' })
     }
   })
 }
@@ -287,6 +488,36 @@ const handleBottomLinkItemClick = (link: SiteLinkItem) => {
     gotoAnchor(targetLink.slice(1))
     return
   }
+  gotoTool(targetLink)
+}
+
+/**
+ * 函数说明：处理 AI 工具箱独立侧栏菜单点击，支持锚点/内链/外链三种跳转
+ */
+const handleAiToolboxSidebarItemClick = (link: SiteLinkItem) => {
+  const targetLink = link.link.trim()
+  if (!targetLink) {
+    return
+  }
+  if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
+    openExternalLink(targetLink)
+    return
+  }
+  const anchor = resolveAiToolboxAnchor(targetLink)
+  if (anchor) {
+    if (isAiToolboxRoute.value) {
+      gotoCurrentPageAnchor(anchor)
+      return
+    }
+    router.push({ path: '/tools/ai/toolbox', query: { value: anchor } })
+    return
+  }
+
+  if (targetLink.startsWith('/')) {
+    gotoTool(targetLink)
+    return
+  }
+
   gotoTool(targetLink)
 }
 
@@ -412,9 +643,9 @@ onMounted(() => {
 
     <!-- 菜单区域 -->
     <div class="flex-1 pl-8 pr-8">
-      <el-menu class="w-[200px]" :default-active="defaultActive" :default-openeds="defaultOpeneds"
+      <el-menu class="w-[200px]" :class="{ 'is-ai-toolbox-menu': isAiToolboxRoute }" :default-active="defaultActive" :default-openeds="defaultOpeneds"
         background-color="transparent" @open="handleOpen" @close="handleClose">
-        <!-- 推荐工具 -->
+        <!-- 推荐工具（固定保留） -->
         <el-sub-menu index="recommend">
           <template #title>
             <div class="relative">
@@ -425,7 +656,7 @@ onMounted(() => {
               </svg>
               <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
             </div>
-            <span class="ml-2">{{ recommendTitle }}</span>
+            <span class="menu-text">{{ recommendTitle }}</span>
           </template>
           <el-menu-item-group>
             <el-menu-item
@@ -439,67 +670,85 @@ onMounted(() => {
           </el-menu-item-group>
         </el-sub-menu>
 
-        <!-- 分类菜单（后台可配置） -->
-        <template v-for="menu in displaySidebarCategoryMenus" :key="`category-${menu.key}`">
+        <template v-if="isAiToolboxRoute">
           <el-menu-item
-            v-if="menu.isDirectLink"
-            class="menu-top-item"
-            :index="`category-link-${menu.key}`"
-            @click="handleCategoryMenuClick(menu)"
+            v-for="(item, index) in displayAiToolboxSidebarMenuItems"
+            :key="`${item.name}-${item.link}-${index}`"
+            :class="['menu-top-item', 'menu-ai-toolbox-item', { 'menu-ai-toolbox-first': index === 0 }]"
+            :index="`ai-toolbox-menu-${index}`"
+            @click="handleAiToolboxSidebarItemClick(item)"
           >
             <div class="relative menu-icon-wrap">
-              <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
+              <img class="menu-image-icon" :src="item.icon" :alt="`${item.name} 图标`" />
               <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
             </div>
-            <span class="ml-2">{{ menu.title }}</span>
+            <span class="menu-text">{{ item.name }}</span>
           </el-menu-item>
+        </template>
 
-          <el-sub-menu v-else :index="menu.key">
-            <template #title>
+        <template v-else>
+          <!-- 分类菜单（后台可配置） -->
+          <template v-for="menu in displaySidebarCategoryMenus" :key="`category-${menu.key}`">
+            <el-menu-item
+              v-if="menu.isDirectLink"
+              class="menu-top-item"
+              :index="`category-link-${menu.key}`"
+              @click="handleCategoryMenuClick(menu)"
+            >
               <div class="relative menu-icon-wrap">
                 <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
                 <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
               </div>
-              <span class="ml-2">{{ menu.title }}</span>
-            </template>
-            <el-menu-item-group>
-              <el-menu-item
-                v-for="category in menu.list"
-                :key="category.id"
-                :index="`${menu.key}-${category.id}`"
-                @click="handleMenuClick(`${menu.key}-${category.id}`)"
-              >
-                {{ category.title }}
-              </el-menu-item>
-            </el-menu-item-group>
-          </el-sub-menu>
+              <span class="menu-text">{{ menu.title }}</span>
+            </el-menu-item>
+
+            <el-sub-menu v-else :index="menu.key">
+              <template #title>
+                <div class="relative menu-icon-wrap">
+                  <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
+                  <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                </div>
+                <span class="menu-text">{{ menu.title }}</span>
+              </template>
+              <el-menu-item-group>
+                <el-menu-item
+                  v-for="category in menu.list"
+                  :key="category.id"
+                  :index="`${menu.key}-${category.id}`"
+                  @click="handleMenuClick(`${menu.key}-${category.id}`)"
+                >
+                  {{ category.title }}
+                </el-menu-item>
+              </el-menu-item-group>
+            </el-sub-menu>
+          </template>
+          <!-- 侧栏底部链接（后台可配置） -->
+          <el-menu-item
+            v-for="(item, index) in displaySidebarBottomLinks"
+            :key="`${item.name}-${item.link}-${index}`"
+            :index="`bottom-${index}`"
+            @click="handleBottomLinkItemClick(item)"
+          >
+            <div class="relative">
+              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+                <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                  stroke-linejoin="round" />
+              </svg>
+              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            </div>
+            <span class="menu-text">{{ item.name }}</span>
+          </el-menu-item>
         </template>
-        <!-- 侧栏底部链接（后台可配置） -->
-        <el-menu-item
-          v-for="(item, index) in displaySidebarBottomLinks"
-          :key="`${item.name}-${item.link}-${index}`"
-          :index="`bottom-${index}`"
-          @click="handleBottomLinkItemClick(item)"
-        >
-          <div class="relative">
-            <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-              xmlns="http://www.w3.org/2000/svg">
-              <path
-                d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-              <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-              <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-              <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                stroke-linejoin="round" />
-            </svg>
-            <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-          </div>
-          <span class="ml-2">{{ item.name }}</span>
-        </el-menu-item>
 
       </el-menu>
     </div>
@@ -561,6 +810,10 @@ onMounted(() => {
   transition: var(--menu-transition);
 }
 
+.menu-text {
+  margin-left: 14px;
+}
+
 /* 子菜单样式 */
 .el-sub-menu {
   margin: 2px 0 !important;
@@ -609,6 +862,14 @@ onMounted(() => {
   padding: 0 20px !important;
 }
 
+.menu-ai-toolbox-item {
+  margin: 4px 0 !important;
+}
+
+.menu-ai-toolbox-first {
+  margin-top: 8px !important;
+}
+
 /* 菜单组标题 */
 .el-menu-item-group :deep(.el-menu-item-group__title) {
   padding: 0 20px !important;
@@ -621,9 +882,15 @@ onMounted(() => {
 }
 
 /* 图标和文字间距 */
-.menu-icon+span,
-.el-sub-menu :deep(.el-sub-menu__title) span {
+.menu-icon + .menu-text,
+.menu-icon-wrap + .menu-text,
+.el-sub-menu :deep(.el-sub-menu__title) .menu-text {
   margin-left: 14px !important;
+}
+
+.is-ai-toolbox-menu {
+  --menu-item-height: 38px;
+  --menu-item-margin: 4px 0;
 }
 
 /* 悬停和激活状态 */
