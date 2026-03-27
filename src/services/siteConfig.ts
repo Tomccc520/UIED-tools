@@ -48,6 +48,8 @@ export interface SitePublicConfig {
   ossDomain: string
   bannerSlides: SiteBannerSlideItem[]
   siteSlogan: string
+  sidebarBrandLogo: string
+  sidebarBrandText: string
   sidebarRecommendTitle: string
   footerIntro: string
   footerQuickTitle: string
@@ -139,6 +141,8 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
     }
   ],
   siteSlogan: '免费在线工具集',
+  sidebarBrandLogo: '',
+  sidebarBrandText: 'UIED-Tools',
   sidebarRecommendTitle: '推荐工具',
   footerIntro: '在线工具平台',
   footerQuickTitle: '工具快捷入口',
@@ -457,6 +461,10 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     ossDomain: String(record.ossDomain || '').trim(),
     bannerSlides: normalizeBannerSlides(record.toolsBannerSlides),
     siteSlogan: String(record.toolsSiteSlogan || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan).trim() || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan,
+    sidebarBrandLogo: String(record.toolsSidebarBrandLogo || DEFAULT_SITE_PUBLIC_CONFIG.sidebarBrandLogo).trim(),
+    sidebarBrandText:
+      String(record.toolsSidebarBrandText || DEFAULT_SITE_PUBLIC_CONFIG.sidebarBrandText).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.sidebarBrandText,
     sidebarRecommendTitle:
       String(record.toolsSidebarRecommendTitle || DEFAULT_SITE_PUBLIC_CONFIG.sidebarRecommendTitle).trim() ||
       DEFAULT_SITE_PUBLIC_CONFIG.sidebarRecommendTitle,

@@ -484,6 +484,17 @@ export default defineConfig({
         rewrite: (path) => path.replace(/^\/api\/matting/, '')
       },
 
+      // favorites 分类接口代理（必须放在 /api 通配前，避免被后端代理抢先命中）
+      '/api/favorites': {
+        target: 'https://www.88sheji.cn',
+        changeOrigin: true,
+        rewrite: (path) => path,
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      },
+
       // 本地后端API代理配置
       '/api': {
         target: backendProxyTarget,
@@ -491,17 +502,6 @@ export default defineConfig({
         // 如果后台接口没有/api前缀，可以取消下面注释来重写路径
         // rewrite: (path) => path.replace(/^\/api/, ''),
         secure: false,
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        }
-      },
-
-      // 添加favorites的代理配置
-      '/api/favorites': {
-        target: 'https://www.88sheji.cn',  // 替换为你的实际API地址
-        changeOrigin: true,
-        rewrite: (path) => path,
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'

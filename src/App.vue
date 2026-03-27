@@ -68,9 +68,11 @@ const isToolPage = computed(() => {
         <el-main class="!pt-4"
           :class="{ 'flex-1': isToolPage && !route.meta.hideToolsRecommend, 'w-full': !isToolPage || route.meta.hideToolsRecommend }">
           <!-- 路由视图，使用过渡动画 -->
-          <transition name="animation" mode="out-in">
-            <router-view :key="route.path" />
-          </transition>
+          <router-view v-slot="{ Component }">
+            <transition name="animation" mode="out-in">
+              <component :is="Component" :key="route.path" />
+            </transition>
+          </router-view>
         </el-main>
 
         <!-- 右侧边栏 - 仅在工具页面且未禁用工具推荐时显示 -->

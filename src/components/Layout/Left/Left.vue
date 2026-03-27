@@ -31,6 +31,7 @@ const route: RouteLocationNormalizedLoaded = useRoute()
 // 应用信息配置
 const appName = ref('UIED-Tools')
 const appNet = ref('免费在线工具集')
+const sidebarBrandLogo = ref('')
 const recommendTitle = ref('推荐工具')
 const defaultRecommendLinks: SiteLinkItem[] = [
   { name: '热门工具', link: '#recommend-hot' },
@@ -66,6 +67,65 @@ const defaultAiToolboxSidebarMenus: SiteLinkItem[] = [
 const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>(defaultSidebarCategoryMenus)
 const sidebarBottomLinks = ref<SiteLinkItem[]>(defaultSidebarBottomLinks)
 const aiToolboxSidebarMenus = ref<SiteLinkItem[]>(defaultAiToolboxSidebarMenus)
+
+type SidebarBrandLogoMode = 'default' | 'image' | 'inline-svg'
+
+/**
+ * 函数说明：规范化内联 SVG 字符串，兼容完整 <svg>、仅 <g> 片段，以及包含外层 div 的整段 HTML。
+ */
+const normalizeInlineSvgLogo = (logoValue: string): string => {
+  const rawValue = String(logoValue || '').trim()
+  if (!rawValue) {
+    return ''
+  }
+  const svgMatched = rawValue.match(/<svg[\s\S]*<\/svg>/i)
+  if (svgMatched?.[0]) {
+    return svgMatched[0]
+  }
+  const groupMatched = rawValue.match(/<g[\s\S]*<\/g>/i)
+  if (groupMatched?.[0]) {
+    return `<svg width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${groupMatched[0]}</svg>`
+  }
+  return ''
+}
+
+/**
+ * 函数说明：解析品牌 Logo 渲染模式，支持默认图形、图片链接和内联 SVG 三种方式。
+ */
+const sidebarBrandLogoMode = computed<SidebarBrandLogoMode>(() => {
+  const logoValue = String(sidebarBrandLogo.value || '').trim()
+  const normalizedInlineSvg = normalizeInlineSvgLogo(logoValue)
+  if (!logoValue) {
+    return 'default'
+  }
+  if (normalizedInlineSvg) {
+    return 'inline-svg'
+  }
+  return 'image'
+})
+
+/**
+ * 函数说明：输出品牌 Logo 的内联 SVG 内容，仅在后端配置内联 SVG 时使用。
+ */
+const sidebarBrandInlineSvg = computed(() => {
+  return sidebarBrandLogoMode.value === 'inline-svg'
+    ? normalizeInlineSvgLogo(String(sidebarBrandLogo.value || ''))
+    : ''
+})
+
+/**
+ * 函数说明：输出品牌 Logo 图片地址，兼容绝对链接、站内路径和 data URL。
+ */
+const sidebarBrandLogoSrc = computed(() => {
+  const logoValue = String(sidebarBrandLogo.value || '').trim()
+  if (!logoValue || sidebarBrandLogoMode.value !== 'image') {
+    return ''
+  }
+  if (/^(https?:)?\/\//i.test(logoValue) || logoValue.startsWith('data:')) {
+    return logoValue
+  }
+  return logoValue
+})
 
 // 菜单状态配置
 const defaultActive = ref('')
@@ -360,9 +420,13 @@ const loadSiteConfig = async () => {
   if (siteConfig.webName) {
     appName.value = siteConfig.webName
   }
+  if (siteConfig.sidebarBrandText) {
+    appName.value = siteConfig.sidebarBrandText
+  }
   if (siteConfig.siteSlogan) {
     appNet.value = siteConfig.siteSlogan
   }
+  sidebarBrandLogo.value = siteConfig.sidebarBrandLogo || ''
   if (siteConfig.sidebarRecommendTitle) {
     recommendTitle.value = siteConfig.sidebarRecommendTitle
   }
@@ -595,7 +659,18 @@ onMounted(() => {
       <router-link class="logo-container group" to="/" :title="`${appName} 首页`">
         <div class="flex items-center">
           <div class="logo-wrapper flex items-center">
-            <svg width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg"
+            <div
+              v-if="sidebarBrandLogoMode === 'inline-svg'"
+              class="logo-inline-svg"
+              v-html="sidebarBrandInlineSvg"
+            ></div>
+            <img
+              v-else-if="sidebarBrandLogoMode === 'image'"
+              class="logo-image"
+              :src="sidebarBrandLogoSrc"
+              :alt="`${appName} logo`"
+            />
+            <svg v-else width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg"
               xmlns:xlink="http://www.w3.org/1999/xlink" class="logo-svg">
               <title>logo-3</title>
               <defs>
@@ -1095,5 +1170,27 @@ onMounted(() => {
 .logo-svg {
   transform: scale(1.1);
   margin: 0 auto;
+}
+
+.logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 6px;
+}
+
+.logo-inline-svg {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.logo-inline-svg :deep(svg) {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 </style>

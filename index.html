@@ -42,6 +42,11 @@
   <script>
     var _hmt = _hmt || [];
     (function () {
+      // 本地开发环境不注入统计脚本，避免控制台跨网错误干扰调试。
+      var host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1") {
+        return;
+      }
       var hm = document.createElement("script");
       hm.src = "https://hm.baidu.com/hm.js?fa0e1ea984a0683d87cb210fa95b15ee";
       var s = document.getElementsByTagName("script")[0];

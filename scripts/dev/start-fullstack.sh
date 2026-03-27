@@ -340,8 +340,33 @@ init_likeadmin_database() {
   else
     log_info "首次初始化 ${DB_NAME} 数据库..."
   fi
-  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot "${DB_NAME}" < "${LIKEADMIN_DIR}/sql/install.sql"
+  # 函数说明：显式指定 utf8mb4 导入，避免中文种子数据写入为乱码（????）。
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${LIKEADMIN_DIR}/sql/install.sql"
   log_info "${DB_NAME} 数据库初始化完成。"
+}
+
+# 函数说明：检测并修复历史中文乱码种子数据，避免后台菜单和官网配置出现 ????。
+repair_garbled_seed_data() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260326_fix_garbled_seed_zhcn.sql"
+  local garbled_menu_count="0"
+  local garbled_role_count="0"
+  local garbled_config_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  garbled_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE menu_name LIKE '%?%';" 2>/dev/null || echo "0")"
+  garbled_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name LIKE '%?%' OR remark LIKE '%?%';" 2>/dev/null || echo "0")"
+  garbled_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='website' AND value LIKE '%?%';" 2>/dev/null || echo "0")"
+
+  if [[ "${garbled_menu_count}" -le 0 ]] && [[ "${garbled_role_count}" -le 0 ]] && [[ "${garbled_config_count}" -le 0 ]]; then
+    return
+  fi
+
+  log_info "检测到历史中文乱码数据（菜单:${garbled_menu_count} 角色:${garbled_role_count} 配置:${garbled_config_count}），自动执行修复..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "中文乱码修复已完成。"
 }
 
 # 函数说明：检测 PID 文件对应进程是否存活，可选校验端口监听，避免 PID 复用误判
@@ -508,6 +533,7 @@ main() {
   configure_likeadmin_server_env
   configure_likeadmin_admin_env
   init_likeadmin_database
+  repair_garbled_seed_data
   start_likeadmin_server
   start_likeadmin_admin
   start_matting_service
