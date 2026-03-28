@@ -10,7 +10,13 @@ import axios from 'axios'
 import quotes from '@/assets/designer_quotes_api.json'
 import SearchPanel from '@/components/Search/Search.vue'
 import router from '@/router';
-import { getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig'
+import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig'
+import {
+  FRONTEND_USER_AUTH_EVENT,
+  loginFrontendUser,
+  getFrontendUserProfile,
+  isFrontendUserLoggedIn
+} from '@/services/frontendUser'
 
 // 每日一言数据结构
 interface DailyWord {
@@ -120,12 +126,11 @@ const initDailyWord = () => {
  */
 const loadSiteConfig = async () => {
   const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+  siteConfigState.value = siteConfig
   if (siteConfig.webName) {
     siteName.value = siteConfig.webName
   }
-  if (siteConfig.headerLinks.length) {
-    headerLinks.value = siteConfig.headerLinks
-  }
+  headerLinks.value = mergeHeaderLinksWithAuthEntries(siteConfig)
 }
 
 // const isNavDrawer = ref(false)
@@ -138,8 +143,77 @@ const siteName = ref('UIED-Tools')
 const defaultHeaderLinks: SiteLinkItem[] = [
   { name: '个人网站', link: 'https://tomda.top/' }
 ]
+const siteConfigState = ref<Awaited<ReturnType<typeof getSitePublicConfig>> | null>(null)
 const headerLinks = ref<SiteLinkItem[]>(defaultHeaderLinks)
 const displayHeaderLinks = computed(() => (headerLinks.value.length ? headerLinks.value : defaultHeaderLinks))
+const loginDialogVisible = ref(false)
+const loginDialogLoading = ref(false)
+const loginDialogForm = reactive({
+  nickname: '',
+  password: ''
+})
+const loginDialogSiteConfig = computed(() => siteConfigState.value ?? getDefaultSitePublicConfig())
+
+/**
+ * 函数说明：合并后台基础头部链接与登录入口链接，并去重保证渲染稳定。
+ */
+const mergeHeaderLinksWithAuthEntries = (
+  siteConfig: Awaited<ReturnType<typeof getSitePublicConfig>>
+): SiteLinkItem[] => {
+  const mergedLinks: SiteLinkItem[] = siteConfig.headerLinks.length
+    ? [...siteConfig.headerLinks]
+    : [...defaultHeaderLinks]
+
+  if (isFrontendUserLoggedIn()) {
+    const userProfile = getFrontendUserProfile()
+    const userCenterLink = siteConfig.userCenterEnabled && siteConfig.userCenterLink
+      ? siteConfig.userCenterLink
+      : '/user/center'
+    mergedLinks.push({
+      name: userProfile?.nickname ? `${userProfile.nickname}·${siteConfig.userCenterTitle || '个人中心'}` : (siteConfig.userCenterTitle || '个人中心'),
+      link: userCenterLink
+    })
+  } else {
+    mergedLinks.push({
+      name: '登录',
+      link: '/user/login'
+    })
+  }
+  if (siteConfig.loginOpenOtherAuth && siteConfig.loginOpenWechatAuth && siteConfig.loginWechatAuthorizeUrl) {
+    mergedLinks.push({ name: '微信登录', link: siteConfig.loginWechatAuthorizeUrl })
+  }
+  if (siteConfig.loginOpenOtherAuth && siteConfig.loginOpenQqAuth && siteConfig.loginQqAuthorizeUrl) {
+    mergedLinks.push({ name: 'QQ登录', link: siteConfig.loginQqAuthorizeUrl })
+  }
+
+  const seen = new Set<string>()
+  const uniqueLinks: SiteLinkItem[] = []
+  mergedLinks.forEach((item) => {
+    const name = String(item.name || '').trim()
+    const link = String(item.link || '').trim()
+    if (!name || !link) {
+      return
+    }
+    const key = `${name}|${link}`
+    if (seen.has(key)) {
+      return
+    }
+    seen.add(key)
+    uniqueLinks.push({ name, link })
+  })
+
+  return uniqueLinks
+}
+
+/**
+ * 函数说明：站点登录态变化时，基于已加载配置刷新头部菜单入口。
+ */
+const handleFrontendAuthChanged = () => {
+  if (!siteConfigState.value) {
+    return
+  }
+  headerLinks.value = mergeHeaderLinksWithAuthEntries(siteConfigState.value)
+}
 //查询参数
 const searchParam = reactive({
   cateId: 0,
@@ -293,6 +367,90 @@ const isExternalLink = (url: string) => {
   return url.startsWith('http://') || url.startsWith('https://')
 }
 
+/**
+ * 函数说明：判断头部点击是否属于登录页路由，兼容携带 query 的登录地址。
+ */
+const isLoginRouteLink = (url: string): boolean => {
+  const targetUrl = String(url || '').trim()
+  return targetUrl === '/user/login' || targetUrl.startsWith('/user/login?')
+}
+
+/**
+ * 函数说明：打开头部登录弹窗并清理上次输入，保证每次登录入口状态一致。
+ */
+const openLoginDialog = () => {
+  loginDialogVisible.value = true
+  loginDialogLoading.value = false
+  loginDialogForm.nickname = ''
+  loginDialogForm.password = ''
+}
+
+/**
+ * 函数说明：执行头部登录弹窗登录逻辑，成功后进入个人中心并刷新头部入口。
+ */
+const handleLoginFromDialog = async () => {
+  const nickname = String(loginDialogForm.nickname || '').trim()
+  const password = String(loginDialogForm.password || '').trim()
+  if (nickname.length < 2) {
+    ElMessage.warning('请输入至少 2 个字符的昵称')
+    return
+  }
+  if (password.length < 6) {
+    ElMessage.warning('请输入至少 6 位密码')
+    return
+  }
+  loginDialogLoading.value = true
+  try {
+    await loginFrontendUser(nickname, password)
+    loginDialogVisible.value = false
+    ElMessage.success('登录成功，已进入个人中心')
+    handleFrontendAuthChanged()
+    await router.push('/user/center')
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '登录失败，请稍后重试'
+    ElMessage.error(message)
+  } finally {
+    loginDialogLoading.value = false
+  }
+}
+
+/**
+ * 函数说明：统一处理第三方登录授权地址打开行为，复用弹窗内微信/QQ登录入口。
+ */
+const handleOpenAuth = (url: string) => {
+  const targetUrl = String(url || '').trim()
+  if (!targetUrl) {
+    ElMessage.warning('当前未配置授权地址，请先在后台登录配置中设置')
+    return
+  }
+  window.open(targetUrl, '_blank', 'noopener,noreferrer')
+}
+
+/**
+ * 函数说明：处理头部链接跳转，站内地址走路由跳转，站外地址保持新窗口行为。
+ */
+const handleHeaderLinkClick = async (event: MouseEvent, url: string) => {
+  const targetUrl = String(url || '').trim()
+  if (!targetUrl) {
+    event.preventDefault()
+    return
+  }
+  if (isExternalLink(targetUrl)) {
+    return
+  }
+  event.preventDefault()
+  if (isLoginRouteLink(targetUrl)) {
+    openLoginDialog()
+    return
+  }
+  try {
+    await router.push(targetUrl)
+  } catch (error) {
+    console.error('头部菜单跳转失败:', error)
+    ElMessage.error('页面不存在或跳转失败')
+  }
+}
+
 // 切换搜索面板
 const toggleSearch = () => {
   showSearch.value = !showSearch.value
@@ -395,6 +553,7 @@ onMounted(() => {
   initDailyWord()
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
+  window.addEventListener(FRONTEND_USER_AUTH_EVENT, handleFrontendAuthChanged as EventListener)
 
   // 初始化菜单状态，根据设备类型设置不同的初始值
   if (isMobile.value) {
@@ -408,6 +567,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('resize', handleResize)
+  window.removeEventListener(FRONTEND_USER_AUTH_EVENT, handleFrontendAuthChanged as EventListener)
   // 清理定时器
   if (dailyWordTimer) {
     clearInterval(dailyWordTimer)
@@ -470,6 +630,7 @@ onUnmounted(() => {
               :href="item.link"
               :target="isExternalLink(item.link) ? '_blank' : '_self'"
               :rel="isExternalLink(item.link) ? 'noopener noreferrer' : undefined"
+              @click="handleHeaderLinkClick($event, item.link)"
               class="hidden md:flex items-center text-sm text-gray-500 hover:text-blue-500 transition-colors"
             >
               <el-tooltip :content="item.name">
@@ -492,6 +653,72 @@ onUnmounted(() => {
 
     <!-- 搜索组件 -->
     <SearchPanel v-model:visible="showSearch" @select="handleSearchSelect" />
+
+    <el-dialog
+      v-model="loginDialogVisible"
+      width="540px"
+      align-center
+      destroy-on-close
+      class="frontend-login-dialog"
+    >
+      <template #header>
+        <div class="login-dialog-header">
+          <h3>登录用户中心</h3>
+          <p>登录后可进入个人中心，查看每日积分并绑定 QQ 邮箱。</p>
+        </div>
+      </template>
+
+      <el-form label-position="top" @submit.prevent>
+        <el-form-item label="昵称">
+          <el-input v-model="loginDialogForm.nickname" placeholder="请输入昵称" maxlength="24" clearable />
+        </el-form-item>
+        <el-form-item label="密码">
+          <el-input
+            v-model="loginDialogForm.password"
+            type="password"
+            show-password
+            placeholder="请输入密码（6位以上）"
+            maxlength="32"
+            clearable
+          />
+        </el-form-item>
+      </el-form>
+
+      <div class="login-dialog-points">
+        <div class="points-chip">
+          每日赠送 +{{ loginDialogSiteConfig.loginDailyGiftPoints }}
+        </div>
+        <div class="points-chip">
+          每次工具消耗 -{{ loginDialogSiteConfig.loginToolConsumePoints }}
+        </div>
+      </div>
+
+      <div class="login-dialog-auth-actions">
+        <el-button
+          v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenWechatAuth"
+          plain
+          @click="handleOpenAuth(loginDialogSiteConfig.loginWechatAuthorizeUrl)"
+        >
+          微信登录
+        </el-button>
+        <el-button
+          v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenQqAuth"
+          plain
+          @click="handleOpenAuth(loginDialogSiteConfig.loginQqAuthorizeUrl)"
+        >
+          QQ登录
+        </el-button>
+      </div>
+
+      <template #footer>
+        <div class="login-dialog-footer">
+          <el-button @click="loginDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="loginDialogLoading" @click="handleLoginFromDialog">
+            登录并进入个人中心
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </header>
 </template>
 <style scoped>
@@ -637,6 +864,48 @@ onUnmounted(() => {
 .el-button.el-button--primary:hover {
   background-color: #5842cc !important;
   border-color: #5842cc !important;
+}
+
+.login-dialog-header h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2d2554;
+}
+
+.login-dialog-header p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.login-dialog-points {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.points-chip {
+  border: 1px solid #e6e2ff;
+  background: #f6f4ff;
+  color: #5a47db;
+  border-radius: 999px;
+  font-size: 12px;
+  padding: 4px 10px;
+  line-height: 1.4;
+}
+
+.login-dialog-auth-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.login-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* 移动端适配 */

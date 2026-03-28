@@ -71,20 +71,59 @@ const aiToolboxSidebarMenus = ref<SiteLinkItem[]>(defaultAiToolboxSidebarMenus)
 type SidebarBrandLogoMode = 'default' | 'image' | 'inline-svg'
 
 /**
- * 函数说明：规范化内联 SVG 字符串，兼容完整 <svg>、仅 <g> 片段，以及包含外层 div 的整段 HTML。
+ * 函数说明：解码常见 HTML 实体，兼容后台文本域保存后的转义内容。
+ */
+const decodeHtmlEntities = (rawValue: string): string => {
+  return String(rawValue || '')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#34;/g, '"')
+    .replace(/&#39;/g, '\'')
+    .replace(/&apos;/g, '\'')
+    .replace(/&amp;/g, '&')
+}
+
+/**
+ * 函数说明：安全尝试 URL 解码，兼容历史上被错误编码成 `%3Csvg...` 的值。
+ */
+const safeDecodeURIComponent = (rawValue: string): string => {
+  try {
+    return decodeURIComponent(rawValue)
+  } catch {
+    return rawValue
+  }
+}
+
+/**
+ * 函数说明：规范化内联 SVG 字符串，兼容完整 <svg>、仅 <g> 片段，以及包含外层 div / 编码内容的整段 HTML。
  */
 const normalizeInlineSvgLogo = (logoValue: string): string => {
   const rawValue = String(logoValue || '').trim()
   if (!rawValue) {
     return ''
   }
-  const svgMatched = rawValue.match(/<svg[\s\S]*<\/svg>/i)
-  if (svgMatched?.[0]) {
-    return svgMatched[0]
-  }
-  const groupMatched = rawValue.match(/<g[\s\S]*<\/g>/i)
-  if (groupMatched?.[0]) {
-    return `<svg width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${groupMatched[0]}</svg>`
+
+  const candidateList = [
+    rawValue,
+    decodeHtmlEntities(rawValue),
+    safeDecodeURIComponent(rawValue),
+    decodeHtmlEntities(safeDecodeURIComponent(rawValue))
+  ]
+
+  for (const candidate of candidateList) {
+    const normalizedCandidate = String(candidate || '').trim()
+    if (!normalizedCandidate) {
+      continue
+    }
+    const svgMatched = normalizedCandidate.match(/<svg[\s\S]*<\/svg>/i)
+    if (svgMatched?.[0]) {
+      return svgMatched[0]
+    }
+    const groupMatched = normalizedCandidate.match(/<g[\s\S]*<\/g>/i)
+    if (groupMatched?.[0]) {
+      return `<svg width="60" height="30" viewBox="0 0 204 96" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${groupMatched[0]}</svg>`
+    }
   }
   return ''
 }
@@ -1071,7 +1110,7 @@ onMounted(() => {
   margin: 0 auto;
 }
 
-.svg-elem {
+.logo-wrapper :deep(.svg-elem) {
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
   stroke-width: 1;
@@ -1107,7 +1146,7 @@ onMounted(() => {
 }
 
 /* 新Logo样式 */
-.svg-elem {
+.logo-wrapper :deep(.svg-elem) {
   stroke-dasharray: 1000;
   stroke-dashoffset: 1000;
   stroke-width: 1;
@@ -1118,7 +1157,7 @@ onMounted(() => {
   animation: draw 2s linear forwards, fill-color 2s linear forwards;
 }
 
-#background-rect {
+.logo-wrapper :deep(#background-rect) {
   fill: #6C54FF;
 }
 

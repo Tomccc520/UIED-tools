@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { getHotTools, getToolsCate } from '../../components/Tools/tools'
+import { getToolsCate } from '../../components/Tools/tools'
 import { getWebInfo } from '../../api/webinfo'
 import { getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
@@ -21,14 +21,20 @@ interface State {
 }
 
 /**
- * 函数说明：将前端工具库中的热门工具兜底数据映射为站点配置结构
+ * 函数说明：热门工具兜底数据，与后台默认配置保持一致，避免接口异常时出现“链接被替换”感知。
  */
 const getFallbackHotTools = (): SiteHotToolItem[] => {
-  return getHotTools(10).map((item) => ({
-    title: item.title,
-    desc: item.desc || item.title,
-    link: item.url
-  }))
+  return [
+    { title: 'Adobe 正版全家桶可用AI', desc: 'Adobe 正版全家桶可用AI', link: 'https://universalbus.cn/?s=lPLG02aydo' },
+    { title: 'Gemini3 可用 nanobanana', desc: 'Gemini3 可用 nanobanana', link: 'https://universalbus.cn/?s=lPLG02aydo' },
+    { title: 'AI学习网站', desc: '每天逛一逛', link: 'https://www.uied.cn/category/aigc/ai' },
+    { title: '免费AI生成PPT', desc: 'AI智能生成PPT', link: 'https://www.aippt.cn/?utm_type=Navweb&utm_source=bbdh&utm_page=aippt&utm_plan=ppt&utm_unit=AIPPT&utm_keyword=40471047' },
+    { title: 'AIGC学习网站', desc: 'UIED技术团队官网', link: 'https://uied.cn/' },
+    { title: 'AIGC工具', desc: 'AI智能工具集合', link: 'https://universalbus.cn/?s=lPLG02aydo' },
+    { title: 'Midjourney绘画', desc: 'AI绘画生成工具', link: 'https://nf.video/czybtp/?gid=26' },
+    { title: 'GPT-5.2', desc: '最新版GPT-5.2智能对话工具', link: 'https://nf.video/oemcwv/?gid=18' },
+    { title: 'ChatExcel表格', desc: 'AI Excel 数据分析辅助工具', link: 'https://www.chatexcel.com/#/home?partner_uuid=4227AB911C6531FF898C5E7BB54757E6' }
+  ]
 }
 
 /**
