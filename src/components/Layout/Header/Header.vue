@@ -691,6 +691,9 @@ onUnmounted(() => {
         <div class="points-chip">
           每次工具消耗 -{{ loginDialogSiteConfig.loginToolConsumePoints }}
         </div>
+        <div class="points-chip" v-if="loginDialogSiteConfig.loginMemberEnabled && loginDialogSiteConfig.loginMemberTrialDays > 0">
+          新用户会员试用 {{ loginDialogSiteConfig.loginMemberTrialDays }} 天
+        </div>
       </div>
 
       <div class="login-dialog-auth-actions">

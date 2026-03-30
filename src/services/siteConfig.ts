@@ -46,6 +46,18 @@ export interface SitePublicConfig {
   webFavicon: string
   webBackdrop: string
   ossDomain: string
+  userCenterEnabled: boolean
+  userCenterTitle: string
+  userCenterLink: string
+  loginOpenOtherAuth: boolean
+  loginOpenWechatAuth: boolean
+  loginOpenQqAuth: boolean
+  loginWechatAuthorizeUrl: string
+  loginQqAuthorizeUrl: string
+  loginDailyGiftPoints: number
+  loginToolConsumePoints: number
+  loginMemberEnabled: boolean
+  loginMemberTrialDays: number
   bannerSlides: SiteBannerSlideItem[]
   siteSlogan: string
   sidebarBrandLogo: string
@@ -96,6 +108,18 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webFavicon: '',
   webBackdrop: '',
   ossDomain: '',
+  userCenterEnabled: false,
+  userCenterTitle: '用户中心',
+  userCenterLink: '/user/center',
+  loginOpenOtherAuth: false,
+  loginOpenWechatAuth: false,
+  loginOpenQqAuth: false,
+  loginWechatAuthorizeUrl: '',
+  loginQqAuthorizeUrl: '',
+  loginDailyGiftPoints: 50,
+  loginToolConsumePoints: 1,
+  loginMemberEnabled: false,
+  loginMemberTrialDays: 0,
   bannerSlides: [
     {
       badge: '推荐',
@@ -191,6 +215,23 @@ type SiteConfigCacheState = {
 
 let siteConfigCacheState: SiteConfigCacheState | null = null
 let siteConfigPromise: Promise<SitePublicConfig> | null = null
+
+/**
+ * 函数说明：将后端返回的布尔/数字/字符串标记统一转换为布尔值。
+ */
+const normalizeBooleanFlag = (input: unknown): boolean => {
+  if (typeof input === 'boolean') {
+    return input
+  }
+  if (typeof input === 'number') {
+    return input === 1
+  }
+  if (typeof input === 'string') {
+    const normalized = input.trim().toLowerCase()
+    return normalized === '1' || normalized === 'true'
+  }
+  return false
+}
 
 /**
  * 函数说明：将接口返回的数组或 JSON 字符串统一转换为数组
@@ -452,6 +493,18 @@ const extractResponseData = (payload: unknown): Record<string, unknown> => {
  */
 const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
   const record = extractResponseData(payload)
+  const dailyGiftPointsRaw = Number(record.loginDailyGiftPoints)
+  const toolConsumePointsRaw = Number(record.loginToolConsumePoints)
+  const dailyGiftPoints = Number.isFinite(dailyGiftPointsRaw)
+    ? Math.max(0, dailyGiftPointsRaw)
+    : DEFAULT_SITE_PUBLIC_CONFIG.loginDailyGiftPoints
+  const toolConsumePoints = Number.isFinite(toolConsumePointsRaw)
+    ? Math.max(1, toolConsumePointsRaw)
+    : DEFAULT_SITE_PUBLIC_CONFIG.loginToolConsumePoints
+  const memberTrialDaysRaw = Number(record.loginMemberTrialDays)
+  const memberTrialDays = Number.isFinite(memberTrialDaysRaw)
+    ? Math.max(0, memberTrialDaysRaw)
+    : DEFAULT_SITE_PUBLIC_CONFIG.loginMemberTrialDays
 
   return {
     webName: String(record.webName || DEFAULT_SITE_PUBLIC_CONFIG.webName).trim() || DEFAULT_SITE_PUBLIC_CONFIG.webName,
@@ -459,6 +512,22 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     webFavicon: String(record.webFavicon || '').trim(),
     webBackdrop: String(record.webBackdrop || '').trim(),
     ossDomain: String(record.ossDomain || '').trim(),
+    userCenterEnabled: normalizeBooleanFlag(record.userCenterEnabled),
+    userCenterTitle:
+      String(record.userCenterTitle || DEFAULT_SITE_PUBLIC_CONFIG.userCenterTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.userCenterTitle,
+    userCenterLink:
+      String(record.userCenterLink || DEFAULT_SITE_PUBLIC_CONFIG.userCenterLink).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.userCenterLink,
+    loginOpenOtherAuth: normalizeBooleanFlag(record.loginOpenOtherAuth),
+    loginOpenWechatAuth: normalizeBooleanFlag(record.loginOpenWechatAuth),
+    loginOpenQqAuth: normalizeBooleanFlag(record.loginOpenQqAuth),
+    loginWechatAuthorizeUrl: String(record.loginWechatAuthorizeUrl || '').trim(),
+    loginQqAuthorizeUrl: String(record.loginQqAuthorizeUrl || '').trim(),
+    loginDailyGiftPoints: dailyGiftPoints,
+    loginToolConsumePoints: toolConsumePoints,
+    loginMemberEnabled: normalizeBooleanFlag(record.loginMemberEnabled),
+    loginMemberTrialDays: memberTrialDays,
     bannerSlides: normalizeBannerSlides(record.toolsBannerSlides),
     siteSlogan: String(record.toolsSiteSlogan || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan).trim() || DEFAULT_SITE_PUBLIC_CONFIG.siteSlogan,
     sidebarBrandLogo: String(record.toolsSidebarBrandLogo || DEFAULT_SITE_PUBLIC_CONFIG.sidebarBrandLogo).trim(),

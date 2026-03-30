@@ -369,6 +369,89 @@ repair_garbled_seed_data() {
   log_info "中文乱码修复已完成。"
 }
 
+# 函数说明：检测并补齐 la_user.qq_email 字段，确保前台 QQ 邮箱绑定可持久化保存。
+apply_user_qq_email_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260328_add_user_qq_email.sql"
+  local qq_email_column_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  qq_email_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user' AND COLUMN_NAME='qq_email';" 2>/dev/null || echo "0")"
+  if [[ "${qq_email_column_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到 la_user 缺少 qq_email 字段，自动执行补丁..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "la_user.qq_email 字段补齐完成。"
+}
+
+# 函数说明：检测并补齐 la_user 积分字段，确保前台积分体系可正常发放与扣减。
+apply_user_points_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260328_add_user_points_columns.sql"
+  local points_balance_column_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  points_balance_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user' AND COLUMN_NAME='points_balance';" 2>/dev/null || echo "0")"
+  if [[ "${points_balance_column_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到 la_user 缺少积分字段，自动执行补丁..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "la_user 积分字段补齐完成。"
+}
+
+# 函数说明：检测并补齐 la_user 会员字段与 login 会员配置，确保会员基础能力可用。
+apply_user_member_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260330_add_user_member_columns_and_login_member_config.sql"
+  local member_level_column_count="0"
+  local member_config_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  member_level_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user' AND COLUMN_NAME='member_level';" 2>/dev/null || echo "0")"
+  member_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='login' AND name IN ('memberEnabled','memberTrialDays');" 2>/dev/null || echo "0")"
+  if [[ "${member_level_column_count}" -ge 1 ]] && [[ "${member_config_count}" -ge 2 ]]; then
+    return
+  fi
+
+  log_info "检测到会员字段或配置缺失，自动执行会员补丁..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "会员字段与配置补齐完成。"
+}
+
+# 函数说明：检测并补齐会员套餐/积分包配置与购买流水表，确保会员商业化能力可用。
+apply_member_commerce_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260330_add_member_commerce_tables_and_config.sql"
+  local order_table_count="0"
+  local points_log_table_count="0"
+  local config_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  order_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_purchase_order';" 2>/dev/null || echo "0")"
+  points_log_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_points_log';" 2>/dev/null || echo "0")"
+  config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='login' AND name IN ('memberPlans','pointsPacks','memberRightsIntro');" 2>/dev/null || echo "0")"
+
+  if [[ "${order_table_count}" -ge 1 ]] && [[ "${points_log_table_count}" -ge 1 ]] && [[ "${config_count}" -ge 3 ]]; then
+    return
+  fi
+
+  log_info "检测到会员商业化表或配置缺失，自动执行补丁..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "会员套餐/积分包/流水补齐完成。"
+}
+
 # 函数说明：检测 PID 文件对应进程是否存活，可选校验端口监听，避免 PID 复用误判
 is_pid_running() {
   local pid_file="$1"
@@ -534,6 +617,10 @@ main() {
   configure_likeadmin_admin_env
   init_likeadmin_database
   repair_garbled_seed_data
+  apply_user_qq_email_schema_patch
+  apply_user_points_schema_patch
+  apply_user_member_schema_patch
+  apply_member_commerce_schema_patch
   start_likeadmin_server
   start_likeadmin_admin
   start_matting_service

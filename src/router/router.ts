@@ -17,12 +17,34 @@ export const constantRoute: RouteRecordRaw[] = [
   // 更新日志
   {
     path: '/changelog',
-    component: () => import('@/components/Home/Changelog.vue'),
+    component: () => import('../components/Home/Changelog.vue'),
     name: 'changelog',
     meta: {
       title: "更新日志",
       keywords: 'UIED-Tools更新日志,版本历史,功能更新',
       description: 'UIED-Tools的更新日志，记录了所有版本的功能更新和变更信息',
+    }
+  },
+  {
+    path: '/user/login',
+    component: () => import('@/components/User/Login.vue'),
+    name: 'userLogin',
+    meta: {
+      title: '用户登录',
+      keywords: '用户登录,QQ登录,微信登录,个人中心',
+      description: 'UIED Tools 用户登录页，支持登录后进入个人中心，管理账号资料与QQ邮箱绑定。',
+      hideToolsRecommend: true
+    }
+  },
+  {
+    path: '/user/center',
+    component: () => import('@/components/User/Center.vue'),
+    name: 'userCenter',
+    meta: {
+      title: '个人中心',
+      keywords: '个人中心,QQ邮箱绑定,用户资料',
+      description: 'UIED Tools 个人中心，支持维护昵称与QQ邮箱绑定信息。',
+      hideToolsRecommend: true
     }
   },
   // 图片处理工具
