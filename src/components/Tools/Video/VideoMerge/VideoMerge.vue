@@ -23,6 +23,7 @@ import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 /**
  * 输出格式类型
@@ -58,6 +59,7 @@ interface VideoMeta {
 }
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const resultVideoRef = ref<HTMLVideoElement | null>(null)
@@ -583,6 +585,16 @@ const processMerge = async () => {
     return
   }
 
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-merge',
+    action: 'merge',
+    loginWarningText: '请先登录后再使用视频拼接',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
+    return
+  }
+
   try {
     isCancelRequested.value = false
     isFinalizingOutput = false
@@ -735,8 +747,17 @@ const processMerge = async () => {
 /**
  * 下载结果
  */
-const downloadResult = () => {
+const downloadResult = async () => {
   if (!resultVideoUrl.value || !clips.value.length) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-merge',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载拼接视频'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const firstName = clips.value[0].name.replace(/\.[^/.]+$/, '')
   const link = document.createElement('a')

@@ -549,8 +549,17 @@ const processVideo = async () => {
   }
 }
 
-const downloadVideo = () => {
+const downloadVideo = async () => {
   if (!resultVideoUrl.value || !videoFile.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-crop',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载裁剪视频'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
   const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')

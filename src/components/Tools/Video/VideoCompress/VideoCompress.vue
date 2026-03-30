@@ -1061,8 +1061,17 @@ const handleBeforeUnload = (event: BeforeUnloadEvent) => {
 /**
  * 下载压缩后视频
  */
-const downloadResult = () => {
+const downloadResult = async () => {
   if (!resultVideoUrl.value || !videoFile.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-compress',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载压缩视频'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')
   const link = document.createElement('a')

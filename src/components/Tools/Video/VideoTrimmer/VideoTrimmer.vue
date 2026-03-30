@@ -203,8 +203,17 @@ const processVideo = async () => {
   requestAnimationFrame(checkTime)
 }
 
-const downloadResult = () => {
+const downloadResult = async () => {
   if (!resultVideoUrl.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-trimmer',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载剪辑视频'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
   a.download = `trimmed_${new Date().getTime()}.webm`

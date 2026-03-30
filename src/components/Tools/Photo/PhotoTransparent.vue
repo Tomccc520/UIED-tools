@@ -129,6 +129,7 @@ import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { requestMattingImage, warmupMattingModelId } from '@/services/matting'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const info = reactive({
   title: '证件照透明背景工具',
@@ -154,6 +155,8 @@ const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const processedObjectUrl = ref('')
+const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const faq = [
   {
@@ -253,6 +256,15 @@ const processImage = async () => {
     ElMessage.warning('请先上传照片')
     return
   }
+  const canConsume = await ensureToolConsume({
+    toolKey: 'photo-transparent',
+    action: 'matting',
+    loginWarningText: '请先登录后再使用透明背景抠图',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
+    return
+  }
 
   isProcessing.value = true
   try {
@@ -273,8 +285,17 @@ const processImage = async () => {
 /**
  * 函数说明：下载透明背景 PNG 结果图
  */
-const downloadImage = () => {
+const downloadImage = async () => {
   if (!processedImageUrl.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'photo-transparent',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载透明背景图片'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const name = selectedFile.value?.name || 'photo'
   const baseName = name.replace(/\.[^.]+$/, '')
@@ -294,8 +315,6 @@ onBeforeUnmount(() => {
 onMounted(() => {
   warmupMattingModelId()
 })
-
-const route = useRoute()
 </script>
 
 <style scoped>

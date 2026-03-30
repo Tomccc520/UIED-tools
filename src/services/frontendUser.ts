@@ -111,9 +111,17 @@ export interface FrontendUserPointsLogItem {
   createdAt: number
 }
 
+export interface FrontendUserLoginPromptPayload {
+  reason?: string
+  redirectPath?: string
+  source?: string
+  timestamp?: number
+}
+
 const FRONTEND_USER_TOKEN_KEY = 'uiedtool.frontend.user.token'
 const FRONTEND_USER_PROFILE_KEY = 'uiedtool.frontend.user.profile'
 export const FRONTEND_USER_AUTH_EVENT = 'uiedtool:frontend-user-auth-changed'
+export const FRONTEND_USER_LOGIN_PROMPT_EVENT = 'uiedtool:frontend-user-login-prompt'
 
 const FRONTEND_USER_LOGIN_ENDPOINT = '/api/common/frontend-user/login'
 const FRONTEND_USER_PROFILE_ENDPOINT = '/api/common/frontend-user/profile'
@@ -219,6 +227,22 @@ const dispatchFrontendUserAuthChanged = () => {
     return
   }
   window.dispatchEvent(new CustomEvent(FRONTEND_USER_AUTH_EVENT))
+}
+
+/**
+ * 函数说明：派发“前端用户登录弹窗”事件，用于工具动作触发时按需拉起登录。
+ */
+export const dispatchFrontendUserLoginPrompt = (payload: FrontendUserLoginPromptPayload = {}) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  const eventPayload: FrontendUserLoginPromptPayload = {
+    reason: String(payload.reason || '').trim(),
+    redirectPath: String(payload.redirectPath || '').trim(),
+    source: String(payload.source || '').trim(),
+    timestamp: Number(payload.timestamp || Date.now())
+  }
+  window.dispatchEvent(new CustomEvent(FRONTEND_USER_LOGIN_PROMPT_EVENT, { detail: eventPayload }))
 }
 
 /**

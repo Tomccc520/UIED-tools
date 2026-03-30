@@ -370,8 +370,17 @@ const resultComparisonMetrics = computed(() => {
   ]
 })
 
-const downloadResult = () => {
+const downloadResult = async () => {
   if (!resultAudioUrl.value || !videoFile.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-to-audio',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载音频文件'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = resultAudioUrl.value
   const originalName = videoFile.value.name.replace(/\.[^/.]+$/, "")

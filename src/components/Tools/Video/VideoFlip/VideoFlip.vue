@@ -212,8 +212,17 @@ const processVideo = async () => {
   requestAnimationFrame(drawFrame)
 }
 
-const downloadVideo = () => {
+const downloadVideo = async () => {
   if (!resultVideoUrl.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-flip',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载翻转视频'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
   a.download = `flipped_${new Date().getTime()}.webm`

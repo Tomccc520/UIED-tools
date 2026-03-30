@@ -432,8 +432,17 @@ const processVideo = async () => {
   }
 }
 
-const downloadResult = () => {
+const downloadResult = async () => {
   if (!resultVideoUrl.value || !videoFile.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-rotate',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载处理后视频'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
   const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')

@@ -640,8 +640,17 @@ const processVideo = async () => {
 /**
  * 下载结果文件
  */
-const downloadResult = () => {
+const downloadResult = async () => {
   if (!resultVideoUrl.value || !videoFile.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-resolution-reset',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载重设分辨率结果'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')
   const link = document.createElement('a')

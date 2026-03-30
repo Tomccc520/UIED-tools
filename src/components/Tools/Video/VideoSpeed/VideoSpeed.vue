@@ -180,8 +180,17 @@ const processVideo = async () => {
   requestAnimationFrame(drawFrame)
 }
 
-const downloadVideo = () => {
+const downloadVideo = async () => {
   if (!resultVideoUrl.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-speed',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载变速视频'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = resultVideoUrl.value
   a.download = `speed_${settings.speed}x_${new Date().getTime()}.webm`

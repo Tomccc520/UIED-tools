@@ -364,8 +364,17 @@ const processImage = async () => {
 /**
  * 函数说明：下载换底色后的证件照图片
  */
-const downloadImage = () => {
+const downloadImage = async () => {
   if (!processedImageUrl.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'photo-background',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载证件照'
+  })
+  if (!canDownload) {
+    return
+  }
   const fileName = selectedFile.value?.name || 'photo.jpg'
   const baseName = fileName.replace(/\.[^.]+$/, '')
   const link = document.createElement('a')

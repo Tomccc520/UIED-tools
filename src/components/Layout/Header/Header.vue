@@ -13,9 +13,11 @@ import router from '@/router';
 import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig'
 import {
   FRONTEND_USER_AUTH_EVENT,
+  FRONTEND_USER_LOGIN_PROMPT_EVENT,
   loginFrontendUser,
   getFrontendUserProfile,
-  isFrontendUserLoggedIn
+  isFrontendUserLoggedIn,
+  type FrontendUserLoginPromptPayload
 } from '@/services/frontendUser'
 
 // 每日一言数据结构
@@ -148,6 +150,8 @@ const headerLinks = ref<SiteLinkItem[]>(defaultHeaderLinks)
 const displayHeaderLinks = computed(() => (headerLinks.value.length ? headerLinks.value : defaultHeaderLinks))
 const loginDialogVisible = ref(false)
 const loginDialogLoading = ref(false)
+const loginDialogReason = ref('')
+const loginDialogRedirectPath = ref('/user/center')
 const loginDialogForm = reactive({
   nickname: '',
   password: ''
@@ -376,9 +380,13 @@ const isLoginRouteLink = (url: string): boolean => {
 }
 
 /**
- * 函数说明：打开头部登录弹窗并清理上次输入，保证每次登录入口状态一致。
+ * 函数说明：打开头部登录弹窗并记录登录成功后回跳地址。
  */
-const openLoginDialog = () => {
+const openLoginDialog = (payload: FrontendUserLoginPromptPayload = {}) => {
+  const redirectPath = String(payload.redirectPath || '/user/center').trim() || '/user/center'
+  const reason = String(payload.reason || '').trim()
+  loginDialogReason.value = reason
+  loginDialogRedirectPath.value = redirectPath
   loginDialogVisible.value = true
   loginDialogLoading.value = false
   loginDialogForm.nickname = ''
@@ -386,7 +394,7 @@ const openLoginDialog = () => {
 }
 
 /**
- * 函数说明：执行头部登录弹窗登录逻辑，成功后进入个人中心并刷新头部入口。
+ * 函数说明：执行头部登录弹窗登录逻辑，成功后按来源回跳并刷新头部入口。
  */
 const handleLoginFromDialog = async () => {
   const nickname = String(loginDialogForm.nickname || '').trim()
@@ -403,9 +411,14 @@ const handleLoginFromDialog = async () => {
   try {
     await loginFrontendUser(nickname, password)
     loginDialogVisible.value = false
-    ElMessage.success('登录成功，已进入个人中心')
     handleFrontendAuthChanged()
-    await router.push('/user/center')
+    const nextPath = String(loginDialogRedirectPath.value || '/user/center').trim() || '/user/center'
+    await router.push(nextPath)
+    if (nextPath.startsWith('/user/center')) {
+      ElMessage.success('登录成功，已进入个人中心')
+    } else {
+      ElMessage.success('登录成功，已继续当前操作')
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : '登录失败，请稍后重试'
     ElMessage.error(message)
@@ -440,7 +453,11 @@ const handleHeaderLinkClick = async (event: MouseEvent, url: string) => {
   }
   event.preventDefault()
   if (isLoginRouteLink(targetUrl)) {
-    openLoginDialog()
+    openLoginDialog({
+      reason: '登录后可进入个人中心，查看积分与会员权益',
+      redirectPath: '/user/center',
+      source: 'header-login-link'
+    })
     return
   }
   try {
@@ -449,6 +466,19 @@ const handleHeaderLinkClick = async (event: MouseEvent, url: string) => {
     console.error('头部菜单跳转失败:', error)
     ElMessage.error('页面不存在或跳转失败')
   }
+}
+
+/**
+ * 函数说明：响应工具页动作触发的登录请求，统一拉起头部登录弹窗。
+ */
+const handleFrontendLoginPromptEvent = (event: Event) => {
+  const customEvent = event as CustomEvent<FrontendUserLoginPromptPayload>
+  const payload = customEvent.detail || {}
+  openLoginDialog({
+    reason: String(payload.reason || '').trim() || '请先登录后继续操作',
+    redirectPath: String(payload.redirectPath || router.currentRoute.value.fullPath || '/').trim() || '/',
+    source: String(payload.source || '').trim()
+  })
 }
 
 // 切换搜索面板
@@ -554,6 +584,7 @@ onMounted(() => {
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
   window.addEventListener(FRONTEND_USER_AUTH_EVENT, handleFrontendAuthChanged as EventListener)
+  window.addEventListener(FRONTEND_USER_LOGIN_PROMPT_EVENT, handleFrontendLoginPromptEvent as EventListener)
 
   // 初始化菜单状态，根据设备类型设置不同的初始值
   if (isMobile.value) {
@@ -568,6 +599,7 @@ onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
   window.removeEventListener('resize', handleResize)
   window.removeEventListener(FRONTEND_USER_AUTH_EVENT, handleFrontendAuthChanged as EventListener)
+  window.removeEventListener(FRONTEND_USER_LOGIN_PROMPT_EVENT, handleFrontendLoginPromptEvent as EventListener)
   // 清理定时器
   if (dailyWordTimer) {
     clearInterval(dailyWordTimer)
@@ -664,7 +696,7 @@ onUnmounted(() => {
       <template #header>
         <div class="login-dialog-header">
           <h3>登录用户中心</h3>
-          <p>登录后可进入个人中心，查看每日积分并绑定 QQ 邮箱。</p>
+          <p>{{ loginDialogReason || '登录后可进入个人中心，查看每日积分并绑定 QQ 邮箱。' }}</p>
         </div>
       </template>
 
@@ -726,7 +758,7 @@ onUnmounted(() => {
           <div class="login-dialog-footer">
             <el-button @click="loginDialogVisible = false">取消</el-button>
             <el-button type="primary" :loading="loginDialogLoading" @click="handleLoginFromDialog">
-              登录并进入个人中心
+              登录并继续
             </el-button>
           </div>
         </section>

@@ -364,8 +364,17 @@ const cancelProcessing = () => {
 /**
  * 下载 GIF
  */
-const downloadGif = () => {
+const downloadGif = async () => {
   if (!gifUrl.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-to-gif',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载 GIF'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = gifUrl.value
   const originalName = videoFile.value?.name.replace(/\.[^/.]+$/, "") || "video"

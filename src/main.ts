@@ -1,6 +1,6 @@
 import { createApp } from '@vue/runtime-dom'
 import App from './App.vue'
-import ElementPlus, { ElMessage } from 'element-plus';
+import ElementPlus from 'element-plus';
 //@ts-ignore忽略当前文件ts类型的检测否则有红色提示(打包会失败)
 //入口文件main.ts全局安装element-plus,element-plus默认支持语言英语设置为中文
 import zhCn from 'element-plus/dist/locale/zh-cn.mjs'
@@ -19,7 +19,6 @@ import 'default-passive-events'
 // 导入调试工具
 import { debugLog, isDev } from './utils/debug'
 import { ensureFreeToolTitle } from './utils/string'
-import { ensureToolRouteAccess } from '@/services/toolAccessGuard'
 
 const app = createApp(App)
 //安装仓库
@@ -33,7 +32,7 @@ setupMdEditor(app)
 app.config.globalProperties.$ensureFreeToolTitle = ensureFreeToolTitle
 
 // 路由守卫，动态更新页面标题和 meta 信息
-router.beforeEach(async (to, _from, next) => {
+router.beforeEach((to, _from, next) => {
   // 更新标题
   if (to.meta.title) {
     document.title = `${to.meta.title} - UIED Tools`
@@ -51,27 +50,6 @@ router.beforeEach(async (to, _from, next) => {
   const keywordsMeta = document.querySelector('meta[name="keywords"]')
   if (keywordsMeta && to.meta.keywords) {
     keywordsMeta.setAttribute('content', to.meta.keywords as string)
-  }
-
-  // 工具页统一登录与积分拦截层
-  const accessResult = await ensureToolRouteAccess(to)
-  if (!accessResult.allow) {
-    if (accessResult.toastMessage) {
-      if (accessResult.toastType === 'error') {
-        ElMessage.error(accessResult.toastMessage)
-      } else {
-        ElMessage.warning(accessResult.toastMessage)
-      }
-    }
-    if (accessResult.redirectPath) {
-      next(accessResult.redirectPath)
-      return
-    }
-    next(false)
-    return
-  }
-  if (accessResult.toastMessage) {
-    ElMessage.success(accessResult.toastMessage)
   }
 
   next()

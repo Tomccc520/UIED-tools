@@ -18,8 +18,10 @@ import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import JSZip from 'jszip'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const videoFile = ref<File | null>(null)
@@ -121,6 +123,26 @@ const captureFrame = async (time?: number) => {
 }
 
 /**
+ * 函数说明：手动截图动作入口，执行登录/积分校验后再捕获当前帧。
+ */
+const captureCurrentFrame = async () => {
+  if (!videoRef.value || !videoFile.value) {
+    ElMessage.warning('请先上传视频文件')
+    return
+  }
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-frame',
+    action: 'capture',
+    loginWarningText: '请先登录后再使用视频抽帧',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
+    return
+  }
+  await captureFrame()
+}
+
+/**
  * 开始自动抽帧
  */
 const startAutoExtract = async () => {
@@ -131,6 +153,16 @@ const startAutoExtract = async () => {
 
   if (extractMode.value === 'interval' && extractInterval.value <= 0) {
     ElMessage.warning('间隔时间必须大于0')
+    return
+  }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-frame',
+    action: 'auto-extract',
+    loginWarningText: '请先登录后再使用智能抽帧',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
     return
   }
 
@@ -203,7 +235,16 @@ const formatTime = (seconds: number) => {
  * 下载单张图片
  * @param item - 截图对象
  */
-const downloadImage = (item: { url: string; time: number }) => {
+const downloadImage = async (item: { url: string; time: number }) => {
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-frame',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载截图'
+  })
+  if (!canDownload) {
+    return
+  }
   const a = document.createElement('a')
   a.href = item.url
   a.download = `frame_${formatTime(item.time).replace(/[:.]/g, '_')}.png`
@@ -217,6 +258,15 @@ const downloadImage = (item: { url: string; time: number }) => {
  */
 const downloadAll = async () => {
   if (screenshots.value.length === 0) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-frame',
+    action: 'download-all',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再打包下载截图'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const zip = new JSZip()
   const folder = zip.folder("video_frames")
@@ -361,7 +411,7 @@ const dragOverHandler = (ev: DragEvent) => {
 
               <!-- Controls -->
               <div class="space-y-4">
-                <button @click="captureFrame()"
+                <button @click="captureCurrentFrame"
                   class="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-700 hover:to-pink-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/40 transform active:scale-[0.98]">
                   <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

@@ -19,10 +19,12 @@ import { ref, onUnmounted, reactive } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { ElMessage } from 'element-plus'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 const previewVideo = ref<HTMLVideoElement | null>(null)
 const playbackVideo = ref<HTMLVideoElement | null>(null)
 
@@ -95,8 +97,17 @@ const stopCamera = () => {
 /**
  * 开始录制
  */
-const startRecording = () => {
+const startRecording = async () => {
   if (!stream.value) return
+  const canConsume = await ensureToolConsume({
+    toolKey: 'webcam-recorder',
+    action: 'record',
+    loginWarningText: '请先登录后再使用摄像头录制',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
+    return
+  }
 
   recordedChunks.value = []
   const options = { mimeType: 'video/webm;codecs=vp9' }
@@ -148,8 +159,17 @@ const stopRecording = () => {
 /**
  * 下载视频
  */
-const downloadVideo = () => {
+const downloadVideo = async () => {
   if (!recordedVideoURL.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'webcam-recorder',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载录制视频'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const a = document.createElement('a')
   a.href = recordedVideoURL.value

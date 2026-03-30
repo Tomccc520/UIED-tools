@@ -1,10 +1,10 @@
 <!--
-/**
+ * @file AIToolboxHub.vue
+ * @description AI工具箱聚合页，按分组展示工具并支持锚点导航
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
  * @createDate 2026-03-22
- */
 -->
 
 <script setup lang="ts">
@@ -23,6 +23,7 @@ import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 const route = useRoute()
 const router = useRouter()
 const toolsStore = useToolsStore()
+const scrollContainerRef = ref<HTMLElement | null>(null)
 
 const mouseX = ref('50%')
 const mouseY = ref('50%')
@@ -162,11 +163,65 @@ const openTool = async (tool: Tool): Promise<void> => {
  * 函数说明：滚动到页面指定锚点，支持 AI 聚合页内部导航
  */
 const scrollToAnchor = async (anchorId: string): Promise<void> => {
-  if (!anchorId.trim()) {
+  const normalizedAnchorId = String(anchorId || '').trim()
+  if (!normalizedAnchorId) {
     return
   }
   await nextTick()
-  document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  const anchorElement = document.getElementById(normalizedAnchorId)
+  if (!anchorElement) {
+    return
+  }
+
+  const scrollContainer = scrollContainerRef.value
+  if (!scrollContainer) {
+    anchorElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    return
+  }
+
+  // 预留顶部视觉间距，避免标题贴边
+  const offsetTop = 14
+  const containerRect = scrollContainer.getBoundingClientRect()
+  const targetRect = anchorElement.getBoundingClientRect()
+  const targetTop = targetRect.top - containerRect.top + scrollContainer.scrollTop - offsetTop
+  scrollContainer.scrollTo({
+    top: Math.max(targetTop, 0),
+    behavior: 'smooth'
+  })
+}
+
+/**
+ * 函数说明：规范化 AI 聚合页锚点，兼容历史 ai-group-1 序号锚点并自动映射到当前真实分组ID。
+ */
+const normalizeAiAnchorId = (rawAnchor: string): string => {
+  const anchorId = String(rawAnchor || '').trim()
+  if (!anchorId) {
+    return 'ai-highlight'
+  }
+
+  if (anchorId === 'ai-highlight' || anchorId === 'ai-groups') {
+    return anchorId
+  }
+
+  const groupList = displayGroups.value
+  if (!groupList.length) {
+    return anchorId
+  }
+
+  const matchedGroup = groupList.find((group) => group.anchorId === anchorId)
+  if (matchedGroup) {
+    return matchedGroup.anchorId
+  }
+
+  const legacyIndexMatch = anchorId.match(/^ai-group-(\d+)$/)
+  if (legacyIndexMatch) {
+    const groupIndex = Number(legacyIndexMatch[1]) - 1
+    if (groupIndex >= 0 && groupIndex < groupList.length) {
+      return groupList[groupIndex].anchorId
+    }
+  }
+
+  return 'ai-highlight'
 }
 
 /**
@@ -176,7 +231,7 @@ const syncScrollAnchor = async (): Promise<void> => {
   const queryValue = route.query.value
   const queryAnchor = typeof queryValue === 'string' ? queryValue.trim() : ''
   const hashAnchor = String(route.hash || '').replace(/^#/, '').trim()
-  const anchorId = queryAnchor || hashAnchor || 'ai-highlight'
+  const anchorId = normalizeAiAnchorId(queryAnchor || hashAnchor || 'ai-highlight')
   await scrollToAnchor(anchorId)
 }
 
@@ -195,7 +250,7 @@ watch(
 
 <template>
   <div class="ai-home-container">
-    <div class="scroll-container">
+    <div ref="scrollContainerRef" class="scroll-container">
       <div class="ai-main">
         <section id="recommend">
           <div id="ai-highlight" class="section-title">

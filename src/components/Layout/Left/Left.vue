@@ -168,7 +168,48 @@ const sidebarBrandLogoSrc = computed(() => {
 
 // 菜单状态配置
 const defaultActive = ref('')
-const isAiToolboxRoute = computed<boolean>(() => route.path === '/tools/ai/toolbox')
+
+/**
+ * 函数说明：标准化路由路径，统一去除查询、哈希与尾部斜杠，避免同一路径在不同写法下匹配失败。
+ */
+const normalizeRoutePath = (rawPath: string): string => {
+  const normalized = String(rawPath || '').trim().replace(/[?#].*$/, '')
+  if (!normalized) {
+    return '/'
+  }
+  if (normalized.length === 1) {
+    return normalized
+  }
+  return normalized.replace(/\/+$/, '')
+}
+
+const aiToolboxHomePath = '/tools/ai/toolbox'
+const normalizedAiToolboxHomePath = normalizeRoutePath(aiToolboxHomePath)
+
+/**
+ * 函数说明：判断链接是否为站内路由链接。
+ */
+const isInternalMenuLink = (link: string): boolean => {
+  return String(link || '').trim().startsWith('/')
+}
+
+/**
+ * 函数说明：提取 AI 工具箱分类下的工具路由集合，用于在 AI 工具页保留 AI 侧栏菜单。
+ */
+const aiToolRouteSet = computed<Set<string>>(() => {
+  const pathSet = new Set<string>([normalizedAiToolboxHomePath])
+  const aiCategory = toolsStore.cates.find((cate: ToolCategory) => cate.title === 'AI工具箱')
+  const aiRoutes = (aiCategory?.list || [])
+    .flatMap((group) => (Array.isArray(group.list) ? group.list : []))
+    .map((tool) => String(tool.url || '').trim())
+    .filter((toolPath) => toolPath.startsWith('/'))
+  aiRoutes.forEach((toolPath) => {
+    pathSet.add(normalizeRoutePath(toolPath))
+  })
+  return pathSet
+})
+const isAiToolboxHomeRoute = computed<boolean>(() => normalizeRoutePath(route.path) === normalizedAiToolboxHomePath)
+const isAiToolboxRoute = computed<boolean>(() => aiToolRouteSet.value.has(normalizeRoutePath(route.path)))
 const defaultOpeneds = computed<string[]>(() => {
   return ['recommend']
 })
@@ -279,7 +320,7 @@ const displayAiToolboxSidebarMenus = computed<SiteLinkItem[]>(() => {
     if (!name || !link) {
       return
     }
-    if (!isExternalMenuLink(link) && !isAnchorMenuLink(link)) {
+    if (!isExternalMenuLink(link) && !isAnchorMenuLink(link) && !isInternalMenuLink(link)) {
       return
     }
     fixedMenus.push({ name, link })
@@ -341,11 +382,15 @@ const resolveAiToolboxAnchor = (link: string): string => {
   if (target.startsWith('#')) {
     return target.slice(1).trim()
   }
-  if (!target.startsWith('/tools/ai/toolbox')) {
+  if (!target.startsWith('/')) {
     return ''
   }
+
   try {
     const parsedUrl = new URL(target, window.location.origin)
+    if (normalizeRoutePath(parsedUrl.pathname) !== normalizedAiToolboxHomePath) {
+      return ''
+    }
     const queryAnchor = String(parsedUrl.searchParams.get('value') || parsedUrl.searchParams.get('anchor') || '').trim()
     if (queryAnchor) {
       return queryAnchor
@@ -530,12 +575,32 @@ const gotoCurrentPageAnchor = (id: string) => {
  * @param url 目标页面路由
  */
 const gotoTool = (url: string) => {
-  // 清除 URL 中的 value 参数
-  if (route.query.value) {
-    router.replace({ path: url, query: {} })
-  } else {
-    router.push(url)
+  const targetUrl = String(url || '').trim()
+  if (!targetUrl) {
+    return
   }
+
+  /**
+   * 函数说明：统一解析站内跳转链接，避免把 ?query 当成 path 字面量导致路由命中失败。
+   */
+  const resolvedRoute = router.resolve(targetUrl)
+  const hasExplicitQueryOrHash = targetUrl.includes('?') || targetUrl.includes('#')
+
+  // 仅在“目标链接未显式携带 query/hash”时清理当前 URL 中的 value 参数
+  if (route.query.value && !hasExplicitQueryOrHash) {
+    router.replace({
+      path: resolvedRoute.path,
+      query: {},
+      hash: ''
+    })
+    return
+  }
+
+  router.push({
+    path: resolvedRoute.path,
+    query: resolvedRoute.query,
+    hash: resolvedRoute.hash || ''
+  })
 }
 
 /**
@@ -545,15 +610,6 @@ const gotoTool = (url: string) => {
  */
 const openExternalLink = (url: string) => {
   window.open(url, '_blank', 'noopener,noreferrer')
-}
-
-/**
- * 函数说明：在新标签页打开站内路由，适用于需要“新页面打开”的导航入口
- * @param path 站内路由地址
- */
-const openInternalRouteInNewPage = (path: string): void => {
-  const href = router.resolve(path).href
-  window.open(href, '_blank', 'noopener,noreferrer')
 }
 
 /**
@@ -608,11 +664,11 @@ const handleAiToolboxSidebarItemClick = (link: SiteLinkItem) => {
   }
   const anchor = resolveAiToolboxAnchor(targetLink)
   if (anchor) {
-    if (isAiToolboxRoute.value) {
+    if (isAiToolboxHomeRoute.value) {
       gotoCurrentPageAnchor(anchor)
       return
     }
-    router.push({ path: '/tools/ai/toolbox', query: { value: anchor } })
+    router.push({ path: aiToolboxHomePath, query: { value: anchor } })
     return
   }
 
@@ -638,10 +694,6 @@ const handleCategoryMenuClick = (menu: DisplaySidebarCategoryMenu) => {
   }
   if (targetLink.startsWith('#')) {
     gotoAnchor(targetLink.slice(1))
-    return
-  }
-  if (isAiToolboxCategoryMenu(menu)) {
-    openInternalRouteInNewPage(targetLink)
     return
   }
   gotoTool(targetLink)
@@ -977,11 +1029,11 @@ onMounted(() => {
 }
 
 .menu-ai-toolbox-item {
-  margin: 4px 0 !important;
+  margin: 2px 0 !important;
 }
 
 .menu-ai-toolbox-first {
-  margin-top: 8px !important;
+  margin-top: 2px !important;
 }
 
 /* 菜单组标题 */
@@ -1003,8 +1055,8 @@ onMounted(() => {
 }
 
 .is-ai-toolbox-menu {
-  --menu-item-height: 38px;
-  --menu-item-margin: 4px 0;
+  --menu-item-height: 36px;
+  --menu-item-margin: 2px 0;
 }
 
 /* 悬停和激活状态 */

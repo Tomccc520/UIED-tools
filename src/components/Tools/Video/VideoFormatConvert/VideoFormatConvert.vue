@@ -570,8 +570,17 @@ const processVideo = async () => {
 /**
  * 下载转换后视频
  */
-const downloadResult = () => {
+const downloadResult = async () => {
   if (!resultVideoUrl.value || !videoFile.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'video-format-convert',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载转换视频'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')
   const link = document.createElement('a')
