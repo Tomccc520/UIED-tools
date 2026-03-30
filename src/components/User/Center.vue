@@ -40,6 +40,7 @@ const ordersLoading = ref(false)
 const pointsLogsLoading = ref(false)
 const buyingKey = ref('')
 const closingOrderSn = ref('')
+const selectedPayChannel = ref('mock')
 
 const commerceProducts = ref<FrontendUserCommerceProducts>({
   memberEnabled: false,
@@ -47,10 +48,27 @@ const commerceProducts = ref<FrontendUserCommerceProducts>({
   pointsPacks: [],
   memberRightsIntro: '',
   dailyGiftPoints: 50,
-  toolConsumePoints: 1
+  toolConsumePoints: 1,
+  paymentChannels: []
 })
 const orderList = ref<FrontendUserOrderItem[]>([])
 const pointsLogList = ref<FrontendUserPointsLogItem[]>([])
+
+/**
+ * 函数说明：返回当前可用支付渠道列表，若后台未配置则回退到 mock 渠道。
+ */
+const availablePaymentChannels = computed(() => {
+  if (commerceProducts.value.paymentChannels.length > 0) {
+    return commerceProducts.value.paymentChannels
+  }
+  return [{
+    code: 'mock',
+    name: '测试支付',
+    description: '开发环境即时到账',
+    payUrl: '',
+    configured: true
+  }]
+})
 
 const profileForm = reactive({
   nickname: '',
@@ -80,6 +98,10 @@ const loadCommerceProducts = async () => {
   productsLoading.value = true
   try {
     commerceProducts.value = await fetchFrontendUserCommerceProducts()
+    const hasCurrent = availablePaymentChannels.value.some((item) => item.code === selectedPayChannel.value)
+    if (!hasCurrent) {
+      selectedPayChannel.value = availablePaymentChannels.value[0]?.code || 'mock'
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : '套餐配置加载失败'
     ElMessage.error(message)
@@ -182,16 +204,25 @@ const handleSaveProfile = async () => {
 }
 
 /**
- * 函数说明：购买会员套餐或积分包，当前采用后端 mock 支付链路即时到账。
+ * 函数说明：购买会员套餐或积分包，按当前选择支付渠道发起订单。
  */
 const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', productCode: string) => {
   const purchaseKey = `${productType}:${productCode}`
   if (!productCode || buyingKey.value === purchaseKey) {
     return
   }
+  const selectedChannel = availablePaymentChannels.value.find((item) => item.code === selectedPayChannel.value)
+  if (!selectedChannel) {
+    ElMessage.warning('当前未找到可用支付渠道，请刷新后重试')
+    return
+  }
+  if (!selectedChannel.configured) {
+    ElMessage.warning('当前支付渠道未配置完成，请切换其他渠道或联系管理员')
+    return
+  }
   buyingKey.value = purchaseKey
   try {
-    const result = await purchaseFrontendUserProduct(productType, productCode, 'mock')
+    const result = await purchaseFrontendUserProduct(productType, productCode, selectedChannel.code)
     if (!result) {
       ElMessage.error('购买失败，请先重新登录后重试')
       await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
@@ -201,6 +232,9 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
     await Promise.all([loadOrders(), loadPointsLogs()])
     if (result.order.status === 1) {
       ElMessage.success('支付完成，权益已实时生效')
+    } else if (result.payment?.payUrl) {
+      window.open(result.payment.payUrl, '_blank', 'noopener,noreferrer')
+      ElMessage.success('订单已创建，请在新窗口完成支付，支付成功后刷新本页即可到账')
     } else {
       ElMessage.success('订单已创建，当前状态：待支付')
     }
@@ -210,6 +244,18 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
   } finally {
     buyingKey.value = ''
   }
+}
+
+/**
+ * 函数说明：继续支付待支付订单，跳转到订单对应支付页。
+ */
+const handleGoPay = (order: FrontendUserOrderItem) => {
+  const payUrl = String(order.payment?.payUrl || '').trim()
+  if (!payUrl) {
+    ElMessage.warning('该订单未配置可用支付地址，请联系管理员')
+    return
+  }
+  window.open(payUrl, '_blank', 'noopener,noreferrer')
 }
 
 /**
@@ -318,6 +364,22 @@ onMounted(async () => {
         <el-tab-pane label="会员套餐/积分包" name="products">
           <div v-loading="productsLoading" class="commerce-block">
             <div class="rights-intro">{{ commerceProducts.memberRightsIntro || '会员权益说明暂未配置' }}</div>
+            <div class="pay-channel-panel">
+              <div class="pay-channel-title">支付渠道</div>
+              <el-radio-group v-model="selectedPayChannel">
+                <el-radio-button
+                  v-for="item in availablePaymentChannels"
+                  :key="item.code"
+                  :label="item.code"
+                  :disabled="!item.configured"
+                >
+                  {{ item.name }}
+                </el-radio-button>
+              </el-radio-group>
+              <div class="pay-channel-tip">
+                {{ availablePaymentChannels.find((item) => item.code === selectedPayChannel)?.description || '请选择支付渠道' }}
+              </div>
+            </div>
 
             <div class="sub-title">会员套餐</div>
             <div class="product-grid" v-if="commerceProducts.memberPlans.length > 0">
@@ -378,18 +440,28 @@ onMounted(async () => {
                   {{ scope.row.createdAt ? new Date(scope.row.createdAt).toLocaleString('zh-CN', { hour12: false }) : '-' }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="110" fixed="right">
+              <el-table-column label="操作" width="180" fixed="right">
                 <template #default="scope">
-                  <el-button
-                    v-if="scope.row.status === 0"
-                    text
-                    type="danger"
-                    size="small"
-                    :loading="closingOrderSn === scope.row.orderSn"
-                    @click="handleClosePendingOrder(scope.row.orderSn)"
-                  >
-                    关闭订单
-                  </el-button>
+                  <template v-if="scope.row.status === 0">
+                    <el-button
+                      v-if="scope.row.payment?.payUrl"
+                      text
+                      type="primary"
+                      size="small"
+                      @click="handleGoPay(scope.row)"
+                    >
+                      去支付
+                    </el-button>
+                    <el-button
+                      text
+                      type="danger"
+                      size="small"
+                      :loading="closingOrderSn === scope.row.orderSn"
+                      @click="handleClosePendingOrder(scope.row.orderSn)"
+                    >
+                      关闭订单
+                    </el-button>
+                  </template>
                   <span v-else>-</span>
                 </template>
               </el-table-column>
@@ -521,6 +593,27 @@ onMounted(async () => {
   color: #4b5563;
   font-size: 13px;
   line-height: 1.6;
+}
+
+.pay-channel-panel {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #ebeef5;
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.pay-channel-title {
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.pay-channel-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6b7280;
 }
 
 .sub-title {

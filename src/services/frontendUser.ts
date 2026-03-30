@@ -76,6 +76,25 @@ export interface FrontendUserCommerceProducts {
   memberRightsIntro: string
   dailyGiftPoints: number
   toolConsumePoints: number
+  paymentChannels: FrontendUserPaymentChannel[]
+}
+
+export interface FrontendUserPaymentChannel {
+  code: string
+  name: string
+  description: string
+  payUrl: string
+  configured: boolean
+}
+
+export interface FrontendUserPaymentPayload {
+  mode: string
+  modeText: string
+  description: string
+  configured: boolean
+  orderSn: string
+  callbackApi: string
+  payUrl: string
 }
 
 export interface FrontendUserOrderItem {
@@ -96,6 +115,7 @@ export interface FrontendUserOrderItem {
   remark: string
   paidTime: number
   createdAt: number
+  payment?: FrontendUserPaymentPayload | null
 }
 
 export interface FrontendUserPointsLogItem {
@@ -327,6 +347,7 @@ const normalizeCommerceProducts = (payload: unknown): FrontendUserCommerceProduc
   const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
   const memberPlansRaw = Array.isArray(record.memberPlans) ? (record.memberPlans as Record<string, unknown>[]) : []
   const pointsPacksRaw = Array.isArray(record.pointsPacks) ? (record.pointsPacks as Record<string, unknown>[]) : []
+  const paymentChannelsRaw = Array.isArray(record.paymentChannels) ? (record.paymentChannels as Record<string, unknown>[]) : []
   return {
     memberEnabled: normalizeBooleanFlag(record.memberEnabled),
     memberPlans: memberPlansRaw.map((item, index) => ({
@@ -350,7 +371,14 @@ const normalizeCommerceProducts = (payload: unknown): FrontendUserCommerceProduc
     })).filter((item) => item.code && item.name && item.status === 1),
     memberRightsIntro: String(record.memberRightsIntro || '').trim(),
     dailyGiftPoints: Math.max(0, Number(record.dailyGiftPoints || 0)),
-    toolConsumePoints: Math.max(0, Number(record.toolConsumePoints || 0))
+    toolConsumePoints: Math.max(0, Number(record.toolConsumePoints || 0)),
+    paymentChannels: paymentChannelsRaw.map((item) => ({
+      code: String(item.code || '').trim(),
+      name: String(item.name || '').trim(),
+      description: String(item.description || '').trim(),
+      payUrl: String(item.payUrl || '').trim(),
+      configured: normalizeBooleanFlag(item.configured)
+    })).filter((item) => item.code && item.name)
   }
 }
 
@@ -379,24 +407,34 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
   const lists = Array.isArray(record.lists) ? (record.lists as Record<string, unknown>[]) : []
   return lists.map((item) => {
     const status = Number(item.status || 0)
+    const paymentRaw = item.payment && typeof item.payment === 'object' ? (item.payment as Record<string, unknown>) : null
     return {
-    id: Number(item.id || 0),
-    orderSn: String(item.orderSn || '').trim(),
-    productType: String(item.productType || '').trim(),
-    productTypeText: String(item.productTypeText || '').trim(),
-    productCode: String(item.productCode || '').trim(),
-    productName: String(item.productName || '').trim(),
-    amount: Math.max(0, Number(item.amount || 0)),
-    currency: String(item.currency || 'CNY').trim() || 'CNY',
-    status,
-    statusText: resolveOrderStatusText(status, item.statusText),
-    payChannel: String(item.payChannel || '').trim(),
-    memberDays: Math.max(0, Number(item.memberDays || 0)),
-    points: Math.max(0, Number(item.points || 0)),
-    giftPoints: Math.max(0, Number(item.giftPoints || 0)),
-    remark: String(item.remark || '').trim(),
-    paidTime: Math.max(0, Number(item.paidTime || 0)),
-    createdAt: Math.max(0, Number(item.createdAt || 0))
+      id: Number(item.id || 0),
+      orderSn: String(item.orderSn || '').trim(),
+      productType: String(item.productType || '').trim(),
+      productTypeText: String(item.productTypeText || '').trim(),
+      productCode: String(item.productCode || '').trim(),
+      productName: String(item.productName || '').trim(),
+      amount: Math.max(0, Number(item.amount || 0)),
+      currency: String(item.currency || 'CNY').trim() || 'CNY',
+      status,
+      statusText: resolveOrderStatusText(status, item.statusText),
+      payChannel: String(item.payChannel || '').trim(),
+      memberDays: Math.max(0, Number(item.memberDays || 0)),
+      points: Math.max(0, Number(item.points || 0)),
+      giftPoints: Math.max(0, Number(item.giftPoints || 0)),
+      remark: String(item.remark || '').trim(),
+      paidTime: Math.max(0, Number(item.paidTime || 0)),
+      createdAt: Math.max(0, Number(item.createdAt || 0)),
+      payment: paymentRaw ? {
+        mode: String(paymentRaw.mode || '').trim(),
+        modeText: String(paymentRaw.modeText || '').trim(),
+        description: String(paymentRaw.description || '').trim(),
+        configured: normalizeBooleanFlag(paymentRaw.configured),
+        orderSn: String(paymentRaw.orderSn || '').trim(),
+        callbackApi: String(paymentRaw.callbackApi || '').trim(),
+        payUrl: String(paymentRaw.payUrl || '').trim()
+      } : null
     }
   })
 }
@@ -668,13 +706,13 @@ export const purchaseFrontendUserProduct = async (
   productType: 'member_plan' | 'points_pack',
   productCode: string,
   payChannel = 'mock'
-): Promise<{ order: FrontendUserOrderItem; profile: FrontendUserProfile } | null> => {
+): Promise<{ order: FrontendUserOrderItem; profile: FrontendUserProfile; payment: FrontendUserPaymentPayload | null } | null> => {
   const frontendToken = getFrontendUserToken()
   if (!frontendToken) {
     return null
   }
 
-  const data = await requestFrontendUserApi<{ order?: unknown }>(
+  const data = await requestFrontendUserApi<{ order?: unknown; payment?: unknown }>(
     FRONTEND_USER_PURCHASE_ENDPOINT,
     {
       method: 'POST',
@@ -688,6 +726,16 @@ export const purchaseFrontendUserProduct = async (
   )
 
   const orderList = normalizeFrontendUserOrders({ lists: [data.order || {}] })
+  const paymentPayloadRaw = data.payment && typeof data.payment === 'object' ? (data.payment as Record<string, unknown>) : null
+  const normalizedPayment: FrontendUserPaymentPayload | null = paymentPayloadRaw ? {
+    mode: String(paymentPayloadRaw.mode || '').trim(),
+    modeText: String(paymentPayloadRaw.modeText || '').trim(),
+    description: String(paymentPayloadRaw.description || '').trim(),
+    configured: normalizeBooleanFlag(paymentPayloadRaw.configured),
+    orderSn: String(paymentPayloadRaw.orderSn || '').trim(),
+    callbackApi: String(paymentPayloadRaw.callbackApi || '').trim(),
+    payUrl: String(paymentPayloadRaw.payUrl || '').trim()
+  } : null
   let currentOrder = orderList[0] || {
     id: 0,
     orderSn: '',
@@ -705,7 +753,11 @@ export const purchaseFrontendUserProduct = async (
     giftPoints: 0,
     remark: '',
     paidTime: 0,
-    createdAt: Date.now()
+    createdAt: Date.now(),
+    payment: normalizedPayment
+  }
+  if (!currentOrder.payment && normalizedPayment) {
+    currentOrder.payment = normalizedPayment
   }
 
   // mock 支付链路：创建待支付订单后，立即走一次回调，模拟三方支付完成。
@@ -732,7 +784,8 @@ export const purchaseFrontendUserProduct = async (
   }
   return {
     order: currentOrder,
-    profile: latestProfile
+    profile: latestProfile,
+    payment: normalizedPayment || currentOrder.payment || null
   }
 }
 
