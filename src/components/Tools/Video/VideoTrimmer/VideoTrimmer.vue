@@ -20,8 +20,10 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const videoFile = ref<File | null>(null)
@@ -131,6 +133,16 @@ watch(timeRange, (newVal, oldVal) => {
 
 const processVideo = async () => {
   if (!videoRef.value || !videoFile.value) return
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-trimmer',
+    action: 'trim',
+    loginWarningText: '请先登录后再使用视频时长剪辑',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
+    return
+  }
 
   isProcessing.value = true
   progress.value = 0

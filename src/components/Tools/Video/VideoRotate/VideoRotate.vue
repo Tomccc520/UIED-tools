@@ -23,8 +23,10 @@ import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultCo
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const videoFile = ref<File | null>(null)
@@ -269,6 +271,16 @@ const processVideo = async () => {
   const video = videoRef.value
   if (!video.videoWidth || !video.videoHeight || !video.duration) {
     ElMessage.warning('视频元数据尚未加载完成，请稍后重试')
+    return
+  }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-rotate',
+    action: 'rotate',
+    loginWarningText: '请先登录后再使用视频旋转/翻转',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
     return
   }
 

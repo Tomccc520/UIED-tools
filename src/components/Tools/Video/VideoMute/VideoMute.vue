@@ -20,8 +20,10 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const videoFile = ref<File | null>(null)
@@ -68,6 +70,12 @@ const handleDrop = (event: DragEvent) => {
 
 const processVideo = async () => {
   if (!videoRef.value) return
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-mute',
+    action: 'mute'
+  })
+  if (!canConsume) return
+
   const video = videoRef.value
 
   isProcessing.value = true

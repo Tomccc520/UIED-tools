@@ -19,8 +19,10 @@ import { ref, reactive, onUnmounted, computed } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const videoFile = ref<File | null>(null)
@@ -90,6 +92,12 @@ const previewStyle = computed(() => {
 
 const processVideo = async () => {
   if (!videoRef.value) return
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-flip',
+    action: 'flip'
+  })
+  if (!canConsume) return
+
   const video = videoRef.value
 
   isProcessing.value = true

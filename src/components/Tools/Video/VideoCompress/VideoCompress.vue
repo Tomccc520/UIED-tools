@@ -18,13 +18,12 @@
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import FollowWechatVerifyDialog from '@/components/Common/FollowWechatVerifyDialog.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
-import { wechatVerifyConfig } from '@/utils/verify'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 /**
  * 压缩模式类型
@@ -66,6 +65,7 @@ interface CompressRuntimeOverrides {
 }
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const previewVideoRef = ref<HTMLVideoElement | null>(null)
@@ -85,16 +85,6 @@ const etaText = ref('')
 const errorText = ref('')
 const processStartedAt = ref(0)
 const isCancelRequested = ref(false)
-const usageCount = ref(Number(localStorage.getItem('video_compress_usage_count')) || 0)
-const isVerified = ref(Boolean(localStorage.getItem('video_compress_verified')))
-const showVerifyDialog = ref(false)
-const maxFreeUsage = ref(3)
-const expectedPassword = wechatVerifyConfig.password
-const verifyTips = [
-  `当前工具免费可用 ${maxFreeUsage.value} 次，已达到上限。`,
-  '请关注我们的公众号并回复“密码”获取验证密码。',
-  '验证后可继续免费使用。'
-]
 
 const sourceMeta = reactive<VideoMeta>({
   duration: 0,
@@ -833,11 +823,6 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
     lastPlaybackTime = 0
     lastPlaybackUpdateAt = performance.now()
 
-    if (!isAutoRetry && !isVerified.value) {
-      usageCount.value++
-      localStorage.setItem('video_compress_usage_count', usageCount.value.toString())
-    }
-
     clearResultUrl()
 
     sourceVideo.pause()
@@ -1037,8 +1022,22 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
  * 开始执行视频压缩
  */
 const compressVideo = async () => {
-  if (!isVerified.value && usageCount.value >= maxFreeUsage.value) {
-    showVerifyDialog.value = true
+  if (!previewVideoRef.value || !videoFile.value) {
+    ElMessage.warning('请先上传视频文件')
+    return
+  }
+  if (!sourceMeta.duration || !sourceMeta.width || !sourceMeta.height) {
+    ElMessage.warning('视频还在加载中，请稍后再试')
+    return
+  }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-compress',
+    action: 'compress',
+    loginWarningText: '请先登录后再使用视频压缩',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
     return
   }
 
@@ -1085,21 +1084,6 @@ const getCompressionText = () => {
   const label = savedMB >= 0 ? '节省' : '增加'
 
   return `${label} ${Math.abs(savedMB).toFixed(2)}MB（${Math.abs(savedRate).toFixed(1)}%）`
-}
-
-/**
- * 处理公众号密码验证
- * @param password 用户输入的验证密码
- */
-const handleVerify = (password: string) => {
-  if (password.trim().toLowerCase() === expectedPassword) {
-    isVerified.value = true
-    localStorage.setItem('video_compress_verified', 'true')
-    showVerifyDialog.value = false
-    ElMessage.success('验证成功，您可以继续使用了')
-  } else {
-    ElMessage.error('密码错误，请关注公众号获取正确的密码')
-  }
 }
 
 /**
@@ -1416,7 +1400,6 @@ onBeforeRouteLeave((to, from, next) => {
       </div>
 
       <ToolsRecommend :currentPath="route.path" />
-      <FollowWechatVerifyDialog v-model="showVerifyDialog" :tips="verifyTips" @confirm="handleVerify" />
     </div>
   </div>
 </template>

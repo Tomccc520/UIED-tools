@@ -23,8 +23,10 @@ import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultCo
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const videoFile = ref<File | null>(null)
@@ -250,6 +252,16 @@ const cancelProcessing = () => {
 const processVideo = async () => {
   if (!videoFile.value) {
     ElMessage.warning('请先上传视频文件')
+    return
+  }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-to-audio',
+    action: 'extract',
+    loginWarningText: '请先登录后再使用视频提取音频',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
     return
   }
 

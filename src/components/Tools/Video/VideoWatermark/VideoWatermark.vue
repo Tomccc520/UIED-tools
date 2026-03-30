@@ -24,8 +24,10 @@ import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useDraggable } from '@vueuse/core'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const imageInput = ref<HTMLInputElement | null>(null)
@@ -334,6 +336,16 @@ const processVideo = async () => {
   const video = videoRef.value
   if (!video.videoWidth || !video.videoHeight || !video.duration) {
     ElMessage.warning('视频元数据尚未加载完成，请稍后重试')
+    return
+  }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-watermark',
+    action: 'watermark',
+    loginWarningText: '请先登录后再使用视频加水印',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
     return
   }
 

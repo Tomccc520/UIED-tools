@@ -143,6 +143,7 @@ import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { requestMattingImage, warmupMattingModelId } from '@/services/matting'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const info = reactive({
   title: '免费AI证件照换底色工具',
@@ -166,6 +167,8 @@ const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const hasForegroundPng = computed(() => Boolean(foregroundPngUrl.value))
+const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const faq = [
   {
@@ -332,8 +335,20 @@ const processImage = async () => {
     return
   }
 
-  isProcessing.value = true
   const needMatting = !foregroundPngUrl.value
+  if (needMatting) {
+    const canConsume = await ensureToolConsume({
+      toolKey: 'photo-background',
+      action: 'matting',
+      loginWarningText: '请先登录后再使用 AI 抠图功能',
+      showConsumeSuccessToast: true
+    })
+    if (!canConsume) {
+      return
+    }
+  }
+
+  isProcessing.value = true
   try {
     await ensureForegroundPng()
     await renderPhotoWithBackground()
@@ -367,8 +382,6 @@ onBeforeUnmount(() => {
 onMounted(() => {
   warmupMattingModelId()
 })
-
-const route = useRoute()
 </script>
 
 <style scoped>

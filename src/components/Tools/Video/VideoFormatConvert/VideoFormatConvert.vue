@@ -23,6 +23,7 @@ import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 /**
  * 输出格式类型
@@ -39,6 +40,7 @@ interface VideoMeta {
 }
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const previewVideoRef = ref<HTMLVideoElement | null>(null)
@@ -363,6 +365,12 @@ const processVideo = async () => {
     ElMessage.warning('视频还在加载中，请稍后再试')
     return
   }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-format-convert',
+    action: 'convert'
+  })
+  if (!canConsume) return
 
   try {
     isCancelRequested.value = false

@@ -17,17 +17,17 @@
  */
 import { ref, reactive, onUnmounted, computed } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import FollowWechatVerifyDialog from '@/components/Common/FollowWechatVerifyDialog.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
 import { ensureGifRuntime } from '@/utils/toolRuntimeLoaders'
-import { wechatVerifyConfig } from '@/utils/verify'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const videoFile = ref<File | null>(null)
@@ -42,11 +42,6 @@ const errorText = ref('')
 const processStartedAt = ref(0)
 const resultGifSizeMB = ref(0)
 const isCancelRequested = ref(false)
-const usageCount = ref(Number(localStorage.getItem('video_to_gif_usage_count')) || 0)
-const isVerified = ref(Boolean(localStorage.getItem('video_to_gif_verified')))
-const showVerifyDialog = ref(false)
-const maxFreeUsage = ref(wechatVerifyConfig.maxFreeUsage)
-const expectedPassword = wechatVerifyConfig.password
 let activeGifEncoder: any = null
 
 // Settings
@@ -225,12 +220,18 @@ const waitForSeeked = (video: HTMLVideoElement, targetTime: number) => {
  */
 const generateGif = async () => {
   if (!videoRef.value) return
-  if (!isVerified.value && usageCount.value >= maxFreeUsage.value) {
-    showVerifyDialog.value = true
-    return
-  }
   if (!normalizeSettings()) {
     ElMessage.warning('请先加载视频并设置有效的截取片段')
+    return
+  }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-to-gif',
+    action: 'generate',
+    loginWarningText: '请先登录后再使用视频转 GIF',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
     return
   }
 
@@ -244,11 +245,6 @@ const generateGif = async () => {
     gifUrl.value = ''
     resultGifSizeMB.value = 0
     processStartedAt.value = Date.now()
-
-    if (!isVerified.value) {
-      usageCount.value++
-      localStorage.setItem('video_to_gif_usage_count', usageCount.value.toString())
-    }
 
     const video = videoRef.value
     const canvas = document.createElement('canvas')
@@ -398,17 +394,6 @@ const dropHandler = (ev: DragEvent) => {
 
 const dragOverHandler = (ev: DragEvent) => {
   ev.preventDefault()
-}
-
-const handleVerify = (password: string) => {
-  if (password.trim().toLowerCase() === expectedPassword) {
-    isVerified.value = true
-    localStorage.setItem('video_to_gif_verified', 'true')
-    showVerifyDialog.value = false
-    ElMessage.success('验证成功，您可以继续使用了')
-  } else {
-    ElMessage.error('密码错误，请关注公众号获取正确的密码')
-  }
 }
 
 onUnmounted(() => {
@@ -645,9 +630,8 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
-    </div>
+  </div>
     <ToolsRecommend :currentPath="route.path" />
-    <FollowWechatVerifyDialog v-model="showVerifyDialog" @confirm="handleVerify" />
   </div>
 </template>
 

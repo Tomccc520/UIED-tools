@@ -23,6 +23,7 @@ import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 /**
  * 分辨率预设类型
@@ -44,6 +45,7 @@ interface VideoMeta {
 }
 
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const previewVideoRef = ref<HTMLVideoElement | null>(null)
@@ -455,6 +457,12 @@ const processVideo = async () => {
   if (!validateCustomResolution()) {
     return
   }
+
+  const canConsume = await ensureToolConsume({
+    toolKey: 'video-resolution-reset',
+    action: 'resolution-reset'
+  })
+  if (!canConsume) return
 
   try {
     isCancelRequested.value = false
