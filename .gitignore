@@ -46,3 +46,5 @@ backend/likeadmin-go/
 .runtime/
 backend/data/
 backend/matting-service/.venv/
+.playwright-cli/
+backend/matting-service/__pycache__/

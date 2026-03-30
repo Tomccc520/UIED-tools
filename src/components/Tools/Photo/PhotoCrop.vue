@@ -185,9 +185,11 @@ import { useRoute } from 'vue-router'
 import VueCropper from 'vue-cropperjs'
 import 'cropperjs/dist/cropper.css'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 // 获取当前路由
 const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 // 组件配置信息
 const info = {
@@ -221,6 +223,7 @@ const cropperRef = ref<any>(null)
 const selectedSize = ref<PhotoSize>(photoSizes[0])
 const imageUrl = ref('')
 const croppedImageUrl = ref('')
+const hasConsumedCurrentImage = ref(false)
 
 // 文件处理方法
 const handleFileChange = (e: Event) => {
@@ -242,7 +245,12 @@ const handleFile = (file: File) => {
     alert('请只选择图片文件')
     return
   }
+  if (imageUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imageUrl.value)
+  }
   imageUrl.value = URL.createObjectURL(file)
+  croppedImageUrl.value = ''
+  hasConsumedCurrentImage.value = false
 }
 
 // 处理尺寸选择
@@ -274,9 +282,44 @@ const rotate = (angle: number) => {
   cropperRef.value.rotate(angle)
 }
 
-// 下载处理
-const handleDownload = () => {
+/**
+ * 函数说明：确保当前图片仅在首次导出前扣一次积分，避免重复扣费。
+ */
+const ensureCropConsume = async () => {
+  if (hasConsumedCurrentImage.value) {
+    return true
+  }
+  const canConsume = await ensureToolConsume({
+    toolKey: 'photo-crop',
+    action: 'crop',
+    loginWarningText: '请先登录后再使用证件照裁剪',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
+    return false
+  }
+  hasConsumedCurrentImage.value = true
+  return true
+}
+
+/**
+ * 函数说明：下载前统一执行积分与登录校验。
+ */
+const handleDownload = async () => {
   if (!croppedImageUrl.value) return
+  const canConsume = await ensureCropConsume()
+  if (!canConsume) {
+    return
+  }
+  const canDownload = await ensureToolConsume({
+    toolKey: 'photo-crop',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载裁剪结果'
+  })
+  if (!canDownload) {
+    return
+  }
 
   const link = document.createElement('a')
   link.href = croppedImageUrl.value
@@ -288,8 +331,12 @@ const handleDownload = () => {
 
 // 重置方法
 const resetImage = () => {
+  if (imageUrl.value.startsWith('blob:')) {
+    URL.revokeObjectURL(imageUrl.value)
+  }
   imageUrl.value = ''
   croppedImageUrl.value = ''
+  hasConsumedCurrentImage.value = false
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }

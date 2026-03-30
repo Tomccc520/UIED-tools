@@ -231,6 +231,7 @@ import { ref, reactive } from '@vue/runtime-core'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
+import { useToolConsume } from '@/composables/useToolConsume'
 
 // 组件配置信息
 const info = reactive({
@@ -258,6 +259,8 @@ const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const imageWidth = ref(0)
 const imageHeight = ref(0)
+const route = useRoute()
+const { ensureToolConsume } = useToolConsume()
 
 // 排版预设配置
 const layoutPresets = [
@@ -487,6 +490,15 @@ const processImage = async () => {
     ElMessage.warning('请先上传照片')
     return
   }
+  const canConsume = await ensureToolConsume({
+    toolKey: 'photo-layout',
+    action: 'layout',
+    loginWarningText: '请先登录后再进行证件照排版',
+    showConsumeSuccessToast: true
+  })
+  if (!canConsume) {
+    return
+  }
 
   isProcessing.value = true
   try {
@@ -531,8 +543,20 @@ const processImage = async () => {
   }
 }
 
-const downloadImage = () => {
+/**
+ * 函数说明：下载前仅校验登录态，避免重复扣积分。
+ */
+const downloadImage = async () => {
   if (!processedImageUrl.value) return
+  const canDownload = await ensureToolConsume({
+    toolKey: 'photo-layout',
+    action: 'download',
+    mode: 'check-login',
+    loginWarningText: '请先登录后再下载排版图片'
+  })
+  if (!canDownload) {
+    return
+  }
 
   // 创建下载链接
   const link = document.createElement('a')
@@ -555,8 +579,6 @@ const previewProcessedImage = () => {
   window.open(processedImageUrl.value, '_blank')
 }
 
-// 获取当前路由
-const route = useRoute()
 </script>
 
 <style scoped>
