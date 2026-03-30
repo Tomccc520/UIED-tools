@@ -12,8 +12,8 @@ import { getSitePublicConfig, type SiteLinkItem } from '@/services/siteConfig';
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2026-03-23 10:30
- * @version 3.0.1
+ * @lastUpdate 2026-03-30 14:50
+ * @version 3.0.2
  * @toolsCount 当前工具总数：332个
  */
 
@@ -45,7 +45,7 @@ const changelogSplitTitle = ref('工具箱 3.0.0 版本分岔提醒');
 const changelogSplitDesc = ref('纯前端开源版在 3.0.0 后进入维护态；包含后台运营、会员与模型管理能力的版本为商业源码版。');
 const changelogSplitLink = ref('https://fsuied.com/');
 const changelogSplitLinkText = ref('购买源码与服务支持（fsuied.com）');
-const changelogStatsText = ref('当前工具总数：332个 | 最后更新：2026-03-23 10:30');
+const changelogStatsText = ref('当前工具总数：332个 | 最后更新：2026-03-30 14:50');
 
 /**
  * 函数说明：判断链接是否为外部地址，用于资料链接决定是否新开标签页
@@ -330,6 +330,53 @@ onUnmounted(() => {
 
         <!-- 时间线区域 -->
         <div class="timeline-container flex-1 w-full">
+
+          <!-- Version 3.0.2 -->
+          <div class="timeline-item" id="v3.0.2">
+            <div class="version-tag">
+              <span class="version">3.0.2</span>
+              <span class="date">2026-03-30 14:50</span>
+            </div>
+            <div class="content-card">
+              <div class="card-header">
+                <el-tag size="small" type="success" class="mr-2">会员二期</el-tag>
+                <span class="text-gray-700">支付状态机、订单管理页与登录弹窗体验升级</span>
+              </div>
+              <div class="card-content">
+                <ul class="feature-list">
+                  <li>
+                    <div class="feature-title">会员支付链路升级（状态机）</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>订单状态统一为：<strong>待支付(0) / 已支付(1) / 已关闭(2)</strong>。</li>
+                        <li>前台下单改为先创建待支付订单，再走支付回调，避免“下单即到账”造成状态不一致。</li>
+                        <li>用户中心新增待支付订单关闭能力，减少无效订单堆积。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">后台新增订单管理页</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>新增后台订单管理（筛选 / 导出CSV / 补单 / 关闭）。</li>
+                        <li>补单支持待支付、已关闭订单转已支付并补发会员权益或积分。</li>
+                        <li>新增菜单与权限补丁，支持一键启动脚本自动补齐。</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <div class="feature-title">登录弹窗视觉重构</div>
+                    <div class="feature-desc">
+                      <ul class="list-disc list-inside text-sm text-gray-600 space-y-1">
+                        <li>头部登录弹窗升级为信息侧栏 + 表单主区布局，信息密度更清晰。</li>
+                        <li>保留昵称密码登录与微信/QQ入口，不改变已有登录逻辑。</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
 
           <!-- Version 3.0.1 -->
           <div class="timeline-item" id="v3.0.1">

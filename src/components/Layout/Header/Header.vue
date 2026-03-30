@@ -668,59 +668,69 @@ onUnmounted(() => {
         </div>
       </template>
 
-      <el-form label-position="top" @submit.prevent>
-        <el-form-item label="昵称">
-          <el-input v-model="loginDialogForm.nickname" placeholder="请输入昵称" maxlength="24" clearable />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input
-            v-model="loginDialogForm.password"
-            type="password"
-            show-password
-            placeholder="请输入密码（6位以上）"
-            maxlength="32"
-            clearable
-          />
-        </el-form-item>
-      </el-form>
+      <div class="login-dialog-shell">
+        <aside class="login-dialog-side">
+          <div class="login-dialog-side-title">账号权益</div>
+          <div class="login-dialog-points">
+            <div class="points-chip">
+              每日赠送 +{{ loginDialogSiteConfig.loginDailyGiftPoints }}
+            </div>
+            <div class="points-chip">
+              每次工具消耗 -{{ loginDialogSiteConfig.loginToolConsumePoints }}
+            </div>
+            <div class="points-chip" v-if="loginDialogSiteConfig.loginMemberEnabled && loginDialogSiteConfig.loginMemberTrialDays > 0">
+              新用户会员试用 {{ loginDialogSiteConfig.loginMemberTrialDays }} 天
+            </div>
+          </div>
+          <ul class="login-dialog-side-list">
+            <li>登录后可直接进入个人中心</li>
+            <li>支持绑定 QQ 邮箱，便于通知提醒</li>
+            <li>会员与积分权益实时到账</li>
+          </ul>
+        </aside>
 
-      <div class="login-dialog-points">
-        <div class="points-chip">
-          每日赠送 +{{ loginDialogSiteConfig.loginDailyGiftPoints }}
-        </div>
-        <div class="points-chip">
-          每次工具消耗 -{{ loginDialogSiteConfig.loginToolConsumePoints }}
-        </div>
-        <div class="points-chip" v-if="loginDialogSiteConfig.loginMemberEnabled && loginDialogSiteConfig.loginMemberTrialDays > 0">
-          新用户会员试用 {{ loginDialogSiteConfig.loginMemberTrialDays }} 天
-        </div>
+        <section class="login-dialog-main">
+          <el-form label-position="top" @submit.prevent>
+            <el-form-item label="昵称">
+              <el-input v-model="loginDialogForm.nickname" placeholder="请输入昵称" maxlength="24" clearable />
+            </el-form-item>
+            <el-form-item label="密码">
+              <el-input
+                v-model="loginDialogForm.password"
+                type="password"
+                show-password
+                placeholder="请输入密码（6位以上）"
+                maxlength="32"
+                clearable
+              />
+            </el-form-item>
+          </el-form>
+
+          <div class="login-dialog-auth-actions">
+            <el-button
+              v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenWechatAuth"
+              plain
+              @click="handleOpenAuth(loginDialogSiteConfig.loginWechatAuthorizeUrl)"
+            >
+              微信登录
+            </el-button>
+            <el-button
+              v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenQqAuth"
+              plain
+              @click="handleOpenAuth(loginDialogSiteConfig.loginQqAuthorizeUrl)"
+            >
+              QQ登录
+            </el-button>
+          </div>
+
+          <div class="login-dialog-footer">
+            <el-button @click="loginDialogVisible = false">取消</el-button>
+            <el-button type="primary" :loading="loginDialogLoading" @click="handleLoginFromDialog">
+              登录并进入个人中心
+            </el-button>
+          </div>
+        </section>
       </div>
-
-      <div class="login-dialog-auth-actions">
-        <el-button
-          v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenWechatAuth"
-          plain
-          @click="handleOpenAuth(loginDialogSiteConfig.loginWechatAuthorizeUrl)"
-        >
-          微信登录
-        </el-button>
-        <el-button
-          v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenQqAuth"
-          plain
-          @click="handleOpenAuth(loginDialogSiteConfig.loginQqAuthorizeUrl)"
-        >
-          QQ登录
-        </el-button>
-      </div>
-
-      <template #footer>
-        <div class="login-dialog-footer">
-          <el-button @click="loginDialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="loginDialogLoading" @click="handleLoginFromDialog">
-            登录并进入个人中心
-          </el-button>
-        </div>
-      </template>
     </el-dialog>
   </header>
 </template>
@@ -882,11 +892,30 @@ onUnmounted(() => {
   color: #6b7280;
 }
 
+.login-dialog-shell {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 14px;
+}
+
+.login-dialog-side {
+  border: 1px solid #ece9ff;
+  background: linear-gradient(160deg, #f8f6ff 0%, #f5f8ff 100%);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.login-dialog-side-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2d2554;
+  margin-bottom: 8px;
+}
+
 .login-dialog-points {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 4px;
 }
 
 .points-chip {
@@ -899,22 +928,41 @@ onUnmounted(() => {
   line-height: 1.4;
 }
 
+.login-dialog-side-list {
+  margin: 10px 0 0;
+  padding-left: 16px;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.login-dialog-main {
+  display: flex;
+  flex-direction: column;
+}
+
 .login-dialog-auth-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 6px;
 }
 
 .login-dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+  margin-top: 14px;
 }
 
 /* 移动端适配 */
 @media screen and (max-width: 768px) {
   .daily-word-outer {
     display: none;
+  }
+
+  .login-dialog-shell {
+    grid-template-columns: 1fr;
   }
 }
 </style>
