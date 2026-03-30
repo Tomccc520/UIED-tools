@@ -12,6 +12,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getDefaultSitePublicConfig, getSitePublicConfig } from '@/services/siteConfig'
 import {
+  closeFrontendUserOrder,
   fetchFrontendUserCommerceProducts,
   fetchFrontendUserOrders,
   fetchFrontendUserPointsLogs,
@@ -38,6 +39,7 @@ const productsLoading = ref(false)
 const ordersLoading = ref(false)
 const pointsLogsLoading = ref(false)
 const buyingKey = ref('')
+const closingOrderSn = ref('')
 
 const commerceProducts = ref<FrontendUserCommerceProducts>({
   memberEnabled: false,
@@ -197,12 +199,41 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
     }
     loadProfile()
     await Promise.all([loadOrders(), loadPointsLogs()])
-    ElMessage.success('购买成功，权益已实时生效')
+    if (result.order.status === 1) {
+      ElMessage.success('支付完成，权益已实时生效')
+    } else {
+      ElMessage.success('订单已创建，当前状态：待支付')
+    }
   } catch (error) {
     const message = error instanceof Error ? error.message : '购买失败，请稍后重试'
     ElMessage.error(message)
   } finally {
     buyingKey.value = ''
+  }
+}
+
+/**
+ * 函数说明：关闭待支付订单，避免无效订单长期占用购买列表。
+ */
+const handleClosePendingOrder = async (orderSn: string) => {
+  const targetOrderSn = String(orderSn || '').trim()
+  if (!targetOrderSn || closingOrderSn.value === targetOrderSn) {
+    return
+  }
+  closingOrderSn.value = targetOrderSn
+  try {
+    const result = await closeFrontendUserOrder(targetOrderSn)
+    if (!result) {
+      ElMessage.warning('订单关闭失败，请稍后重试')
+      return
+    }
+    ElMessage.success('订单已关闭')
+    await loadOrders()
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '订单关闭失败'
+    ElMessage.error(message)
+  } finally {
+    closingOrderSn.value = ''
   }
 }
 
@@ -335,10 +366,31 @@ onMounted(async () => {
               <el-table-column prop="productTypeText" label="类型" width="110" />
               <el-table-column prop="productName" label="商品" min-width="150" />
               <el-table-column prop="amount" label="金额" width="90" />
-              <el-table-column prop="statusText" label="状态" width="90" />
+              <el-table-column label="状态" width="96">
+                <template #default="scope">
+                  <el-tag v-if="scope.row.status === 1" type="success">{{ scope.row.statusText }}</el-tag>
+                  <el-tag v-else-if="scope.row.status === 2" type="info">{{ scope.row.statusText }}</el-tag>
+                  <el-tag v-else type="warning">{{ scope.row.statusText }}</el-tag>
+                </template>
+              </el-table-column>
               <el-table-column label="购买时间" min-width="170">
                 <template #default="scope">
                   {{ scope.row.createdAt ? new Date(scope.row.createdAt).toLocaleString('zh-CN', { hour12: false }) : '-' }}
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="110" fixed="right">
+                <template #default="scope">
+                  <el-button
+                    v-if="scope.row.status === 0"
+                    text
+                    type="danger"
+                    size="small"
+                    :loading="closingOrderSn === scope.row.orderSn"
+                    @click="handleClosePendingOrder(scope.row.orderSn)"
+                  >
+                    关闭订单
+                  </el-button>
+                  <span v-else>-</span>
                 </template>
               </el-table-column>
             </el-table>

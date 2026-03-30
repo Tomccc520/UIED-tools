@@ -121,6 +121,8 @@ const FRONTEND_USER_PROFILE_SAVE_ENDPOINT = '/api/common/frontend-user/profile/s
 const FRONTEND_USER_POINTS_CONSUME_ENDPOINT = '/api/common/frontend-user/points/consume'
 const FRONTEND_USER_PRODUCTS_ENDPOINT = '/api/common/frontend-user/products'
 const FRONTEND_USER_PURCHASE_ENDPOINT = '/api/common/frontend-user/purchase'
+const FRONTEND_USER_PURCHASE_CALLBACK_ENDPOINT = '/api/common/frontend-user/purchase/callback'
+const FRONTEND_USER_PURCHASE_CLOSE_ENDPOINT = '/api/common/frontend-user/purchase/close'
 const FRONTEND_USER_ORDERS_ENDPOINT = '/api/common/frontend-user/orders'
 const FRONTEND_USER_POINTS_LOGS_ENDPOINT = '/api/common/frontend-user/points/logs'
 const FRONTEND_USER_LOGOUT_ENDPOINT = '/api/common/frontend-user/logout'
@@ -329,12 +331,31 @@ const normalizeCommerceProducts = (payload: unknown): FrontendUserCommerceProduc
 }
 
 /**
+ * 函数说明：将订单状态编码映射为前端可读文案，兼容后端未返回 statusText 的场景。
+ */
+const resolveOrderStatusText = (status: number, fallbackText: unknown): string => {
+  const text = String(fallbackText || '').trim()
+  if (text) {
+    return text
+  }
+  if (status === 1) {
+    return '已支付'
+  }
+  if (status === 2) {
+    return '已关闭'
+  }
+  return '待支付'
+}
+
+/**
  * 函数说明：将接口返回的购买记录转换为统一结构，兼容字段缺失场景。
  */
 const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] => {
   const record = payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : {}
   const lists = Array.isArray(record.lists) ? (record.lists as Record<string, unknown>[]) : []
-  return lists.map((item) => ({
+  return lists.map((item) => {
+    const status = Number(item.status || 0)
+    return {
     id: Number(item.id || 0),
     orderSn: String(item.orderSn || '').trim(),
     productType: String(item.productType || '').trim(),
@@ -343,8 +364,8 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
     productName: String(item.productName || '').trim(),
     amount: Math.max(0, Number(item.amount || 0)),
     currency: String(item.currency || 'CNY').trim() || 'CNY',
-    status: Number(item.status || 0),
-    statusText: String(item.statusText || '').trim(),
+    status,
+    statusText: resolveOrderStatusText(status, item.statusText),
     payChannel: String(item.payChannel || '').trim(),
     memberDays: Math.max(0, Number(item.memberDays || 0)),
     points: Math.max(0, Number(item.points || 0)),
@@ -352,7 +373,8 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
     remark: String(item.remark || '').trim(),
     paidTime: Math.max(0, Number(item.paidTime || 0)),
     createdAt: Math.max(0, Number(item.createdAt || 0))
-  }))
+    }
+  })
 }
 
 /**
@@ -628,7 +650,7 @@ export const purchaseFrontendUserProduct = async (
     return null
   }
 
-  const data = await requestFrontendUserApi<{ order?: unknown; profile?: unknown }>(
+  const data = await requestFrontendUserApi<{ order?: unknown }>(
     FRONTEND_USER_PURCHASE_ENDPOINT,
     {
       method: 'POST',
@@ -641,36 +663,77 @@ export const purchaseFrontendUserProduct = async (
     frontendToken
   )
 
-  const profile = normalizeFrontendUserProfile(data.profile)
-  if (!profile.uid) {
+  const orderList = normalizeFrontendUserOrders({ lists: [data.order || {}] })
+  let currentOrder = orderList[0] || {
+    id: 0,
+    orderSn: '',
+    productType,
+    productTypeText: productType === 'member_plan' ? '会员套餐' : '积分包',
+    productCode: String(productCode || '').trim(),
+    productName: '',
+    amount: 0,
+    currency: 'CNY',
+    status: 0,
+    statusText: '待支付',
+    payChannel: String(payChannel || 'mock').trim() || 'mock',
+    memberDays: 0,
+    points: 0,
+    giftPoints: 0,
+    remark: '',
+    paidTime: 0,
+    createdAt: Date.now()
+  }
+
+  // mock 支付链路：创建待支付订单后，立即走一次回调，模拟三方支付完成。
+  if (currentOrder.orderSn && currentOrder.status === 0 && String(payChannel || '').trim().toLowerCase() === 'mock') {
+    const callbackData = await requestFrontendUserApi<{ order?: unknown }>(
+      FRONTEND_USER_PURCHASE_CALLBACK_ENDPOINT,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          orderSn: currentOrder.orderSn,
+          payChannel: 'mock'
+        })
+      }
+    )
+    const callbackOrders = normalizeFrontendUserOrders({ lists: [callbackData.order || {}] })
+    if (callbackOrders[0]) {
+      currentOrder = callbackOrders[0]
+    }
+  }
+
+  const latestProfile = await syncFrontendUserProfile()
+  if (!latestProfile) {
     return null
   }
-  saveFrontendUserProfileToLocal(profile)
-  dispatchFrontendUserAuthChanged()
-
-  const orderList = normalizeFrontendUserOrders({ lists: [data.order || {}] })
   return {
-    order: orderList[0] || {
-      id: 0,
-      orderSn: '',
-      productType,
-      productTypeText: productType === 'member_plan' ? '会员套餐' : '积分包',
-      productCode: String(productCode || '').trim(),
-      productName: '',
-      amount: 0,
-      currency: 'CNY',
-      status: 1,
-      statusText: '已支付',
-      payChannel: 'mock',
-      memberDays: 0,
-      points: 0,
-      giftPoints: 0,
-      remark: '',
-      paidTime: Date.now(),
-      createdAt: Date.now()
-    },
-    profile
+    order: currentOrder,
+    profile: latestProfile
   }
+}
+
+/**
+ * 函数说明：关闭当前登录用户的待支付订单。
+ */
+export const closeFrontendUserOrder = async (orderSn: string): Promise<FrontendUserOrderItem | null> => {
+  const frontendToken = getFrontendUserToken()
+  if (!frontendToken) {
+    return null
+  }
+  const targetOrderSn = String(orderSn || '').trim()
+  if (!targetOrderSn) {
+    return null
+  }
+  const data = await requestFrontendUserApi<{ order?: unknown }>(
+    FRONTEND_USER_PURCHASE_CLOSE_ENDPOINT,
+    {
+      method: 'POST',
+      body: JSON.stringify({ orderSn: targetOrderSn })
+    },
+    frontendToken
+  )
+  const orders = normalizeFrontendUserOrders({ lists: [data.order || {}] })
+  return orders[0] || null
 }
 
 /**

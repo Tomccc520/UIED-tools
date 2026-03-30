@@ -452,6 +452,25 @@ apply_member_commerce_schema_patch() {
   log_info "会员套餐/积分包/流水补齐完成。"
 }
 
+# 函数说明：检测并补齐后台“订单管理”菜单与权限，确保运营端可直接管理会员订单。
+apply_member_order_menu_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260330_add_member_order_menu.sql"
+  local order_menu_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  order_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='order:list' AND is_delete=0;" 2>/dev/null || echo "0")"
+  if [[ "${order_menu_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到后台缺少订单管理菜单，自动执行菜单补丁..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "订单管理菜单补齐完成。"
+}
+
 # 函数说明：检测 PID 文件对应进程是否存活，可选校验端口监听，避免 PID 复用误判
 is_pid_running() {
   local pid_file="$1"
@@ -621,6 +640,7 @@ main() {
   apply_user_points_schema_patch
   apply_user_member_schema_patch
   apply_member_commerce_schema_patch
+  apply_member_order_menu_patch
   start_likeadmin_server
   start_likeadmin_admin
   start_matting_service
