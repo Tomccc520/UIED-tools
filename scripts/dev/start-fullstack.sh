@@ -476,6 +476,38 @@ apply_member_order_menu_patch() {
   log_info "订单管理菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file} 与当前库结构。"
 }
 
+# 函数说明：补齐后台角色与权限基线，避免角色管理/菜单管理无可用数据。
+apply_role_permission_baseline_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260331_seed_role_permission_baseline.sql"
+  local role_count="0"
+  local perm_count="0"
+  local super_role_count="0"
+  local ops_role_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role;" 2>/dev/null || echo "0")"
+  perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_perm;" 2>/dev/null || echo "0")"
+  super_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name='超级管理员';" 2>/dev/null || echo "0")"
+  ops_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name='运营管理员';" 2>/dev/null || echo "0")"
+
+  # 函数说明：当角色和权限均已具备基础规模时跳过，减少重复执行 SQL。
+  if [[ "${role_count}" -ge 3 ]] && [[ "${perm_count}" -ge 30 ]] && [[ "${super_role_count}" -ge 1 ]] && [[ "${ops_role_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到角色/权限基线不足，自动执行角色权限补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "角色与权限基线补齐完成。"
+    return
+  fi
+
+  # 函数说明：补丁失败时不阻塞全栈启动，避免影响前后端联调。
+  log_info "角色与权限基线补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
 # 函数说明：检测 PID 文件对应进程是否存活，可选校验端口监听，避免 PID 复用误判
 is_pid_running() {
   local pid_file="$1"
@@ -646,6 +678,7 @@ main() {
   apply_user_member_schema_patch
   apply_member_commerce_schema_patch
   apply_member_order_menu_patch
+  apply_role_permission_baseline_patch
   start_likeadmin_server
   start_likeadmin_admin
   start_matting_service
