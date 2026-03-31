@@ -312,6 +312,7 @@ onMounted(async () => {
   <section class="user-center-page">
     <div class="center-shell">
       <div class="center-header">
+        <div class="center-header-badge">账户中心</div>
         <h1>{{ siteConfig.userCenterTitle || '个人中心' }}</h1>
         <p>维护资料、购买会员套餐与积分包，并查看购买记录和积分流水。</p>
       </div>
@@ -497,34 +498,51 @@ onMounted(async () => {
 
 <style scoped>
 .user-center-page {
-  min-height: 66vh;
-  padding: 18px 0;
+  min-height: 70vh;
+  padding: 24px 0;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(108, 84, 255, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 40%);
 }
 
 .center-shell {
   width: min(920px, 100%);
   background: #ffffff;
-  border: 1px solid #ebeef5;
-  border-radius: 16px;
-  padding: 24px;
+  border: 1px solid #e7e9f2;
+  border-radius: 18px;
+  padding: 24px 24px 20px;
+}
+
+.center-header-badge {
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #dcd4ff;
+  background: #f4f1ff;
+  color: #5b47d6;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 10px;
 }
 
 .center-header h1 {
   margin: 0;
-  font-size: 28px;
+  font-size: 30px;
   line-height: 1.2;
-  color: #111827;
+  color: #1f2340;
+  letter-spacing: 0.3px;
 }
 
 .center-header p {
-  margin: 10px 0 0;
-  color: #6b7280;
+  margin: 8px 0 0;
+  color: #677086;
   font-size: 14px;
   line-height: 1.7;
 }
 
 .center-meta {
-  margin-top: 16px;
+  margin-top: 18px;
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
@@ -532,49 +550,58 @@ onMounted(async () => {
 
 .center-form {
   margin-top: 18px;
+  border: 1px solid #eceff6;
+  border-radius: 14px;
+  padding: 14px 14px 6px;
+  background: linear-gradient(180deg, #ffffff 0%, #fcfcff 100%);
 }
 
 .points-panel {
-  margin-top: 14px;
+  margin-top: 16px;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .points-item {
-  padding: 12px;
-  border: 1px solid #ebeef5;
-  border-radius: 10px;
-  background: #f8f9ff;
+  padding: 12px 12px 10px;
+  border: 1px solid #e8ebf4;
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8f9ff 100%),
+    #ffffff;
+  min-height: 82px;
 }
 
 .points-label {
   font-size: 12px;
-  color: #6b7280;
+  color: #7b8397;
+  letter-spacing: 0.2px;
 }
 
 .points-value {
   margin-top: 6px;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
-  color: #6c54ff;
+  color: #5342c8;
 }
 
 .points-value--small {
   font-size: 14px;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .field-tip {
   margin-top: 8px;
   font-size: 12px;
-  color: #9ca3af;
+  color: #8b93a8;
 }
 
 .center-actions {
   display: flex;
   gap: 10px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .center-tabs {
@@ -583,14 +610,18 @@ onMounted(async () => {
 
 .commerce-block {
   min-height: 220px;
+  border: 1px solid #eceff6;
+  border-radius: 14px;
+  padding: 14px;
+  background: #ffffff;
 }
 
 .rights-intro {
   padding: 10px 12px;
-  border: 1px solid #e9e6ff;
+  border: 1px solid #e3ddff;
   border-radius: 10px;
-  background: #f7f5ff;
-  color: #4b5563;
+  background: linear-gradient(120deg, #f5f2ff 0%, #f8f9ff 100%);
+  color: #4f5670;
   font-size: 13px;
   line-height: 1.6;
 }
@@ -598,61 +629,62 @@ onMounted(async () => {
 .pay-channel-panel {
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid #ebeef5;
+  border: 1px solid #e8ebf4;
   border-radius: 10px;
-  background: #ffffff;
+  background: #fbfcff;
 }
 
 .pay-channel-title {
   margin-bottom: 8px;
   font-size: 13px;
   font-weight: 700;
-  color: #374151;
+  color: #3b4260;
 }
 
 .pay-channel-tip {
   margin-top: 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: #727b90;
 }
 
 .sub-title {
-  margin: 16px 0 10px;
+  margin: 18px 0 10px;
   font-size: 14px;
   font-weight: 700;
-  color: #374151;
+  color: #2b3048;
 }
 
 .product-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 
 .product-card {
-  border: 1px solid #ebeef5;
+  border: 1px solid #e7ebf4;
   border-radius: 12px;
-  padding: 12px;
-  background: #ffffff;
+  padding: 12px 12px 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
+  min-height: 152px;
 }
 
 .product-name {
   font-size: 14px;
   font-weight: 700;
-  color: #111827;
+  color: #1f243c;
 }
 
 .product-price {
   margin-top: 8px;
   font-size: 20px;
-  color: #6c54ff;
+  color: #5a45d9;
   font-weight: 800;
 }
 
 .product-meta {
   margin-top: 6px;
   font-size: 12px;
-  color: #6b7280;
+  color: #71798d;
 }
 
 .product-actions {
@@ -669,9 +701,54 @@ onMounted(async () => {
   font-weight: 700;
 }
 
+:deep(.center-meta .el-tag) {
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+:deep(.center-form .el-form-item__label) {
+  color: #364057;
+  font-weight: 600;
+}
+
+:deep(.center-tabs .el-tabs__header) {
+  margin: 0 0 12px;
+}
+
+:deep(.center-tabs .el-tabs__item) {
+  font-weight: 600;
+}
+
+:deep(.center-tabs .el-tabs__item.is-active) {
+  color: #5b47d6;
+}
+
+:deep(.center-tabs .el-tabs__active-bar) {
+  background: #5b47d6;
+}
+
+:deep(.center-tabs .el-table) {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+:deep(.center-tabs .el-table th.el-table__cell) {
+  background: #f8f9fd;
+  color: #4b5570;
+}
+
 @media (max-width: 768px) {
+  .user-center-page {
+    padding: 16px 0;
+  }
+
   .center-shell {
-    padding: 18px;
+    padding: 16px;
+    border-radius: 14px;
+  }
+
+  .center-header h1 {
+    font-size: 24px;
   }
 
   .points-panel {
@@ -680,6 +757,10 @@ onMounted(async () => {
 
   .product-grid {
     grid-template-columns: 1fr;
+  }
+
+  .center-actions {
+    flex-wrap: wrap;
   }
 }
 </style>

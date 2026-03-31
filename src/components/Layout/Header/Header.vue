@@ -688,13 +688,15 @@ onUnmounted(() => {
 
     <el-dialog
       v-model="loginDialogVisible"
-      width="540px"
+      width="580px"
       align-center
       destroy-on-close
+      :close-on-click-modal="false"
       class="frontend-login-dialog"
     >
       <template #header>
         <div class="login-dialog-header">
+          <div class="login-dialog-kicker">账号登录</div>
           <h3>登录用户中心</h3>
           <p>{{ loginDialogReason || '登录后可进入个人中心，查看每日积分并绑定 QQ 邮箱。' }}</p>
         </div>
@@ -702,7 +704,7 @@ onUnmounted(() => {
 
       <div class="login-dialog-shell">
         <aside class="login-dialog-side">
-          <div class="login-dialog-side-title">账号权益</div>
+          <div class="login-dialog-side-title">登录权益</div>
           <div class="login-dialog-points">
             <div class="points-chip">
               每日赠送 +{{ loginDialogSiteConfig.loginDailyGiftPoints }}
@@ -715,9 +717,9 @@ onUnmounted(() => {
             </div>
           </div>
           <ul class="login-dialog-side-list">
-            <li>登录后可直接进入个人中心</li>
-            <li>支持绑定 QQ 邮箱，便于通知提醒</li>
-            <li>会员与积分权益实时到账</li>
+            <li><span>●</span> 登录后可直接进入个人中心</li>
+            <li><span>●</span> 支持绑定 QQ 邮箱，便于通知提醒</li>
+            <li><span>●</span> 会员与积分权益实时到账</li>
           </ul>
         </aside>
 
@@ -742,6 +744,7 @@ onUnmounted(() => {
             <el-button
               v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenWechatAuth"
               plain
+              class="login-auth-button"
               @click="handleOpenAuth(loginDialogSiteConfig.loginWechatAuthorizeUrl)"
             >
               微信登录
@@ -749,6 +752,7 @@ onUnmounted(() => {
             <el-button
               v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenQqAuth"
               plain
+              class="login-auth-button"
               @click="handleOpenAuth(loginDialogSiteConfig.loginQqAuthorizeUrl)"
             >
               QQ登录
@@ -912,79 +916,132 @@ onUnmounted(() => {
 }
 
 .login-dialog-header h3 {
-  margin: 0;
+  margin: 4px 0 0;
   font-size: 20px;
   font-weight: 700;
-  color: #2d2554;
+  color: #222743;
 }
 
 .login-dialog-header p {
   margin: 8px 0 0;
   font-size: 13px;
-  color: #6b7280;
+  color: #6f768a;
+  line-height: 1.6;
+}
+
+.login-dialog-kicker {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid #dbd3ff;
+  background: #f4f1ff;
+  color: #5d48d6;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 10px;
 }
 
 .login-dialog-shell {
   display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 14px;
+  grid-template-columns: 214px 1fr;
+  gap: 12px;
 }
 
 .login-dialog-side {
-  border: 1px solid #ece9ff;
-  background: linear-gradient(160deg, #f8f6ff 0%, #f5f8ff 100%);
+  border: 1px solid #e7e0ff;
+  background: linear-gradient(165deg, #f7f4ff 0%, #f2f8ff 100%);
   border-radius: 12px;
-  padding: 12px;
+  padding: 12px 12px 10px;
 }
 
 .login-dialog-side-title {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
-  color: #2d2554;
-  margin-bottom: 8px;
+  color: #272c49;
+  margin-bottom: 10px;
 }
 
 .login-dialog-points {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 7px;
 }
 
 .points-chip {
-  border: 1px solid #e6e2ff;
-  background: #f6f4ff;
-  color: #5a47db;
+  border: 1px solid #ddd6ff;
+  background: #f7f4ff;
+  color: #5240c8;
   border-radius: 999px;
   font-size: 12px;
-  padding: 4px 10px;
+  padding: 4px 9px;
   line-height: 1.4;
 }
 
 .login-dialog-side-list {
-  margin: 10px 0 0;
-  padding-left: 16px;
-  color: #6b7280;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  color: #656d82;
   font-size: 12px;
   line-height: 1.6;
+}
+
+.login-dialog-side-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.login-dialog-side-list li span {
+  color: #6c54ff;
 }
 
 .login-dialog-main {
   display: flex;
   flex-direction: column;
+  border: 1px solid #eceff6;
+  border-radius: 12px;
+  background: #ffffff;
+  padding: 12px;
 }
 
 .login-dialog-auth-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .login-dialog-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 12px;
+}
+
+.login-auth-button {
+  border-color: #d8dcf3;
+  color: #3d4664;
+}
+
+:deep(.frontend-login-dialog .el-dialog) {
+  border-radius: 16px;
+  border: 1px solid #e8ebf4;
+  padding: 4px 4px 2px;
+}
+
+:deep(.frontend-login-dialog .el-dialog__header) {
+  margin-right: 0;
+  padding-bottom: 8px;
+}
+
+:deep(.frontend-login-dialog .el-dialog__body) {
+  padding-top: 0;
+}
+
+:deep(.frontend-login-dialog .el-form-item__label) {
+  color: #364057;
+  font-weight: 600;
 }
 
 /* 移动端适配 */
@@ -995,6 +1052,10 @@ onUnmounted(() => {
 
   .login-dialog-shell {
     grid-template-columns: 1fr;
+  }
+
+  .login-dialog-main {
+    padding: 10px;
   }
 }
 </style>
