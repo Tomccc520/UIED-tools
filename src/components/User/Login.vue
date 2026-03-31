@@ -93,6 +93,7 @@ onMounted(async () => {
     <div class="user-login-page__bg"></div>
     <div class="auth-shell">
       <div class="auth-side">
+        <div class="auth-brand">UIED-Tools</div>
         <h1>官网用户登录</h1>
         <p>登录后可进入个人中心，查看每日积分、工具消耗规则并维护 QQ 邮箱绑定信息。</p>
         <div class="auth-side-tips">
@@ -113,6 +114,7 @@ onMounted(async () => {
 
       <div class="auth-panel">
         <div class="auth-header">
+          <div class="auth-header-kicker">账号登录</div>
           <h2>欢迎回来</h2>
           <p>请输入昵称和密码进入用户中心。</p>
         </div>
@@ -123,10 +125,23 @@ onMounted(async () => {
           </el-form-item>
 
           <el-form-item label="密码">
-            <el-input v-model="formData.password" type="password" show-password placeholder="请输入密码（6位以上）" maxlength="32" clearable />
+            <el-input
+              v-model="formData.password"
+              type="password"
+              show-password
+              placeholder="请输入密码（6位以上）"
+              maxlength="32"
+              clearable
+              @keyup.enter="handleLogin"
+            />
           </el-form-item>
 
-          <el-button type="primary" :loading="loading" class="w-full" @click="handleLogin">登录并进入个人中心</el-button>
+          <div class="auth-submit-wrap">
+            <el-button type="primary" :loading="loading" class="w-full auth-submit-btn" @click="handleLogin">
+              登录并进入个人中心
+            </el-button>
+            <div class="auth-submit-tip">登录即表示你同意网站相关协议与隐私规则。</div>
+          </div>
         </el-form>
 
         <div class="auth-divider">或使用第三方登录</div>
@@ -176,7 +191,7 @@ onMounted(async () => {
   z-index: 1;
   width: min(920px, 100%);
   background: #ffffff;
-  border: 1px solid #ebe8ff;
+  border: 1px solid #e7e9f3;
   border-radius: 18px;
   padding: 0;
   display: grid;
@@ -186,15 +201,29 @@ onMounted(async () => {
 
 .auth-side {
   padding: 26px 22px;
-  background: linear-gradient(160deg, #6c54ff 0%, #7f67ff 52%, #5f49ef 100%);
+  background: linear-gradient(162deg, #6c54ff 0%, #755dff 48%, #5d47ea 100%);
   color: #fff;
+}
+
+.auth-brand {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 5px 10px;
+  margin-bottom: 12px;
 }
 
 .auth-side h1 {
   margin: 0;
-  font-size: 30px;
+  font-size: 31px;
   font-weight: 700;
   color: #fff;
+  line-height: 1.18;
 }
 
 .auth-side p {
@@ -211,10 +240,10 @@ onMounted(async () => {
 }
 
 .tip-item {
-  border: 1px solid rgba(255, 255, 255, 0.24);
+  border: 1px solid rgba(255, 255, 255, 0.26);
   border-radius: 10px;
-  padding: 10px 12px;
-  background: rgba(255, 255, 255, 0.12);
+  padding: 11px 12px;
+  background: rgba(255, 255, 255, 0.14);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -232,31 +261,51 @@ onMounted(async () => {
 }
 
 .auth-panel {
-  padding: 26px;
+  padding: 24px;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fbfcff 100%),
+    #ffffff;
+}
+
+.auth-header-kicker {
+  width: fit-content;
+  border-radius: 999px;
+  border: 1px solid #dcd4ff;
+  background: #f4f1ff;
+  color: #5d48d6;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 10px;
+  margin-bottom: 10px;
 }
 
 .auth-header h2 {
   margin: 0;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
-  color: #2d2554;
+  color: #212742;
 }
 
 .auth-header p {
-  margin: 10px 0 0;
-  color: #6b7280;
+  margin: 8px 0 0;
+  color: #6e768a;
   font-size: 14px;
   line-height: 1.7;
 }
 
 .auth-form {
-  margin-top: 18px;
+  margin-top: 16px;
+  border: 1px solid #eceff6;
+  border-radius: 12px;
+  padding: 12px 12px 10px;
+  background: #ffffff;
 }
 
 .auth-divider {
   margin: 18px 0 10px;
   text-align: center;
-  color: #9ca3af;
+  color: #9098ab;
   font-size: 12px;
 }
 
@@ -264,6 +313,32 @@ onMounted(async () => {
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.auth-submit-wrap {
+  margin-top: 4px;
+}
+
+.auth-submit-btn {
+  height: 40px;
+  font-weight: 700;
+}
+
+.auth-submit-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #8b93a8;
+  text-align: center;
+}
+
+:deep(.auth-form .el-form-item__label) {
+  color: #364057;
+  font-weight: 600;
+}
+
+:deep(.auth-actions .el-button) {
+  border-color: #d8dcf3;
+  color: #3d4664;
 }
 
 @media (max-width: 768px) {
@@ -281,6 +356,10 @@ onMounted(async () => {
 
   .auth-panel {
     padding: 20px 18px;
+  }
+
+  .auth-header h2 {
+    font-size: 24px;
   }
 }
 </style>
