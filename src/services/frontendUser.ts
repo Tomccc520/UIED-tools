@@ -109,6 +109,11 @@ export interface FrontendUserOrderItem {
   status: number
   statusText: string
   payChannel: string
+  tradeNo: string
+  callbackStatus: number
+  callbackStatusText: string
+  callbackTime: number
+  callbackError: string
   memberDays: number
   points: number
   giftPoints: number
@@ -400,6 +405,23 @@ const resolveOrderStatusText = (status: number, fallbackText: unknown): string =
 }
 
 /**
+ * 函数说明：将订单回调状态编码映射为前端可读文案，兼容后端未返回 callbackStatusText 的场景。
+ */
+const resolveOrderCallbackStatusText = (status: number, fallbackText: unknown): string => {
+  const text = String(fallbackText || '').trim()
+  if (text) {
+    return text
+  }
+  if (status === 1) {
+    return '回调成功'
+  }
+  if (status === 2) {
+    return '回调失败'
+  }
+  return '未回调'
+}
+
+/**
  * 函数说明：将接口返回的购买记录转换为统一结构，兼容字段缺失场景。
  */
 const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] => {
@@ -420,6 +442,11 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
       status,
       statusText: resolveOrderStatusText(status, item.statusText),
       payChannel: String(item.payChannel || '').trim(),
+      tradeNo: String(item.tradeNo || '').trim(),
+      callbackStatus: Math.max(0, Number(item.callbackStatus || 0)),
+      callbackStatusText: resolveOrderCallbackStatusText(Number(item.callbackStatus || 0), item.callbackStatusText),
+      callbackTime: Math.max(0, Number(item.callbackTime || 0)),
+      callbackError: String(item.callbackError || '').trim(),
       memberDays: Math.max(0, Number(item.memberDays || 0)),
       points: Math.max(0, Number(item.points || 0)),
       giftPoints: Math.max(0, Number(item.giftPoints || 0)),
@@ -748,6 +775,11 @@ export const purchaseFrontendUserProduct = async (
     status: 0,
     statusText: '待支付',
     payChannel: String(payChannel || 'mock').trim() || 'mock',
+    tradeNo: '',
+    callbackStatus: 0,
+    callbackStatusText: '未回调',
+    callbackTime: 0,
+    callbackError: '',
     memberDays: 0,
     points: 0,
     giftPoints: 0,

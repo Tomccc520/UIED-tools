@@ -8,12 +8,48 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToolConsume } from '@/composables/useToolConsume'
+import {
+  TOOL_CONSUME_GUARD_ACTION_KEYWORDS,
+  TOOL_CONSUME_GUARD_FALSE_POSITIVE_WHITELIST,
+  TOOL_CONSUME_GUARD_IGNORE_KEYWORDS,
+  TOOL_CONSUME_MANUAL_ROUTE_PATHS
+} from '@/config/toolConsumeGuard'
 
 const AUTO_GUARD_SKIP_ATTR = 'data-tool-consume-guard-skip'
 const MANUAL_GUARD_SKIP_SELECTOR = '[data-skip-tool-consume="1"]'
 const ACTION_TRIGGER_SELECTOR = 'button, a, [role="button"], .el-button'
-const ACTION_KEYWORD_REG = /(开始|生成|压缩|转换|导出|下载|去水印|抠图|提取|合并|裁剪|旋转|重设|录制|封装|开通|购买|支付|处理)/i
-const ACTION_IGNORE_REG = /(取消|关闭|返回|展开|收起|刷新|清空|重置|选择|上传|复制|粘贴|预览|更多|上一|下一|登录|退出)/i
+
+/**
+ * 函数说明：转义关键词中的正则特殊字符，确保动态构造 RegExp 时行为稳定。
+ */
+const escapeRegexKeyword = (keyword: string): string => {
+  return String(keyword || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+}
+
+/**
+ * 函数说明：根据关键词数组构造正则表达式；若为空则返回永不命中的表达式。
+ */
+const buildKeywordRegExp = (keywords: string[]): RegExp => {
+  const validKeywords = Array.isArray(keywords)
+    ? keywords.map((item) => String(item || '').trim()).filter(Boolean)
+    : []
+  if (validKeywords.length === 0) {
+    return /$^/
+  }
+  return new RegExp(`(${validKeywords.map(escapeRegexKeyword).join('|')})`, 'i')
+}
+
+const ACTION_KEYWORD_REG = buildKeywordRegExp(TOOL_CONSUME_GUARD_ACTION_KEYWORDS)
+const ACTION_IGNORE_REG = buildKeywordRegExp(TOOL_CONSUME_GUARD_IGNORE_KEYWORDS)
+const ACTION_FALSE_POSITIVE_WHITELIST = TOOL_CONSUME_GUARD_FALSE_POSITIVE_WHITELIST
+  .map((item) => String(item || '').trim().toLowerCase())
+  .filter(Boolean)
+
+const MANUAL_CONSUME_ROUTE_SET = new Set(
+  TOOL_CONSUME_MANUAL_ROUTE_PATHS
+    .map((item) => String(item || '').trim())
+    .filter(Boolean)
+)
 
 /**
  * 函数说明：标准化按钮文案，统一为单行文本，便于后续关键词识别。
@@ -38,6 +74,23 @@ const resolveActionText = (target: HTMLElement): string => {
 }
 
 /**
+ * 函数说明：标准化路由路径（去除 query/hash/尾斜杠），用于手动接入路由清单比对。
+ */
+const normalizeRoutePath = (path: string): string => {
+  const cleaned = String(path || '')
+    .split('?')[0]
+    .split('#')[0]
+    .trim()
+  if (!cleaned) {
+    return ''
+  }
+  if (cleaned === '/') {
+    return '/'
+  }
+  return cleaned.replace(/\/+$/g, '')
+}
+
+/**
  * 函数说明：从工具路由路径生成 toolKey，统一按 “-” 连接，便于积分扣减统计归类。
  */
 const resolveToolKeyByPath = (path: string): string => {
@@ -48,6 +101,28 @@ const resolveToolKeyByPath = (path: string): string => {
     .split('#')[0]
   const key = normalizedPath.replace(/[\/_]+/g, '-').trim()
   return key || 'tools-home'
+}
+
+/**
+ * 函数说明：判断当前动作文案是否命中误判白名单，命中后直接放行。
+ */
+const isActionTextInFalsePositiveWhitelist = (actionText: string): boolean => {
+  const text = normalizeActionText(actionText).toLowerCase()
+  if (!text) {
+    return false
+  }
+  return ACTION_FALSE_POSITIVE_WHITELIST.some((keyword) => text.includes(keyword))
+}
+
+/**
+ * 函数说明：判断当前路由是否已经手动接入 useToolConsume，命中后跳过全局自动拦截。
+ */
+const isManualConsumeRoute = (path: string): boolean => {
+  const normalized = normalizeRoutePath(path)
+  if (!normalized) {
+    return false
+  }
+  return MANUAL_CONSUME_ROUTE_SET.has(normalized)
 }
 
 /**
@@ -114,6 +189,9 @@ const shouldGuardAction = (target: HTMLElement, actionText: string): boolean => 
   if (!actionText) {
     return false
   }
+  if (isActionTextInFalsePositiveWhitelist(actionText)) {
+    return false
+  }
   if (ACTION_IGNORE_REG.test(actionText)) {
     return false
   }
@@ -142,6 +220,9 @@ export const useGlobalToolConsumeGuard = () => {
       return
     }
     if (!String(route.path || '').startsWith('/tools/')) {
+      return
+    }
+    if (isManualConsumeRoute(route.path)) {
       return
     }
 
@@ -204,4 +285,3 @@ export const useGlobalToolConsumeGuard = () => {
     document.removeEventListener('click', handleClickCapture, true)
   })
 }
-
