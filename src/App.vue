@@ -8,6 +8,7 @@
 
 import { computed, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { useGlobalToolConsumeGuard } from '@/composables/useGlobalToolConsumeGuard'
 
 // 导入布局相关组件
 import Header from '@/components/Layout/Header/Header.vue'  // 顶部导航栏
@@ -32,6 +33,11 @@ const banner = ref(null)
 const isToolPage = computed(() => {
   return route.path.includes('/tools/')
 })
+
+/**
+ * 函数说明：挂载全工具动作拦截层，统一补齐登录与积分扣减校验。
+ */
+useGlobalToolConsumeGuard()
 </script>
 
 <template>

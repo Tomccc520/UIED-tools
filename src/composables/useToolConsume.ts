@@ -17,6 +17,54 @@ import {
   type FrontendUserProfile
 } from '@/services/frontendUser'
 
+const TOOL_CONSUME_DEDUPE_WINDOW_MS = 1200
+const toolConsumeTimestampMap = new Map<string, number>()
+
+/**
+ * 函数说明：构建工具积分扣减的短时去重键，避免同一次点击链路被重复扣分。
+ */
+const buildToolConsumeDedupeKey = (toolKey: string): string => {
+  return String(toolKey || '').trim().toLowerCase()
+}
+
+/**
+ * 函数说明：判断当前工具是否处于短时去重窗口，命中时直接跳过重复扣分。
+ */
+const isToolConsumeDuplicated = (dedupeKey: string): boolean => {
+  const key = String(dedupeKey || '').trim()
+  if (!key) {
+    return false
+  }
+  const now = Date.now()
+  const previousTimestamp = Number(toolConsumeTimestampMap.get(key) || 0)
+  if (previousTimestamp > 0 && now - previousTimestamp <= TOOL_CONSUME_DEDUPE_WINDOW_MS) {
+    return true
+  }
+  return false
+}
+
+/**
+ * 函数说明：写入工具扣分时间戳，用于短时去重控制。
+ */
+const markToolConsumeTimestamp = (dedupeKey: string) => {
+  const key = String(dedupeKey || '').trim()
+  if (!key) {
+    return
+  }
+  toolConsumeTimestampMap.set(key, Date.now())
+}
+
+/**
+ * 函数说明：清理失败请求的去重标记，确保用户可立即重试。
+ */
+const clearToolConsumeTimestamp = (dedupeKey: string) => {
+  const key = String(dedupeKey || '').trim()
+  if (!key) {
+    return
+  }
+  toolConsumeTimestampMap.delete(key)
+}
+
 export type ToolConsumeMode = 'consume' | 'check-login'
 
 export interface ToolConsumeOptions {
@@ -102,6 +150,12 @@ export const useToolConsume = () => {
       }
     }
 
+    const dedupeKey = buildToolConsumeDedupeKey(toolKey)
+    if (isToolConsumeDuplicated(dedupeKey)) {
+      return true
+    }
+    markToolConsumeTimestamp(dedupeKey)
+
     try {
       const consumeResult = await consumeFrontendUserPoints(toolKey, action)
       if (!consumeResult) {
@@ -116,6 +170,7 @@ export const useToolConsume = () => {
       }
       return true
     } catch (error) {
+      clearToolConsumeTimestamp(dedupeKey)
       const message = error instanceof Error ? error.message : '积分扣减失败，请稍后重试'
       if (message.includes('积分') || message.includes('余额')) {
         await navigateToPointsCenter(insufficientPointsRedirect)
