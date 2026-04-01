@@ -606,6 +606,15 @@ start_background_process() {
   local i
   for ((i = 1; i <= retries; i++)); do
     if is_pid_running "${pid_file}" "${expected_port}"; then
+      # 函数说明：端口初次就绪后再做短时稳定性复检，避免出现“启动成功后立即退出”却仍打印 OK 的假成功状态。
+      local stable_checks=3
+      local j
+      for ((j = 1; j <= stable_checks; j++)); do
+        sleep 1
+        if ! is_pid_running "${pid_file}" "${expected_port}"; then
+          log_error_and_exit "${name} 启动后异常退出（端口 ${expected_port} 丢失），请查看日志: ${log_file}"
+        fi
+      done
       return
     fi
     if ! is_pid_alive "${pid_file}"; then
