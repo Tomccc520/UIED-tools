@@ -881,7 +881,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .user-center-page {
   min-height: 70vh;
-  padding: 24px 0;
+  padding: 24px clamp(12px, 3vw, 40px) 28px;
   background:
     radial-gradient(circle at 8% 0%, rgba(108, 84, 255, 0.12) 0%, transparent 34%),
     radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 42%),
@@ -889,12 +889,12 @@ onBeforeUnmount(() => {
 }
 
 .center-shell {
-  width: min(1080px, 100%);
+  width: min(1160px, 100%);
   margin: 0 auto;
   border: 1px solid #e4e7f0;
   border-radius: 20px;
   background: #ffffff;
-  padding: 22px;
+  padding: clamp(18px, 2.4vw, 28px);
 }
 
 .center-hero {
@@ -1261,6 +1261,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 1024px) {
+  .user-center-page {
+    padding: 18px clamp(10px, 2.4vw, 20px) 20px;
+  }
+
   .center-shell {
     padding: 16px;
   }
@@ -1276,7 +1280,7 @@ onBeforeUnmount(() => {
 
 @media (max-width: 768px) {
   .user-center-page {
-    padding: 16px 0;
+    padding: 14px 10px 18px;
   }
 
   .center-shell {
