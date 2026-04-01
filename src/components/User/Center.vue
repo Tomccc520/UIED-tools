@@ -21,6 +21,7 @@ import {
   isValidQqEmail,
   logoutFrontendUser,
   purchaseFrontendUserProduct,
+  relaunchFrontendUserOrderPayment,
   saveFrontendUserProfileToServer,
   syncFrontendUserProfile,
   type FrontendUserCommerceProducts,
@@ -44,6 +45,7 @@ const ordersLoading = ref(false)
 const pointsLogsLoading = ref(false)
 const buyingKey = ref('')
 const closingOrderSn = ref('')
+const goPayOrderSn = ref('')
 const selectedPayChannel = ref('mock')
 const manualPaymentChecking = ref(false)
 const paymentPolling = ref(false)
@@ -497,14 +499,33 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
 /**
  * 函数说明：继续支付待支付订单，跳转到订单对应支付页并恢复状态轮询。
  */
-const handleGoPay = (order: FrontendUserOrderItem) => {
-  const payUrl = String(order.payment?.payUrl || '').trim()
-  if (!payUrl) {
-    ElMessage.warning('该订单未配置可用支付地址，请联系管理员')
+const handleGoPay = async (order: FrontendUserOrderItem) => {
+  const targetOrderSn = String(order.orderSn || '').trim()
+  if (!targetOrderSn || goPayOrderSn.value === targetOrderSn) {
     return
   }
-  const opened = openPaymentWindow(payUrl)
-  startPaymentStatusPolling(order.orderSn, { silent: !opened })
+  goPayOrderSn.value = targetOrderSn
+  try {
+    const result = await relaunchFrontendUserOrderPayment(targetOrderSn, order.payChannel || selectedPayChannel.value)
+    if (!result) {
+      ElMessage.warning('订单拉起失败，请重新登录后重试')
+      await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
+      return
+    }
+    const payUrl = String(result.payment?.payUrl || '').trim()
+    if (!payUrl) {
+      ElMessage.warning('支付链接暂不可用，请联系管理员检查支付网关配置')
+      await loadOrders({ withLoading: false, silent: true })
+      return
+    }
+    const opened = openPaymentWindow(payUrl)
+    startPaymentStatusPolling(result.order.orderSn, { silent: !opened })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '拉起支付失败，请稍后重试'
+    ElMessage.error(message)
+  } finally {
+    goPayOrderSn.value = ''
+  }
 }
 
 /**
@@ -806,10 +827,10 @@ onBeforeUnmount(() => {
                 <template #default="scope">
                   <template v-if="scope.row.status === 0">
                     <el-button
-                      v-if="scope.row.payment?.payUrl"
                       text
                       type="primary"
                       size="small"
+                      :loading="goPayOrderSn === scope.row.orderSn"
                       @click="handleGoPay(scope.row)"
                     >
                       去支付

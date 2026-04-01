@@ -95,6 +95,7 @@ export interface FrontendUserPaymentPayload {
   orderSn: string
   callbackApi: string
   payUrl: string
+  tradeNo?: string
 }
 
 export interface FrontendUserOrderItem {
@@ -154,12 +155,33 @@ const FRONTEND_USER_PROFILE_SAVE_ENDPOINT = '/api/common/frontend-user/profile/s
 const FRONTEND_USER_POINTS_CONSUME_ENDPOINT = '/api/common/frontend-user/points/consume'
 const FRONTEND_USER_PRODUCTS_ENDPOINT = '/api/common/frontend-user/products'
 const FRONTEND_USER_PURCHASE_ENDPOINT = '/api/common/frontend-user/purchase'
+const FRONTEND_USER_PURCHASE_PAY_ENDPOINT = '/api/common/frontend-user/purchase/pay'
 const FRONTEND_USER_PURCHASE_CALLBACK_ENDPOINT = '/api/common/frontend-user/purchase/callback'
 const FRONTEND_USER_PURCHASE_CLOSE_ENDPOINT = '/api/common/frontend-user/purchase/close'
 const FRONTEND_USER_ORDERS_ENDPOINT = '/api/common/frontend-user/orders'
 const FRONTEND_USER_POINTS_LOGS_ENDPOINT = '/api/common/frontend-user/points/logs'
 const FRONTEND_USER_LOGOUT_ENDPOINT = '/api/common/frontend-user/logout'
 const FRONTEND_USER_API_TIMEOUT_MS = 12000
+
+/**
+ * 函数说明：标准化支付引导数据，统一解析 payUrl/tradeNo 等字段，避免页面分散解析逻辑。
+ */
+const normalizePaymentPayload = (payload: unknown): FrontendUserPaymentPayload | null => {
+  if (!payload || typeof payload !== 'object') {
+    return null
+  }
+  const source = payload as Record<string, unknown>
+  return {
+    mode: String(source.mode || '').trim(),
+    modeText: String(source.modeText || '').trim(),
+    description: String(source.description || '').trim(),
+    configured: normalizeBooleanFlag(source.configured),
+    orderSn: String(source.orderSn || '').trim(),
+    callbackApi: String(source.callbackApi || '').trim(),
+    payUrl: String(source.payUrl || '').trim(),
+    tradeNo: String(source.tradeNo || '').trim() || undefined
+  }
+}
 
 /**
  * 函数说明：将后端或本地缓存中的布尔标记统一转换为 boolean。
@@ -412,6 +434,9 @@ const resolveOrderCallbackStatusText = (status: number, fallbackText: unknown): 
   if (text) {
     return text
   }
+  if (status === 3) {
+    return '支付处理中'
+  }
   if (status === 1) {
     return '回调成功'
   }
@@ -429,7 +454,6 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
   const lists = Array.isArray(record.lists) ? (record.lists as Record<string, unknown>[]) : []
   return lists.map((item) => {
     const status = Number(item.status || 0)
-    const paymentRaw = item.payment && typeof item.payment === 'object' ? (item.payment as Record<string, unknown>) : null
     return {
       id: Number(item.id || 0),
       orderSn: String(item.orderSn || '').trim(),
@@ -453,15 +477,7 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
       remark: String(item.remark || '').trim(),
       paidTime: Math.max(0, Number(item.paidTime || 0)),
       createdAt: Math.max(0, Number(item.createdAt || 0)),
-      payment: paymentRaw ? {
-        mode: String(paymentRaw.mode || '').trim(),
-        modeText: String(paymentRaw.modeText || '').trim(),
-        description: String(paymentRaw.description || '').trim(),
-        configured: normalizeBooleanFlag(paymentRaw.configured),
-        orderSn: String(paymentRaw.orderSn || '').trim(),
-        callbackApi: String(paymentRaw.callbackApi || '').trim(),
-        payUrl: String(paymentRaw.payUrl || '').trim()
-      } : null
+      payment: normalizePaymentPayload(item.payment)
     }
   })
 }
@@ -753,16 +769,7 @@ export const purchaseFrontendUserProduct = async (
   )
 
   const orderList = normalizeFrontendUserOrders({ lists: [data.order || {}] })
-  const paymentPayloadRaw = data.payment && typeof data.payment === 'object' ? (data.payment as Record<string, unknown>) : null
-  const normalizedPayment: FrontendUserPaymentPayload | null = paymentPayloadRaw ? {
-    mode: String(paymentPayloadRaw.mode || '').trim(),
-    modeText: String(paymentPayloadRaw.modeText || '').trim(),
-    description: String(paymentPayloadRaw.description || '').trim(),
-    configured: normalizeBooleanFlag(paymentPayloadRaw.configured),
-    orderSn: String(paymentPayloadRaw.orderSn || '').trim(),
-    callbackApi: String(paymentPayloadRaw.callbackApi || '').trim(),
-    payUrl: String(paymentPayloadRaw.payUrl || '').trim()
-  } : null
+  const normalizedPayment = normalizePaymentPayload(data.payment)
   let currentOrder = orderList[0] || {
     id: 0,
     orderSn: '',
@@ -819,6 +826,45 @@ export const purchaseFrontendUserProduct = async (
     profile: latestProfile,
     payment: normalizedPayment || currentOrder.payment || null
   }
+}
+
+/**
+ * 函数说明：为待支付订单重新拉起支付，返回最新订单和支付参数（payUrl/tradeNo）。
+ */
+export const relaunchFrontendUserOrderPayment = async (
+  orderSn: string,
+  payChannel = ''
+): Promise<{ order: FrontendUserOrderItem; payment: FrontendUserPaymentPayload | null } | null> => {
+  const frontendToken = getFrontendUserToken()
+  if (!frontendToken) {
+    return null
+  }
+  const targetOrderSn = String(orderSn || '').trim()
+  if (!targetOrderSn) {
+    return null
+  }
+  const data = await requestFrontendUserApi<{ order?: unknown; payment?: unknown }>(
+    FRONTEND_USER_PURCHASE_PAY_ENDPOINT,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        orderSn: targetOrderSn,
+        payChannel: String(payChannel || '').trim()
+      })
+    },
+    frontendToken
+  )
+
+  const orders = normalizeFrontendUserOrders({ lists: [data.order || {}] })
+  const order = orders[0] || null
+  if (!order) {
+    return null
+  }
+  const payment = normalizePaymentPayload(data.payment) || order.payment || null
+  if (payment && !order.payment) {
+    order.payment = payment
+  }
+  return { order, payment }
 }
 
 /**
