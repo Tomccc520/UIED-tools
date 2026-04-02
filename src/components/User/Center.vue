@@ -36,6 +36,16 @@ const route = useRoute()
 const PAYMENT_POLL_INTERVAL_MS = 3000
 const PAYMENT_POLL_MAX_ATTEMPTS = 24
 
+type CenterMessageType = 'success' | 'warning' | 'info' | 'error'
+type OrderCheckStatus = 'paid' | 'closed' | 'pending' | 'missing'
+
+const ORDER_CHECK_NOTICE_MAP: Record<OrderCheckStatus, { type: 'success' | 'warning' | 'info'; message: string }> = {
+  paid: { type: 'success', message: '支付成功，会员与积分已自动到账' },
+  closed: { type: 'warning', message: '该订单已关闭，请重新下单' },
+  pending: { type: 'info', message: '订单仍是待支付状态，请完成支付后再刷新' },
+  missing: { type: 'warning', message: '订单暂未同步，请稍后重试' }
+}
+
 const siteConfig = ref(getDefaultSitePublicConfig())
 const profile = ref<FrontendUserProfile | null>(null)
 const saving = ref(false)
@@ -70,6 +80,54 @@ const profileForm = reactive({
   nickname: '',
   qqEmail: ''
 })
+
+/**
+ * 函数说明：统一页面消息提示入口，避免同类提示在不同流程文案不一致。
+ */
+const showCenterMessage = (type: CenterMessageType, message: string) => {
+  const text = String(message || '').trim()
+  if (!text) {
+    return
+  }
+  ElMessage[type](text)
+}
+
+/**
+ * 函数说明：统一解析运行时错误文本，优先透传后端返回文案并回退默认提示。
+ */
+const resolveRuntimeErrorMessage = (error: unknown, fallback: string): string => {
+  if (error instanceof Error) {
+    const message = String(error.message || '').trim()
+    if (message) {
+      return message
+    }
+  }
+  return fallback
+}
+
+/**
+ * 函数说明：按订单状态输出列表标签类型，统一订单区视觉反馈。
+ */
+const resolveOrderStatusTagType = (status: number): 'success' | 'info' | 'warning' => {
+  if (Number(status) === 1) {
+    return 'success'
+  }
+  if (Number(status) === 2) {
+    return 'info'
+  }
+  return 'warning'
+}
+
+/**
+ * 函数说明：按支付检查结果输出统一提示文案，减少重复分支文案维护成本。
+ */
+const notifyOrderCheckStatus = (status: OrderCheckStatus) => {
+  const notice = ORDER_CHECK_NOTICE_MAP[status]
+  if (!notice) {
+    return
+  }
+  showCenterMessage(notice.type, notice.message)
+}
 
 /**
  * 函数说明：返回当前可用支付渠道列表，若后台未配置则回退到 mock 渠道。
@@ -225,8 +283,7 @@ const loadCommerceProducts = async () => {
       selectedPayChannel.value = availablePaymentChannels.value[0]?.code || 'mock'
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : '套餐配置加载失败'
-    ElMessage.error(message)
+    showCenterMessage('error', resolveRuntimeErrorMessage(error, '套餐配置加载失败'))
   } finally {
     productsLoading.value = false
   }
@@ -246,8 +303,7 @@ const loadOrders = async (options: { withLoading?: boolean; silent?: boolean; pa
     orderList.value = await fetchFrontendUserOrders(1, pageSize)
   } catch (error) {
     if (!silent) {
-      const message = error instanceof Error ? error.message : '购买记录加载失败'
-      ElMessage.error(message)
+      showCenterMessage('error', resolveRuntimeErrorMessage(error, '购买记录加载失败'))
     }
   } finally {
     if (withLoading) {
@@ -264,8 +320,7 @@ const loadPointsLogs = async () => {
   try {
     pointsLogList.value = await fetchFrontendUserPointsLogs(1, 20)
   } catch (error) {
-    const message = error instanceof Error ? error.message : '积分流水加载失败'
-    ElMessage.error(message)
+    showCenterMessage('error', resolveRuntimeErrorMessage(error, '积分流水加载失败'))
   } finally {
     pointsLogsLoading.value = false
   }
@@ -288,7 +343,7 @@ const openPaymentWindow = (payUrl: string): boolean => {
   }
   const popup = window.open(targetUrl, '_blank', 'noopener,noreferrer')
   if (!popup) {
-    ElMessage.warning('浏览器拦截了支付窗口，请允许弹窗后重试')
+    showCenterMessage('warning', '浏览器拦截了支付窗口，请允许弹窗后重试')
     return false
   }
   return true
@@ -300,7 +355,7 @@ const openPaymentWindow = (payUrl: string): boolean => {
 const checkSingleOrderPaymentStatus = async (
   orderSn: string,
   showPendingTip: boolean
-): Promise<'paid' | 'closed' | 'pending' | 'missing'> => {
+): Promise<OrderCheckStatus> => {
   const targetOrderSn = String(orderSn || '').trim()
   if (!targetOrderSn) {
     return 'missing'
@@ -310,7 +365,7 @@ const checkSingleOrderPaymentStatus = async (
   const currentOrder = latestOrders.find((item) => item.orderSn === targetOrderSn)
   if (!currentOrder) {
     if (showPendingTip) {
-      ElMessage.warning('订单暂未同步，请稍后重试')
+      notifyOrderCheckStatus('missing')
     }
     return 'missing'
   }
@@ -321,16 +376,16 @@ const checkSingleOrderPaymentStatus = async (
     }
     await loadPointsLogs()
     stopPaymentStatusPolling()
-    ElMessage.success('支付成功，会员与积分已自动到账')
+    notifyOrderCheckStatus('paid')
     return 'paid'
   }
   if (currentOrder.status === 2) {
     stopPaymentStatusPolling()
-    ElMessage.warning('该订单已关闭，请重新下单')
+    notifyOrderCheckStatus('closed')
     return 'closed'
   }
   if (showPendingTip) {
-    ElMessage.info('订单仍是待支付状态，请完成支付后再刷新')
+    notifyOrderCheckStatus('pending')
   }
   return 'pending'
 }
@@ -358,7 +413,7 @@ const runPaymentStatusPolling = async (orderSn: string) => {
   }
   if (paymentPollingAttemptsLeft.value <= 0) {
     stopPaymentStatusPolling()
-    ElMessage.info('自动检测已结束，可点击“我已支付，刷新状态”继续确认')
+    showCenterMessage('info', '自动检测已结束，可点击“我已支付，刷新状态”继续确认')
     return
   }
   paymentPollingNotice.value = `正在自动检测支付结果，剩余 ${paymentPollingAttemptsLeft.value} 次`
@@ -382,7 +437,7 @@ const startPaymentStatusPolling = (orderSn: string, options: { silent?: boolean 
   paymentPollingAttemptsLeft.value = PAYMENT_POLL_MAX_ATTEMPTS
   paymentPollingNotice.value = '已开启支付状态检测，完成支付后会自动刷新权益'
   if (!options.silent) {
-    ElMessage.info('已开启支付状态自动检测')
+    showCenterMessage('info', '已开启支付状态自动检测')
   }
   void runPaymentStatusPolling(targetOrderSn)
 }
@@ -394,7 +449,7 @@ const handleManualRefreshPayment = async () => {
   const fallbackPendingOrderSn = orderList.value.find((item) => item.status === 0)?.orderSn || ''
   const targetOrderSn = String(paymentPollingOrderSn.value || fallbackPendingOrderSn).trim()
   if (!targetOrderSn) {
-    ElMessage.info('当前没有待支付订单')
+    showCenterMessage('info', '当前没有待支付订单')
     return
   }
   manualPaymentChecking.value = true
@@ -404,8 +459,7 @@ const handleManualRefreshPayment = async () => {
       startPaymentStatusPolling(targetOrderSn, { silent: true })
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : '支付状态刷新失败'
-    ElMessage.error(message)
+    showCenterMessage('error', resolveRuntimeErrorMessage(error, '支付状态刷新失败'))
   } finally {
     manualPaymentChecking.value = false
   }
@@ -419,11 +473,11 @@ const handleSaveProfile = async () => {
   const qqEmail = String(profileForm.qqEmail || '').trim()
 
   if (nickname.length < 2) {
-    ElMessage.warning('昵称至少 2 个字符')
+    showCenterMessage('warning', '昵称至少 2 个字符')
     return
   }
   if (qqEmail && !isValidQqEmail(qqEmail)) {
-    ElMessage.warning('请输入正确的 QQ 邮箱，例如 123456@qq.com')
+    showCenterMessage('warning', '请输入正确的 QQ 邮箱，例如 123456@qq.com')
     return
   }
 
@@ -431,15 +485,14 @@ const handleSaveProfile = async () => {
   try {
     const nextProfile = await saveFrontendUserProfileToServer({ nickname, qqEmail })
     if (!nextProfile) {
-      ElMessage.error('当前登录态已失效，请重新登录')
+      showCenterMessage('error', '当前登录态已失效，请重新登录')
       await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
       return
     }
     loadProfile()
-    ElMessage.success('个人中心信息已保存')
+    showCenterMessage('success', '个人中心信息已保存')
   } catch (error) {
-    const message = error instanceof Error ? error.message : '保存失败，请稍后重试'
-    ElMessage.error(message)
+    showCenterMessage('error', resolveRuntimeErrorMessage(error, '保存失败，请稍后重试'))
   } finally {
     saving.value = false
   }
@@ -455,18 +508,18 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
   }
   const selectedChannel = availablePaymentChannels.value.find((item) => item.code === selectedPayChannel.value)
   if (!selectedChannel) {
-    ElMessage.warning('当前未找到可用支付渠道，请刷新后重试')
+    showCenterMessage('warning', '当前未找到可用支付渠道，请刷新后重试')
     return
   }
   if (!selectedChannel.configured) {
-    ElMessage.warning('当前支付渠道未配置完成，请切换其他渠道或联系管理员')
+    showCenterMessage('warning', '当前支付渠道未配置完成，请切换其他渠道或联系管理员')
     return
   }
   buyingKey.value = purchaseKey
   try {
     const result = await purchaseFrontendUserProduct(productType, productCode, selectedChannel.code)
     if (!result) {
-      ElMessage.error('购买失败，请先重新登录后重试')
+      showCenterMessage('error', '购买失败，请先重新登录后重试')
       await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
       return
     }
@@ -474,7 +527,7 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
     await Promise.all([loadOrders({ withLoading: false, silent: true }), loadPointsLogs()])
     if (result.order.status === 1) {
       stopPaymentStatusPolling()
-      ElMessage.success('支付完成，权益已实时生效')
+      showCenterMessage('success', '支付完成，权益已实时生效')
       return
     }
 
@@ -483,14 +536,13 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
     if (result.payment?.payUrl) {
       const opened = openPaymentWindow(result.payment.payUrl)
       if (opened) {
-        ElMessage.success('订单已创建，请在新窗口完成支付，系统将自动刷新到账状态')
+        showCenterMessage('success', '订单已创建，请在新窗口完成支付，系统将自动刷新到账状态')
       }
     } else {
-      ElMessage.info('订单已创建，等待支付回调，可在“购买记录”中手动刷新')
+      showCenterMessage('info', '订单已创建，等待支付回调，可在“购买记录”中手动刷新')
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : '购买失败，请稍后重试'
-    ElMessage.error(message)
+    showCenterMessage('error', resolveRuntimeErrorMessage(error, '购买失败，请稍后重试'))
   } finally {
     buyingKey.value = ''
   }
@@ -508,21 +560,20 @@ const handleGoPay = async (order: FrontendUserOrderItem) => {
   try {
     const result = await relaunchFrontendUserOrderPayment(targetOrderSn, order.payChannel || selectedPayChannel.value)
     if (!result) {
-      ElMessage.warning('订单拉起失败，请重新登录后重试')
+      showCenterMessage('warning', '订单拉起失败，请重新登录后重试')
       await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
       return
     }
     const payUrl = String(result.payment?.payUrl || '').trim()
     if (!payUrl) {
-      ElMessage.warning('支付链接暂不可用，请联系管理员检查支付网关配置')
+      showCenterMessage('warning', '支付链接暂不可用，请联系管理员检查支付网关配置')
       await loadOrders({ withLoading: false, silent: true })
       return
     }
     const opened = openPaymentWindow(payUrl)
     startPaymentStatusPolling(result.order.orderSn, { silent: !opened })
   } catch (error) {
-    const message = error instanceof Error ? error.message : '拉起支付失败，请稍后重试'
-    ElMessage.error(message)
+    showCenterMessage('error', resolveRuntimeErrorMessage(error, '拉起支付失败，请稍后重试'))
   } finally {
     goPayOrderSn.value = ''
   }
@@ -540,17 +591,16 @@ const handleClosePendingOrder = async (orderSn: string) => {
   try {
     const result = await closeFrontendUserOrder(targetOrderSn)
     if (!result) {
-      ElMessage.warning('订单关闭失败，请稍后重试')
+      showCenterMessage('warning', '订单关闭失败，请稍后重试')
       return
     }
     if (paymentPollingOrderSn.value === targetOrderSn) {
       stopPaymentStatusPolling()
     }
-    ElMessage.success('订单已关闭')
+    showCenterMessage('success', '订单已关闭')
     await loadOrders({ withLoading: false, silent: true })
   } catch (error) {
-    const message = error instanceof Error ? error.message : '订单关闭失败'
-    ElMessage.error(message)
+    showCenterMessage('error', resolveRuntimeErrorMessage(error, '订单关闭失败'))
   } finally {
     closingOrderSn.value = ''
   }
@@ -562,7 +612,7 @@ const handleClosePendingOrder = async (orderSn: string) => {
 const handleLogout = async () => {
   stopPaymentStatusPolling()
   await logoutFrontendUser()
-  ElMessage.success('已退出登录')
+  showCenterMessage('success', '已退出登录')
   await router.replace('/user/login')
 }
 
@@ -573,7 +623,7 @@ onMounted(async () => {
   }
   const syncedProfile = await syncFrontendUserProfile()
   if (!syncedProfile) {
-    ElMessage.warning('登录状态已失效，请重新登录')
+    showCenterMessage('warning', '登录状态已失效，请重新登录')
     await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
   }
@@ -789,9 +839,9 @@ onBeforeUnmount(() => {
               <el-table-column prop="amount" label="金额" width="96" />
               <el-table-column label="状态" width="112">
                 <template #default="scope">
-                  <el-tag v-if="scope.row.status === 1" type="success">{{ scope.row.statusText }}</el-tag>
-                  <el-tag v-else-if="scope.row.status === 2" type="info">{{ scope.row.statusText }}</el-tag>
-                  <el-tag v-else type="warning">{{ scope.row.statusText }}</el-tag>
+                  <el-tag :type="resolveOrderStatusTagType(scope.row.status)">
+                    {{ scope.row.statusText }}
+                  </el-tag>
                 </template>
               </el-table-column>
               <el-table-column label="回调状态" width="120">
