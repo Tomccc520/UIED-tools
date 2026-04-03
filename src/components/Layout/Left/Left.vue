@@ -22,7 +22,14 @@ import { useRouter, useRoute } from 'vue-router'
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { ToolCategory, ToolSubCategory } from '@/types/tools'
-import { getSitePublicConfig, type SiteLinkItem, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
+import {
+  getSitePublicConfig,
+  type SiteLinkItem,
+  type SiteSidebarCategoryMenu,
+  type SiteSidebarMenuBlock,
+  type SiteSidebarMenuBlockItem,
+  type SiteSidebarMenuBlockType
+} from '@/services/siteConfig'
 
 // 路由实例
 const router: Router = useRouter()
@@ -55,6 +62,53 @@ const defaultSidebarCategoryMenus: SiteSidebarCategoryMenu[] = [
   { key: 'slacking', title: '摸鱼工具', cateTitle: '摸鱼工具' },
   { key: 'efficiency', title: '效率工具', cateTitle: '效率工具' }
 ]
+const defaultSidebarMenuBlocks: SiteSidebarMenuBlock[] = [
+  {
+    key: 'menu-dropdown',
+    title: '下拉菜单',
+    type: 'dropdown',
+    icon: '/icons/sidebar/dev.svg',
+    items: [
+      { name: '随机推荐', link: '/tools/random-tools' },
+      { name: '每日热榜', link: '/tools/hot-ranking' },
+      { name: '实时资讯', link: '/tools/ai-news' }
+    ]
+  },
+  {
+    key: 'menu-list',
+    title: '列表菜单',
+    type: 'list',
+    icon: '/icons/sidebar/office.svg',
+    items: [
+      { name: '设计工具', link: '#design' },
+      { name: '图片处理', link: '#image' },
+      { name: '办公工具', link: '#office' },
+      { name: '开发工具', link: '#dev' }
+    ]
+  },
+  {
+    key: 'menu-image',
+    title: '图片菜单',
+    type: 'image',
+    icon: '/icons/sidebar/image.svg',
+    items: [
+      { name: 'AI抠图', link: '/tools/photo/background', image: '/icons/sidebar/image.svg' },
+      { name: '视频压缩', link: '/tools/video/compress', image: '/icons/sidebar/video.svg' },
+      { name: 'PDF压缩', link: '/tools/pdf-compress', image: '/icons/sidebar/office.svg' }
+    ]
+  },
+  {
+    key: 'menu-category',
+    title: '分类菜单',
+    type: 'category',
+    icon: '/icons/sidebar/ai.svg',
+    items: [
+      { name: 'AI工具箱', link: '/tools/ai/toolbox', category: 'AI', desc: '智能问答/写作/图像' },
+      { name: '设计工具', link: '#design', category: '设计', desc: '配色/阴影/布局' },
+      { name: '开发工具', link: '#dev', category: '开发', desc: 'JSON/正则/编码' }
+    ]
+  }
+]
 const defaultSidebarBottomLinks: SiteLinkItem[] = [
   { name: '更新记录', link: '/changelog' },
   { name: '意见反馈', link: 'https://uiedtool.com/' },
@@ -65,6 +119,7 @@ const defaultAiToolboxSidebarMenus: SiteLinkItem[] = [
   { name: 'AI分组总览', link: '#ai-groups' }
 ]
 const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>(defaultSidebarCategoryMenus)
+const sidebarMenuBlocks = ref<SiteSidebarMenuBlock[]>(defaultSidebarMenuBlocks)
 const sidebarBottomLinks = ref<SiteLinkItem[]>(defaultSidebarBottomLinks)
 const aiToolboxSidebarMenus = ref<SiteLinkItem[]>(defaultAiToolboxSidebarMenus)
 
@@ -228,6 +283,19 @@ interface AiToolboxSidebarMenuItem extends SiteLinkItem {
   icon: string
 }
 
+interface DisplaySidebarMenuBlockItem extends SiteSidebarMenuBlockItem {
+  icon: string
+  image: string
+}
+
+interface DisplaySidebarMenuBlock extends SiteSidebarMenuBlock {
+  key: string
+  type: SiteSidebarMenuBlockType
+  title: string
+  icon: string
+  items: DisplaySidebarMenuBlockItem[]
+}
+
 const defaultSidebarMenuIconMap: Record<string, string> = {
   ai: '/icons/sidebar/ai.svg',
   design: '/icons/sidebar/design.svg',
@@ -251,6 +319,43 @@ const resolveCategoryIcon = (menu: SiteSidebarCategoryMenu): string => {
     return customIcon
   }
   return defaultSidebarMenuIconMap[menu.key] || '/icons/sidebar/default.svg'
+}
+
+/**
+ * 函数说明：标准化侧栏菜单模块类型，兜底为列表菜单避免运行时渲染异常。
+ */
+const normalizeSidebarMenuBlockType = (input: string): SiteSidebarMenuBlockType => {
+  const type = String(input || '').trim().toLowerCase()
+  if (type === 'dropdown' || type === 'list' || type === 'image' || type === 'category') {
+    return type
+  }
+  return 'list'
+}
+
+/**
+ * 函数说明：输出侧栏菜单模块图标，优先条目图标，再回退到模块图标与默认图标。
+ */
+const resolveSidebarMenuBlockIcon = (blockIcon: string, itemIcon: string): string => {
+  const itemIconValue = String(itemIcon || '').trim()
+  if (itemIconValue) {
+    return itemIconValue
+  }
+  const blockIconValue = String(blockIcon || '').trim()
+  if (blockIconValue) {
+    return blockIconValue
+  }
+  return '/icons/sidebar/default.svg'
+}
+
+/**
+ * 函数说明：输出侧栏菜单图片卡片资源，未配置时自动回退到条目图标。
+ */
+const resolveSidebarMenuBlockImage = (image: string, icon: string): string => {
+  const imageValue = String(image || '').trim()
+  if (imageValue) {
+    return imageValue
+  }
+  return resolveSidebarMenuBlockIcon('', icon)
 }
 
 /**
@@ -299,6 +404,61 @@ const displaySidebarCategoryMenus = computed<DisplaySidebarCategoryMenu[]>(() =>
     })
     .filter((menu) => menu.isDirectLink || menu.list.length > 0)
 })
+
+/**
+ * 函数说明：构建可渲染的侧栏菜单样式模块，支持下拉/列表/图片/分类四种样式。
+ */
+const displaySidebarMenuBlocks = computed<DisplaySidebarMenuBlock[]>(() => {
+  const source = sidebarMenuBlocks.value.length ? sidebarMenuBlocks.value : defaultSidebarMenuBlocks
+  return source
+    .map((block, blockIndex) => {
+      const key = String(block.key || '').trim() || `menu-block-${blockIndex + 1}`
+      const title = String(block.title || '').trim()
+      const type = normalizeSidebarMenuBlockType(String(block.type || ''))
+      const icon = String(block.icon || '').trim()
+      const items = Array.isArray(block.items)
+        ? block.items
+            .map((item) => {
+              const name = String(item.name || '').trim()
+              const link = String(item.link || '').trim()
+              if (!name || !link) {
+                return null
+              }
+              const itemIcon = String(item.icon || '').trim()
+              const itemImage = String(item.image || '').trim()
+              const desc = String(item.desc || '').trim()
+              const category = String(item.category || '').trim()
+              const resolvedIcon = resolveSidebarMenuBlockIcon(icon, itemIcon)
+              return {
+                name,
+                link,
+                icon: resolvedIcon,
+                image: resolveSidebarMenuBlockImage(itemImage, resolvedIcon),
+                ...(desc ? { desc } : {}),
+                ...(category ? { category } : {})
+              } as DisplaySidebarMenuBlockItem
+            })
+            .filter((item): item is DisplaySidebarMenuBlockItem => Boolean(item))
+        : []
+
+      if (!title || items.length === 0) {
+        return null
+      }
+      return {
+        key,
+        title,
+        type,
+        icon: resolveSidebarMenuBlockIcon(icon, ''),
+        items
+      } as DisplaySidebarMenuBlock
+    })
+    .filter((block): block is DisplaySidebarMenuBlock => Boolean(block))
+})
+
+/**
+ * 函数说明：判断侧栏菜单样式模块是否可用；可用时优先渲染该模块以替代旧分类菜单。
+ */
+const hasSidebarMenuBlocks = computed<boolean>(() => displaySidebarMenuBlocks.value.length > 0)
 
 /**
  * 函数说明：获取最终用于渲染的侧栏底部链接列表，空配置时回退默认值
@@ -520,6 +680,9 @@ const loadSiteConfig = async () => {
   if (siteConfig.sidebarCategoryMenus.length) {
     sidebarCategoryMenus.value = siteConfig.sidebarCategoryMenus
   }
+  if (siteConfig.sidebarMenuBlocks.length) {
+    sidebarMenuBlocks.value = siteConfig.sidebarMenuBlocks
+  }
   if (siteConfig.sidebarBottomLinks.length) {
     sidebarBottomLinks.value = siteConfig.sidebarBottomLinks
   }
@@ -700,6 +863,25 @@ const handleCategoryMenuClick = (menu: DisplaySidebarCategoryMenu) => {
 }
 
 /**
+ * 函数说明：处理侧栏菜单样式模块点击，统一支持内链、锚点和外链跳转。
+ */
+const handleSidebarMenuBlockItemClick = (item: DisplaySidebarMenuBlockItem) => {
+  const targetLink = String(item.link || '').trim()
+  if (!targetLink) {
+    return
+  }
+  if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
+    openExternalLink(targetLink)
+    return
+  }
+  if (targetLink.startsWith('#')) {
+    gotoAnchor(targetLink.slice(1))
+    return
+  }
+  gotoTool(targetLink)
+}
+
+/**
  * 菜单项点击处理
  * @description 处理菜单项点击事件，清理 URL 参数并进行跳转
  * @param key 菜单项的唯一标识
@@ -853,40 +1035,107 @@ onMounted(() => {
         </template>
 
         <template v-else>
-          <!-- 分类菜单（后台可配置） -->
-          <template v-for="menu in displaySidebarCategoryMenus" :key="`category-${menu.key}`">
-            <el-menu-item
-              v-if="menu.isDirectLink"
-              class="menu-top-item"
-              :index="`category-link-${menu.key}`"
-              @click="handleCategoryMenuClick(menu)"
-            >
-              <div class="relative menu-icon-wrap">
-                <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
-                <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-              </div>
-              <span class="menu-text">{{ menu.title }}</span>
-            </el-menu-item>
+          <template v-if="hasSidebarMenuBlocks">
+            <template v-for="block in displaySidebarMenuBlocks" :key="`menu-block-${block.key}`">
+              <el-sub-menu
+                v-if="block.type === 'dropdown' || block.type === 'category'"
+                :index="`menu-block-${block.key}`"
+              >
+                <template #title>
+                  <div class="relative menu-icon-wrap">
+                    <img class="menu-image-icon" :src="block.icon" :alt="`${block.title} 图标`" />
+                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                  </div>
+                  <span class="menu-text">{{ block.title }}</span>
+                </template>
+                <el-menu-item-group>
+                  <el-menu-item
+                    v-for="(item, index) in block.items"
+                    :key="`menu-block-item-${block.key}-${index}`"
+                    :index="`menu-block-item-${block.key}-${index}`"
+                    :class="{ 'menu-category-item': block.type === 'category' }"
+                    @click="handleSidebarMenuBlockItemClick(item)"
+                  >
+                    <span class="menu-category-item-name">{{ item.name }}</span>
+                    <span
+                      v-if="block.type === 'category' && (item.category || item.desc)"
+                      class="menu-category-item-meta"
+                    >
+                      {{ item.category || item.desc }}
+                    </span>
+                  </el-menu-item>
+                </el-menu-item-group>
+              </el-sub-menu>
 
-            <el-sub-menu v-else :index="menu.key">
-              <template #title>
+              <template v-else-if="block.type === 'list'">
+                <el-menu-item
+                  v-for="(item, index) in block.items"
+                  :key="`menu-block-list-${block.key}-${index}`"
+                  class="menu-top-item menu-block-list-item"
+                  :index="`menu-block-list-${block.key}-${index}`"
+                  @click="handleSidebarMenuBlockItemClick(item)"
+                >
+                  <div class="relative menu-icon-wrap">
+                    <img class="menu-image-icon" :src="item.icon" :alt="`${item.name} 图标`" />
+                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                  </div>
+                  <span class="menu-text">{{ item.name }}</span>
+                </el-menu-item>
+              </template>
+
+              <template v-else-if="block.type === 'image'">
+                <el-menu-item
+                  v-for="(item, index) in block.items"
+                  :key="`menu-block-image-${block.key}-${index}`"
+                  class="menu-top-item menu-block-image-item"
+                  :index="`menu-block-image-${block.key}-${index}`"
+                  @click="handleSidebarMenuBlockItemClick(item)"
+                >
+                  <div class="menu-block-image-thumb">
+                    <img class="menu-block-image-thumb__img" :src="item.image" :alt="`${item.name} 预览图`" />
+                  </div>
+                  <span class="menu-block-image-title">{{ item.name }}</span>
+                </el-menu-item>
+              </template>
+            </template>
+          </template>
+
+          <!-- 分类菜单（兼容旧配置） -->
+          <template v-else>
+            <template v-for="menu in displaySidebarCategoryMenus" :key="`category-${menu.key}`">
+              <el-menu-item
+                v-if="menu.isDirectLink"
+                class="menu-top-item"
+                :index="`category-link-${menu.key}`"
+                @click="handleCategoryMenuClick(menu)"
+              >
                 <div class="relative menu-icon-wrap">
                   <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
                   <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
                 </div>
                 <span class="menu-text">{{ menu.title }}</span>
-              </template>
-              <el-menu-item-group>
-                <el-menu-item
-                  v-for="category in menu.list"
-                  :key="category.id"
-                  :index="`${menu.key}-${category.id}`"
-                  @click="handleMenuClick(`${menu.key}-${category.id}`)"
-                >
-                  {{ category.title }}
-                </el-menu-item>
-              </el-menu-item-group>
-            </el-sub-menu>
+              </el-menu-item>
+
+              <el-sub-menu v-else :index="menu.key">
+                <template #title>
+                  <div class="relative menu-icon-wrap">
+                    <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
+                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                  </div>
+                  <span class="menu-text">{{ menu.title }}</span>
+                </template>
+                <el-menu-item-group>
+                  <el-menu-item
+                    v-for="category in menu.list"
+                    :key="category.id"
+                    :index="`${menu.key}-${category.id}`"
+                    @click="handleMenuClick(`${menu.key}-${category.id}`)"
+                  >
+                    {{ category.title }}
+                  </el-menu-item>
+                </el-menu-item-group>
+              </el-sub-menu>
+            </template>
           </template>
           <!-- 侧栏底部链接（后台可配置） -->
           <el-menu-item
@@ -1034,6 +1283,62 @@ onMounted(() => {
 
 .menu-ai-toolbox-first {
   margin-top: 2px !important;
+}
+
+.menu-block-list-item {
+  margin: 2px 0 !important;
+}
+
+.menu-block-image-item {
+  display: flex !important;
+  align-items: center;
+  gap: 10px;
+  height: auto !important;
+  min-height: var(--menu-item-height);
+  line-height: 1.4 !important;
+  padding-top: 8px !important;
+  padding-bottom: 8px !important;
+}
+
+.menu-block-image-thumb {
+  width: 36px;
+  height: 24px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(108, 84, 255, 0.2);
+  background: #fff;
+  flex-shrink: 0;
+}
+
+.menu-block-image-thumb__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.menu-block-image-title {
+  margin-left: 0;
+  font-size: 0.9rem;
+}
+
+.menu-category-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.menu-category-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menu-category-item-meta {
+  font-size: 12px;
+  color: #94a3b8;
+  flex-shrink: 0;
 }
 
 /* 菜单组标题 */

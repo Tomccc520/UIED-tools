@@ -27,6 +27,25 @@ export interface SiteSidebarCategoryMenu {
   icon?: string
 }
 
+export type SiteSidebarMenuBlockType = 'dropdown' | 'list' | 'image' | 'category'
+
+export interface SiteSidebarMenuBlockItem {
+  name: string
+  link: string
+  icon?: string
+  image?: string
+  desc?: string
+  category?: string
+}
+
+export interface SiteSidebarMenuBlock {
+  key: string
+  title: string
+  type: SiteSidebarMenuBlockType
+  icon?: string
+  items: SiteSidebarMenuBlockItem[]
+}
+
 export interface SiteHotToolItem {
   title: string
   desc: string
@@ -74,6 +93,7 @@ export interface SitePublicConfig {
   headerLinks: SiteLinkItem[]
   sidebarRecommendLinks: SiteLinkItem[]
   sidebarCategoryMenus: SiteSidebarCategoryMenu[]
+  sidebarMenuBlocks: SiteSidebarMenuBlock[]
   toolCategories: ToolCategory[]
   sidebarBottomLinks: SiteLinkItem[]
   aiToolboxSidebarMenus: SiteLinkItem[]
@@ -101,6 +121,54 @@ interface SiteConfigOptions {
 const DEFAULT_ENDPOINT = '/api/common/index/config'
 const DEFAULT_TIMEOUT_MS = 5000
 const CACHE_TTL_MS = 5 * 60 * 1000
+
+const DEFAULT_SIDEBAR_MENU_BLOCKS: SiteSidebarMenuBlock[] = [
+  {
+    key: 'menu-dropdown',
+    title: '下拉菜单',
+    type: 'dropdown',
+    icon: '/icons/sidebar/dev.svg',
+    items: [
+      { name: '随机推荐', link: '/tools/random-tools' },
+      { name: '每日热榜', link: '/tools/hot-ranking' },
+      { name: '实时资讯', link: '/tools/ai-news' }
+    ]
+  },
+  {
+    key: 'menu-list',
+    title: '列表菜单',
+    type: 'list',
+    icon: '/icons/sidebar/office.svg',
+    items: [
+      { name: '设计工具', link: '#design' },
+      { name: '图片处理', link: '#image' },
+      { name: '办公工具', link: '#office' },
+      { name: '开发工具', link: '#dev' }
+    ]
+  },
+  {
+    key: 'menu-image',
+    title: '图片菜单',
+    type: 'image',
+    icon: '/icons/sidebar/image.svg',
+    items: [
+      { name: 'AI抠图', link: '/tools/photo/background', image: '/icons/sidebar/image.svg' },
+      { name: '视频压缩', link: '/tools/video/compress', image: '/icons/sidebar/video.svg' },
+      { name: 'PDF压缩', link: '/tools/pdf-compress', image: '/icons/sidebar/office.svg' }
+    ]
+  },
+  {
+    key: 'menu-category',
+    title: '分类菜单',
+    type: 'category',
+    icon: '/icons/sidebar/ai.svg',
+    items: [
+      { name: 'AI工具箱', link: '/tools/ai/toolbox', category: 'AI', desc: '智能问答/写作/图像' },
+      { name: '设计工具', link: '#design', category: '设计', desc: '配色/阴影/布局' },
+      { name: '开发工具', link: '#dev', category: '开发', desc: 'JSON/正则/编码' }
+    ]
+  }
+]
 
 const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webName: 'UIED-Tools',
@@ -179,6 +247,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   headerLinks: [],
   sidebarRecommendLinks: [],
   sidebarCategoryMenus: [],
+  sidebarMenuBlocks: DEFAULT_SIDEBAR_MENU_BLOCKS,
   toolCategories: [],
   sidebarBottomLinks: [],
   aiToolboxSidebarMenus: [],
@@ -342,6 +411,85 @@ const normalizeSidebarCategoryMenus = (input: unknown): SiteSidebarCategoryMenu[
       }
     })
     .filter(Boolean) as SiteSidebarCategoryMenu[]
+}
+
+/**
+ * 函数说明：标准化侧栏菜单模块类型，避免后台传入非法类型导致前端渲染异常。
+ */
+const normalizeSidebarMenuBlockType = (input: unknown): SiteSidebarMenuBlockType => {
+  const normalized = String(input || '').trim().toLowerCase()
+  if (normalized === 'dropdown' || normalized === 'list' || normalized === 'image' || normalized === 'category') {
+    return normalized
+  }
+  return 'list'
+}
+
+/**
+ * 函数说明：清洗侧栏菜单模块条目，统一名称/链接并补齐可选字段。
+ */
+const normalizeSidebarMenuBlockItems = (input: unknown): SiteSidebarMenuBlockItem[] => {
+  return normalizeArrayInput(input)
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const name = String(record.name || '').trim()
+      const link = String(record.link || '').trim()
+      const icon = String(record.icon || '').trim()
+      const image = String(record.image || '').trim()
+      const desc = String(record.desc || '').trim()
+      const category = String(record.category || '').trim()
+      if (!name || !link) {
+        return null
+      }
+      return {
+        name,
+        link,
+        ...(icon ? { icon } : {}),
+        ...(image ? { image } : {}),
+        ...(desc ? { desc } : {}),
+        ...(category ? { category } : {})
+      }
+    })
+    .filter((item): item is SiteSidebarMenuBlockItem => Boolean(item))
+}
+
+/**
+ * 函数说明：清洗侧栏菜单样式模块配置，支持下拉/列表/图片/分类四种渲染类型。
+ */
+const normalizeSidebarMenuBlocks = (input: unknown): SiteSidebarMenuBlock[] => {
+  const parsed = normalizeArrayInput(input)
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const title = String(record.title || '').trim()
+      const key = String(record.key || '').trim() || `menu-block-${index + 1}`
+      const type = normalizeSidebarMenuBlockType(record.type)
+      const icon = String(record.icon || '').trim()
+      const items = normalizeSidebarMenuBlockItems(record.items)
+      if (!title || items.length === 0) {
+        return null
+      }
+      return {
+        key,
+        title,
+        type,
+        ...(icon ? { icon } : {}),
+        items
+      }
+    })
+    .filter((item): item is SiteSidebarMenuBlock => Boolean(item))
+
+  if (parsed.length > 0) {
+    return parsed
+  }
+  return DEFAULT_SIDEBAR_MENU_BLOCKS.map((block) => ({
+    ...block,
+    items: block.items.map((item) => ({ ...item }))
+  }))
 }
 
 /**
@@ -556,6 +704,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
     sidebarCategoryMenus: normalizeSidebarCategoryMenus(record.toolsSidebarCategoryMenus),
+    sidebarMenuBlocks: normalizeSidebarMenuBlocks(record.toolsSidebarMenuBlocks),
     toolCategories: normalizeToolCategories(record.toolsCategoryTree),
     sidebarBottomLinks: normalizeLinkItems(record.toolsSidebarBottomLinks),
     aiToolboxSidebarMenus: normalizeLinkItems(record.toolsAiToolboxSidebarMenus),
