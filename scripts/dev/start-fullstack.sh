@@ -319,7 +319,9 @@ configure_likeadmin_admin_env() {
   local env_file="${LIKEADMIN_ADMIN_DIR}/.env.development.local"
   cat >"${env_file}" <<EOF
 NODE_ENV='development'
-VITE_APP_BASE_URL='http://127.0.0.1:${GO_API_PORT}'
+# 函数说明：后台前端保持同源请求，通过 Vite 代理转发 /api，避免浏览器 CORS 干扰联调定位。
+VITE_APP_BASE_URL=''
+VITE_APP_PROXY_TARGET='http://127.0.0.1:${GO_API_PORT}'
 EOF
 }
 
@@ -367,6 +369,40 @@ repair_garbled_seed_data() {
   log_info "检测到历史中文乱码数据（菜单:${garbled_menu_count} 角色:${garbled_role_count} 配置:${garbled_config_count}），自动执行修复..."
   compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
   log_info "中文乱码修复已完成。"
+}
+
+# 函数说明：同步侧边栏菜单默认配置到后台，确保后台配置值与前端 Left.vue 默认菜单一致。
+# 仅在“缺失配置项”或“检测到乱码值”时自动执行，避免覆盖运营已维护的数据。
+sync_sidebar_menu_defaults_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260404_sync_frontend_sidebar_menu_defaults.sql"
+  local target_count="5"
+  local existing_count="0"
+  local missing_count="0"
+  local garbled_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  existing_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='website' AND name IN ('toolsSidebarRecommend','toolsSidebarCategoryMenus','toolsSidebarMenuBlocks','toolsSidebarBottomLinks','toolsAiToolboxSidebarMenus');" 2>/dev/null || echo "0")"
+  garbled_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='website' AND name IN ('toolsSidebarRecommend','toolsSidebarCategoryMenus','toolsSidebarMenuBlocks','toolsSidebarBottomLinks','toolsAiToolboxSidebarMenus') AND value LIKE '%?%';" 2>/dev/null || echo "0")"
+
+  if [[ "${existing_count}" -lt "${target_count}" ]]; then
+    missing_count="$((target_count - existing_count))"
+  fi
+
+  if [[ "${missing_count}" -le 0 ]] && [[ "${garbled_count}" -le 0 ]]; then
+    return
+  fi
+
+  log_info "检测到侧栏菜单配置缺失/乱码（缺失:${missing_count} 乱码:${garbled_count}），自动同步前端默认菜单..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "侧栏菜单默认配置同步完成。"
+    return
+  fi
+
+  # 函数说明：同步失败不阻塞本地联调，避免前后端启动被中断。
+  log_info "侧栏菜单默认配置同步失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
 # 函数说明：检测并补齐 la_user.qq_email 字段，确保前台 QQ 邮箱绑定可持久化保存。
@@ -506,6 +542,35 @@ apply_role_permission_baseline_patch() {
 
   # 函数说明：补丁失败时不阻塞全栈启动，避免影响前后端联调。
   log_info "角色与权限基线补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：检测并补齐源码授权表、授权菜单与配置，确保商业版授权能力可直接启用。
+apply_license_module_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260403_add_license_module.sql"
+  local license_table_count="0"
+  local license_menu_count="0"
+  local license_config_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  license_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_system_license';" 2>/dev/null || echo "0")"
+  license_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:license:detail';" 2>/dev/null || echo "0")"
+  license_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name IN ('enforce','verifyApiUrl','verifyApiToken');" 2>/dev/null || echo "0")"
+
+  if [[ "${license_table_count}" -ge 1 ]] && [[ "${license_menu_count}" -ge 1 ]] && [[ "${license_config_count}" -ge 3 ]]; then
+    return
+  fi
+
+  log_info "检测到源码授权模块缺失，自动执行授权补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "源码授权模块补齐完成。"
+    return
+  fi
+
+  # 函数说明：授权补丁失败时不阻塞启动，避免影响本地联调，可后续手工排查 SQL。
+  log_info "源码授权补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
 # 函数说明：检测 PID 文件对应进程是否存活，可选校验端口监听，避免 PID 复用误判
@@ -682,12 +747,14 @@ main() {
   configure_likeadmin_admin_env
   init_likeadmin_database
   repair_garbled_seed_data
+  sync_sidebar_menu_defaults_patch
   apply_user_qq_email_schema_patch
   apply_user_points_schema_patch
   apply_user_member_schema_patch
   apply_member_commerce_schema_patch
   apply_member_order_menu_patch
   apply_role_permission_baseline_patch
+  apply_license_module_patch
   start_likeadmin_server
   start_likeadmin_admin
   start_matting_service

@@ -122,53 +122,7 @@ const DEFAULT_ENDPOINT = '/api/common/index/config'
 const DEFAULT_TIMEOUT_MS = 5000
 const CACHE_TTL_MS = 5 * 60 * 1000
 
-const DEFAULT_SIDEBAR_MENU_BLOCKS: SiteSidebarMenuBlock[] = [
-  {
-    key: 'menu-dropdown',
-    title: '下拉菜单',
-    type: 'dropdown',
-    icon: '/icons/sidebar/dev.svg',
-    items: [
-      { name: '随机推荐', link: '/tools/random-tools' },
-      { name: '每日热榜', link: '/tools/hot-ranking' },
-      { name: '实时资讯', link: '/tools/ai-news' }
-    ]
-  },
-  {
-    key: 'menu-list',
-    title: '列表菜单',
-    type: 'list',
-    icon: '/icons/sidebar/office.svg',
-    items: [
-      { name: '设计工具', link: '#design' },
-      { name: '图片处理', link: '#image' },
-      { name: '办公工具', link: '#office' },
-      { name: '开发工具', link: '#dev' }
-    ]
-  },
-  {
-    key: 'menu-image',
-    title: '图片菜单',
-    type: 'image',
-    icon: '/icons/sidebar/image.svg',
-    items: [
-      { name: 'AI抠图', link: '/tools/photo/background', image: '/icons/sidebar/image.svg' },
-      { name: '视频压缩', link: '/tools/video/compress', image: '/icons/sidebar/video.svg' },
-      { name: 'PDF压缩', link: '/tools/pdf-compress', image: '/icons/sidebar/office.svg' }
-    ]
-  },
-  {
-    key: 'menu-category',
-    title: '分类菜单',
-    type: 'category',
-    icon: '/icons/sidebar/ai.svg',
-    items: [
-      { name: 'AI工具箱', link: '/tools/ai/toolbox', category: 'AI', desc: '智能问答/写作/图像' },
-      { name: '设计工具', link: '#design', category: '设计', desc: '配色/阴影/布局' },
-      { name: '开发工具', link: '#dev', category: '开发', desc: 'JSON/正则/编码' }
-    ]
-  }
-]
+const DEFAULT_SIDEBAR_MENU_BLOCKS: SiteSidebarMenuBlock[] = []
 
 const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webName: 'UIED-Tools',

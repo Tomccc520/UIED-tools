@@ -21,6 +21,7 @@ import { useToolsStore } from '@/store/modules/tools'
 import { useRouter, useRoute } from 'vue-router'
 import type { Router, RouteLocationNormalizedLoaded } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { getToolsCate } from '@/components/Tools/tools'
 import type { ToolCategory, ToolSubCategory } from '@/types/tools'
 import {
   getSitePublicConfig,
@@ -62,53 +63,7 @@ const defaultSidebarCategoryMenus: SiteSidebarCategoryMenu[] = [
   { key: 'slacking', title: '摸鱼工具', cateTitle: '摸鱼工具' },
   { key: 'efficiency', title: '效率工具', cateTitle: '效率工具' }
 ]
-const defaultSidebarMenuBlocks: SiteSidebarMenuBlock[] = [
-  {
-    key: 'menu-dropdown',
-    title: '下拉菜单',
-    type: 'dropdown',
-    icon: '/icons/sidebar/dev.svg',
-    items: [
-      { name: '随机推荐', link: '/tools/random-tools' },
-      { name: '每日热榜', link: '/tools/hot-ranking' },
-      { name: '实时资讯', link: '/tools/ai-news' }
-    ]
-  },
-  {
-    key: 'menu-list',
-    title: '列表菜单',
-    type: 'list',
-    icon: '/icons/sidebar/office.svg',
-    items: [
-      { name: '设计工具', link: '#design' },
-      { name: '图片处理', link: '#image' },
-      { name: '办公工具', link: '#office' },
-      { name: '开发工具', link: '#dev' }
-    ]
-  },
-  {
-    key: 'menu-image',
-    title: '图片菜单',
-    type: 'image',
-    icon: '/icons/sidebar/image.svg',
-    items: [
-      { name: 'AI抠图', link: '/tools/photo/background', image: '/icons/sidebar/image.svg' },
-      { name: '视频压缩', link: '/tools/video/compress', image: '/icons/sidebar/video.svg' },
-      { name: 'PDF压缩', link: '/tools/pdf-compress', image: '/icons/sidebar/office.svg' }
-    ]
-  },
-  {
-    key: 'menu-category',
-    title: '分类菜单',
-    type: 'category',
-    icon: '/icons/sidebar/ai.svg',
-    items: [
-      { name: 'AI工具箱', link: '/tools/ai/toolbox', category: 'AI', desc: '智能问答/写作/图像' },
-      { name: '设计工具', link: '#design', category: '设计', desc: '配色/阴影/布局' },
-      { name: '开发工具', link: '#dev', category: '开发', desc: 'JSON/正则/编码' }
-    ]
-  }
-]
+const defaultSidebarMenuBlocks: SiteSidebarMenuBlock[] = []
 const defaultSidebarBottomLinks: SiteLinkItem[] = [
   { name: '更新记录', link: '/changelog' },
   { name: '意见反馈', link: 'https://uiedtool.com/' },
@@ -240,6 +195,7 @@ const normalizeRoutePath = (rawPath: string): string => {
 
 const aiToolboxHomePath = '/tools/ai/toolbox'
 const normalizedAiToolboxHomePath = normalizeRoutePath(aiToolboxHomePath)
+const sidebarBuiltinToolCategories = getToolsCate()
 
 /**
  * 函数说明：判断链接是否为站内路由链接。
@@ -253,7 +209,7 @@ const isInternalMenuLink = (link: string): boolean => {
  */
 const aiToolRouteSet = computed<Set<string>>(() => {
   const pathSet = new Set<string>([normalizedAiToolboxHomePath])
-  const aiCategory = toolsStore.cates.find((cate: ToolCategory) => cate.title === 'AI工具箱')
+  const aiCategory = sidebarBuiltinToolCategories.find((cate: ToolCategory) => cate.title === 'AI工具箱')
   const aiRoutes = (aiCategory?.list || [])
     .flatMap((group) => (Array.isArray(group.list) ? group.list : []))
     .map((tool) => String(tool.url || '').trim())
@@ -362,7 +318,7 @@ const resolveSidebarMenuBlockImage = (image: string, icon: string): string => {
  * 函数说明：根据配置中的分类标题匹配工具分类列表，匹配不到时返回空数组
  */
 const resolveCategoryList = (cateTitle: string): ToolSubCategory[] => {
-  return toolsStore.cates.find((cate: ToolCategory) => cate.title === cateTitle)?.list || []
+  return sidebarBuiltinToolCategories.find((cate: ToolCategory) => cate.title === cateTitle)?.list || []
 }
 
 /**
@@ -671,24 +627,17 @@ const loadSiteConfig = async () => {
     appNet.value = siteConfig.siteSlogan
   }
   sidebarBrandLogo.value = siteConfig.sidebarBrandLogo || ''
-  if (siteConfig.sidebarRecommendTitle) {
-    recommendTitle.value = siteConfig.sidebarRecommendTitle
-  }
-  if (siteConfig.sidebarRecommendLinks.length) {
-    recommendLinks.value = siteConfig.sidebarRecommendLinks
-  }
-  if (siteConfig.sidebarCategoryMenus.length) {
-    sidebarCategoryMenus.value = siteConfig.sidebarCategoryMenus
-  }
-  if (siteConfig.sidebarMenuBlocks.length) {
-    sidebarMenuBlocks.value = siteConfig.sidebarMenuBlocks
-  }
-  if (siteConfig.sidebarBottomLinks.length) {
-    sidebarBottomLinks.value = siteConfig.sidebarBottomLinks
-  }
-  if (siteConfig.aiToolboxSidebarMenus.length) {
-    aiToolboxSidebarMenus.value = siteConfig.aiToolboxSidebarMenus
-  }
+
+  /**
+   * 函数说明：左侧菜单恢复为前端内置默认数据，不再受后台同名配置覆盖。
+   * 仅保留品牌名称、标语与 Logo 由后台配置。
+   */
+  recommendTitle.value = '推荐工具'
+  recommendLinks.value = defaultRecommendLinks
+  sidebarCategoryMenus.value = defaultSidebarCategoryMenus
+  sidebarMenuBlocks.value = []
+  sidebarBottomLinks.value = defaultSidebarBottomLinks
+  aiToolboxSidebarMenus.value = defaultAiToolboxSidebarMenus
 }
 
 // 菜单事件处理
