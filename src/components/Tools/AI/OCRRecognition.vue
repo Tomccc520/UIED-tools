@@ -30,6 +30,10 @@
               温馨提示：支持JPG、PNG等常见图片格式，建议上传清晰的图片以获得更好的识别效果。
             </p>
           </div>
+          <div v-if="imageAbility" class="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs"
+            :class="imageAbility.available ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+            {{ imageAbility.available ? `当前能力：${imageAbility.label || 'OCR 图像识别'} 已就绪` : '当前 OCR 图片识别能力未配置，将无法调用' }}
+          </div>
         </div>
 
         <!-- 输入区域 -->
@@ -138,11 +142,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElButton, ElInput } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import {
+  getCurrentAiImageAbility,
+  parseAiImageAbilityErrorMessage,
+  requestAiImageAbility,
+  type AiImageAbilityCurrent
+} from '@/services/aiImageAbility'
 
 // 组件配置信息
 const info = {
@@ -200,6 +209,17 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const imageUrl = ref('')
 const recognizing = ref(false)
 const recognitionResult = ref<any>(null)
+const imageAbility = ref<AiImageAbilityCurrent | null>(null)
+
+/**
+ * 函数说明：读取当前 OCR 图片能力配置，用于识别前判断是否已在后台开启。
+ */
+const loadImageAbility = async () => {
+  imageAbility.value = await getCurrentAiImageAbility({
+    ability: 'ocr',
+    forceRefresh: true
+  })
+}
 
 // 触发文件选择
 const triggerFileInput = () => {
@@ -225,6 +245,11 @@ const startRecognition = async (file?: File) => {
     return
   }
 
+  if (imageAbility.value && !imageAbility.value.available) {
+    ElMessage.error('当前 OCR 图片识别能力未配置，请先在后台 AI 模型管理中启用')
+    return
+  }
+
   try {
     recognizing.value = true
     const formData = new FormData()
@@ -233,27 +258,50 @@ const startRecognition = async (file?: File) => {
       formData.append('file', file)
     } else {
       // 使用URL时，通过JSON发送
-      const response = await axios.post('https://api.pearktrue.cn/api/ocr/', {
-        file: imageUrl.value
+      const response = await requestAiImageAbility({
+        ability: 'ocr',
+        method: 'POST',
+        body: {
+          file: imageUrl.value
+        },
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
 
-      if (response.data.code === 200) {
-        recognitionResult.value = response.data.data
+      if (!response.ok) {
+        throw new Error(await parseAiImageAbilityErrorMessage(response))
+      }
+
+      const resultData = await response.json()
+
+      if (resultData.code === 200) {
+        recognitionResult.value = resultData.data
         ElMessage.success('识别成功')
       } else {
-        throw new Error(response.data.msg || '识别失败')
+        throw new Error(resultData.msg || '识别失败')
       }
       return
     }
 
     // 上传文件时使用formData
-    const response = await axios.post('https://api.pearktrue.cn/api/ocr/', formData)
+    const response = await requestAiImageAbility({
+      ability: 'ocr',
+      method: 'POST',
+      body: formData
+    })
 
-    if (response.data.code === 200) {
-      recognitionResult.value = response.data.data
+    if (!response.ok) {
+      throw new Error(await parseAiImageAbilityErrorMessage(response))
+    }
+
+    const resultData = await response.json()
+
+    if (resultData.code === 200) {
+      recognitionResult.value = resultData.data
       ElMessage.success('识别成功')
     } else {
-      throw new Error(response.data.msg || '识别失败')
+      throw new Error(resultData.msg || '识别失败')
     }
   } catch (error: any) {
     console.error('识别失败:', error)
@@ -278,6 +326,10 @@ const copyResult = () => {
     ElMessage.error('复制失败，请手动复制')
   })
 }
+
+onMounted(() => {
+  void loadImageAbility()
+})
 </script>
 
 <style scoped>

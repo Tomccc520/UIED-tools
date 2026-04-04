@@ -28,6 +28,10 @@
               温馨提示：该功能正在优化中，如遇到问题请稍后再试。生成二维码可能需要一些时间，请耐心等待。
             </p>
           </div>
+          <div v-if="imageAbility" class="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs"
+            :class="imageAbility.available ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+            {{ imageAbility.available ? `当前能力：${imageAbility.label || 'AI 二维码'} 已就绪` : '当前 AI 二维码能力未配置，将无法调用' }}
+          </div>
         </div>
 
         <!-- 输入区域 -->
@@ -202,11 +206,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { ElMessage, ElButton, ElInput } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import {
+  getCurrentAiImageAbility,
+  parseAiImageAbilityErrorMessage,
+  requestAiImageAbility,
+  type AiImageAbilityCurrent
+} from '@/services/aiImageAbility'
 
 // 组件配置信息
 const info = {
@@ -309,9 +318,20 @@ const url = ref('')
 const prompt = ref('')
 const generating = ref(false)
 const generatedImageUrl = ref('')
+const imageAbility = ref<AiImageAbilityCurrent | null>(null)
 
 // 获取当前路由
 const route = useRoute()
+
+/**
+ * 函数说明：读取当前 AI 二维码图片能力配置，用于生成前判断是否已在后台开启。
+ */
+const loadImageAbility = async () => {
+  imageAbility.value = await getCurrentAiImageAbility({
+    ability: 'ai_qrcode',
+    forceRefresh: true
+  })
+}
 
 // 检查提示词是否已选择
 const isPromptSelected = (checkPrompt: string) => {
@@ -344,20 +364,33 @@ const generateQRCode = async () => {
     return
   }
 
+  if (imageAbility.value && !imageAbility.value.available) {
+    ElMessage.error('当前 AI 二维码能力未配置，请先在后台 AI 模型管理中启用')
+    return
+  }
+
   try {
     generating.value = true
-    const params = {
-      prompt: prompt.value.trim(),
-      url: url.value.trim()
+    const result = await requestAiImageAbility({
+      ability: 'ai_qrcode',
+      method: 'GET',
+      query: {
+        prompt: prompt.value.trim(),
+        url: url.value.trim()
+      }
+    })
+
+    if (!result.ok) {
+      throw new Error(await parseAiImageAbilityErrorMessage(result))
     }
 
-    const result = await axios.get('https://api.pearktrue.cn/api/aiqrcode/', { params })
+    const resultData = await result.json()
 
-    if (result.data.code === 200) {
-      generatedImageUrl.value = result.data.imgurl
+    if (resultData.code === 200) {
+      generatedImageUrl.value = resultData.imgurl
       ElMessage.success('二维码生成成功')
     } else {
-      ElMessage.error(result.data.msg || '生成失败，请重试')
+      ElMessage.error(resultData.msg || '生成失败，请重试')
     }
   } catch (error: any) {
     console.error('生成二维码时出错:', error)
@@ -372,6 +405,10 @@ const openImage = () => {
   if (!generatedImageUrl.value) return
   window.open(generatedImageUrl.value, '_blank')
 }
+
+onMounted(() => {
+  void loadImageAbility()
+})
 </script>
 
 <style scoped>

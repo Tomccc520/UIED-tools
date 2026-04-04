@@ -17,6 +17,10 @@
             </div>
           </h2>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
+          <div v-if="imageAbility" class="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs"
+            :class="imageAbility.available ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+            {{ imageAbility.available ? `当前能力：${imageAbility.label || '图片提示词反推'} 已就绪` : '当前图片提示词反推能力未配置，将无法调用' }}
+          </div>
           <!-- 推荐链接 -->
           <div class="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-6 text-sm">
             <a v-for="link in headerLinks" :key="link.name" :href="link.link"
@@ -153,9 +157,14 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElButton, ElInput, ElSelect, ElOption } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
 import type { SiteLinkItem } from '@/services/siteConfig'
 import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
+import {
+  getCurrentAiImageAbility,
+  parseAiImageAbilityErrorMessage,
+  requestAiImageAbility,
+  type AiImageAbilityCurrent
+} from '@/services/aiImageAbility'
 
 // 组件配置信息
 const info = {
@@ -204,14 +213,25 @@ const previewUrl = ref('')
 const recognizing = ref(false)
 const recognitionResult = ref('')
 const selectedFile = ref<File | null>(null)
+const imageAbility = ref<AiImageAbilityCurrent | null>(null)
 
 const params = reactive({
   type: 'normal',
   lang: 'zh-CN'
 })
 
+/**
+ * 函数说明：读取当前图片提示词反推能力配置，用于页面显示状态与生成前校验。
+ */
+const loadImageAbility = async () => {
+  imageAbility.value = await getCurrentAiImageAbility({
+    ability: 'prompt_reverse',
+    forceRefresh: true
+  })
+}
+
 onMounted(async () => {
-  await loadHeaderLinks()
+  await Promise.all([loadHeaderLinks(), loadImageAbility()])
 })
 
 // 触发文件选择
@@ -251,6 +271,11 @@ const startRecognition = async () => {
     return
   }
 
+  if (imageAbility.value && !imageAbility.value.available) {
+    ElMessage.error('当前图片提示词反推能力未配置，请先在后台 AI 模型管理中启用')
+    return
+  }
+
   try {
     recognizing.value = true
     const formData = new FormData()
@@ -265,29 +290,39 @@ const startRecognition = async () => {
       formData.append('image', imageUrl.value)
     }
 
-    // API地址
-    const apiUrl = 'https://api.pearktrue.cn/api/prompt_image'
-
-    let response;
+    let response: Response
     // 如果只有URL，优先尝试JSON POST，因为某些后端可能对multipart/form-data里的url字符串处理不一致
     // 但根据用户描述 "JsonPost传入的image链接"，我们尝试JSON
     if (!selectedFile.value && imageUrl.value) {
-      response = await axios.post(apiUrl, {
-        image: imageUrl.value,
-        type: params.type,
-        lang: params.lang
-      }, {
+      response = await requestAiImageAbility({
+        ability: 'prompt_reverse',
+        method: 'POST',
+        body: {
+          image: imageUrl.value,
+          type: params.type,
+          lang: params.lang
+        },
         headers: {
           'Content-Type': 'application/json'
         }
       })
     } else {
-      response = await axios.post(apiUrl, formData)
+      response = await requestAiImageAbility({
+        ability: 'prompt_reverse',
+        method: 'POST',
+        body: formData
+      })
     }
 
-    if (response.data.code === 200) {
+    if (!response.ok) {
+      throw new Error(await parseAiImageAbilityErrorMessage(response))
+    }
+
+    const responseData = await response.json()
+
+    if (responseData.code === 200) {
       // 尝试解析返回的数据
-      let resultData = response.data.data;
+      let resultData = responseData.data;
 
       // 如果是字符串，尝试解析为JSON
       if (typeof resultData === 'string') {
@@ -316,7 +351,7 @@ const startRecognition = async () => {
 
       ElMessage.success('反推成功')
     } else {
-      throw new Error(response.data.msg || '反推失败')
+      throw new Error(responseData.msg || '反推失败')
     }
   } catch (error: any) {
     console.error('反推失败:', error)

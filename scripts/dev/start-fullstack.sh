@@ -573,28 +573,30 @@ apply_license_module_patch() {
   log_info "源码授权补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
-# 函数说明：检测并补齐 AI Provider 默认配置，确保文本类 AI 工具与后台模型管理可直接联动。
+# 函数说明：检测并补齐 AI Provider 与图片 AI 能力默认配置，确保文本类/图片类 AI 工具都能直接联动。
 apply_ai_provider_config_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_ai_provider_configs.sql"
   local provider_config_count="0"
+  local image_ability_config_count="0"
 
   if [[ ! -f "${patch_file}" ]]; then
     return
   fi
 
   provider_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='ai_provider_configs';" 2>/dev/null || echo "0")"
-  if [[ "${provider_config_count}" -ge 1 ]]; then
+  image_ability_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='ai_image_ability_configs';" 2>/dev/null || echo "0")"
+  if [[ "${provider_config_count}" -ge 1 ]] && [[ "${image_ability_config_count}" -ge 1 ]]; then
     return
   fi
 
-  log_info "检测到 AI Provider 默认配置缺失，自动执行模型配置补丁..."
+  log_info "检测到 AI 模型默认配置缺失，自动执行模型配置补丁..."
   if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
-    log_info "AI Provider 默认配置补齐完成。"
+    log_info "AI 模型默认配置补齐完成。"
     return
   fi
 
   # 函数说明：补丁失败时不阻塞本地联调，避免影响前后端启动与页面验证。
-  log_info "AI Provider 默认配置补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+  log_info "AI 模型默认配置补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
 # 函数说明：把历史前端 .env 中的 AI Provider Key 自动同步到后台配置，避免前台继续保存敏感 Key。

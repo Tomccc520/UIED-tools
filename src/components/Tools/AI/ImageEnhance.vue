@@ -29,6 +29,10 @@
               温馨提示：该功能正在优化中，如遇到问题请稍后再试。目前仅支持1920*1800以下分辨率的图片处理。
             </p>
           </div>
+          <div v-if="imageAbility" class="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs"
+            :class="imageAbility.available ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+            {{ imageAbility.available ? `当前能力：${imageAbility.label || '图像增强'} 已就绪` : '当前图像增强能力未配置，将无法调用' }}
+          </div>
         </div>
 
         <!-- 上传区域 -->
@@ -171,11 +175,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import { ElMessage, ElButton } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
+import {
+  getCurrentAiImageAbility,
+  parseAiImageAbilityErrorMessage,
+  requestAiImageAbility,
+  type AiImageAbilityCurrent
+} from '@/services/aiImageAbility'
 
 // 组件配置信息
 const info = {
@@ -237,9 +246,20 @@ const isDragging = ref(false)
 const imageUrl = ref('')
 const enhancedImageUrl = ref('')
 const processing = ref(false)
+const imageAbility = ref<AiImageAbilityCurrent | null>(null)
 
 // 获取当前路由
 const route = useRoute()
+
+/**
+ * 函数说明：读取当前图像增强能力配置，用于处理前判断是否已在后台开启。
+ */
+const loadImageAbility = async () => {
+  imageAbility.value = await getCurrentAiImageAbility({
+    ability: 'image_enhance',
+    forceRefresh: true
+  })
+}
 
 // 触发文件选择
 const triggerFileInput = () => {
@@ -322,6 +342,11 @@ const enhanceImage = async () => {
     return
   }
 
+  if (imageAbility.value && !imageAbility.value.available) {
+    ElMessage.error('当前图像增强能力未配置，请先在后台 AI 模型管理中启用')
+    return
+  }
+
   try {
     processing.value = true
 
@@ -339,22 +364,28 @@ const enhanceImage = async () => {
     formData.append('file', blob)
 
     // 调用API
-    const result = await axios.post('https://api.pearktrue.cn/api/imagedistinct/', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
+    const result = await requestAiImageAbility({
+      ability: 'image_enhance',
+      method: 'POST',
+      body: formData
     })
 
-    if (result.data.code === 200) {
+    if (!result.ok) {
+      throw new Error(await parseAiImageAbilityErrorMessage(result))
+    }
+
+    const resultData = await result.json()
+
+    if (resultData.code === 200) {
       // 直接使用返回的图片URL
-      enhancedImageUrl.value = result.data.image_url
+      enhancedImageUrl.value = resultData.image_url
       ElMessage.success('图片处理成功，点击图片可放大预览')
     } else {
-      ElMessage.error(result.data.msg || '图片处理失败，请重试')
+      ElMessage.error(resultData.msg || '图片处理失败，请重试')
     }
   } catch (error: any) {
     console.error('处理图片时出错:', error)
-    ElMessage.error(error.response?.data?.msg || '处理图片时出错，请重试')
+    ElMessage.error(error.message || '处理图片时出错，请重试')
   } finally {
     processing.value = false
   }
@@ -371,6 +402,10 @@ onUnmounted(() => {
   if (enhancedImageUrl.value && enhancedImageUrl.value.startsWith('blob:')) {
     URL.revokeObjectURL(enhancedImageUrl.value)
   }
+})
+
+onMounted(() => {
+  void loadImageAbility()
 })
 </script>
 
