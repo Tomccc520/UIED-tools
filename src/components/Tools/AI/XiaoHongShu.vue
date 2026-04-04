@@ -678,12 +678,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { Ref } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { ensureHtml2canvasRuntime } from '@/utils/toolRuntimeLoaders'
+import {
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderModelOption
+} from '@/services/aiProvider'
 
 const route = useRoute()
 
@@ -755,9 +761,7 @@ const currentThought = ref('')
 // API 配置
 const apiType = ref('free') // 默认使用免费API
 const customApiKey = ref('')
-
-// 预设的免费API key
-const FREE_API_KEY = import.meta.env.VITE_SILICONFLOW_API_KEY // 使用环境变量中的 API Key
+const providerReady = ref(false)
 
 // 风格选项
 const styleOptions = [
@@ -780,7 +784,7 @@ const topicExamples = [
 ]
 
 // 模型选项
-const modelOptions = [
+const defaultModelOptions = [
   // DeepSeek 系列
   { label: 'DeepSeek R1 Distill Qwen 32B (高性能)', value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B', desc: '基于 DeepSeek-R1 的 32B 蒸馏模型，适合需要高质量输出的场景。' },
   { label: 'DeepSeek R1 Distill Qwen 14B (均衡)', value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-14B', desc: '基于 DeepSeek-R1 的 14B 蒸馏模型，在性能和速度上取得平衡。' },
@@ -809,6 +813,36 @@ const modelOptions = [
   { label: 'Gemma 2 7B (免费)', value: 'Google/Gemma-7B-it', desc: 'Google开源的Gemma系列模型，适合通用对话和内容生成。' },
   { label: 'Gemma 2 2B (轻量免费)', value: 'Google/Gemma-2B-it', desc: 'Google开源的轻量级模型，适合快速响应场景。' }
 ]
+const modelOptions = ref(defaultModelOptions)
+
+/**
+ * 函数说明：把后台 Provider 模型选项映射成当前页面下拉框结构，替换原先写死的模型数组。
+ */
+const mapProviderModels = (models: AiProviderModelOption[]) => {
+  return models.map((item) => ({
+    label: item.label,
+    value: item.value,
+    desc: item.desc || '后台配置模型'
+  }))
+}
+
+/**
+ * 函数说明：读取后台当前 AI Provider 配置，统一当前页面默认模型与模型选项来源。
+ */
+const loadAiProviderConfig = async () => {
+  const provider = await getCurrentAiProvider()
+  providerReady.value = Boolean(provider.available)
+  if (!provider.available) {
+    return
+  }
+
+  const providerModels = mapProviderModels(provider.models || [])
+  if (providerModels.length > 0) {
+    modelOptions.value = providerModels
+  }
+
+  model.value = provider.defaultModel || providerModels[0]?.value || defaultModelOptions[0].value
+}
 
 // 模板数据
 const templates = [
@@ -1156,39 +1190,30 @@ const cancelGenerate = () => {
 // 修改代理函数
 const callAIAPI = async (requestBody: any) => {
   try {
-    // 使用 vite 代理地址
-    const apiUrl = '/api/v1/chat/completions'
-
     // 使用 AbortController 控制请求超时
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 30000) // 30秒超时
 
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${import.meta.env.VITE_SILICONFLOW_API_KEY}`
-      },
-      body: JSON.stringify({
-        model: requestBody.model,
-        messages: [
-          { role: 'system', content: '你是一个专业的小红书文案写作专家。' },
-          { role: 'user', content: requestBody.prompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 1000,
-        top_p: 1,
-        frequency_penalty: 0,
-        presence_penalty: 0
-      }),
+    const response = await requestAiProviderChat({
+      scene: 'chat',
+      model: requestBody.model,
+      overrideApiKey: apiType.value === 'custom' ? customApiKey.value.trim() : undefined,
+      messages: [
+        { role: 'system', content: '你是一个专业的小红书文案写作专家。' },
+        { role: 'user', content: requestBody.prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000,
+      top_p: 1,
+      frequency_penalty: 0,
+      presence_penalty: 0,
       signal: controller.signal
     })
 
     clearTimeout(timeoutId)
 
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.message || 'API响应错误')
+      throw new Error(await parseAiProviderErrorMessage(response))
     }
 
     const result = await response.json()
@@ -1212,6 +1237,16 @@ const callAIAPI = async (requestBody: any) => {
 const generate = async () => {
   if (!topic.value) {
     ElMessage.warning('请输入主题')
+    return
+  }
+
+  if (apiType.value === 'custom' && !customApiKey.value.trim()) {
+    ElMessage.warning('请输入自定义 API Key')
+    return
+  }
+
+  if (apiType.value === 'free' && !providerReady.value) {
+    ElMessage.warning('请先在后台 AI 模型管理中配置可用 Provider')
     return
   }
 
@@ -1291,6 +1326,10 @@ const generate = async () => {
   generating.value = false
   thinking.value = false
 }
+
+onMounted(() => {
+  void loadAiProviderConfig()
+})
 
 // 图片尺寸选项
 const imageSizeOptions = [

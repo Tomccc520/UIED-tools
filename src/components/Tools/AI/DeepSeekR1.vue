@@ -367,7 +367,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, onBeforeUnmount } from '@vue/runtime-core'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useHead } from '@vueuse/head'
@@ -375,6 +374,12 @@ import { wechatVerifyConfig } from '@/utils/verify'
 import { ensureHighlightRuntime, ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 import type { SiteLinkItem } from '@/services/siteConfig'
 import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
+import {
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderModelOption
+} from '@/services/aiProvider'
 
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
@@ -545,7 +550,6 @@ const loading = ref(false)
 const isThinking = ref(false)
 const textareaHeight = ref(56)
 const isTyping = ref(false)
-const accessToken = ref('')
 const enableTyping = ref(false)
 const showPrompts = ref(false)
 const reasoningContent = ref('')
@@ -639,8 +643,7 @@ interface ModelOption {
   maxTokens: number
 }
 
-// 模型配置
-const modelOptions: ModelOption[] = [
+const defaultModelOptions: ModelOption[] = [
   {
     label: 'DeepSeek R1',
     value: 'deepseek-ai/DeepSeek-R1',
@@ -691,13 +694,51 @@ const modelOptions: ModelOption[] = [
   }
 ]
 
-// 当前选择的模型 - 默认使用 R1 模型
+const modelOptions = ref<ModelOption[]>(defaultModelOptions)
+
+// 当前选择的模型 - 默认使用后台 Provider 默认模型，未配置时回退到站内原始默认值
 const currentModel = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B')
 
 // 获取当前选择模型的配置
 const getCurrentModelConfig = computed(() => {
-  return modelOptions.find(model => model.value === currentModel.value) || modelOptions[0]
+  return modelOptions.value.find(model => model.value === currentModel.value) || modelOptions.value[0]
 })
+
+/**
+ * 函数说明：将后台 Provider 返回的模型选项映射为当前页面的模型结构，保持现有下拉框渲染逻辑不变。
+ */
+const mapProviderModels = (models: AiProviderModelOption[]): ModelOption[] => {
+  return models.map((item) => ({
+    label: item.label,
+    value: item.value,
+    desc: item.desc || '后台配置模型',
+    maxTokens: Number(item.maxTokens || 16000)
+  }))
+}
+
+/**
+ * 函数说明：读取后台当前 Provider 配置，替换掉页面内写死的模型列表与默认模型。
+ */
+const loadAiProviderConfig = async () => {
+  const provider = await getCurrentAiProvider()
+  if (!provider.available) {
+    return
+  }
+
+  const providerModels = mapProviderModels(provider.models || [])
+  if (providerModels.length > 0) {
+    modelOptions.value = providerModels
+  }
+
+  const nextModel =
+    provider.defaultModel ||
+    providerModels[0]?.value ||
+    defaultModelOptions[0]?.value
+
+  if (nextModel) {
+    currentModel.value = nextModel
+  }
+}
 
 // 在 script setup 中添加新的响应式变量
 const usageCount = ref(Number(localStorage.getItem('deepseek_usage_count')) || 0)
@@ -826,12 +867,9 @@ const handleSend = async () => {
 
     currentMessage.value = ''
 
-    // 获取 API Key
-    const apiKey = getAccessToken()
-    if (!apiKey) throw new Error('API Key 未配置')
-
     // 优化请求参数
     const requestData = {
+      scene: 'chat',
       model: currentModel.value,
       messages: messages.value.slice(-4),
       temperature: 0.1,
@@ -864,23 +902,13 @@ const handleSend = async () => {
     const currentIndex = messages.value.length - 1
 
     // 发送请求
-    const response = await fetch('/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
-        'Origin': 'https://api.siliconflow.cn',
-        'Referer': 'https://api.siliconflow.cn/',
-        'Host': 'api.siliconflow.cn'
-      },
-      body: JSON.stringify(requestData),
+    const response = await requestAiProviderChat({
+      ...requestData,
       signal: controller.value.signal
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'API请求失败')
+      throw new Error(await parseAiProviderErrorMessage(response))
     }
 
     const reader = response.body?.getReader()
@@ -991,11 +1019,6 @@ const handleSend = async () => {
     isThinking.value = false
     controller.value = null
   }
-}
-
-// 获取 SiliconFlow API 的 access token
-const getAccessToken = () => {
-  return import.meta.env.VITE_SILICONFLOW_API_KEY
 }
 
 // 调整文本框高度
@@ -1156,6 +1179,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 
 onMounted(async () => {
   await loadHeaderLinks()
+  await loadAiProviderConfig()
   await ensureHighlightCore()
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)

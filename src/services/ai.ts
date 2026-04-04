@@ -9,35 +9,15 @@ import { useToolsStore } from '@/store/modules/tools'
 import type { Tool } from '@/types/tools'
 import { buildToolsPromptContext, mergeToolSuggestions, searchToolsByQuery } from '@/utils/toolSearch'
 import { debugLog, debugError, debugTimeStart, debugTimeEnd } from '@/utils/debug'
+import { getCurrentAiProvider } from '@/services/aiProvider'
 
 const SEARCH_CONTEXT_LIMIT = 80
 const SEARCH_LOCAL_MATCH_LIMIT = 24
 const SEARCH_SUGGESTION_LIMIT = 5
 
-// AI搜索服务配置
-const AI_API_CONFIG = {
-  baseURL: 'https://api.siliconflow.cn/v1',
-  timeout: 60000,
-  headers: {
-    Accept: 'application/json',
-    'Content-Type': 'application/json',
-    Authorization: `Bearer ${import.meta.env.VITE_SILICONFLOW_API_KEY || ''}`
-  }
-}
-
-// 硅基流动模型列表
-export const SILICONFLOW_MODELS = {
-  // DeepSeek系列
-  DEEPSEEK_V3: 'deepseek-ai/DeepSeek-V3',
-  DEEPSEEK_R1: 'deepseek-ai/DeepSeek-R1',
-  DEEPSEEK_R1_DISTILL_QWEN_32B: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B',
-
-  // Qwen系列
-  QWEN_2_5_72B_INSTRUCT: 'Qwen/Qwen2.5-72B-Instruct',
-  QWEN_2_5_CODER_32B: 'Qwen/Qwen2.5-Coder-32B-Instruct',
-
-  // GLM系列
-  GLM_4_9B_CHAT: 'THUDM/glm-4-9b-chat'
+export const AI_DEFAULT_MODELS = {
+  SEARCH: 'deepseek-ai/DeepSeek-V3',
+  SUGGESTION: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B'
 } as const
 
 // AI搜索接口
@@ -60,30 +40,20 @@ interface StreamDelta {
   reasoning_content?: string
 }
 
-// 创建axios实例
-const aiClient = axios.create(AI_API_CONFIG)
-
-// 请求拦截器
-aiClient.interceptors.request.use(
-  config => {
-    // 确保每次请求都带上最新的token
-    const token = import.meta.env.VITE_SILICONFLOW_API_KEY || ''
-    ;(config.headers as any).Authorization = `Bearer ${token}`
-    return config
-  },
-  error => {
-    debugError('请求拦截器错误:', error)
-    return Promise.reject(error)
+const aiClient = axios.create({
+  baseURL: '/api/common/ai/provider',
+  timeout: 120000,
+  headers: {
+    Accept: 'application/json',
+    'Content-Type': 'application/json'
   }
-)
+})
 
 // 响应拦截器
 aiClient.interceptors.response.use(
-  response => {
-    return response.data
-  },
+  response => response.data,
   error => {
-    debugError('API请求失败:', {
+    debugError('AI Provider 请求失败:', {
       status: error.response?.status,
       data: error.response?.data,
       message: error.message
@@ -93,7 +63,12 @@ aiClient.interceptors.response.use(
       throw new Error('请求超时，请稍后重试')
     }
 
-    throw new Error(error.response?.data?.message || '服务器错误，请稍后重试')
+    const upstreamMessage =
+      error.response?.data?.msg ||
+      error.response?.data?.message ||
+      error.response?.data?.error?.message
+
+    throw new Error(upstreamMessage || '服务器错误，请稍后重试')
   }
 )
 
@@ -116,18 +91,23 @@ const SEARCH_SYSTEM_PROMPT = `你是一个专业的工具网站搜索助手。�
 `
 
 /**
- * 检查 AI Key 是否可用
- * @description 用于决定是否调用远端 AI 服务，避免无效请求
- * @returns 是否已配置可用密钥
+ * 函数说明：检查后台是否已经配置可用的文本 AI Provider，决定是否进入 AI 增强逻辑。
  */
-const hasAvailableApiKey = (): boolean => {
-  return Boolean((import.meta.env.VITE_SILICONFLOW_API_KEY || '').trim())
+const hasAvailableProvider = async (): Promise<boolean> => {
+  const provider = await getCurrentAiProvider()
+  return Boolean(provider.available && provider.defaultModel)
 }
 
 /**
- * 加载工具数据
- * @description 保证搜索前拿到完整工具分类，避免首次检索为空
- * @returns 扁平化工具列表
+ * 函数说明：获取当前可用的默认模型，优先读取后台 Provider 默认模型，缺失时回退到本地安全默认值。
+ */
+const getProviderModel = async (fallbackModel: string): Promise<string> => {
+  const provider = await getCurrentAiProvider()
+  return provider.defaultModel || fallbackModel
+}
+
+/**
+ * 函数说明：加载工具数据，保证搜索前拿到完整工具分类，避免首次检索为空。
  */
 const loadAllTools = async (): Promise<Tool[]> => {
   const toolsStore = useToolsStore()
@@ -138,11 +118,7 @@ const loadAllTools = async (): Promise<Tool[]> => {
 }
 
 /**
- * 组装搜索上下文工具池
- * @description 先使用本地高相关候选，再补齐通用工具，平衡召回率和 Token 成本
- * @param allTools 全量工具
- * @param query 用户查询词
- * @returns 本地命中列表与模型上下文列表
+ * 函数说明：组装搜索上下文工具池，先使用本地高相关候选，再补齐通用工具以平衡召回率和成本。
  */
 const buildSearchToolPool = (allTools: Tool[], query: string) => {
   const localMatches = searchToolsByQuery(allTools, query, SEARCH_LOCAL_MATCH_LIMIT)
@@ -151,11 +127,7 @@ const buildSearchToolPool = (allTools: Tool[], query: string) => {
 }
 
 /**
- * 提取回答中命中的工具
- * @description 当 AI 回答明确提及工具标题时，用于补充推荐列表
- * @param content AI回答内容
- * @param allTools 全量工具
- * @returns 命中工具列表
+ * 函数说明：提取回答中命中的工具，便于在 AI 回答基础上补充更稳妥的推荐列表。
  */
 const extractMentionedTools = (content: string, allTools: Tool[]): Tool[] => {
   if (!content) return []
@@ -163,10 +135,7 @@ const extractMentionedTools = (content: string, allTools: Tool[]): Tool[] => {
 }
 
 /**
- * 将工具数据转换为前端建议格式
- * @description 统一推荐项数据结构，避免重复映射逻辑
- * @param tools 工具列表
- * @returns 推荐项数组
+ * 函数说明：将工具数据转换为前端建议格式，统一推荐项数据结构。
  */
 const mapSuggestions = (tools: Tool[]) => {
   return tools.map(tool => ({
@@ -177,12 +146,7 @@ const mapSuggestions = (tools: Tool[]) => {
 }
 
 /**
- * 构建本地兜底搜索响应
- * @description 当 AI 服务不可用时仍返回可点击的工具建议
- * @param query 搜索关键词
- * @param localMatches 本地匹配结果
- * @param reason 兜底原因
- * @returns 搜索响应
+ * 函数说明：构建本地兜底搜索响应，当 AI 服务不可用时仍返回可点击的工具建议。
  */
 const buildLocalFallbackResponse = (
   query: string,
@@ -209,10 +173,7 @@ const buildLocalFallbackResponse = (
 }
 
 /**
- * 创建流式 SSE 文本解析器
- * @description 处理跨 chunk 的半包数据，避免流式内容丢失
- * @param onDelta 解析到增量文本后的回调
- * @returns 响应文本处理函数
+ * 函数说明：创建流式 SSE 文本解析器，处理跨 chunk 的半包数据，避免流式内容丢失。
  */
 const createSSEParser = (onDelta: (delta: StreamDelta) => void) => {
   let cursor = 0
@@ -250,14 +211,11 @@ const createSSEParser = (onDelta: (delta: StreamDelta) => void) => {
 }
 
 /**
- * 执行AI搜索
- * @param query 搜索关键词
- * @param onUpdate 更新回调函数
- * @returns Promise<AISearchResponse>
+ * 函数说明：执行 AI 搜索，统一通过后台 AI Provider 代理完成增强搜索。
  */
 export const searchWithAI = async (
   query: string,
-  onUpdate?: (data: { content?: string, reasoning_content?: string }) => void
+  onUpdate?: (data: { content?: string; reasoning_content?: string }) => void
 ): Promise<AISearchResponse> => {
   const safeQuery = query.trim()
   if (!safeQuery) {
@@ -274,7 +232,7 @@ export const searchWithAI = async (
     const allTools = await loadAllTools()
     const { localMatches, contextTools } = buildSearchToolPool(allTools, safeQuery)
 
-    if (!hasAvailableApiKey()) {
+    if (!(await hasAvailableProvider())) {
       return buildLocalFallbackResponse(safeQuery, localMatches, 'AI能力未配置，已切换为本地搜索模式。')
     }
 
@@ -306,8 +264,11 @@ export const searchWithAI = async (
       })
     })
 
-    await aiClient.post('/chat/completions', {
-      model: SILICONFLOW_MODELS.DEEPSEEK_V3,
+    const model = await getProviderModel(AI_DEFAULT_MODELS.SEARCH)
+
+    await aiClient.post('/chat', {
+      scene: 'chat',
+      model,
       messages,
       temperature: 0.6,
       max_tokens: 1800,
@@ -345,9 +306,7 @@ export const searchWithAI = async (
 }
 
 /**
- * 获取AI搜索建议
- * @param query 搜索关键词
- * @returns Promise<string[]>
+ * 函数说明：获取 AI 搜索建议，优先走后台 Provider，失败时自动降级到本地建议。
  */
 export const getAISuggestions = async (query: string): Promise<string[]> => {
   const safeQuery = query.trim()
@@ -357,7 +316,7 @@ export const getAISuggestions = async (query: string): Promise<string[]> => {
     const allTools = await loadAllTools()
     const localMatches = searchToolsByQuery(allTools, safeQuery, SEARCH_SUGGESTION_LIMIT)
 
-    if (!hasAvailableApiKey()) {
+    if (!(await hasAvailableProvider())) {
       return localMatches.map(tool => tool.title).slice(0, SEARCH_SUGGESTION_LIMIT)
     }
 
@@ -373,8 +332,11 @@ export const getAISuggestions = async (query: string): Promise<string[]> => {
       }
     ]
 
-    const response: any = await aiClient.post('/chat/completions', {
-      model: SILICONFLOW_MODELS.DEEPSEEK_R1_DISTILL_QWEN_32B,
+    const model = await getProviderModel(AI_DEFAULT_MODELS.SUGGESTION)
+
+    const response: any = await aiClient.post('/chat', {
+      scene: 'chat',
+      model,
       messages,
       temperature: 0.5,
       max_tokens: 500,
@@ -405,10 +367,7 @@ export const getAISuggestions = async (query: string): Promise<string[]> => {
 }
 
 /**
- * 通用AI写作生成
- * @param params 生成参数
- * @param onUpdate 更新回调
- * @returns Promise<string>
+ * 函数说明：通用 AI 写作生成，统一通过后台 Provider 代理输出流式文本。
  */
 export const generateAIWriting = async (
   params: {
@@ -422,6 +381,11 @@ export const generateAIWriting = async (
   try {
     debugTimeStart('AI写作')
 
+    const provider = await getCurrentAiProvider()
+    if (!provider.available) {
+      throw new Error('AI能力未配置，请先到后台 AI 模型管理中启用可用 Provider')
+    }
+
     const messages = [
       {
         role: 'system',
@@ -433,7 +397,6 @@ export const generateAIWriting = async (
       }
     ]
 
-    // 用于存储完整内容
     let fullContent = ''
     const parseSSE = createSSEParser((delta) => {
       const contentDelta = delta.content || ''
@@ -442,8 +405,9 @@ export const generateAIWriting = async (
       onUpdate?.(contentDelta)
     })
 
-    await aiClient.post('/chat/completions', {
-      model: params.model || SILICONFLOW_MODELS.DEEPSEEK_V3,
+    await aiClient.post('/chat', {
+      scene: 'chat',
+      model: params.model || provider.defaultModel,
       messages,
       temperature: params.temperature || 0.7,
       max_tokens: 4000,

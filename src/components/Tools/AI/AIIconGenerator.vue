@@ -276,10 +276,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import {
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderModelOption
+} from '@/services/aiProvider'
 
 const route = useRoute()
 
@@ -339,6 +345,22 @@ interface AIModel {
   max_tokens: number
 }
 
+/**
+ * 函数说明：把后台 Provider 模型选项映射成图标生成页使用的模型结构。
+ */
+const mapProviderModels = (models: AiProviderModelOption[]): AIModel[] => {
+  return models.map((item, index) => ({
+    label: item.label,
+    value: item.value,
+    type: index === 0 ? 'success' : 'warning',
+    tag: index === 0 ? '默认' : '扩展',
+    description: item.desc || '后台配置模型',
+    points: 1,
+    temperature: 0.7,
+    max_tokens: Number(item.maxTokens || 2048)
+  }))
+}
+
 // 图标动画选项
 interface AnimationOption {
   label: string
@@ -356,7 +378,7 @@ const animationOptions: AnimationOption[] = [
 ]
 
 // AI模型选项
-const aiModels: AIModel[] = [
+const defaultAiModels: AIModel[] = [
   {
     label: 'DeepSeek-7B',
     value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B',
@@ -378,6 +400,7 @@ const aiModels: AIModel[] = [
     max_tokens: 4096
   }
 ]
+const aiModels = ref<AIModel[]>(defaultAiModels)
 
 // 预设颜色
 const presetColors = [
@@ -459,6 +482,27 @@ const features = [
   }
 ]
 
+/**
+ * 函数说明：读取后台 Provider 配置，替换当前页面原本写死的模型列表与默认模型。
+ */
+const loadAiProviderConfig = async () => {
+  const provider = await getCurrentAiProvider()
+  if (!provider.available) {
+    return
+  }
+
+  const providerModels = mapProviderModels(provider.models || [])
+  if (providerModels.length > 0) {
+    aiModels.value = providerModels
+  }
+
+  selectedModel.value = provider.defaultModel || providerModels[0]?.value || defaultAiModels[0].value
+}
+
+onMounted(() => {
+  void loadAiProviderConfig()
+})
+
 // 生成图标
 const generateIcon = async () => {
   if (!iconDescription.value) {
@@ -488,46 +532,31 @@ const generateIcon = async () => {
    - 所有路径和形状必须正确闭合
 请直接返回SVG代码，不要包含任何其他说明文字。`)
 
-    // 获取 API Key
-    const apiKey = import.meta.env.VITE_SILICONFLOW_API_KEY
-    if (!apiKey) {
-      throw new Error('API Key 未配置，请先配置 SiliconFlow API Key')
-    }
-
     // 并行发送4个请求
     const requests = prompts.map(prompt =>
-      fetch('/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: selectedModel.value,
-          messages: [
-            {
-              role: 'system',
-              content: '你是一个专业的图标设计师，擅长设计简洁、现代的SVG矢量图标。请只返回SVG代码，不需要其他解释。确保SVG代码完全符合规范。'
-            },
-            {
-              role: 'user',
-              content: prompt
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 2048,
-          stream: false
-        })
+      requestAiProviderChat({
+        scene: 'chat',
+        model: selectedModel.value,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个专业的图标设计师，擅长设计简洁、现代的SVG矢量图标。请只返回SVG代码，不需要其他解释。确保SVG代码完全符合规范。'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 2048,
+        stream: false
       })
     )
 
     const responses = await Promise.all(requests)
     const results = await Promise.all(responses.map(async (response, index) => {
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        const errorMessage = errorData.error?.message || errorData.message || '未知错误'
-        throw new Error(`请求失败 (${response.status}): ${errorMessage}`)
+        throw new Error(`请求失败 (${response.status}): ${await parseAiProviderErrorMessage(response)}`)
       }
       return response.json()
     }))

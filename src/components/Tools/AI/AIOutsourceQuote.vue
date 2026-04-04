@@ -662,6 +662,12 @@ import { useRouter, useRoute } from 'vue-router'
 import type { CascaderOption } from 'element-plus'
 import { ElCascader } from 'element-plus'
 import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
+import {
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderModelOption
+} from '@/services/aiProvider'
 
 // 初始化路由
 const router = useRouter()
@@ -770,18 +776,17 @@ const features = [
 // API类型
 const apiType = ref('free')
 const customApiKey = ref('')
+const providerReady = ref(false)
 
-// API配置
-const apiKey = ref(import.meta.env.VITE_SILICONFLOW_API_KEY || '')
-
-// 检查API Key
+// 检查 API 能力
 const checkApiKey = computed(() => {
-  return apiKey.value.length > 0
+  return apiType.value === 'custom'
+    ? customApiKey.value.trim().length > 0
+    : providerReady.value
 })
 
 // AI模型选择
-const modelType = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B')
-const modelOptions = [
+const defaultModelOptions = [
   { value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B', label: 'DeepSeek R1 7B', desc: '推荐使用', maxTokens: 8000, isRecommend: true },
   { value: 'deepseek-ai/DeepSeek-R1', label: 'DeepSeek R1', desc: '华为云昇腾云服务版', maxTokens: 8000 },
   { value: 'Pro/deepseek-ai/DeepSeek-R1', label: 'Pro DeepSeek R1', desc: '专业版', maxTokens: 8000 },
@@ -791,6 +796,46 @@ const modelOptions = [
   { value: 'deepseek-ai/DeepSeek-R1-Distill-Llama-8B', label: 'DeepSeek R1 8B', desc: '轻量级', maxTokens: 8000 },
   { value: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B', label: 'DeepSeek R1 1.5B', desc: '超轻量级', maxTokens: 4000 }
 ]
+const modelOptions = ref(defaultModelOptions)
+const modelType = ref('deepseek-ai/DeepSeek-R1-Distill-Qwen-7B')
+
+/**
+ * 函数说明：把后台 Provider 返回的模型选项映射成当前页面下拉框需要的结构。
+ */
+const mapProviderModels = (models: AiProviderModelOption[]) => {
+  return models.map((item) => ({
+    value: item.value,
+    label: item.label,
+    desc: item.desc || '后台配置模型',
+    maxTokens: Number(item.maxTokens || 8000),
+    isRecommend: false
+  }))
+}
+
+/**
+ * 函数说明：读取后台当前 AI Provider 配置，替换掉页面原本写死的模型列表与默认模型。
+ */
+const loadAiProviderConfig = async () => {
+  const provider = await getCurrentAiProvider()
+  providerReady.value = Boolean(provider.available)
+  if (!provider.available) {
+    return
+  }
+
+  const providerModels = mapProviderModels(provider.models || [])
+  if (providerModels.length > 0) {
+    modelOptions.value = providerModels
+  }
+
+  const nextModel =
+    provider.defaultModel ||
+    providerModels[0]?.value ||
+    defaultModelOptions[0]?.value
+
+  if (nextModel) {
+    modelType.value = nextModel
+  }
+}
 
 interface ProjectTypeOption extends CascaderOption {
   value: string
@@ -955,7 +1000,7 @@ const controller = ref<AbortController | null>(null)
 // 修改生成报价函数
 const generate = async () => {
   if (!checkApiKey.value) {
-    ElMessage.warning('请先配置 API Key')
+    ElMessage.warning(apiType.value === 'custom' ? '请输入自定义 API Key' : '请先在后台 AI 模型管理中配置可用 Provider')
     return
   }
 
@@ -968,18 +1013,14 @@ const generate = async () => {
   currentThought.value = '正在分析项目需求和市场情况...'
 
   try {
-    const response = await fetch('/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey.value}`
-      },
-      body: JSON.stringify({
-        model: modelType.value,
-        messages: [
-          {
-            role: 'system',
-            content: `你是一个专业的软件开发外包顾问。请根据用户的需求生成一份详细的报价方案，包含以下内容：
+    const response = await requestAiProviderChat({
+      scene: 'chat',
+      model: modelType.value,
+      overrideApiKey: apiType.value === 'custom' ? customApiKey.value.trim() : undefined,
+      messages: [
+        {
+          role: 'system',
+          content: `你是一个专业的软件开发外包顾问。请根据用户的需求生成一份详细的报价方案，包含以下内容：
 1. 项目名称
 2. 项目概述
 3. 工作范围(用数组返回)
@@ -998,21 +1039,19 @@ const generate = async () => {
   ],
   "total": 10000
 }`
-          },
-          {
-            role: 'user',
-            content: `项目类型: ${selectedType.value?.label}\n项目需求: ${requirements.value}\n报价偏好: ${pricePreferenceOptions.find(item => item.value === pricePreference.value)?.label}`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 2000,
-        stream: true
-      })
+        },
+        {
+          role: 'user',
+          content: `项目类型: ${selectedType.value?.label}\n项目需求: ${requirements.value}\n报价偏好: ${pricePreferenceOptions.find(item => item.value === pricePreference.value)?.label}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 2000,
+      stream: true
     })
 
     if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.message || 'API请求失败')
+      throw new Error(await parseAiProviderErrorMessage(response))
     }
 
     const reader = response.body?.getReader()
@@ -1620,6 +1659,7 @@ watch([companyInfo, quoteResult, quoteOptions], () => {
 
 // 页面加载时恢复数据
 onMounted(() => {
+  void loadAiProviderConfig()
   const savedData = localStorage.getItem('quoteData')
   if (savedData) {
     try {

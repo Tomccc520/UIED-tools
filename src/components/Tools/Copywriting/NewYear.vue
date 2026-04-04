@@ -167,6 +167,11 @@ import { ref, onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { copy } from '@/utils/copy'
+import {
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat
+} from '@/services/aiProvider'
 
 // Declare lottie for TypeScript
 declare const lottie: any
@@ -356,44 +361,38 @@ const generateText = async () => {
     loadingText.value = '正在生成文案...'
 
     try {
-      // 检查 API Key 是否配置
-      const apiKey = import.meta.env.VITE_DEEPSEEK_API_KEY
-      if (!apiKey) {
-        loadingText.value = 'API Key 未配置，正在切换到本地数据...'
+      // 检查后台 AI Provider 是否可用
+      const provider = await getCurrentAiProvider()
+      if (!provider.available) {
+        loadingText.value = 'AI Provider 未配置，正在切换到本地数据...'
         await new Promise(resolve => setTimeout(resolve, 500))
-        console.error('DeepSeek API Key 未配置')
-        throw new Error('API Key 未配置')
+        console.error('文本 AI Provider 未配置')
+        throw new Error('AI Provider 未配置')
       }
 
       loadingText.value = '正在请求 AI 生成...'
-      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-          model: 'deepseek-chat',
-          messages: [
-            {
-              role: 'system',
-              content: '你是一个擅长写朋友圈文案的写手，请以朋友的口吻生成一条走心的2025年新年文案。要求：1. 字数在50字以内；2. 语气要像发朋友圈一样自然随性，避免过于正式；3. 要有新年的喜悦和对朋友的真诚祝福；4. 可以适当融入蛇年元素，但不要太刻意；5. 文案要有温度，像是在跟好朋友聊天。'
-            },
-            {
-              role: 'user',
-              content: prompt.value ?
-                `请根据"${prompt.value}"这个主题，生成一条2025蛇年新年朋友圈文案` :
-                '请生成一条2025蛇年新年朋友圈文案'
-            }
-          ],
-          temperature: 0.7,
-          max_tokens: 200,
-          stream: false
-        })
+      const response = await requestAiProviderChat({
+        scene: 'chat',
+        model: provider.defaultModel,
+        messages: [
+          {
+            role: 'system',
+            content: '你是一个擅长写朋友圈文案的写手，请以朋友的口吻生成一条走心的2025年新年文案。要求：1. 字数在50字以内；2. 语气要像发朋友圈一样自然随性，避免过于正式；3. 要有新年的喜悦和对朋友的真诚祝福；4. 可以适当融入蛇年元素，但不要太刻意；5. 文案要有温度，像是在跟好朋友聊天。'
+          },
+          {
+            role: 'user',
+            content: prompt.value ?
+              `请根据"${prompt.value}"这个主题，生成一条2025蛇年新年朋友圈文案` :
+              '请生成一条2025蛇年新年朋友圈文案'
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 200,
+        stream: false
       })
 
       if (!response.ok) {
-        throw new Error(`API 请求失败: ${response.status}`)
+        throw new Error(await parseAiProviderErrorMessage(response))
       }
 
       loadingText.value = '正在处理生成结果...'

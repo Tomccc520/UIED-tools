@@ -573,6 +573,181 @@ apply_license_module_patch() {
   log_info "源码授权补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：检测并补齐 AI Provider 默认配置，确保文本类 AI 工具与后台模型管理可直接联动。
+apply_ai_provider_config_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_ai_provider_configs.sql"
+  local provider_config_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  provider_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='ai_provider_configs';" 2>/dev/null || echo "0")"
+  if [[ "${provider_config_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到 AI Provider 默认配置缺失，自动执行模型配置补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "AI Provider 默认配置补齐完成。"
+    return
+  fi
+
+  # 函数说明：补丁失败时不阻塞本地联调，避免影响前后端启动与页面验证。
+  log_info "AI Provider 默认配置补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：把历史前端 .env 中的 AI Provider Key 自动同步到后台配置，避免前台继续保存敏感 Key。
+sync_frontend_ai_provider_env_keys() {
+  local env_file=""
+  local provider_json=""
+  local synced_json=""
+  local synced_providers=""
+  local temp_sql=""
+  local provider_json_b64=""
+
+  if [[ -f "${ROOT_DIR}/.env.local" ]]; then
+    env_file="${ROOT_DIR}/.env.local"
+  elif [[ -f "${ROOT_DIR}/.env" ]]; then
+    env_file="${ROOT_DIR}/.env"
+  else
+    return
+  fi
+
+  provider_json="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT value FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='ai_provider_configs' LIMIT 1;" 2>/dev/null || true)"
+  if [[ -z "${provider_json}" ]]; then
+    return
+  fi
+
+  synced_json="$(
+    FRONTEND_ENV_FILE="${env_file}" PROVIDER_JSON="${provider_json}" python3 - <<'PY'
+import json
+import os
+import re
+import sys
+
+env_file = os.environ.get("FRONTEND_ENV_FILE", "")
+provider_json = os.environ.get("PROVIDER_JSON", "")
+
+if not env_file or not provider_json:
+    print("")
+    sys.exit(0)
+
+def parse_env_file(file_path: str) -> dict:
+    data = {}
+    pattern = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$")
+    with open(file_path, "r", encoding="utf-8") as handle:
+        for raw_line in handle:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            match = pattern.match(line)
+            if not match:
+                continue
+            key = match.group(1).strip()
+            value = match.group(2).strip()
+            if len(value) >= 2 and ((value[0] == "'" and value[-1] == "'") or (value[0] == '"' and value[-1] == '"')):
+                value = value[1:-1]
+            data[key] = value
+    return data
+
+try:
+    providers = json.loads(provider_json)
+    if not isinstance(providers, list):
+        print("")
+        sys.exit(0)
+except Exception:
+    print("")
+    sys.exit(0)
+
+env_map = parse_env_file(env_file)
+provider_key_map = {
+    "siliconflow": ["VITE_SILICONFLOW_API_KEY", "SILICONFLOW_API_KEY"],
+    "deepseek": ["VITE_DEEPSEEK_API_KEY", "DEEPSEEK_API_KEY"],
+    "kimi": ["VITE_KIMI_API_KEY", "VITE_MOONSHOT_API_KEY", "KIMI_API_KEY", "MOONSHOT_API_KEY"],
+    "doubao": ["VITE_DOUBAO_API_KEY", "VITE_ARK_API_KEY", "DOUBAO_API_KEY", "ARK_API_KEY"],
+    "openai": ["VITE_OPENAI_API_KEY", "OPENAI_API_KEY"],
+}
+
+changed = False
+synced = []
+for item in providers:
+    if not isinstance(item, dict):
+        continue
+    provider = str(item.get("provider", "")).strip().lower()
+    if not provider:
+        continue
+    if str(item.get("apiKey", "")).strip():
+        continue
+    for env_name in provider_key_map.get(provider, []):
+        value = str(env_map.get(env_name, "")).strip()
+        if value:
+            item["apiKey"] = value
+            synced.append(provider)
+            changed = True
+            break
+
+if not changed:
+    print("")
+    sys.exit(0)
+
+print(json.dumps({
+    "providers": providers,
+    "syncedProviders": synced
+}, ensure_ascii=False))
+PY
+  )"
+
+  if [[ -z "${synced_json}" ]]; then
+    return
+  fi
+
+  provider_json_b64="$(
+    SYNCED_PROVIDER_PAYLOAD="${synced_json}" python3 - <<'PY'
+import base64
+import json
+import os
+
+payload = json.loads(os.environ["SYNCED_PROVIDER_PAYLOAD"])
+providers = payload.get("providers", [])
+print(base64.b64encode(json.dumps(providers, ensure_ascii=False).encode("utf-8")).decode("ascii"))
+PY
+  )"
+
+  synced_providers="$(
+    SYNCED_PROVIDER_PAYLOAD="${synced_json}" python3 - <<'PY'
+import json
+import os
+
+payload = json.loads(os.environ["SYNCED_PROVIDER_PAYLOAD"])
+items = payload.get("syncedProviders", [])
+print(",".join(items))
+PY
+  )"
+
+  if [[ -z "${provider_json_b64}" ]]; then
+    return
+  fi
+
+  temp_sql="$(mktemp "/tmp/uiedtool-ai-provider-sync.XXXXXX.sql")"
+  cat > "${temp_sql}" <<EOF
+SET NAMES utf8mb4;
+UPDATE \`${DB_NAME}\`.la_system_config
+SET value = CONVERT(FROM_BASE64('${provider_json_b64}') USING utf8mb4),
+    update_time = UNIX_TIMESTAMP()
+WHERE type = 'ai_model' AND name = 'ai_provider_configs';
+EOF
+
+  log_info "检测到历史前端 AI Key，自动同步到后台 Provider 配置（${synced_providers}）..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${temp_sql}"; then
+    log_info "历史前端 AI Key 已同步到后台 Provider 配置。"
+  else
+    log_info "历史前端 AI Key 同步失败，已跳过本次同步并继续启动。"
+  fi
+
+  rm -f "${temp_sql}"
+}
+
 # 函数说明：检测 PID 文件对应进程是否存活，可选校验端口监听，避免 PID 复用误判
 is_pid_running() {
   local pid_file="$1"
@@ -755,6 +930,8 @@ main() {
   apply_member_order_menu_patch
   apply_role_permission_baseline_patch
   apply_license_module_patch
+  apply_ai_provider_config_patch
+  sync_frontend_ai_provider_env_keys
   start_likeadmin_server
   start_likeadmin_admin
   start_matting_service

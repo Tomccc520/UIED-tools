@@ -1,17 +1,8 @@
 <!--
- * @file DeepSeek.vue
- * @description DeepSeek AI对话组件,基于最新DeepSeekChat API实现智能对话
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2024-2-6
- *
- * 功能特性：
- * 1. 支持与AI进行自然对话
- * 2. 支持上下文记忆功能
- * 3. 支持系统角色设定
- * 4. 支持对话记录保存
- * 5. 支持清空对话历史
- * 6. 响应式布局设计
+ * @createDate 2026-04-05
  -->
 
 <template>
@@ -22,6 +13,10 @@
         <!-- 刷新提示 -->
         <div class="mb-4 p-3 bg-yellow-50 text-yellow-700 rounded-lg text-sm">
           提示：页面刷新后对话记录将会消失，请注意及时保存重要内容。
+        </div>
+        <div class="mb-4 p-3 rounded-lg text-sm"
+          :class="providerReady ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'">
+          {{ providerStatusText }}
         </div>
 
         <!-- 标题区域 -->
@@ -202,14 +197,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-04-05
+ */
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import {
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderCurrent
+} from '@/services/aiProvider'
 
 // 组件配置信息
 const info = {
   title: "DeepSeek AI对话",
-  subtitle: "基于最新DeepSeekChat API的智能对话工具，支持上下文记忆"
+  subtitle: "由后台 AI Provider 管理统一驱动的智能对话工具，支持上下文记忆"
 }
 
 // 简化数据结构
@@ -231,8 +237,17 @@ const currentMessage = ref('')
 const loading = ref(false)
 const textareaHeight = ref(56)
 const isTyping = ref(false)
+const providerInfo = ref<AiProviderCurrent | null>(null)
 let typewriterTimer: ReturnType<typeof setTimeout> | null = null
 let scrollRafId: number | null = null
+
+const providerReady = computed(() => Boolean(providerInfo.value?.available && providerInfo.value?.defaultModel))
+const providerStatusText = computed(() => {
+  if (!providerReady.value) {
+    return '当前未配置可用的 AI Provider，请先到后台“AI模型管理”中填写 Provider 的 Base URL、模型和 Key。'
+  }
+  return `当前对话由 ${providerInfo.value?.label || 'AI Provider'} 驱动，默认模型：${providerInfo.value?.defaultModel || '未设置'}`
+})
 
 /**
  * 调度对话区滚动到底部
@@ -280,6 +295,28 @@ const startTypewriterOutput = (targetMessage: Message, fullText: string) => {
   }
 
   typeNextChunk()
+}
+
+/**
+ * 函数说明：读取后台 AI Provider 当前配置，统一接管当前对话页所用模型。
+ */
+const loadAiProviderConfig = async () => {
+  providerInfo.value = await getCurrentAiProvider({ scene: 'chat', forceRefresh: true })
+}
+
+/**
+ * 函数说明：从统一 AI Provider 返回中提取最终回答文本，兼容 OpenAI 协议与简单文本结构。
+ */
+const extractAssistantText = (payload: any): string => {
+  const choice = payload?.choices?.[0]
+  const messageText =
+    choice?.message?.content ||
+    choice?.delta?.content ||
+    payload?.message ||
+    payload?.content ||
+    ''
+
+  return typeof messageText === 'string' ? messageText.trim() : ''
 }
 
 // 功能特性
@@ -383,6 +420,10 @@ const handleSend = async () => {
     return
   }
   if (loading.value) return
+  if (!providerReady.value) {
+    ElMessage.warning('AI能力未配置，请先到后台 AI 模型管理启用可用 Provider')
+    return
+  }
 
   try {
     loading.value = true
@@ -396,14 +437,26 @@ const handleSend = async () => {
     // 滚动到底部
     scheduleScrollToBottom()
 
-    // 调用API
-    const response = await axios.post('https://api.pearktrue.cn/api/deepseek/', {
-      messages: messages.value
+    // 调用统一 AI Provider 代理
+    const response = await requestAiProviderChat({
+      scene: 'chat',
+      model: providerInfo.value?.defaultModel,
+      messages: messages.value.map((item) => ({
+        role: item.role,
+        content: item.content
+      })),
+      temperature: 0.7,
+      max_tokens: 2000
     })
+    if (!response.ok) {
+      throw new Error(await parseAiProviderErrorMessage(response))
+    }
+
+    const payload = await response.json()
+    const aiMessage = extractAssistantText(payload)
 
     // 添加AI回复(使用打字机效果)
-    if (response.data && response.data.code === 200 && response.data.message) {
-      const aiMessage = response.data.message
+    if (aiMessage) {
       const assistantMessage: Message = {
         role: 'assistant',
         content: ''
@@ -413,8 +466,7 @@ const handleSend = async () => {
       // 打字机效果（分帧批量输出）
       startTypewriterOutput(assistantMessage, aiMessage)
     } else {
-      console.error('API响应数据:', response.data)
-      throw new Error('API返回数据格式不符合预期')
+      throw new Error('AI返回内容为空，请检查后台 Provider 模型配置')
     }
 
     // 清空输入框
@@ -425,7 +477,7 @@ const handleSend = async () => {
 
   } catch (error) {
     console.error('发送消息失败:', error)
-    ElMessage.error('发送消息失败，请重试')
+    ElMessage.error(error instanceof Error ? error.message : '发送消息失败，请重试')
   } finally {
     loading.value = false
   }
@@ -468,6 +520,7 @@ const handleKeyPress = (e: KeyboardEvent) => {
 onMounted(() => {
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)
+  void loadAiProviderConfig()
 })
 
 onBeforeUnmount(() => {
