@@ -1,6 +1,6 @@
 <script setup lang="ts">
 // import { Star } from '@element-plus/icons-vue'
-import { computed, onMounted, reactive } from 'vue';
+import { computed, onMounted, reactive, watch } from 'vue';
 import { useRoute } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
 // import { ElMessageBox } from 'element-plus'
@@ -21,18 +21,33 @@ const searchParam = reactive({
 const toolsStore = useToolsStore()
 
 /**
- * 工具页头部标题统一补齐“免费”前缀
+ * 函数说明：读取当前路由对应的工具配置，优先让页头文案跟随后台工具分类树。
  */
-const displayTitle = computed(() => {
-  return ensureFreeToolTitle(props.title || '')
-})
-
-//根据路由查询tool id
-const getToolInfo = async () => {
-  let routeStr = route.path
+const loadToolInfo = async () => {
+  const routeStr = route.path
   searchParam.route = rtrim(routeStr, '/')
   await toolsStore.getToolInfo(searchParam)
 }
+
+/**
+ * 函数说明：提取当前工具配置，供标题和简介优先使用后台化数据。
+ */
+const currentToolInfo = computed(() => toolsStore.toolInfo)
+
+/**
+ * 函数说明：工具页头部标题统一补齐“免费”前缀，优先读取后台工具标题。
+ */
+const displayTitle = computed(() => {
+  return ensureFreeToolTitle(currentToolInfo.value?.title || props.title || '')
+})
+
+/**
+ * 函数说明：工具页副标题优先读取后台工具简介，未配置时回退组件传入文案。
+ */
+const displaySubtitle = computed(() => {
+  return currentToolInfo.value?.desc || props.subtitle || ''
+})
+
 //收藏
 // const collect = () => {
 //   ElMessageBox({
@@ -42,8 +57,15 @@ const getToolInfo = async () => {
 // }
 
 onMounted(() => {
-  getToolInfo()
+  void loadToolInfo()
 })
+
+watch(
+  () => route.path,
+  () => {
+    void loadToolInfo()
+  }
+)
 
 </script>
 
@@ -52,8 +74,8 @@ onMounted(() => {
     <div class="text-xl font-medium">
       {{ displayTitle }}
     </div>
-    <div v-if="props.subtitle" class="text-sm text-gray-600 mt-2">
-      {{ props.subtitle }}
+    <div v-if="displaySubtitle" class="text-sm text-gray-600 mt-2">
+      {{ displaySubtitle }}
     </div>
   </div>
 </template>

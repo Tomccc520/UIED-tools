@@ -200,6 +200,7 @@ import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { Search, Delete, Link as LinkIcon, Close, Loading, User, ChatDotRound, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
+import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteQuickToolItem } from '@/services/siteConfig'
 import logoImg from '@/assets/uiedlogo.png'
 import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 import { debugLog, debugError, isDev } from '@/utils/debug'
@@ -211,6 +212,8 @@ type MarkedCore = typeof import('marked').marked
 let markedCore: MarkedCore | null = null
 let markedConfigured = false
 const markedReady = ref(false)
+const defaultSearchQuickTools = getDefaultSitePublicConfig().searchQuickTools
+const quickTools = ref<SiteQuickToolItem[]>(defaultSearchQuickTools)
 
 /**
  * 按需加载并配置搜索面板 Markdown 渲染器
@@ -445,39 +448,15 @@ const removeHistory = (index: number) => {
   localStorage.setItem('searchHistory', JSON.stringify(searchHistory.value))
 }
 
-// 更新快捷工具数据
-const quickTools = [
-  {
-    title: 'DeepSeek R1对话',
-    desc: '基于 DeepSeek-R1 推理模型的智能对话',
-    url: '/tools/ai/deepseek-r1'
-  },
-  {
-    title: 'DeepSeek AI对话',
-    desc: '基础智能对话服务',
-    url: '/tools/ai/deepseek'
-  },
-  {
-    title: 'DeepSeek提示词',
-    desc: '专业的 Prompt 提示词指南',
-    url: '/tools/ai/deepseek-prompt'
-  },
-  {
-    title: 'DeepSeek导航',
-    desc: 'DeepSeek 模型与工具导航',
-    url: '/tools/ai/deepseek-nav'
-  },
-  {
-    title: 'AI封面设计',
-    desc: 'AI智能生成封面图片',
-    url: '/tools/ai-design-cover'
-  },
-  {
-    title: 'AI产品榜',
-    desc: '跳转至 AI 产品导航站',
-    url: 'https://hao.uied.cn/'
-  }
-]
+/**
+ * 函数说明：读取后台搜索面板快捷入口配置，未配置时回退前端默认值。
+ */
+const loadSearchQuickTools = async () => {
+  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+  quickTools.value = siteConfig.searchQuickTools.length
+    ? siteConfig.searchQuickTools
+    : defaultSearchQuickTools
+}
 
 // 在新窗口打开链接
 const openInNewTab = (url: string) => {
@@ -638,6 +617,7 @@ const handleClear = () => {
 // 组件挂载时加载搜索历史
 onMounted(() => {
   loadSearchHistory()
+  loadSearchQuickTools()
 
   // 调试logo图片 - 仅在开发环境
   if (isDev) {

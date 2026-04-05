@@ -19,6 +19,8 @@ import 'default-passive-events'
 // 导入调试工具
 import { debugLog, isDev } from './utils/debug'
 import { ensureFreeToolTitle } from './utils/string'
+import { applyRouteSeoFallback } from './services/siteSeo'
+import { warmupSitePublicConfig } from './services/siteConfig'
 
 const app = createApp(App)
 //安装仓库
@@ -31,27 +33,9 @@ setupMdEditor(app)
 // 挂载全局模板方法：仅用于工具页面内部标题展示
 app.config.globalProperties.$ensureFreeToolTitle = ensureFreeToolTitle
 
-// 路由守卫，动态更新页面标题和 meta 信息
+// 路由守卫：先用本地兜底 SEO 立即更新页面，再由 router.afterEach 异步套用后台配置
 router.beforeEach((to, _from, next) => {
-  // 更新标题
-  if (to.meta.title) {
-    document.title = `${to.meta.title} - UIED Tools`
-  } else {
-    document.title = 'UIED Tools - 免费在线工具集合'
-  }
-
-  // 更新 meta 描述
-  const descriptionMeta = document.querySelector('meta[name="description"]')
-  if (descriptionMeta && to.meta.description) {
-    descriptionMeta.setAttribute('content', to.meta.description as string)
-  }
-
-  // 更新 meta 关键词
-  const keywordsMeta = document.querySelector('meta[name="keywords"]')
-  if (keywordsMeta && to.meta.keywords) {
-    keywordsMeta.setAttribute('content', to.meta.keywords as string)
-  }
-
+  applyRouteSeoFallback(to)
   next()
 })
 
@@ -59,5 +43,8 @@ router.beforeEach((to, _from, next) => {
 isDev ?
   debugLog('应用运行在开发环境，调试信息将会显示') :
   debugLog('应用运行在生产环境，调试信息已禁用')
+
+// 预热站点公共配置缓存，减少首次进入工具页时的 SEO 回填等待
+void warmupSitePublicConfig()
 
 app.mount('#app')

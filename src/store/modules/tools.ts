@@ -3,6 +3,7 @@ import { getToolsCate } from '../../components/Tools/tools'
 import { getWebInfo } from '../../api/webinfo'
 import { getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
+import { findToolByUrl, flattenToolsFromCategories } from '@/services/toolCatalog'
 
 interface ToolInfoQuery {
   id?: number
@@ -117,19 +118,18 @@ export const useToolsStore = defineStore('tools', {
         const toolId = params.id
         const titleValue = params.title?.trim()
 
-        const allTools = this.toolsList()
-        const matchedTool = allTools.find(tool => {
-          if (routeValue) {
-            return tool.url === routeValue
-          }
-          if (typeof toolId === 'number') {
-            return tool.id === toolId
-          }
-          if (titleValue) {
-            return tool.title === titleValue
-          }
-          return false
-        })
+        const allTools = flattenToolsFromCategories(this.cates)
+        const matchedTool = routeValue
+          ? findToolByUrl(this.cates, routeValue)
+          : allTools.find(tool => {
+            if (typeof toolId === 'number') {
+              return tool.id === toolId
+            }
+            if (titleValue) {
+              return tool.title === titleValue
+            }
+            return false
+          })
 
         this.toolInfo = matchedTool || null
         return this.toolInfo

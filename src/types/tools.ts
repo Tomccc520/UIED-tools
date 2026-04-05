@@ -23,6 +23,10 @@ export interface Tool {
   gradient?: string
   badge?: string
   text?: string
+  seoTitle?: string
+  seoKeywords?: string
+  seoDescription?: string
+  seoImage?: string
   children?: Tool[]
 }
 

@@ -199,11 +199,17 @@
 </template>
 
 <script setup lang="ts">
-import { getHotTools, getNewTools, getUtilityTools, getRelatedTools } from '@/components/Tools/tools'
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import type { Tool } from '@/types/tools'
 import { getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
+import { useToolsStore } from '@/store/modules/tools'
+import { getHotTools } from '@/components/Tools/tools'
+import {
+  getNewToolsFromCategories,
+  getRelatedToolsFromCategories,
+  getUtilityToolsFromCategories
+} from '@/services/toolCatalog'
 
 // Props定义
 const props = defineProps<{
@@ -212,6 +218,7 @@ const props = defineProps<{
 
 const route = useRoute()
 const currentPath = computed(() => props.currentPath || route.path)
+const toolsStore = useToolsStore()
 
 /**
  * 处理工具点击跳转
@@ -226,8 +233,8 @@ const handleToolClick = (tool: Tool) => {
 }
 
 const hotTools = ref<Tool[]>(getHotTools(8))
-const newTools = ref<Tool[]>(getNewTools(8))
-const utilityTools = ref<Tool[]>(getUtilityTools(8))
+const newTools = ref<Tool[]>([])
+const utilityTools = ref<Tool[]>([])
 const relatedTools = ref<Tool[]>([])
 
 /**
@@ -268,28 +275,21 @@ const loadHotToolsFromSiteConfig = async () => {
 }
 
 /**
- * 刷新“相关工具”数据
- * 根据当前页面路径重新计算推荐列表，并按 URL 去重
+ * 函数说明：基于后台工具分类树刷新推荐组件中的相关推荐、新品工具和实用工具。
  */
-const refreshRelatedTools = () => {
-  const recommended = getRelatedTools(currentPath.value, 8, 8)
-  const seen = new Set<string>()
-  const deduped: Tool[] = []
-
-  for (const item of recommended) {
-    const uniqueKey = item.url || `id:${item.id}`
-    if (seen.has(uniqueKey)) continue
-    seen.add(uniqueKey)
-    deduped.push(item)
-    if (deduped.length >= 8) break
-  }
-
-  relatedTools.value = deduped
+const refreshRecommendPanels = async () => {
+  await toolsStore.getToolCate()
+  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, currentPath.value, 8, 8)
+  newTools.value = getNewToolsFromCategories(toolsStore.cates, 8)
+  utilityTools.value = getUtilityToolsFromCategories(toolsStore.cates, 8)
 }
 
-watch(currentPath, refreshRelatedTools, { immediate: true })
+watch(currentPath, () => {
+  void refreshRecommendPanels()
+}, { immediate: true })
 
 onMounted(() => {
   void loadHotToolsFromSiteConfig()
+  void refreshRecommendPanels()
 })
 </script>

@@ -25,11 +25,15 @@
 -->
 
 <script setup lang="ts">
-import { reactive, computed, ref, watch, onMounted } from '@vue/runtime-core'
+import { computed, ref, watch, onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
-import ToolsExport from '@/components/Tools/tools'
 import { useToolsStore } from '@/store/modules/tools'
 import type { Tool } from '@/types/tools'
+import {
+  findToolByUrl,
+  getRandomToolsFromCategories,
+  getRelatedToolsFromCategories
+} from '@/services/toolCatalog'
 
 const route = useRoute()
 
@@ -47,19 +51,20 @@ const randomTools = ref<Tool[]>([])
 // 最近使用的工具
 const recentTools = ref<Tool[]>([])
 
-// 获取工具数据
+/**
+ * 函数说明：基于后台工具分类树刷新右侧“相关工具 / 随机工具”数据。
+ */
 const getToolsData = async () => {
   if (!route.path.startsWith('/tools/') || !shouldShowRecommend.value) return
 
-  // 等待工具分类数据加载完成
   await toolsStore.getToolCate()
-
-  // 获取相关工具和随机工具
-  relatedTools.value = ToolsExport.getRelatedTools(route.path, 8)
-  randomTools.value = ToolsExport.getRandomTools(8, route.path)
+  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, route.path, 8, 8)
+  randomTools.value = getRandomToolsFromCategories(toolsStore.cates, 8, route.path)
 }
 
-// 从localStorage获取最近使用记录
+/**
+ * 函数说明：从 localStorage 获取最近使用记录，确保刷新后仍可恢复最近访问工具。
+ */
 const getRecentTools = () => {
   try {
     const stored = localStorage.getItem('recentTools')
@@ -72,13 +77,13 @@ const getRecentTools = () => {
   }
 }
 
-// 添加当前工具到最近使用记录
+/**
+ * 函数说明：将当前工具写入最近使用记录，工具基础信息优先从后台工具分类树读取。
+ */
 const addToRecentTools = (currentPath: string) => {
   if (!currentPath.startsWith('/tools/')) return
 
-  // 获取当前工具信息（使用现有方法查找当前工具）
-  const allTools = ToolsExport.toolsList()
-  const currentTool = allTools.find(tool => tool.url === currentPath)
+  const currentTool = findToolByUrl(toolsStore.cates, currentPath)
   if (!currentTool) return
 
   try {
@@ -110,17 +115,27 @@ const addToRecentTools = (currentPath: string) => {
   }
 }
 
-// 监听路由变化
+/**
+ * 函数说明：同步右侧栏数据与最近使用记录，确保工具分类加载完成后再写入最近使用。
+ */
+const syncRightSidebarState = async (currentPath: string) => {
+  await getToolsData()
+  addToRecentTools(currentPath)
+}
+
+/**
+ * 函数说明：监听路由变化，切换工具后同步刷新推荐与最近使用列表。
+ */
 watch(() => route.path, (newPath) => {
-  getToolsData()
-  addToRecentTools(newPath) // 添加到最近使用
+  void syncRightSidebarState(newPath)
 })
 
-// 组件挂载时获取数据
+/**
+ * 函数说明：组件挂载时初始化右侧推荐与最近使用数据。
+ */
 onMounted(() => {
-  getToolsData()
-  getRecentTools() // 获取最近使用工具
-  addToRecentTools(route.path) // 记录当前工具
+  getRecentTools()
+  void syncRightSidebarState(route.path)
 })
 
 // 判断是否为工具页面

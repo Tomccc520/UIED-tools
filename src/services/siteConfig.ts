@@ -14,6 +14,12 @@ export interface SiteLinkItem {
   link: string
 }
 
+export interface SiteQuickToolItem {
+  title: string
+  url: string
+  desc?: string
+}
+
 export interface SiteLinkSection {
   title: string
   items: SiteLinkItem[]
@@ -59,6 +65,14 @@ export interface SiteBannerSlideItem {
   gradient: string
 }
 
+export interface SiteSeoPageItem {
+  path: string
+  title: string
+  keywords: string
+  description: string
+  image: string
+}
+
 export interface SitePublicConfig {
   webName: string
   webLogo: string
@@ -91,6 +105,7 @@ export interface SitePublicConfig {
   footerRecordLinks: SiteLinkItem[]
   hotTools: SiteHotToolItem[]
   headerLinks: SiteLinkItem[]
+  searchQuickTools: SiteQuickToolItem[]
   sidebarRecommendLinks: SiteLinkItem[]
   sidebarCategoryMenus: SiteSidebarCategoryMenu[]
   sidebarMenuBlocks: SiteSidebarMenuBlock[]
@@ -110,6 +125,11 @@ export interface SitePublicConfig {
   footerQuickSections: SiteLinkSection[]
   footerFriendSections: SiteLinkSection[]
   officialMediaLinks: SiteLinkItem[]
+  seoDefaultTitle: string
+  seoDefaultKeywords: string
+  seoDefaultDescription: string
+  seoDefaultImage: string
+  seoPages: SiteSeoPageItem[]
 }
 
 interface SiteConfigOptions {
@@ -199,6 +219,38 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   footerRecordLinks: [],
   hotTools: [],
   headerLinks: [],
+  searchQuickTools: [
+    {
+      title: 'DeepSeek R1对话',
+      desc: '基于 DeepSeek-R1 推理模型的智能对话',
+      url: '/tools/ai/deepseek-r1'
+    },
+    {
+      title: 'DeepSeek AI对话',
+      desc: '基础智能对话服务',
+      url: '/tools/ai/deepseek'
+    },
+    {
+      title: 'DeepSeek提示词',
+      desc: '专业的 Prompt 提示词指南',
+      url: '/tools/ai/deepseek-prompt'
+    },
+    {
+      title: 'DeepSeek导航',
+      desc: 'DeepSeek 模型与工具导航',
+      url: '/tools/ai/deepseek-nav'
+    },
+    {
+      title: 'AI封面设计',
+      desc: 'AI智能生成封面图片',
+      url: '/tools/ai-design-cover'
+    },
+    {
+      title: 'AI产品榜',
+      desc: '跳转至 AI 产品导航站',
+      url: 'https://hao.uied.cn/'
+    }
+  ],
   sidebarRecommendLinks: [],
   sidebarCategoryMenus: [],
   sidebarMenuBlocks: DEFAULT_SIDEBAR_MENU_BLOCKS,
@@ -228,7 +280,49 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   ],
   footerQuickSections: [],
   footerFriendSections: [],
-  officialMediaLinks: []
+  officialMediaLinks: [],
+  seoDefaultTitle: '',
+  seoDefaultKeywords:
+    '免费在线工具,UIED,UIED-Tools,免费AI工具箱,AI工具,AI工具箱,AI工具大全,AI工具网站,AI工具网站大全,AI工具网站推荐,AI工具网站排行榜',
+  seoDefaultDescription: 'UIED免费在线工具大全',
+  seoDefaultImage: '/logo.png',
+  seoPages: [
+    {
+      path: '/',
+      title: '首页',
+      keywords: 'tools-web,在线工具,开发人员工具,时间戳转换,加密,解密,md5,进制转换,二维码,正则表达式,json格式化,照片处理,字数统计',
+      description: 'tools-web,在线工具,在线工具大全,开发人员工具,日常生活工具,办公助手,时间戳转换,加密,解密,md5,进制转换,二维码,正则表达式,json格式化,照片处理,字数统计',
+      image: '/logo.png'
+    },
+    {
+      path: '/changelog',
+      title: '更新日志',
+      keywords: 'UIED-Tools更新日志,版本历史,功能更新',
+      description: 'UIED-Tools的更新日志，记录了所有版本的功能更新和变更信息',
+      image: '/logo.png'
+    },
+    {
+      path: '/user/login',
+      title: '用户登录',
+      keywords: '用户登录,QQ登录,微信登录,个人中心',
+      description: 'UIED Tools 用户登录页，支持登录后进入个人中心，管理账号资料与QQ邮箱绑定。',
+      image: '/logo.png'
+    },
+    {
+      path: '/user/center',
+      title: '个人中心',
+      keywords: '个人中心,QQ邮箱绑定,用户资料',
+      description: 'UIED Tools 个人中心，支持维护昵称与QQ邮箱绑定信息。',
+      image: '/logo.png'
+    },
+    {
+      path: '/tools/ai/toolbox',
+      title: 'AI工具箱',
+      keywords: 'AI工具箱,AI工具导航,AI工具合集,免费AI工具',
+      description: 'UIED Tools AI工具箱聚合页，按分类整合对话、写作、图像、办公等高频 AI 工具。',
+      image: '/logo.png'
+    }
+  ]
 }
 
 type SiteConfigCacheState = {
@@ -292,6 +386,36 @@ const normalizeLinkItems = (input: unknown): SiteLinkItem[] => {
       return { name, link }
     })
     .filter((item): item is SiteLinkItem => Boolean(item))
+}
+
+/**
+ * 函数说明：清洗搜索面板快捷入口配置，兼容 title/name 与 url/link 字段。
+ */
+const normalizeQuickToolItems = (input: unknown): SiteQuickToolItem[] => {
+  const parsed = normalizeArrayInput(input)
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const title = String(record.title || record.name || '').trim()
+      const url = String(record.url || record.link || '').trim()
+      const desc = String(record.desc || record.description || '').trim()
+      if (!title || !url) {
+        return null
+      }
+      return {
+        title,
+        url,
+        ...(desc ? { desc } : {})
+      }
+    })
+    .filter((item): item is SiteQuickToolItem => Boolean(item))
+
+  if (parsed.length > 0) {
+    return parsed
+  }
+  return DEFAULT_SITE_PUBLIC_CONFIG.searchQuickTools.map((item) => ({ ...item }))
 }
 
 /**
@@ -467,6 +591,40 @@ const normalizeLinkSections = (input: unknown): SiteLinkSection[] => {
 }
 
 /**
+ * 函数说明：清洗站点 SEO 页面配置，兼容后台 JSON 结构并过滤无效项
+ */
+const normalizeSeoPages = (input: unknown): SiteSeoPageItem[] => {
+  const parsed = normalizeArrayInput(input)
+    .map((item) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const path = String(record.path || '').trim()
+      const title = String(record.title || '').trim()
+      const keywords = String(record.keywords || '').trim()
+      const description = String(record.description || '').trim()
+      const image = String(record.image || '').trim()
+      if (!path) {
+        return null
+      }
+      return {
+        path,
+        title,
+        keywords,
+        description,
+        image
+      }
+    })
+    .filter((item): item is SiteSeoPageItem => Boolean(item))
+
+  if (parsed.length > 0) {
+    return parsed
+  }
+  return DEFAULT_SITE_PUBLIC_CONFIG.seoPages.map((item) => ({ ...item }))
+}
+
+/**
  * 函数说明：清洗工具图标配置，兼容图片 URL 与 SVG 图标对象
  */
 const normalizeToolLogo = (input: unknown): Tool['logo'] => {
@@ -534,6 +692,19 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
               const toolDesc = String(toolRecord.desc || toolTitle).trim() || toolTitle
               const isExternal = /^https?:\/\//i.test(toolUrl)
               const cate = String(toolRecord.cate || subCategoryTitle).trim() || subCategoryTitle
+              const releaseDate = String(toolRecord.releaseDate || '').trim()
+              const icon = String(toolRecord.icon || '').trim()
+              const gradient = String(toolRecord.gradient || '').trim()
+              const badge = String(toolRecord.badge || '').trim()
+              const text = String(toolRecord.text || '').trim()
+              const seoTitle = String(toolRecord.seoTitle || '').trim()
+              const seoKeywords = String(toolRecord.seoKeywords || '').trim()
+              const seoDescription = String(toolRecord.seoDescription || '').trim()
+              const seoImage = String(toolRecord.seoImage || '').trim()
+              const tags = normalizeArrayInput(toolRecord.tags)
+                .map((tag) => String(tag || '').trim())
+                .filter(Boolean)
+              const isNew = normalizeBooleanFlag(toolRecord.isNew)
 
               const normalizedTool: Tool = {
                 id: toolId,
@@ -542,7 +713,18 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
                 desc: toolDesc,
                 url: toolUrl,
                 cate,
-                isExternal
+                isExternal,
+                ...(releaseDate ? { releaseDate } : {}),
+                ...(tags.length > 0 ? { tags } : {}),
+                ...(icon ? { icon } : {}),
+                ...(isNew ? { isNew } : {}),
+                ...(gradient ? { gradient } : {}),
+                ...(badge ? { badge } : {}),
+                ...(text ? { text } : {}),
+                ...(seoTitle ? { seoTitle } : {}),
+                ...(seoKeywords ? { seoKeywords } : {}),
+                ...(seoDescription ? { seoDescription } : {}),
+                ...(seoImage ? { seoImage } : {})
               }
               return normalizedTool
             })
@@ -656,6 +838,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     footerRecordLinks: normalizeLinkItems(record.toolsFooterRecordLinks),
     hotTools: normalizeHotToolItems(record.toolsHotTools),
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
+    searchQuickTools: normalizeQuickToolItems(record.toolsSearchQuickTools),
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
     sidebarCategoryMenus: normalizeSidebarCategoryMenus(record.toolsSidebarCategoryMenus),
     sidebarMenuBlocks: normalizeSidebarMenuBlocks(record.toolsSidebarMenuBlocks),
@@ -686,7 +869,18 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     aiCommonHeaderLinks: normalizeLinkItems(record.toolsAiCommonHeaderLinks),
     footerQuickSections: normalizeLinkSections(record.toolsFooterQuickSections),
     footerFriendSections: normalizeLinkSections(record.toolsFooterFriendSections),
-    officialMediaLinks: normalizeLinkItems(record.toolsOfficialMediaLinks)
+    officialMediaLinks: normalizeLinkItems(record.toolsOfficialMediaLinks),
+    seoDefaultTitle: String(record.toolsSeoDefaultTitle || DEFAULT_SITE_PUBLIC_CONFIG.seoDefaultTitle).trim(),
+    seoDefaultKeywords:
+      String(record.toolsSeoDefaultKeywords || DEFAULT_SITE_PUBLIC_CONFIG.seoDefaultKeywords).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.seoDefaultKeywords,
+    seoDefaultDescription:
+      String(record.toolsSeoDefaultDescription || DEFAULT_SITE_PUBLIC_CONFIG.seoDefaultDescription).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.seoDefaultDescription,
+    seoDefaultImage:
+      String(record.toolsSeoDefaultImage || DEFAULT_SITE_PUBLIC_CONFIG.seoDefaultImage).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.seoDefaultImage,
+    seoPages: normalizeSeoPages(record.toolsSeoPages)
   }
 }
 

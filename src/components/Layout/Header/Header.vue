@@ -504,36 +504,6 @@ const handleClickOutside = (event: MouseEvent) => {
   }
 }
 
-// 快捷入口数据
-const quickTools = computed(() => {
-  return [
-    {
-      title: '疯狂星期四',
-      url: '/tools/copywriting/kfc'
-    },
-    {
-      title: '舔狗日记',
-      url: '/tools/copywriting/dog-diary'
-    },
-    {
-      title: '图片压缩',
-      url: '/tools/image-compress'
-    },
-    {
-      title: '图片裁剪',
-      url: '/tools/image-crop'
-    },
-    {
-      title: '二维码生成',
-      url: '/tools/qrcode'
-    },
-    {
-      title: '图片格式转换',
-      url: '/tools/img-format'
-    }
-  ]
-})
-
 const addToBookmark = () => {
   try {
     // 使用当前页面标题
