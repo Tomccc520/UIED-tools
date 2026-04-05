@@ -127,6 +127,104 @@ print_database_status() {
   compose_cmd ps || true
 }
 
+# 函数说明：格式化 Unix 时间戳，便于在状态脚本中快速查看授权时间信息。
+format_unix_time() {
+  local ts="${1:-0}"
+  if [[ -z "${ts}" ]] || [[ "${ts}" == "0" ]]; then
+    echo "-"
+    return
+  fi
+
+  date -r "${ts}" "+%Y-%m-%d %H:%M:%S" 2>/dev/null || echo "${ts}"
+}
+
+# 函数说明：将授权状态码映射为中文状态，便于运营快速理解当前授权结果。
+map_license_status_text() {
+  local status="${1:-0}"
+  case "${status}" in
+    1) echo "已授权" ;;
+    2) echo "已过期" ;;
+    3) echo "已冻结" ;;
+    *) echo "未激活" ;;
+  esac
+}
+
+# 函数说明：从 JSON 字符串中读取指定字段，避免 shell 直接解析空字段导致错位。
+json_field() {
+  local field_name="$1"
+  python3 -c '
+import json
+import sys
+
+field_name = sys.argv[1]
+raw = sys.stdin.read().strip()
+if not raw:
+    print("")
+    raise SystemExit(0)
+
+try:
+    data = json.loads(raw)
+except Exception:
+    print("")
+    raise SystemExit(0)
+
+value = data.get(field_name, "") if isinstance(data, dict) else ""
+if value is None:
+    value = ""
+
+if isinstance(value, (dict, list)):
+    print(json.dumps(value, ensure_ascii=False))
+else:
+    print(value)
+' "${field_name}"
+}
+
+# 函数说明：输出授权模块运行态摘要，便于在 status 命令里快速判断商业授权闭环状态。
+print_license_status() {
+  local license_table_count
+  local license_row
+  local enforce_value
+  local status_code
+  local bound_domain
+  local expire_time
+  local last_verify_time
+  local last_verify_message
+
+  license_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-root123456}" mysql \
+    mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME:-uiedtool}' AND TABLE_NAME='la_system_license';" 2>/dev/null || echo "0")"
+
+  printf "\n[LICENSE]\n"
+  if [[ "${license_table_count}" -lt 1 ]]; then
+    echo "module=missing"
+    return
+  fi
+
+  license_row="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-root123456}" mysql \
+    mysql -uroot -Nse "SELECT JSON_OBJECT('status', COALESCE(status,0), 'boundDomain', COALESCE(bound_domain,''), 'expireTime', COALESCE(expire_time,0), 'lastVerifyTime', COALESCE(last_verify_time,0), 'lastVerifyMessage', COALESCE(last_verify_message,'')) FROM \`${DB_NAME:-uiedtool}\`.la_system_license ORDER BY id ASC LIMIT 1;" 2>/dev/null || true)"
+  enforce_value="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD:-root123456}" mysql \
+    mysql -uroot -Nse "SELECT COALESCE(value,'0') FROM \`${DB_NAME:-uiedtool}\`.la_system_config WHERE type='license' AND name='enforce' LIMIT 1;" 2>/dev/null || echo "0")"
+
+  if [[ -z "${license_row}" ]]; then
+    echo "row=missing"
+    return
+  fi
+
+  status_code="$(printf '%s' "${license_row}" | json_field "status")"
+  bound_domain="$(printf '%s' "${license_row}" | json_field "boundDomain")"
+  expire_time="$(printf '%s' "${license_row}" | json_field "expireTime")"
+  last_verify_time="$(printf '%s' "${license_row}" | json_field "lastVerifyTime")"
+  last_verify_message="$(printf '%s' "${license_row}" | json_field "lastVerifyMessage")"
+  if [[ -z "${last_verify_time}" ]] || [[ "${last_verify_time}" == "0" ]]; then
+    last_verify_message="尚未校验"
+  fi
+  printf "status=%s(%s)\n" "$(map_license_status_text "${status_code}")" "${status_code}"
+  printf "enforce=%s\n" "$([[ "${enforce_value}" == "1" ]] && echo "on" || echo "off")"
+  printf "bound_domain=%s\n" "${bound_domain:--}"
+  printf "expire_at=%s\n" "$(format_unix_time "${expire_time:-0}")"
+  printf "last_verify_at=%s\n" "$(format_unix_time "${last_verify_time:-0}")"
+  printf "last_verify_message=%s\n" "${last_verify_message:--}"
+}
+
 main() {
   print_process_status "tools-frontend"
   print_process_status "likeadmin-admin"
@@ -134,6 +232,7 @@ main() {
   print_process_status "matting-service"
   print_runtime_ports
   print_database_status
+  print_license_status
 }
 
 main "$@"
