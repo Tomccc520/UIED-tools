@@ -406,6 +406,58 @@ sync_sidebar_menu_defaults_patch() {
   log_info "侧栏菜单默认配置同步失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：扩容 la_system_config.value 到 LONGTEXT，避免完整工具分类树等大 JSON 写入超长失败。
+apply_system_config_longtext_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_expand_system_config_value_longtext.sql"
+  local column_type=""
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  column_type="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT DATA_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_system_config' AND COLUMN_NAME='value';" 2>/dev/null | tr '[:upper:]' '[:lower:]' | tr -d '\r' || true)"
+  if [[ "${column_type}" == "longtext" ]]; then
+    return
+  fi
+
+  log_info "检测到 la_system_config.value 仍为 ${column_type:-unknown}，自动扩容为 LONGTEXT..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "la_system_config.value 扩容完成。"
+}
+
+# 函数说明：当 tools 完整分类树配置缺失时，自动从前端 tools.ts 提取分类与菜单默认值写入后台。
+# 默认仅补缺失/空值，不覆盖运营已维护的数据；如需强制覆盖可设置 FORCE_TOOLS_MENU_SYNC=1。
+sync_frontend_tool_menus() {
+  local sync_script="${ROOT_DIR}/scripts/dev/sync-frontend-tool-menus-to-backend.mjs"
+  local tools_category_empty_count="0"
+
+  if [[ ! -f "${sync_script}" ]]; then
+    return
+  fi
+
+  tools_category_empty_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE \`type\`='website' AND \`name\`='toolsCategoryTree' AND (TRIM(IFNULL(\`value\`, '')) = '' OR TRIM(\`value\`) = '[]');" 2>/dev/null || echo "0")"
+
+  if [[ "${FORCE_TOOLS_MENU_SYNC:-0}" != "1" ]] && [[ "${tools_category_empty_count}" -le 0 ]]; then
+    return
+  fi
+
+  log_info "检测到前端工具分类树未同步到后台，自动执行菜单与工具树同步..."
+  if [[ "${FORCE_TOOLS_MENU_SYNC:-0}" == "1" ]]; then
+    if node "${sync_script}" --force; then
+      log_info "前端菜单与工具树强制同步完成。"
+      return
+    fi
+  else
+    if node "${sync_script}"; then
+      log_info "前端菜单与工具树同步完成。"
+      return
+    fi
+  fi
+
+  # 函数说明：同步失败不阻塞本地联调启动，避免开发流程中断。
+  log_info "前端菜单与工具树同步失败，已跳过本次自动同步并继续启动。"
+}
+
 # 函数说明：检测并补齐 la_user.qq_email 字段，确保前台 QQ 邮箱绑定可持久化保存。
 apply_user_qq_email_schema_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260328_add_user_qq_email.sql"
@@ -598,6 +650,271 @@ apply_ai_provider_config_patch() {
 
   # 函数说明：补丁失败时不阻塞本地联调，避免影响前后端启动与页面验证。
   log_info "AI 模型默认配置补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：检测并修复 AI Provider 配置中的中文乱码，避免后台模型管理页出现 ????。
+repair_garbled_ai_provider_config() {
+  local provider_json=""
+  local normalized_result=""
+  local normalized_json=""
+  local changed_flag=""
+  local provider_json_b64=""
+  local temp_sql=""
+
+  provider_json="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT value FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='ai_provider_configs' LIMIT 1;" 2>/dev/null || true)"
+  if [[ -z "${provider_json}" ]]; then
+    return
+  fi
+
+  normalized_result="$(
+    PROVIDER_JSON="${provider_json}" python3 - <<'PY'
+import json
+import os
+import re
+import sys
+
+provider_json = os.environ.get("PROVIDER_JSON", "")
+if not provider_json:
+    print("")
+    sys.exit(0)
+
+default_text_map = {
+    "siliconflow": {
+        "label": "SiliconFlow",
+        "description": "适合当前站内多数 DeepSeek/写作/搜索工具，兼容现有模型列表。"
+    },
+    "deepseek": {
+        "label": "DeepSeek 官方",
+        "description": "适合官方 deepseek-chat / deepseek-reasoner 场景。"
+    },
+    "kimi": {
+        "label": "Kimi / Moonshot",
+        "description": "适合配置 Moonshot Chat Completions 接口，默认模型可自行填写。"
+    },
+    "doubao": {
+        "label": "豆包 / 火山方舟",
+        "description": "适合配置火山引擎方舟接入点，默认模型请填写你的 Endpoint ID。"
+    },
+    "openai": {
+        "label": "OpenAI 兼容接口",
+        "description": "适合兼容 OpenAI Chat Completions 协议的模型网关与自建中转。"
+    }
+}
+
+def is_garbled(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    return "�" in value or re.search(r"\?{2,}", value) is not None
+
+try:
+    providers = json.loads(provider_json)
+except Exception:
+    print("")
+    sys.exit(0)
+
+if not isinstance(providers, list):
+    print("")
+    sys.exit(0)
+
+changed = False
+for item in providers:
+    if not isinstance(item, dict):
+        continue
+    provider_key = str(item.get("provider", "")).strip().lower()
+    defaults = default_text_map.get(provider_key)
+    if not defaults:
+        continue
+    if is_garbled(item.get("label", "")):
+        item["label"] = defaults["label"]
+        changed = True
+    if is_garbled(item.get("description", "")):
+        item["description"] = defaults["description"]
+        changed = True
+
+print(json.dumps({
+    "changed": changed,
+    "json": json.dumps(providers, ensure_ascii=False, separators=(",", ":"))
+}, ensure_ascii=False))
+PY
+  )"
+
+  if [[ -z "${normalized_result}" ]]; then
+    return
+  fi
+
+  changed_flag="$(NORMALIZED_RESULT="${normalized_result}" python3 - <<'PY'
+import json
+import os
+
+raw = os.environ.get("NORMALIZED_RESULT", "")
+if not raw:
+    print("false")
+    raise SystemExit(0)
+data = json.loads(raw)
+print("true" if data.get("changed") else "false")
+PY
+  )"
+  if [[ "${changed_flag}" != "true" ]]; then
+    return
+  fi
+
+  normalized_json="$(NORMALIZED_RESULT="${normalized_result}" python3 - <<'PY'
+import json
+import os
+
+raw = os.environ.get("NORMALIZED_RESULT", "")
+if not raw:
+    print("")
+    raise SystemExit(0)
+data = json.loads(raw)
+print(data.get("json", ""))
+PY
+  )"
+  if [[ -z "${normalized_json}" ]]; then
+    return
+  fi
+
+  provider_json_b64="$(printf '%s' "${normalized_json}" | base64 | tr -d '\n')"
+  temp_sql="$(mktemp)"
+  cat >"${temp_sql}" <<EOF
+SET NAMES utf8mb4;
+UPDATE la_system_config
+SET value = CONVERT(FROM_BASE64('${provider_json_b64}') USING utf8mb4)
+WHERE type = 'ai_model' AND name = 'ai_provider_configs';
+EOF
+
+  log_info "检测到 AI Provider 配置存在中文乱码，自动执行文案修复..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${temp_sql}"; then
+    rm -f "${temp_sql}"
+    log_info "AI Provider 中文乱码修复完成。"
+    return
+  fi
+
+  rm -f "${temp_sql}"
+  # 函数说明：配置文案修复失败时不阻塞启动，避免影响当前联调流程。
+  log_info "AI Provider 中文乱码修复失败，已跳过本次修复并继续启动。"
+}
+
+# 函数说明：检测并拆分 AI 模型后台菜单，避免 Provider 与图片能力仍旧混挂在“AI抠图模型”菜单下。
+apply_ai_model_menu_split_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_split_ai_model_submenus.sql"
+  local manage_menu_top_level_count="0"
+  local matting_menu_count="0"
+  local provider_menu_count="0"
+  local ability_menu_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  manage_menu_top_level_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:ai:model:manage' AND pid=0;" 2>/dev/null || echo "0")"
+  matting_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:ai:model:detail';" 2>/dev/null || echo "0")"
+  provider_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:ai:provider:detail';" 2>/dev/null || echo "0")"
+  ability_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:ai:ability:detail';" 2>/dev/null || echo "0")"
+
+  if [[ "${manage_menu_top_level_count}" -ge 1 ]] && [[ "${matting_menu_count}" -ge 1 ]] && [[ "${provider_menu_count}" -ge 1 ]] && [[ "${ability_menu_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到 AI 模型管理菜单仍为旧结构，自动提升为顶级菜单并拆分 Provider 与工具能力子菜单..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "AI 模型管理子菜单拆分完成。"
+    return
+  fi
+
+  # 函数说明：菜单补丁失败时不阻塞启动，避免影响本地继续联调其他功能。
+  log_info "AI 模型管理菜单拆分补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：检测官网设置是否缺少独立 SEO 菜单，缺失时自动补齐菜单与权限。
+apply_official_site_seo_menu_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_official_site_seo_menu.sql"
+  local seo_menu_count="0"
+  local seo_save_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  seo_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:seo:detail';" 2>/dev/null || echo "0")"
+  seo_save_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:seo:save';" 2>/dev/null || echo "0")"
+
+  if [[ "${seo_menu_count}" -ge 1 ]] && [[ "${seo_save_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到官网设置缺少独立 SEO 菜单，自动执行 SEO 菜单补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "官网设置 SEO 菜单补齐完成。"
+    return
+  fi
+
+  # 函数说明：菜单补丁失败时不阻塞启动，避免影响当前联调流程。
+  log_info "官网设置 SEO 菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：检测官网设置是否缺少侧栏/头部/页脚独立菜单，缺失时自动补齐菜单与权限。
+apply_official_site_layout_submenus_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_official_site_layout_submenus.sql"
+  local sidebar_menu_count="0"
+  local sidebar_save_count="0"
+  local header_menu_count="0"
+  local header_save_count="0"
+  local footer_menu_count="0"
+  local footer_save_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  sidebar_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:sidebar:detail';" 2>/dev/null || echo "0")"
+  sidebar_save_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:sidebar:save';" 2>/dev/null || echo "0")"
+  header_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:header:detail';" 2>/dev/null || echo "0")"
+  header_save_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:header:save';" 2>/dev/null || echo "0")"
+  footer_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:footer:detail';" 2>/dev/null || echo "0")"
+  footer_save_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:footer:save';" 2>/dev/null || echo "0")"
+
+  if [[ "${sidebar_menu_count}" -ge 1 ]] && [[ "${sidebar_save_count}" -ge 1 ]] \
+    && [[ "${header_menu_count}" -ge 1 ]] && [[ "${header_save_count}" -ge 1 ]] \
+    && [[ "${footer_menu_count}" -ge 1 ]] && [[ "${footer_save_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到官网设置缺少侧栏/头部/页脚独立菜单，自动执行布局子菜单补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "官网设置布局子菜单补齐完成。"
+    return
+  fi
+
+  # 函数说明：菜单补丁失败时不阻塞启动，避免影响当前联调流程。
+  log_info "官网设置布局子菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：检测官网设置是否缺少“工具分类与列表”独立菜单，缺失时自动补齐菜单与权限。
+apply_official_site_tools_catalog_menu_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_official_site_tools_catalog_menu.sql"
+  local catalog_menu_count="0"
+  local catalog_save_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  catalog_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:catalog:detail';" 2>/dev/null || echo "0")"
+  catalog_save_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:catalog:save';" 2>/dev/null || echo "0")"
+
+  if [[ "${catalog_menu_count}" -ge 1 ]] && [[ "${catalog_save_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到官网设置缺少独立工具分类菜单，自动执行工具分类菜单补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "官网设置工具分类菜单补齐完成。"
+    return
+  fi
+
+  # 函数说明：菜单补丁失败时不阻塞启动，避免影响当前联调流程。
+  log_info "官网设置工具分类菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
 # 函数说明：把历史前端 .env 中的 AI Provider Key 自动同步到后台配置，避免前台继续保存敏感 Key。
@@ -926,6 +1243,8 @@ main() {
   init_likeadmin_database
   repair_garbled_seed_data
   sync_sidebar_menu_defaults_patch
+  apply_system_config_longtext_patch
+  sync_frontend_tool_menus
   apply_user_qq_email_schema_patch
   apply_user_points_schema_patch
   apply_user_member_schema_patch
@@ -934,6 +1253,11 @@ main() {
   apply_role_permission_baseline_patch
   apply_license_module_patch
   apply_ai_provider_config_patch
+  repair_garbled_ai_provider_config
+  apply_ai_model_menu_split_patch
+  apply_official_site_layout_submenus_patch
+  apply_official_site_tools_catalog_menu_patch
+  apply_official_site_seo_menu_patch
   sync_frontend_ai_provider_env_keys
   start_likeadmin_server
   start_likeadmin_admin
