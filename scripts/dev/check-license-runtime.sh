@@ -253,12 +253,14 @@ log_info "开始执行源码授权运行态自检..."
 license_table_count="$(query_mysql "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_system_license';")"
 license_row_count="$(query_mysql "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_license;")"
 license_menu_count="$(query_mysql "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms IN ('setting:license:detail','setting:license:save','setting:license:verify');")"
-license_config_count="$(query_mysql "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name IN ('enforce','verifyApiUrl','verifyApiToken');")"
+license_config_count="$(query_mysql "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name IN ('enforce','verifyApiUrl','verifyApiToken','verifyApiMethod','verifyApiTimeout','verifyApiAllowInsecureTls','apiSignSecret');")"
+license_column_count="$(query_mysql "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_system_license' AND COLUMN_NAME IN ('edition','raw_status','company_name','domain_limit','domain_whitelist','signature','sign_version','is_signature_valid');")"
 
 printf 'license_table_count=%s\n' "${license_table_count:-0}"
 printf 'license_row_count=%s\n' "${license_row_count:-0}"
 printf 'license_menu_count=%s\n' "${license_menu_count:-0}"
 printf 'license_config_count=%s\n' "${license_config_count:-0}"
+printf 'license_column_count=%s\n' "${license_column_count:-0}"
 
 if [[ "${license_table_count:-0}" -lt 1 ]]; then
   log_error_and_exit "授权表 la_system_license 缺失。"
@@ -269,8 +271,11 @@ fi
 if [[ "${license_menu_count:-0}" -lt 3 ]]; then
   log_error_and_exit "授权菜单/按钮权限不完整。"
 fi
-if [[ "${license_config_count:-0}" -lt 3 ]]; then
+if [[ "${license_config_count:-0}" -lt 7 ]]; then
   log_error_and_exit "授权配置项不完整。"
+fi
+if [[ "${license_column_count:-0}" -lt 8 ]]; then
+  log_error_and_exit "授权表字段仍是旧版本，请先执行授权升级补丁。"
 fi
 
 license_row="$(query_mysql "SELECT JSON_OBJECT('status', COALESCE(status,0), 'boundDomain', COALESCE(bound_domain,''), 'expireTime', COALESCE(expire_time,0), 'lastVerifyTime', COALESCE(last_verify_time,0), 'lastVerifyMessage', COALESCE(last_verify_message,''), 'productCode', COALESCE(product_code,''), 'customerName', COALESCE(customer_name,'')) FROM \`${DB_NAME}\`.la_system_license ORDER BY id ASC LIMIT 1;")"
@@ -286,6 +291,8 @@ customer_name="$(printf '%s' "${license_row}" | json_field "customerName")"
 enforce_value="$(query_mysql "SELECT COALESCE(value,'0') FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name='enforce' LIMIT 1;")"
 verify_api_url="$(query_mysql "SELECT COALESCE(value,'') FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name='verifyApiUrl' LIMIT 1;")"
 verify_api_token="$(query_mysql "SELECT COALESCE(value,'') FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name='verifyApiToken' LIMIT 1;")"
+verify_api_method="$(query_mysql "SELECT COALESCE(value,'') FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name='verifyApiMethod' LIMIT 1;")"
+verify_api_timeout="$(query_mysql "SELECT COALESCE(value,'') FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name='verifyApiTimeout' LIMIT 1;")"
 
 printf 'license_status=%s\n' "${license_status:-0}"
 printf 'bound_domain=%s\n' "${bound_domain:-}"
@@ -295,6 +302,8 @@ printf 'product_code=%s\n' "${product_code:-}"
 printf 'customer_name=%s\n' "${customer_name:-}"
 printf 'enforce=%s\n' "${enforce_value:-0}"
 printf 'verify_api_url=%s\n' "${verify_api_url:-}"
+printf 'verify_api_method=%s\n' "${verify_api_method:-}"
+printf 'verify_api_timeout=%s\n' "${verify_api_timeout:-}"
 printf 'verify_api_token_present=%s\n' "$([[ -n "${verify_api_token}" ]] && echo true || echo false)"
 
 runtime_analysis="$(analyze_license_runtime "${license_status:-0}" "${bound_domain:-}" "${expire_time:-0}" "${last_verify_time:-0}" "${enforce_value:-0}" "${RUNTIME_HOST}")"

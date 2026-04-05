@@ -603,6 +603,7 @@ apply_license_module_patch() {
   local license_table_count="0"
   local license_menu_count="0"
   local license_config_count="0"
+  local license_column_count="0"
 
   if [[ ! -f "${patch_file}" ]]; then
     return
@@ -610,9 +611,10 @@ apply_license_module_patch() {
 
   license_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_system_license';" 2>/dev/null || echo "0")"
   license_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:license:detail';" 2>/dev/null || echo "0")"
-  license_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name IN ('enforce','verifyApiUrl','verifyApiToken');" 2>/dev/null || echo "0")"
+  license_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='license' AND name IN ('enforce','verifyApiUrl','verifyApiToken','verifyApiMethod','verifyApiTimeout','verifyApiAllowInsecureTls','apiSignSecret');" 2>/dev/null || echo "0")"
+  license_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_system_license' AND COLUMN_NAME IN ('edition','raw_status','company_name','domain_limit','domain_whitelist','signature','sign_version','is_signature_valid');" 2>/dev/null || echo "0")"
 
-  if [[ "${license_table_count}" -ge 1 ]] && [[ "${license_menu_count}" -ge 1 ]] && [[ "${license_config_count}" -ge 3 ]]; then
+  if [[ "${license_table_count}" -ge 1 ]] && [[ "${license_menu_count}" -ge 1 ]] && [[ "${license_config_count}" -ge 7 ]] && [[ "${license_column_count}" -ge 8 ]]; then
     return
   fi
 
