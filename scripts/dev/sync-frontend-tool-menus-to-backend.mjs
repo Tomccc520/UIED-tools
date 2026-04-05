@@ -81,6 +81,186 @@ const DEFAULT_AI_TOOLBOX_SIDEBAR_MENUS = [
   { name: 'AI分组总览', link: '#ai-groups' }
 ]
 
+const DEFAULT_HEADER_LINKS = [
+  { name: '个人网站', link: 'https://tomda.top/' }
+]
+
+const DEFAULT_SEARCH_QUICK_TOOLS = [
+  {
+    name: 'DeepSeek R1对话',
+    desc: '基于 DeepSeek-R1 推理模型的智能对话',
+    link: '/tools/ai/deepseek-r1'
+  },
+  {
+    name: 'DeepSeek AI对话',
+    desc: '基础智能对话服务',
+    link: '/tools/ai/deepseek'
+  },
+  {
+    name: 'DeepSeek提示词',
+    desc: '专业的 Prompt 提示词指南',
+    link: '/tools/ai/deepseek-prompt'
+  },
+  {
+    name: 'DeepSeek导航',
+    desc: 'DeepSeek 模型与工具导航',
+    link: '/tools/ai/deepseek-nav'
+  },
+  {
+    name: 'AI封面设计',
+    desc: 'AI智能生成封面图片',
+    link: '/tools/ai-design-cover'
+  },
+  {
+    name: 'AI产品榜',
+    desc: '跳转至 AI 产品导航站',
+    link: 'https://hao.uied.cn/'
+  }
+]
+
+const DEFAULT_SEARCH_PROVIDER_LABEL = '硅基流动 x 华为云联合 SiliconFlow'
+const DEFAULT_SEARCH_PROVIDER_LINK = 'https://cloud.siliconflow.cn/i/AZywGNhl'
+
+const DEFAULT_AI_CHAT_HEADER_LINKS = [
+  { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+  { name: 'AI免费工具', link: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜', link: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' },
+  { name: 'AI交流群', link: 'https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink' },
+  { name: 'AI知识库', link: 'https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink' }
+]
+
+const DEFAULT_AI_COMMON_HEADER_LINKS = [
+  { name: '每日免费分享最新AI资讯', link: 'https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink' },
+  { name: 'AI学习平台', link: 'https://www.uied.cn/' },
+  { name: 'AI免费工具uiedtool.com', link: 'https://uiedtool.com' },
+  { name: 'AI资讯热榜hot.uied.cn', link: 'https://hot.uied.cn' },
+  { name: 'AI工具导航', link: 'https://hao.uied.cn/ai' }
+]
+
+const DEFAULT_FOOTER_INTRO = '{webName} 是由 UIED技术团队 设计开发的在线工具平台'
+const DEFAULT_FOOTER_QUICK_TITLE = '工具快捷入口'
+const DEFAULT_FOOTER_FRIEND_TITLE = '友情链接'
+const DEFAULT_OFFICIAL_MEDIA_TITLE = '官方媒体'
+const DEFAULT_FOOTER_SUPPORT_LABEL = '技术支持'
+
+const DEFAULT_FOOTER_SUPPORT_LINKS = [
+  { name: 'Tomda', link: 'https://www.tomda.top/' },
+  { name: 'UIED技术团队', link: 'https://fsuied.com' }
+]
+
+const DEFAULT_FOOTER_RECORD_LINKS = [
+  { name: '粤ICP备2022056875号', link: 'https://beian.miit.gov.cn/' },
+  { name: '网站地图', link: '/sitemap.xml' }
+]
+
+const DEFAULT_FOOTER_QUICK_SECTIONS = [
+  {
+    title: '设计',
+    items: [
+      { name: '色彩对比度', link: '/tools/design/contrast-checker' },
+      { name: 'CSS阴影', link: '/tools/design/box-shadow' },
+      { name: '黄金比例', link: '/tools/design/golden-ratio' },
+      { name: 'Blob生成器', link: '/tools/design/blob-maker' },
+      { name: '玻璃拟态', link: '/tools/design/glassmorphism' }
+    ]
+  },
+  {
+    title: '图像',
+    items: [
+      { name: '图片压缩', link: '/tools/image-compress' },
+      { name: '二维码生成', link: '/tools/qrcode' },
+      { name: '图片切割', link: '/tools/img-cut' },
+      { name: '图片处理', link: '/tools/signimage' },
+      { name: 'GIF压缩', link: '/tools/gif-compress' }
+    ]
+  },
+  {
+    title: 'PDF',
+    items: [
+      { name: '图片转PDF', link: '/tools/img-to-pdf' },
+      { name: 'PDF转图片', link: '/tools/pdf-to-images' },
+      { name: 'PDF合并', link: '/tools/pdf-merge' },
+      { name: 'PDF分割', link: '/tools/pdf-split' }
+    ]
+  },
+  {
+    title: '文本',
+    items: [
+      { name: '文本对比', link: '/tools/diff' },
+      { name: 'Markdown编辑', link: '/tools/markdown' },
+      { name: '字数统计', link: '/tools/wordcount' }
+    ]
+  },
+  {
+    title: '开发',
+    items: [
+      { name: 'JSON转换', link: '/tools/json' },
+      { name: '正则测试', link: '/tools/reg' },
+      { name: '时间戳', link: '/tools/timetran' }
+    ]
+  },
+  {
+    title: '文案',
+    items: [
+      { name: '疯狂星期四', link: '/tools/copywriting/kfc' },
+      { name: '今日诗词', link: '/tools/copywriting/daily-poem' },
+      { name: '舔狗日记', link: '/tools/copywriting/dog-diary' },
+      { name: '朋友圈文案', link: '/tools/copywriting/moments' }
+    ]
+  }
+]
+
+const DEFAULT_FOOTER_FRIEND_SECTIONS = [
+  {
+    title: 'AI',
+    items: [
+      { name: 'AI文章', link: 'https://www.uied.cn/category/aigc/ai' },
+      { name: 'AI资讯', link: 'https://hot.uied.cn/ai-realtime' },
+      { name: 'AI工具', link: 'https://hao.uied.cn/ai' },
+      { name: 'AI知识库', link: 'https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink' },
+      { name: 'AI交流群', link: 'https://www.uied.cn/wechat' }
+    ]
+  },
+  {
+    title: '教程',
+    items: [
+      { name: 'UI文章', link: 'https://www.uied.cn/category/wenzhang/ui-wenzhang' },
+      { name: '平面文章', link: 'https://www.uied.cn/category/wenzhang/pingmian-wenzhang' },
+      { name: '设计干货', link: 'https://www.uied.cn/category/wenzhang/ganhuo' },
+      { name: '效率工具', link: 'https://www.uied.cn/category/wenzhang/tool' },
+      { name: 'AI文章', link: 'https://www.uied.cn/category/aigc/ai' },
+      { name: '开源项目', link: 'https://www.uied.cn/category/code/kaiyuan' }
+    ]
+  },
+  {
+    title: '设计',
+    items: [
+      { name: '设计文章', link: 'https://www.uied.cn/category/wenzhang/ui-wenzhang' },
+      { name: '设计导航', link: 'https://hao.uied.cn/' },
+      { name: '设计工具', link: 'https://uiedtool.com/' },
+      { name: '设计资讯', link: 'https://hot.uied.cn/' }
+    ]
+  },
+  {
+    title: '其他',
+    items: [
+      { name: 'AIGC学习网站', link: 'https://uied.cn' },
+      { name: 'UIED技术团队', link: 'https://fsuied.com' },
+      { name: '拜拜导航', link: 'https://www.88sheji.cn/' },
+      { name: 'Tomda', link: 'https://www.tomda.top/' },
+      { name: '申请友链', link: 'https://fsuied.com/contact.html' }
+    ]
+  }
+]
+
+const DEFAULT_OFFICIAL_MEDIA_LINKS = [
+  { name: '知乎', link: 'https://www.zhihu.com/org/uiedyong-hu-ti-yan-jiao-liu-xue-xi' },
+  { name: '小红书', link: 'https://www.xiaohongshu.com/user/profile/5dc2ccb0000000000100ba83' },
+  { name: '微博', link: 'https://weibo.com/u/7542146005' },
+  { name: 'B站', link: 'https://space.bilibili.com/3493135908866790?spm_id_from=333.1007.0.0' }
+]
+
 const DEFAULT_SIDEBAR_BRAND_LOGO = ''
 
 /**
@@ -265,6 +445,86 @@ const buildSyncPayloads = async () => {
       repairGarbled: true
     },
     {
+      name: 'toolsHeaderLinks',
+      json: JSON.stringify(DEFAULT_HEADER_LINKS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsSearchQuickTools',
+      json: JSON.stringify(DEFAULT_SEARCH_QUICK_TOOLS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsSearchProviderLabel',
+      json: DEFAULT_SEARCH_PROVIDER_LABEL,
+      repairGarbled: true
+    },
+    {
+      name: 'toolsSearchProviderLink',
+      json: DEFAULT_SEARCH_PROVIDER_LINK,
+      repairGarbled: true
+    },
+    {
+      name: 'toolsAiChatHeaderLinks',
+      json: JSON.stringify(DEFAULT_AI_CHAT_HEADER_LINKS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsAiCommonHeaderLinks',
+      json: JSON.stringify(DEFAULT_AI_COMMON_HEADER_LINKS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterIntro',
+      json: DEFAULT_FOOTER_INTRO,
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterQuickTitle',
+      json: DEFAULT_FOOTER_QUICK_TITLE,
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterFriendTitle',
+      json: DEFAULT_FOOTER_FRIEND_TITLE,
+      repairGarbled: true
+    },
+    {
+      name: 'toolsOfficialMediaTitle',
+      json: DEFAULT_OFFICIAL_MEDIA_TITLE,
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterSupportLabel',
+      json: DEFAULT_FOOTER_SUPPORT_LABEL,
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterSupportLinks',
+      json: JSON.stringify(DEFAULT_FOOTER_SUPPORT_LINKS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterRecordLinks',
+      json: JSON.stringify(DEFAULT_FOOTER_RECORD_LINKS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterQuickSections',
+      json: JSON.stringify(DEFAULT_FOOTER_QUICK_SECTIONS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsFooterFriendSections',
+      json: JSON.stringify(DEFAULT_FOOTER_FRIEND_SECTIONS),
+      repairGarbled: true
+    },
+    {
+      name: 'toolsOfficialMediaLinks',
+      json: JSON.stringify(DEFAULT_OFFICIAL_MEDIA_LINKS),
+      repairGarbled: true
+    },
+    {
       name: 'toolsCategoryTree',
       json: JSON.stringify(toolCategories),
       repairGarbled: false
@@ -273,7 +533,7 @@ const buildSyncPayloads = async () => {
 }
 
 /**
- * 函数说明：执行 MySQL 同步脚本，将前端菜单与工具树写入后台配置表。
+ * 函数说明：执行 MySQL 同步脚本，将前端默认配置写入后台配置表。
  */
 const runMysqlSync = (runtimeConfig, sql) => {
   const commandArgs = [
@@ -348,7 +608,7 @@ const ensureSystemConfigValueSupportsLargeJson = (runtimeConfig) => {
 }
 
 /**
- * 函数说明：主流程，读取前端菜单数据并同步到后台 website 配置。
+ * 函数说明：主流程，读取前端默认配置并同步到后台 website 配置。
  */
 const main = async () => {
   const { force } = parseArgs()
@@ -361,13 +621,13 @@ const main = async () => {
     sql += `${buildConfigUpsertSql(payload.name, payload.json, force, payload.repairGarbled)}\n`
   })
 
-  logInfo(`准备同步 ${payloads.length} 项前端菜单配置到后台（db=${runtimeConfig.dbName}，force=${force ? '1' : '0'}）...`)
+  logInfo(`准备同步 ${payloads.length} 项前端默认配置到后台（db=${runtimeConfig.dbName}，force=${force ? '1' : '0'}）...`)
   const result = runMysqlSync(runtimeConfig, sql)
   if (result.status !== 0) {
     logErrorAndExit(result.stderr || result.stdout || '同步前端菜单配置失败')
   }
 
-  logInfo('前端菜单与工具分类树已同步到后台 website 配置。')
+  logInfo('前端默认菜单、头部、页脚与工具分类树已同步到后台 website 配置。')
   payloads.forEach((payload) => {
     logInfo(`已处理配置项：${payload.name}`)
   })
