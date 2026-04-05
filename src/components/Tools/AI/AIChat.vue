@@ -1,3 +1,9 @@
+<!--
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-04-05
+ -->
 <template>
   <div class="ai-chat-container w-full h-[calc(100vh-60px)] flex flex-col bg-white font-sans">
     <div class="flex-1 flex overflow-hidden">
@@ -413,7 +419,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { ElMessage, ElSelect, ElOption, ElMessageBox, ElDialog, ElSwitch, ElInput, ElSlider, ElTooltip } from 'element-plus'
 import { v4 as uuidv4 } from 'uuid'
@@ -422,6 +427,14 @@ import uiedLogo from '@/assets/uiedlogo.png'
 import { ensureHighlightRuntime, ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 import type { SiteLinkItem } from '@/services/siteConfig'
 import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
+import {
+  extractAiProviderAssistantText,
+  extractAiProviderReasoningText,
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderCurrent
+} from '@/services/aiProvider'
 
 // Types
 interface Message {
@@ -454,6 +467,7 @@ const route = useRoute()
 const models = ref<string[]>([])
 const loadingModels = ref(false)
 const currentModel = ref('')
+const providerInfo = ref<AiProviderCurrent | null>(null)
 const history = ref<ChatSession[]>([])
 const currentSessionId = ref<string>('')
 const inputText = ref('')
@@ -708,7 +722,7 @@ const createNewChat = () => {
   const newSession: ChatSession = {
     id: uuidv4(),
     title: '新对话',
-    model: currentModel.value || models.value[0] || 'deepseek-v3',
+    model: currentModel.value || providerInfo.value?.defaultModel || models.value[0] || '',
     messages: [],
     updatedAt: Date.now()
   }
@@ -784,39 +798,48 @@ const handleModelChange = (val: string) => {
   }
 }
 
+/**
+ * 函数说明：读取后台当前文本 AI Provider，并同步当前页面可选模型列表与默认模型。
+ */
+const loadChatProviderConfig = async (forceRefresh = false) => {
+  const provider = await getCurrentAiProvider({ scene: 'chat', forceRefresh })
+  providerInfo.value = provider
+
+  const providerModels = provider.models
+    .map((item) => item.value)
+    .filter((item) => Boolean(item))
+  const fallbackModel = provider.defaultModel || providerModels[0] || ''
+
+  models.value = providerModels.length > 0
+    ? providerModels
+    : fallbackModel
+      ? [fallbackModel]
+      : []
+
+  if (currentSession.value) {
+    if (!currentSession.value.model && fallbackModel) {
+      currentSession.value.model = fallbackModel
+    }
+    currentModel.value = currentSession.value.model || fallbackModel
+  } else if (!currentModel.value && fallbackModel) {
+    currentModel.value = fallbackModel
+  }
+
+  return provider
+}
+
 const fetchModels = async () => {
   loadingModels.value = true
   try {
-    const res = await axios.get('https://api.pearktrue.cn/api/aichat/')
-    console.log('Models API Response:', res.data)
-
-    let fetchedModels: string[] = []
-    if (Array.isArray(res.data)) {
-      fetchedModels = res.data
-    } else if (res.data.data && Array.isArray(res.data.data)) {
-      fetchedModels = res.data.data
-    } else if (res.data.models && Array.isArray(res.data.models)) {
-      fetchedModels = res.data.models
-    } else {
-      // Fallback
-      fetchedModels = ['deepseek-v3', 'gpt-4o', 'claude-3-5-sonnet']
+    const provider = await loadChatProviderConfig(true)
+    if (!provider.available) {
+      ElMessage.warning('当前未配置可用的 AI Provider，请先到后台 AI 模型管理中填写 Key 与模型')
     }
-
-    models.value = fetchedModels
-
-    // If current session has no model set (newly created before models loaded), set it
-    if (currentSession.value && !currentSession.value.model && models.value.length > 0) {
-      currentSession.value.model = models.value[0]
-      currentModel.value = models.value[0]
-    } else if (currentSession.value) {
-      currentModel.value = currentSession.value.model
-    }
-
   } catch (error) {
-    console.error('Failed to fetch models:', error)
-    ElMessage.error('获取模型列表失败')
-    models.value = ['deepseek-v3']
-    currentModel.value = 'deepseek-v3'
+    console.error('Failed to fetch provider models:', error)
+    ElMessage.error('获取后台 AI Provider 配置失败')
+    models.value = []
+    currentModel.value = ''
   } finally {
     loadingModels.value = false
   }
@@ -918,11 +941,22 @@ const sendMessage = async () => {
     return
   }
 
+  const provider = providerInfo.value?.available
+    ? providerInfo.value
+    : await loadChatProviderConfig(true)
+
+  if (!provider.available) {
+    ElMessage.warning('AI能力未配置，请先到后台 AI 模型管理中启用可用 Provider')
+    return
+  }
+
   if (!currentModel.value) {
-    if (models.value.length > 0) {
+    if (provider.defaultModel) {
+      currentModel.value = provider.defaultModel
+    } else if (models.value.length > 0) {
       currentModel.value = models.value[0]
     } else {
-      ElMessage.warning('模型列表加载中，请稍候...')
+      ElMessage.warning('当前 Provider 未配置默认模型，请先到后台补充')
       return
     }
   }
@@ -991,68 +1025,61 @@ const sendMessage = async () => {
     messagesToSend.push(...historyContext)
     messagesToSend.push({ role: 'user', content: prompt })
 
-    // 使用 axios 获取完整响应，然后模拟流式输出
-    const response = await axios.post('https://api.pearktrue.cn/api/aichat/', {
-      model: currentModel.value,
+    const response = await requestAiProviderChat({
+      scene: 'chat',
+      model: currentModel.value || provider.defaultModel,
       messages: messagesToSend,
       stream: false,
-      temperature: settings.value.temperature
+      temperature: settings.value.temperature,
+      max_tokens: settings.value.maxTokens
     })
+    if (!response.ok) {
+      throw new Error(await parseAiProviderErrorMessage(response))
+    }
 
-    const data = response.data
-    console.log('Chat API Response:', data)
+    const data = await response.json()
 
     if (currentSession.value) {
       const targetMsg = currentSession.value.messages[currentSession.value.messages.length - 1]
+      const content = extractAiProviderAssistantText(data)
+      const reasoning = extractAiProviderReasoningText(data)
+      if (!content) {
+        throw new Error('AI返回内容为空，请检查后台 Provider 模型配置')
+      }
 
-      if (data.code === 200) {
-        const content = data.content || data.data?.content || ''
-        const reasoning = data.reasoning_content || data.data?.reasoning_content || ''
+      targetMsg.content = ''
+      targetMsg.reasoning_content = reasoning
 
-        targetMsg.content = '' // 清空加载状态
-        targetMsg.reasoning_content = reasoning
+      const chars = content.split('')
+      let index = 0
 
-        // 模拟打字机效果
-        const chars = content.split('')
-        let index = 0
+      const typeNextChar = () => {
+        if (index < chars.length) {
+          targetMsg.content += chars[index]
+          index++
+          scrollToBottom()
 
-        const typeNextChar = () => {
-          if (index < chars.length) {
-            targetMsg.content += chars[index]
-            index++
-            scrollToBottom()
-
-            // 根据内容调整打字速度
-            // 代码块稍微快一点
-            const delay = chars[index] === '`' ? 10 : 30
-
-            requestAnimationFrame(() => {
-              setTimeout(typeNextChar, delay)
-            })
-          } else {
-            // 打字结束
-            targetMsg.isStreaming = false
-            targetMsg.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            void getMessageHtml(targetMsg.content)
-            saveHistory()
-
-            // Highlight code blocks
-            nextTick(async () => {
-              const hljs = await ensureHighlightCore()
-              document.querySelectorAll('pre code').forEach((block) => {
-                hljs.highlightElement(block as HTMLElement)
-              })
-            })
-          }
+          const delay = chars[index] === '`' ? 10 : 30
+          requestAnimationFrame(() => {
+            setTimeout(typeNextChar, delay)
+          })
+          return
         }
 
-        typeNextChar()
-
-      } else {
         targetMsg.isStreaming = false
-        targetMsg.content = `Error: ${data.msg || 'Unknown error'}`
+        targetMsg.time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        void getMessageHtml(targetMsg.content)
         saveHistory()
+
+        nextTick(async () => {
+          const hljs = await ensureHighlightCore()
+          document.querySelectorAll('pre code').forEach((block) => {
+            hljs.highlightElement(block as HTMLElement)
+          })
+        })
       }
+
+      typeNextChar()
 
       // Sort history by updated time
       const current = currentSession.value
@@ -1068,7 +1095,7 @@ const sendMessage = async () => {
     if (currentSession.value) {
       const targetMsg = currentSession.value.messages[currentSession.value.messages.length - 1]
       targetMsg.isStreaming = false
-      targetMsg.content = '抱歉，发生了一些错误，请稍后重试。'
+      targetMsg.content = error instanceof Error ? error.message : '抱歉，发生了一些错误，请稍后重试。'
       saveHistory()
     }
   } finally {

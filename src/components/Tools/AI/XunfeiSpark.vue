@@ -1,6 +1,7 @@
 <!--
  * @file XunfeiSpark.vue
  * @description 讯飞星火 Lite1.5 AI对话组件,基于讯飞星火认知大模型实现智能对话
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
  * @createDate 2024-2-8
@@ -27,6 +28,10 @@
         <div class="text-center mb-8">
           <h2 class="text-4xl font-bold mb-3">{{ $ensureFreeToolTitle(info.title) }}</h2>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
+          <div class="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs"
+            :class="providerReady ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'">
+            {{ providerStatusText }}
+          </div>
         </div>
 
         <!-- 对话区域 -->
@@ -233,9 +238,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import {
+  extractAiProviderAssistantText,
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderCurrent
+} from '@/services/aiProvider'
 
 // 组件配置信息
 const info = {
@@ -255,8 +266,24 @@ const currentMessage = ref('')
 const loading = ref(false)
 const textareaHeight = ref(56)
 const isTyping = ref(false)
+const providerInfo = ref<AiProviderCurrent | null>(null)
 let typewriterTimer: ReturnType<typeof setTimeout> | null = null
 let scrollRafId: number | null = null
+
+const providerReady = computed(() => Boolean(providerInfo.value?.available && providerInfo.value?.defaultModel))
+const providerStatusText = computed(() => {
+  if (!providerReady.value) {
+    return '当前未配置可用的 AI Provider，请先到后台 AI 模型管理中填写 Key 与默认模型。'
+  }
+  return `当前对话由 ${providerInfo.value?.label || 'AI Provider'} 驱动，默认模型：${providerInfo.value?.defaultModel || '未设置'}`
+})
+
+/**
+ * 函数说明：读取后台当前文本 AI Provider 配置，用于统一接管讯飞星火页的实际模型来源。
+ */
+const loadAiProviderConfig = async () => {
+  providerInfo.value = await getCurrentAiProvider({ scene: 'chat', forceRefresh: true })
+}
 
 /**
  * 调度对话区滚动到底部
@@ -482,63 +509,78 @@ const handleSend = async () => {
   }
   if (loading.value || isTyping.value) return
 
+  const provider = providerInfo.value?.available
+    ? providerInfo.value
+    : await getCurrentAiProvider({ scene: 'chat', forceRefresh: true })
+
+  providerInfo.value = provider
+  if (!provider.available || !provider.defaultModel) {
+    ElMessage.warning('AI能力未配置，请先到后台 AI 模型管理中启用可用 Provider')
+    return
+  }
+
   try {
     loading.value = true
-    console.log('开始发送消息...')
 
     // 获取当前角色的prompt
     const currentRolePrompt = presetRoles.find(role => role.name === currentRole.value)?.prompt || ''
-    console.log('当前角色prompt:', currentRolePrompt)
+    const userQuestion = currentMessage.value.trim()
+    const messagesToSend: Array<{ role: string; content: string }> = []
 
-    // 构建发送的消息
-    const messageToSend = currentRolePrompt ?
-      `${currentRolePrompt}\n用户消息: ${currentMessage.value.trim()}` :
-      currentMessage.value.trim()
-    console.log('待发送的消息:', messageToSend)
+    if (currentRolePrompt) {
+      messagesToSend.push({
+        role: 'system',
+        content: currentRolePrompt
+      })
+    }
+
+    messagesToSend.push(
+      ...messages.value.map((message) => ({
+        role: message.role,
+        content: message.content
+      }))
+    )
+    messagesToSend.push({
+      role: 'user',
+      content: userQuestion
+    })
 
     // 添加用户消息
     messages.value.push({
       role: 'user',
-      content: currentMessage.value.trim()
+      content: userQuestion
     })
-    console.log('已添加用户消息')
     scheduleScrollToBottom()
 
-    // 调用API
-    console.log('正在调用API...')
-    const response = await axios.get('https://api.pearktrue.cn/api/xfai/', {
-      params: {
-        message: messageToSend
-      }
+    const response = await requestAiProviderChat({
+      scene: 'chat',
+      model: provider.defaultModel,
+      messages: messagesToSend,
+      stream: false,
+      temperature: 0.7,
+      max_tokens: 2000
     })
-    console.log('API响应:', response.data)
-
-    // 处理API响应
-    if (response.data && response.data.code === 200) {
-      const aiMessage = response.data.answer || ''
-      if (!aiMessage) {
-        throw new Error('API返回的消息内容为空')
-      }
-      console.log('AI回复:', aiMessage)
-
-      // 添加AI回复
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: '' // 初始化为空，准备打字机效果
-      }
-      messages.value.push(assistantMessage)
-      console.log('已添加AI回复')
-
-      // 打字机效果（分帧批量输出）
-      startTypewriterOutput(assistantMessage, aiMessage, () => {
-        ElMessage.success('发送成功')
-      })
-
-      // 清空输入框
-      currentMessage.value = ''
-    } else {
-      throw new Error(response.data?.msg || 'API返回数据格式不符合预期')
+    if (!response.ok) {
+      throw new Error(await parseAiProviderErrorMessage(response))
     }
+
+    const payload = await response.json()
+    const aiMessage = extractAiProviderAssistantText(payload)
+    if (!aiMessage) {
+      throw new Error('AI返回内容为空，请检查后台 Provider 模型配置')
+    }
+
+    const assistantMessage: Message = {
+      role: 'assistant',
+      content: ''
+    }
+    messages.value.push(assistantMessage)
+
+    startTypewriterOutput(assistantMessage, aiMessage, () => {
+      ElMessage.success('发送成功')
+    })
+
+    currentMessage.value = ''
 
   } catch (error: any) {
     console.error('发送消息失败:', error)
@@ -593,6 +635,7 @@ const saveChat = () => {
 onMounted(() => {
   // 添加键盘事件监听
   document.addEventListener('keypress', handleKeyPress)
+  void loadAiProviderConfig()
 })
 
 onBeforeUnmount(() => {

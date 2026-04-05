@@ -8,10 +8,15 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElButton, ElInput, ElSelect, ElOption } from 'element-plus'
 import { useRoute } from 'vue-router'
-import axios from 'axios'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import type { SiteLinkItem } from '@/services/siteConfig'
 import { isExternalSiteLink, useSiteHeaderLinks } from '@/composables/useSiteHeaderLinks'
+import {
+  getCurrentAiImageAbility,
+  parseAiImageAbilityErrorMessage,
+  requestAiImageAbility,
+  type AiImageAbilityCurrent
+} from '@/services/aiImageAbility'
 
 const route = useRoute()
 
@@ -29,11 +34,11 @@ const defaultHeaderLinks: SiteLinkItem[] = [
 ]
 const { headerLinks, loadHeaderLinks } = useSiteHeaderLinks('aiCommonHeaderLinks', defaultHeaderLinks)
 
-const text = ref('')
 const loading = ref(false)
 const audioUrl = ref('')
 const roles = ref<any[]>([])
 const styles = ref<any[]>([])
+const audioAbility = ref<AiImageAbilityCurrent | null>(null)
 
 const params = reactive({
   text: '',
@@ -68,30 +73,53 @@ const generateAudio = async () => {
     return
   }
 
+  if (audioAbility.value && !audioAbility.value.available) {
+    ElMessage.error('当前文本配音能力未配置，请先在后台 AI 模型管理中启用')
+    return
+  }
+
   loading.value = true
   audioUrl.value = ''
 
   try {
-    const res = await axios.get('https://api.pearktrue.cn/api/freedub', {
-      params: {
+    const response = await requestAiImageAbility({
+      ability: 'text_to_speech',
+      method: 'GET',
+      query: {
         text: params.text,
         role: params.role,
         style: params.style
       }
     })
 
-    if (res.data.code === 200) {
-      audioUrl.value = res.data.data.audio_url
+    if (!response.ok) {
+      throw new Error(await parseAiImageAbilityErrorMessage(response))
+    }
+
+    const res = await response.json()
+
+    if (res.code === 200) {
+      audioUrl.value = res.data.audio_url
       ElMessage.success('配音生成成功')
     } else {
-      ElMessage.error(res.data.msg || '生成失败，请重试')
+      ElMessage.error(res.msg || '生成失败，请重试')
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Generate error:', error)
-    ElMessage.error('生成出错，请稍后重试')
+    ElMessage.error(error.message || '生成出错，请稍后重试')
   } finally {
     loading.value = false
   }
+}
+
+/**
+ * 函数说明：读取当前文本配音能力配置，用于生成前校验后台是否已开启。
+ */
+const loadAudioAbility = async () => {
+  audioAbility.value = await getCurrentAiImageAbility({
+    ability: 'text_to_speech',
+    forceRefresh: true
+  })
 }
 
 // Initialize with defaults
@@ -101,6 +129,7 @@ styles.value = defaultStyles
 onMounted(() => {
   // Future: fetchOptions() if API supports dynamic listing
   void loadHeaderLinks()
+  void loadAudioAbility()
 })
 </script>
 
@@ -118,6 +147,10 @@ onMounted(() => {
               {{ $ensureFreeToolTitle(info.title) }}
             </h1>
             <p class="text-gray-500">{{ info.subtitle }}</p>
+            <div v-if="audioAbility" class="mt-4 inline-flex items-center rounded-full px-4 py-2 text-xs"
+              :class="audioAbility.available ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'">
+              {{ audioAbility.available ? `当前能力：${audioAbility.label || '文本配音'} 已就绪` : '当前文本配音能力未配置，将无法调用' }}
+            </div>
           </div>
 
           <!-- 推荐链接 -->

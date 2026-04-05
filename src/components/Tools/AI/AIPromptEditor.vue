@@ -1,6 +1,7 @@
 <!--
  * @file AIPromptEditor.vue
  * @description AIGC 提示词可视化编辑器组件，用于生成和编辑 AI 绘图提示词
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
  * @createDate 2025-2-14
@@ -24,6 +25,10 @@
             <div class="text-center">
               <h1 class="text-2xl font-bold text-gray-900 mb-2">免费在线AIGC 提示词编辑器</h1>
               <p class="text-sm text-gray-500 mb-2">专业的 AI 绘图提示词编辑工具，支持可视化编辑和智能优化</p>
+              <div class="mb-3 inline-flex items-center rounded-full px-4 py-2 text-xs"
+                :class="providerReady ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-600'">
+                {{ providerStatusText }}
+              </div>
               <div class="flex items-center justify-center space-x-4 mb-2">
                 <a href="https://www.uied.cn/collection/midjourney-study" target="_blank"
                   class="text-sm text-blue-500 hover:text-blue-600">Midjourney教程</a>
@@ -212,6 +217,13 @@ import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import CryptoJS from 'crypto-js'
 import { ensureHtml2canvasRuntime } from '@/utils/toolRuntimeLoaders'
+import {
+  extractAiProviderAssistantText,
+  getCurrentAiProvider,
+  parseAiProviderErrorMessage,
+  requestAiProviderChat,
+  type AiProviderCurrent
+} from '@/services/aiProvider'
 
 // 更新标签颜色映射
 const getTagColorClass = (type?: string) => {
@@ -429,6 +441,22 @@ const selectedCategory = ref('')
 const showTranslation = ref(false)
 const translating = ref(false)
 const loading = ref(false)
+const providerInfo = ref<AiProviderCurrent | null>(null)
+
+const providerReady = computed(() => Boolean(providerInfo.value?.available && providerInfo.value?.defaultModel))
+const providerStatusText = computed(() => {
+  if (!providerReady.value) {
+    return '当前未配置可用的 AI Provider，翻译按钮暂不可用。'
+  }
+  return `当前翻译由 ${providerInfo.value?.label || 'AI Provider'} 驱动，默认模型：${providerInfo.value?.defaultModel || '未设置'}`
+})
+
+/**
+ * 函数说明：读取后台当前文本 AI Provider 配置，统一接管提示词翻译能力来源。
+ */
+const loadAiProviderConfig = async () => {
+  providerInfo.value = await getCurrentAiProvider({ scene: 'chat', forceRefresh: true })
+}
 
 // 提示词数据
 const prompt = ref({
@@ -522,24 +550,57 @@ const saveAsImage = async () => {
   }
 }
 
-// 翻译功能
-const translateToEnglish = async () => {
+/**
+ * 函数说明：通过后台统一 AI Provider 执行提示词翻译，仅输出目标语言结果，不附带解释说明。
+ */
+const translatePromptByProvider = async (targetLanguage: 'english' | 'chinese') => {
   translating.value = true
   try {
-    const query = prompt.value.main
+    const query = prompt.value.main.trim()
     if (!query) {
       throw new Error('请输入要翻译的内容')
     }
 
-    const res = await fetch(`https://api.pearktrue.cn/api/translate/?text=${encodeURIComponent(query)}&type=ZH_CN2EN`)
-    const data = await res.json()
+    const provider = providerInfo.value?.available
+      ? providerInfo.value
+      : await getCurrentAiProvider({ scene: 'chat', forceRefresh: true })
 
-    if (data.code === 200 && data.data) {
-      prompt.value.main = data.data.translate
-      ElMessage.success('翻译完成')
-    } else {
-      throw new Error(data.msg || '翻译失败')
+    providerInfo.value = provider
+    if (!provider.available || !provider.defaultModel) {
+      throw new Error('当前未配置可用的 AI Provider，请先到后台 AI 模型管理中设置 Key 与默认模型')
     }
+
+    const systemPrompt = targetLanguage === 'english'
+      ? '你是 AI 绘图提示词翻译器。请把用户输入精准翻译为自然、专业的英文提示词。只输出英文提示词本身，不要解释，不要加引号，不要编号。'
+      : '你是 AI 绘图提示词翻译器。请把用户输入精准翻译为自然、专业的中文提示词。只输出中文提示词本身，不要解释，不要加引号，不要编号。'
+
+    const response = await requestAiProviderChat({
+      scene: 'chat',
+      model: provider.defaultModel,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: query }
+      ],
+      stream: false,
+      temperature: 0.2,
+      max_tokens: 1200
+    })
+
+    if (!response.ok) {
+      throw new Error(await parseAiProviderErrorMessage(response))
+    }
+
+    const payload = await response.json()
+    const translated = extractAiProviderAssistantText(payload)
+      .replace(/^["'“”]+|["'“”]+$/g, '')
+      .trim()
+
+    if (!translated) {
+      throw new Error('AI返回翻译内容为空，请检查后台 Provider 模型配置')
+    }
+
+    prompt.value.main = translated
+    ElMessage.success('翻译完成')
   } catch (error: any) {
     ElMessage.error('翻译失败: ' + (error.message || '未知错误'))
   } finally {
@@ -547,28 +608,18 @@ const translateToEnglish = async () => {
   }
 }
 
+/**
+ * 函数说明：将当前提示词翻译为英文，供 Midjourney / Stable Diffusion 使用。
+ */
+const translateToEnglish = async () => {
+  await translatePromptByProvider('english')
+}
+
+/**
+ * 函数说明：将当前提示词翻译为中文，便于运营和设计师快速校对语义。
+ */
 const translateToChinese = async () => {
-  translating.value = true
-  try {
-    const query = prompt.value.main
-    if (!query) {
-      throw new Error('请输入要翻译的内容')
-    }
-
-    const res = await fetch(`https://api.pearktrue.cn/api/translate/?text=${encodeURIComponent(query)}&type=EN2ZH_CN`)
-    const data = await res.json()
-
-    if (data.code === 200 && data.data) {
-      prompt.value.main = data.data.translate
-      ElMessage.success('翻译完成')
-    } else {
-      throw new Error(data.msg || '翻译失败')
-    }
-  } catch (error: any) {
-    ElMessage.error('翻译失败: ' + (error.message || '未知错误'))
-  } finally {
-    translating.value = false
-  }
+  await translatePromptByProvider('chinese')
 }
 
 // 功能说明数据
@@ -764,6 +815,7 @@ const copyToClipboard = async () => {
 onMounted(() => {
   // 设置默认分类
   selectedCategory.value = 'subject'
+  void loadAiProviderConfig()
 })
 </script>
 

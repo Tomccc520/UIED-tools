@@ -217,3 +217,34 @@ export const requestAiProviderChat = async (payload: AiProviderChatRequest): Pro
     })
   })
 }
+
+/**
+ * 函数说明：从统一 AI Provider 返回结构中提取回答正文，兼容 OpenAI 协议与简单文本结构。
+ */
+export const extractAiProviderAssistantText = (payload: any): string => {
+  const choice = payload?.choices?.[0]
+  const content =
+    choice?.message?.content ||
+    choice?.delta?.content ||
+    payload?.message ||
+    payload?.content ||
+    ''
+
+  return typeof content === 'string' ? content.trim() : ''
+}
+
+/**
+ * 函数说明：从统一 AI Provider 返回结构中提取思考内容，兼容不同网关返回字段。
+ */
+export const extractAiProviderReasoningText = (payload: any): string => {
+  const choice = payload?.choices?.[0]
+  const reasoning =
+    choice?.message?.reasoning_content ||
+    choice?.message?.reasoning ||
+    choice?.delta?.reasoning_content ||
+    payload?.reasoning_content ||
+    payload?.reasoning ||
+    ''
+
+  return typeof reasoning === 'string' ? reasoning.trim() : ''
+}
