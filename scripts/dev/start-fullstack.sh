@@ -358,9 +358,10 @@ repair_garbled_seed_data() {
     return
   fi
 
-  garbled_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE menu_name LIKE '%?%';" 2>/dev/null || echo "0")"
-  garbled_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name LIKE '%?%' OR remark LIKE '%?%';" 2>/dev/null || echo "0")"
-  garbled_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='website' AND value LIKE '%?%';" 2>/dev/null || echo "0")"
+  # 函数说明：仅把连续多个问号或替代字符判定为乱码，避免正常 URL 查询参数中的单个 ? 被误报。
+  garbled_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE menu_name REGEXP '\\\\?{3,}' OR menu_name LIKE '%�%';" 2>/dev/null || echo "0")"
+  garbled_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name REGEXP '\\\\?{3,}' OR remark REGEXP '\\\\?{3,}' OR name LIKE '%�%' OR remark LIKE '%�%';" 2>/dev/null || echo "0")"
+  garbled_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='website' AND (value REGEXP '\\\\?{3,}' OR value LIKE '%�%');" 2>/dev/null || echo "0")"
 
   if [[ "${garbled_menu_count}" -le 0 ]] && [[ "${garbled_role_count}" -le 0 ]] && [[ "${garbled_config_count}" -le 0 ]]; then
     return
@@ -524,10 +525,10 @@ apply_role_permission_baseline_patch() {
     return
   fi
 
-  role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role;" 2>/dev/null || echo "0")"
-  perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_perm;" 2>/dev/null || echo "0")"
-  super_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name='超级管理员';" 2>/dev/null || echo "0")"
-  ops_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name='运营管理员';" 2>/dev/null || echo "0")"
+  role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role;" 2>/dev/null || echo "0")"
+  perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_perm;" 2>/dev/null || echo "0")"
+  super_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name='超级管理员';" 2>/dev/null || echo "0")"
+  ops_role_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_role WHERE name='运营管理员';" 2>/dev/null || echo "0")"
 
   # 函数说明：当角色和权限均已具备基础规模时跳过，减少重复执行 SQL。
   if [[ "${role_count}" -ge 3 ]] && [[ "${perm_count}" -ge 30 ]] && [[ "${super_role_count}" -ge 1 ]] && [[ "${ops_role_count}" -ge 1 ]]; then
