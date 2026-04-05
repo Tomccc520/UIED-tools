@@ -890,7 +890,34 @@ apply_official_site_layout_submenus_patch() {
   log_info "官网设置布局子菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
-# 函数说明：检测官网设置是否缺少“工具分类与列表”独立菜单，缺失时自动补齐菜单与权限。
+# 函数说明：检测官网设置菜单命名是否仍为旧名称，命中时自动统一为“菜单设置 / 工具主数据”。
+apply_official_site_menu_label_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_rename_official_site_menu_labels.sql"
+  local sidebar_menu_name=""
+  local catalog_menu_name=""
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  sidebar_menu_name="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COALESCE(menu_name,'') FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:sidebar:detail' LIMIT 1;" 2>/dev/null || true)"
+  catalog_menu_name="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot -Nse "SELECT COALESCE(menu_name,'') FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:catalog:detail' LIMIT 1;" 2>/dev/null || true)"
+
+  if [[ "${sidebar_menu_name}" == "菜单设置" ]] && [[ "${catalog_menu_name}" == "工具主数据" ]]; then
+    return
+  fi
+
+  log_info "检测到官网设置菜单名仍为旧名称，自动执行菜单命名统一补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "官网设置菜单命名统一完成。"
+    return
+  fi
+
+  # 函数说明：菜单补丁失败时不阻塞启动，避免影响当前联调流程。
+  log_info "官网设置菜单命名补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：检测官网设置是否缺少“工具主数据”独立菜单，缺失时自动补齐菜单与权限。
 apply_official_site_tools_catalog_menu_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_official_site_tools_catalog_menu.sql"
   local catalog_menu_count="0"
@@ -907,14 +934,14 @@ apply_official_site_tools_catalog_menu_patch() {
     return
   fi
 
-  log_info "检测到官网设置缺少独立工具分类菜单，自动执行工具分类菜单补丁..."
+  log_info "检测到官网设置缺少独立工具主数据菜单，自动执行工具主数据菜单补丁..."
   if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
-    log_info "官网设置工具分类菜单补齐完成。"
+    log_info "官网设置工具主数据菜单补齐完成。"
     return
   fi
 
   # 函数说明：菜单补丁失败时不阻塞启动，避免影响当前联调流程。
-  log_info "官网设置工具分类菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+  log_info "官网设置工具主数据菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
 # 函数说明：把历史前端 .env 中的 AI Provider Key 自动同步到后台配置，避免前台继续保存敏感 Key。
@@ -1258,6 +1285,7 @@ main() {
   apply_official_site_layout_submenus_patch
   apply_official_site_tools_catalog_menu_patch
   apply_official_site_seo_menu_patch
+  apply_official_site_menu_label_patch
   sync_frontend_ai_provider_env_keys
   start_likeadmin_server
   start_likeadmin_admin
