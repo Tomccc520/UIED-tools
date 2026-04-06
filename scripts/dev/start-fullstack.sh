@@ -545,13 +545,15 @@ apply_member_commerce_schema_patch() {
 apply_member_order_menu_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260330_add_member_order_menu.sql"
   local order_menu_count="0"
+  local order_delivery_perm_count="0"
 
   if [[ ! -f "${patch_file}" ]]; then
     return
   fi
 
   order_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='order:list';" 2>/dev/null || echo "0")"
-  if [[ "${order_menu_count}" -ge 1 ]]; then
+  order_delivery_perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='order:delivery';" 2>/dev/null || echo "0")"
+  if [[ "${order_menu_count}" -ge 1 ]] && [[ "${order_delivery_perm_count}" -ge 1 ]]; then
     return
   fi
 
@@ -563,6 +565,30 @@ apply_member_order_menu_patch() {
 
   # 函数说明：历史库结构差异可能导致补丁 SQL 失败，此处仅告警不中断全栈启动，避免前端/后台无法联调。
   log_info "订单管理菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file} 与当前库结构。"
+}
+
+# 函数说明：检测并补齐用户订单的源码交付字段，确保商业交付信息可保存到订单里。
+apply_order_delivery_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260406_add_order_delivery_fields.sql"
+  local delivery_column_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  delivery_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_purchase_order' AND COLUMN_NAME IN ('delivery_status','license_bound_domain','license_key','download_url','delivery_note','delivered_time');" 2>/dev/null || echo "0")"
+  if [[ "${delivery_column_count}" -ge 6 ]]; then
+    return
+  fi
+
+  log_info "检测到订单交付字段缺失，自动执行交付字段补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "订单交付字段补齐完成。"
+    return
+  fi
+
+  # 函数说明：交付字段补丁失败时不阻塞启动，避免影响本地联调。
+  log_info "订单交付字段补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
 # 函数说明：补齐后台角色与权限基线，避免角色管理/菜单管理无可用数据。
@@ -1278,6 +1304,7 @@ main() {
   apply_user_points_schema_patch
   apply_user_member_schema_patch
   apply_member_commerce_schema_patch
+  apply_order_delivery_schema_patch
   apply_member_order_menu_patch
   apply_role_permission_baseline_patch
   apply_license_module_patch

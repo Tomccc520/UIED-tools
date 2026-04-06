@@ -118,6 +118,13 @@ export interface FrontendUserOrderItem {
   memberDays: number
   points: number
   giftPoints: number
+  deliveryStatus: number
+  deliveryStatusText: string
+  licenseBoundDomain: string
+  licenseKeyMasked: string
+  downloadUrl: string
+  deliveryNote: string
+  deliveredTime: number
   remark: string
   paidTime: number
   createdAt: number
@@ -447,6 +454,26 @@ const resolveOrderCallbackStatusText = (status: number, fallbackText: unknown): 
 }
 
 /**
+ * 函数说明：将订单交付状态编码映射为前端可读文案，兼容后端未返回 deliveryStatusText 的场景。
+ */
+const resolveOrderDeliveryStatusText = (status: number, fallbackText: unknown): string => {
+  const text = String(fallbackText || '').trim()
+  if (text) {
+    return text
+  }
+  if (status === 1) {
+    return '已交付'
+  }
+  if (status === 2) {
+    return '待补充'
+  }
+  if (status === 3) {
+    return '已失效'
+  }
+  return '未交付'
+}
+
+/**
  * 函数说明：将接口返回的购买记录转换为统一结构，兼容字段缺失场景。
  */
 const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] => {
@@ -474,6 +501,13 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
       memberDays: Math.max(0, Number(item.memberDays || 0)),
       points: Math.max(0, Number(item.points || 0)),
       giftPoints: Math.max(0, Number(item.giftPoints || 0)),
+      deliveryStatus: Math.max(0, Number(item.deliveryStatus || 0)),
+      deliveryStatusText: resolveOrderDeliveryStatusText(Number(item.deliveryStatus || 0), item.deliveryStatusText),
+      licenseBoundDomain: String(item.licenseBoundDomain || '').trim(),
+      licenseKeyMasked: String(item.licenseKeyMasked || '').trim(),
+      downloadUrl: String(item.downloadUrl || '').trim(),
+      deliveryNote: String(item.deliveryNote || '').trim(),
+      deliveredTime: Math.max(0, Number(item.deliveredTime || 0)),
       remark: String(item.remark || '').trim(),
       paidTime: Math.max(0, Number(item.paidTime || 0)),
       createdAt: Math.max(0, Number(item.createdAt || 0)),
@@ -790,6 +824,13 @@ export const purchaseFrontendUserProduct = async (
     memberDays: 0,
     points: 0,
     giftPoints: 0,
+    deliveryStatus: 0,
+    deliveryStatusText: '未交付',
+    licenseBoundDomain: '',
+    licenseKeyMasked: '',
+    downloadUrl: '',
+    deliveryNote: '',
+    deliveredTime: 0,
     remark: '',
     paidTime: 0,
     createdAt: Date.now(),

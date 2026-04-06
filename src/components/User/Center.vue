@@ -233,6 +233,22 @@ const resolveCallbackTagType = (status: number): 'success' | 'danger' | 'warning
 }
 
 /**
+ * 函数说明：将源码交付状态映射为标签类型，便于在订单表中快速识别当前交付进度。
+ */
+const resolveDeliveryTagType = (status: number): 'success' | 'warning' | 'info' | 'danger' => {
+  if (Number(status) === 1) {
+    return 'success'
+  }
+  if (Number(status) === 2) {
+    return 'warning'
+  }
+  if (Number(status) === 3) {
+    return 'danger'
+  }
+  return 'info'
+}
+
+/**
  * 函数说明：清理支付轮询计时器，防止重复轮询和内存泄漏。
  */
 const clearPaymentPollingTimer = () => {
@@ -868,6 +884,26 @@ onBeforeUnmount(() => {
                   </span>
                 </template>
               </el-table-column>
+              <el-table-column label="源码交付" min-width="260">
+                <template #default="scope">
+                  <div class="delivery-cell">
+                    <el-tag :type="resolveDeliveryTagType(scope.row.deliveryStatus)">
+                      {{ scope.row.deliveryStatusText || '未交付' }}
+                    </el-tag>
+                    <div class="delivery-cell-meta">
+                      <div>域名：{{ scope.row.licenseBoundDomain || '-' }}</div>
+                      <div>授权码：{{ scope.row.licenseKeyMasked || '-' }}</div>
+                      <div>
+                        下载：
+                        <a v-if="scope.row.downloadUrl" :href="scope.row.downloadUrl" target="_blank" rel="noopener noreferrer">打开交付链接</a>
+                        <span v-else>-</span>
+                      </div>
+                      <div>交付时间：{{ formatDateTime(scope.row.deliveredTime) }}</div>
+                      <div>备注：{{ scope.row.deliveryNote || '-' }}</div>
+                    </div>
+                  </div>
+                </template>
+              </el-table-column>
               <el-table-column label="购买时间" min-width="180">
                 <template #default="scope">
                   {{ formatDateTime(scope.row.createdAt) }}
@@ -1262,6 +1298,21 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+}
+
+.delivery-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.delivery-cell-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7280;
 }
 
 .text-plus {
