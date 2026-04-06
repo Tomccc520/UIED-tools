@@ -227,6 +227,70 @@ const invalidDeliveryOrderCount = computed(() => {
 })
 
 /**
+ * 函数说明：筛选当前已准备好下载资料的源码交付订单，用于专区主展示区优先展示。
+ */
+const readyDeliveryOrderList = computed(() => {
+  return deliveryOrderList.value.filter((item) => {
+    return Number(item.deliveryStatus) === 1
+      && Boolean(String(item.downloadUrl || '').trim())
+      && Number(item.downloadCheckStatus || 0) !== 2
+  })
+})
+
+/**
+ * 函数说明：筛选仍需用户关注的源码交付订单，用于专区异常与待处理区统一展示。
+ */
+const attentionDeliveryOrderList = computed(() => {
+  return deliveryOrderList.value.filter((item) => {
+    const deliveryStatus = Number(item.deliveryStatus || 0)
+    if (deliveryStatus === 3) {
+      return true
+    }
+    if (deliveryStatus !== 1) {
+      return true
+    }
+    if (!String(item.licenseBoundDomain || '').trim()) {
+      return true
+    }
+    if (!String(item.licenseKeyMasked || '').trim()) {
+      return true
+    }
+    if (!String(item.downloadUrl || '').trim()) {
+      return true
+    }
+    return Number(item.downloadCheckStatus || 0) === 2
+  })
+})
+
+/**
+ * 函数说明：选出源码交付专区主展示订单，优先展示可立即下载的订单，其次展示待处理订单。
+ */
+const primaryDeliveryOrder = computed(() => {
+  return readyDeliveryOrderList.value[0] || attentionDeliveryOrderList.value[0] || deliveryOrderList.value[0] || null
+})
+
+/**
+ * 函数说明：统计下载链路检测通过的订单数量，便于在交付专区展示交付质量。
+ */
+const healthyDownloadOrderCount = computed(() => {
+  return deliveryOrderList.value.filter((item) => Number(item.downloadCheckStatus) === 1).length
+})
+
+/**
+ * 函数说明：统计资料缺失的订单数量，便于在交付专区强调需补充的记录。
+ */
+const missingMaterialOrderCount = computed(() => {
+  return deliveryOrderList.value.filter((item) => {
+    if (Number(item.deliveryStatus || 0) <= 0) {
+      return false
+    }
+    return !String(item.licenseBoundDomain || '').trim()
+      || !String(item.licenseKeyMasked || '').trim()
+      || !String(item.downloadUrl || '').trim()
+  }).length
+})
+
+/**
  * 函数说明：读取当前轮询订单，便于在页面中实时展示状态。
  */
 const currentPollingOrder = computed(() => {
@@ -300,6 +364,140 @@ const resolveDeliverySummaryText = (order: FrontendUserOrderItem): string => {
     return '订单已支付，交付资料尚未发放。'
   }
   return '订单尚未完成支付，支付成功后才会进入源码交付流程。'
+}
+
+/**
+ * 函数说明：输出源码交付专区主状态标签文案，便于用户快速理解当前订单所处阶段。
+ */
+const resolveDeliveryWorkspaceStatusText = (order: FrontendUserOrderItem): string => {
+  const deliveryStatus = Number(order.deliveryStatus || 0)
+  if (deliveryStatus === 3) {
+    return '资料已失效'
+  }
+  if (deliveryStatus === 2) {
+    return '待补充'
+  }
+  if (deliveryStatus === 1 && Number(order.downloadCheckStatus || 0) === 2) {
+    return '下载异常'
+  }
+  if (deliveryStatus === 1 && String(order.downloadUrl || '').trim()) {
+    return '可立即下载'
+  }
+  if (deliveryStatus === 1) {
+    return '待补充下载'
+  }
+  if (Number(order.status) === 1) {
+    return '待交付'
+  }
+  return '待支付'
+}
+
+/**
+ * 函数说明：输出源码交付专区主状态标签类型，统一专区状态色彩映射。
+ */
+const resolveDeliveryWorkspaceStatusType = (order: FrontendUserOrderItem): 'success' | 'warning' | 'danger' | 'info' => {
+  const deliveryStatus = Number(order.deliveryStatus || 0)
+  if (deliveryStatus === 3 || Number(order.downloadCheckStatus || 0) === 2) {
+    return 'danger'
+  }
+  if (deliveryStatus === 2 || deliveryStatus === 0) {
+    return 'warning'
+  }
+  if (deliveryStatus === 1 && String(order.downloadUrl || '').trim()) {
+    return 'success'
+  }
+  return 'info'
+}
+
+/**
+ * 函数说明：整理源码交付检查清单，便于在专区中直接展示交付资料完整度。
+ */
+const resolveDeliveryChecklist = (order: FrontendUserOrderItem) => {
+  return [
+    {
+      label: '绑定域名',
+      done: Boolean(String(order.licenseBoundDomain || '').trim()),
+      value: String(order.licenseBoundDomain || '').trim() || '待绑定'
+    },
+    {
+      label: '授权码',
+      done: Boolean(String(order.licenseKeyMasked || '').trim()),
+      value: String(order.licenseKeyMasked || '').trim() || '待生成'
+    },
+    {
+      label: '源码下载',
+      done: Boolean(String(order.downloadUrl || '').trim()),
+      value: String(order.downloadUrl || '').trim() ? '已提供下载入口' : '待补充'
+    },
+    {
+      label: '下载检测',
+      done: Number(order.downloadCheckStatus || 0) === 1,
+      value: resolveDeliveryDownloadStatusText(order)
+    }
+  ]
+}
+
+/**
+ * 函数说明：输出下载链路检测文案，用于专区订单卡和主展示区统一显示。
+ */
+const resolveDeliveryDownloadStatusText = (order: FrontendUserOrderItem): string => {
+  const checkStatus = Number(order.downloadCheckStatus || 0)
+  if (checkStatus === 1) {
+    return '链接有效'
+  }
+  if (checkStatus === 2) {
+    return String(order.downloadCheckMessage || '').trim() || '链接异常'
+  }
+  if (String(order.downloadUrl || '').trim()) {
+    return '尚未检测'
+  }
+  return '未提供下载链接'
+}
+
+/**
+ * 函数说明：汇总需要用户关注的交付问题，用于异常订单卡直观展示问题块。
+ */
+const resolveDeliveryAttentionItems = (order: FrontendUserOrderItem): string[] => {
+  const issues: string[] = []
+  const deliveryStatus = Number(order.deliveryStatus || 0)
+  if (deliveryStatus === 3) {
+    issues.push('当前交付资料已失效，需要重新分配授权或下载包。')
+  } else if (deliveryStatus === 2) {
+    issues.push('交付资料正在补充，当前还不能直接下载。')
+  } else if (deliveryStatus === 0 && Number(order.status) === 1) {
+    issues.push('订单已支付，尚未进入正式交付状态。')
+  }
+  if (!String(order.licenseBoundDomain || '').trim()) {
+    issues.push('绑定域名还未填写。')
+  }
+  if (!String(order.licenseKeyMasked || '').trim()) {
+    issues.push('授权码还未发放。')
+  }
+  if (!String(order.downloadUrl || '').trim()) {
+    issues.push('源码下载入口还未配置。')
+  } else if (Number(order.downloadCheckStatus || 0) === 2) {
+    issues.push(String(order.downloadCheckMessage || '').trim() || '当前下载链接检测失败。')
+  }
+  return issues
+}
+
+/**
+ * 函数说明：输出当前订单下一步建议动作，帮助用户判断要联系运营还是直接下载。
+ */
+const resolveDeliveryNextAction = (order: FrontendUserOrderItem): string => {
+  if (Number(order.deliveryStatus || 0) === 1 && String(order.downloadUrl || '').trim() && Number(order.downloadCheckStatus || 0) !== 2) {
+    return '当前可直接下载源码包，并按绑定域名完成部署。'
+  }
+  if (Number(order.deliveryStatus || 0) === 3) {
+    return '需要联系运营重新分配授权与下载资源。'
+  }
+  if (!String(order.downloadUrl || '').trim()) {
+    return '请等待运营补充下载链接后再继续。'
+  }
+  if (Number(order.downloadCheckStatus || 0) === 2) {
+    return '下载链接异常，建议联系运营重新生成交付包。'
+  }
+  return '请先补齐授权信息或等待交付资料完善。'
 }
 
 /**
@@ -1026,13 +1224,80 @@ onBeforeUnmount(() => {
             <div class="delivery-board-hero">
               <div>
                 <div class="delivery-board-title">源码交付专区</div>
-                <div class="delivery-board-desc">集中查看源码包、绑定域名、授权码与交付备注，避免在订单表里逐条翻找。</div>
+                <div class="delivery-board-desc">把订单、授权、绑定域名和下载入口收在同一处，交付状态和异常项都能直接看清。</div>
               </div>
               <div class="delivery-board-actions">
                 <el-button size="small" @click="loadOrders">刷新交付状态</el-button>
                 <el-button size="small" type="primary" plain @click="activeTab = 'orders'">查看完整订单</el-button>
               </div>
             </div>
+
+            <section v-if="primaryDeliveryOrder" class="delivery-spotlight">
+              <div class="delivery-spotlight-main">
+                <div class="delivery-spotlight-head">
+                  <div>
+                    <div class="delivery-spotlight-label">当前重点交付</div>
+                    <h3>{{ primaryDeliveryOrder.productName || '源码交付订单' }}</h3>
+                    <p>订单号：{{ primaryDeliveryOrder.orderSn }} · {{ resolveDeliveryNextAction(primaryDeliveryOrder) }}</p>
+                  </div>
+                  <el-tag :type="resolveDeliveryWorkspaceStatusType(primaryDeliveryOrder)" effect="light">
+                    {{ resolveDeliveryWorkspaceStatusText(primaryDeliveryOrder) }}
+                  </el-tag>
+                </div>
+
+                <div class="delivery-spotlight-grid">
+                  <div class="delivery-spotlight-item">
+                    <span>绑定域名</span>
+                    <strong>{{ primaryDeliveryOrder.licenseBoundDomain || '待绑定' }}</strong>
+                  </div>
+                  <div class="delivery-spotlight-item">
+                    <span>授权码</span>
+                    <strong>{{ primaryDeliveryOrder.licenseKeyMasked || '待发放' }}</strong>
+                  </div>
+                  <div class="delivery-spotlight-item">
+                    <span>下载状态</span>
+                    <strong>{{ resolveDeliveryDownloadStatusText(primaryDeliveryOrder) }}</strong>
+                  </div>
+                  <div class="delivery-spotlight-item">
+                    <span>交付时间</span>
+                    <strong>{{ formatDateTime(primaryDeliveryOrder.deliveredTime) }}</strong>
+                  </div>
+                </div>
+
+                <div class="delivery-checklist">
+                  <div
+                    v-for="item in resolveDeliveryChecklist(primaryDeliveryOrder)"
+                    :key="`${primaryDeliveryOrder.orderSn}-${item.label}`"
+                    class="delivery-checklist-item"
+                    :class="{ 'is-done': item.done }"
+                  >
+                    <div class="delivery-checklist-item__label">{{ item.label }}</div>
+                    <div class="delivery-checklist-item__value">{{ item.value }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <aside class="delivery-spotlight-side">
+                <div class="delivery-spotlight-side__title">操作建议</div>
+                <div class="delivery-spotlight-side__desc">{{ resolveDeliverySummaryText(primaryDeliveryOrder) }}</div>
+                <div class="delivery-spotlight-actions">
+                  <el-button size="small" @click="handleCopyDeliveryDomain(primaryDeliveryOrder.licenseBoundDomain)">复制域名</el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    :disabled="!primaryDeliveryOrder.downloadUrl"
+                    @click="handleOpenDeliveryDownload(primaryDeliveryOrder.downloadUrl)"
+                  >
+                    打开源码包
+                  </el-button>
+                  <el-button size="small" plain @click="activeTab = 'orders'">去订单查看</el-button>
+                </div>
+                <div v-if="primaryDeliveryOrder.deliveryNote" class="delivery-spotlight-note">
+                  交付备注：{{ primaryDeliveryOrder.deliveryNote }}
+                </div>
+              </aside>
+            </section>
 
             <div class="delivery-kpi-grid">
               <div class="delivery-kpi-card">
@@ -1051,39 +1316,93 @@ onBeforeUnmount(() => {
                 <div class="delivery-kpi-label">已失效</div>
                 <div class="delivery-kpi-value">{{ invalidDeliveryOrderCount }}</div>
               </div>
+              <div class="delivery-kpi-card">
+                <div class="delivery-kpi-label">下载检测通过</div>
+                <div class="delivery-kpi-value">{{ healthyDownloadOrderCount }}</div>
+              </div>
+              <div class="delivery-kpi-card">
+                <div class="delivery-kpi-label">资料待补充</div>
+                <div class="delivery-kpi-value">{{ missingMaterialOrderCount }}</div>
+              </div>
             </div>
 
-            <div v-if="deliveryOrderList.length > 0" class="delivery-card-grid">
-              <article v-for="item in deliveryOrderList" :key="`${item.orderSn}-delivery`" class="delivery-card">
-                <div class="delivery-card-head">
+            <div v-if="deliveryOrderList.length > 0" class="delivery-section-grid">
+              <section class="delivery-section">
+                <div class="delivery-section-head">
                   <div>
-                    <div class="delivery-card-title">{{ item.productName || '源码交付订单' }}</div>
-                    <div class="delivery-card-sn">订单号：{{ item.orderSn }}</div>
+                    <div class="delivery-section-title">可立即下载</div>
+                    <div class="delivery-section-desc">已经具备下载链路的源码交付订单，适合直接部署或交接给技术同学。</div>
                   </div>
-                  <el-tag :type="resolveDeliveryTagType(item.deliveryStatus)">
-                    {{ item.deliveryStatusText || '未交付' }}
-                  </el-tag>
+                  <el-tag type="success" effect="light">{{ readyDeliveryOrderList.length }}</el-tag>
                 </div>
-                <div class="delivery-card-desc">{{ resolveDeliverySummaryText(item) }}</div>
-                <div class="delivery-card-info">
-                  <div><span>绑定域名</span><strong>{{ item.licenseBoundDomain || '-' }}</strong></div>
-                  <div><span>授权码</span><strong>{{ item.licenseKeyMasked || '-' }}</strong></div>
-                  <div><span>交付时间</span><strong>{{ formatDateTime(item.deliveredTime) }}</strong></div>
-                  <div><span>备注</span><strong>{{ item.deliveryNote || '-' }}</strong></div>
+                <div v-if="readyDeliveryOrderList.length > 0" class="delivery-card-grid delivery-card-grid--single">
+                  <article v-for="item in readyDeliveryOrderList" :key="`${item.orderSn}-ready`" class="delivery-card delivery-card--ready">
+                    <div class="delivery-card-head">
+                      <div>
+                        <div class="delivery-card-title">{{ item.productName || '源码交付订单' }}</div>
+                        <div class="delivery-card-sn">订单号：{{ item.orderSn }}</div>
+                      </div>
+                      <el-tag :type="resolveDeliveryWorkspaceStatusType(item)" effect="light">
+                        {{ resolveDeliveryWorkspaceStatusText(item) }}
+                      </el-tag>
+                    </div>
+                    <div class="delivery-card-desc">{{ resolveDeliverySummaryText(item) }}</div>
+                    <div class="delivery-card-info">
+                      <div><span>绑定域名</span><strong>{{ item.licenseBoundDomain || '-' }}</strong></div>
+                      <div><span>授权码</span><strong>{{ item.licenseKeyMasked || '-' }}</strong></div>
+                      <div><span>下载状态</span><strong>{{ resolveDeliveryDownloadStatusText(item) }}</strong></div>
+                      <div><span>交付时间</span><strong>{{ formatDateTime(item.deliveredTime) }}</strong></div>
+                    </div>
+                    <div class="delivery-card-actions">
+                      <el-button size="small" @click="handleCopyDeliveryDomain(item.licenseBoundDomain)">复制域名</el-button>
+                      <el-button size="small" type="primary" plain @click="handleOpenDeliveryDownload(item.downloadUrl)">
+                        打开源码包
+                      </el-button>
+                    </div>
+                  </article>
                 </div>
-                <div class="delivery-card-actions">
-                  <el-button size="small" @click="handleCopyDeliveryDomain(item.licenseBoundDomain)">复制域名</el-button>
-                  <el-button
-                    v-if="item.downloadUrl"
-                    size="small"
-                    type="primary"
-                    plain
-                    @click="handleOpenDeliveryDownload(item.downloadUrl)"
-                  >
-                    打开源码包
-                  </el-button>
+                <el-empty v-else description="暂无已准备好的源码下载资料" />
+              </section>
+
+              <section class="delivery-section">
+                <div class="delivery-section-head">
+                  <div>
+                    <div class="delivery-section-title">待处理与异常</div>
+                    <div class="delivery-section-desc">交付资料不完整、下载异常或状态失效的订单，建议优先跟进这些记录。</div>
+                  </div>
+                  <el-tag type="warning" effect="light">{{ attentionDeliveryOrderList.length }}</el-tag>
                 </div>
-              </article>
+                <div v-if="attentionDeliveryOrderList.length > 0" class="delivery-card-grid delivery-card-grid--single">
+                  <article v-for="item in attentionDeliveryOrderList" :key="`${item.orderSn}-attention`" class="delivery-card delivery-card--attention">
+                    <div class="delivery-card-head">
+                      <div>
+                        <div class="delivery-card-title">{{ item.productName || '源码交付订单' }}</div>
+                        <div class="delivery-card-sn">订单号：{{ item.orderSn }}</div>
+                      </div>
+                      <el-tag :type="resolveDeliveryWorkspaceStatusType(item)" effect="light">
+                        {{ resolveDeliveryWorkspaceStatusText(item) }}
+                      </el-tag>
+                    </div>
+                    <div class="delivery-card-desc">{{ resolveDeliveryNextAction(item) }}</div>
+                    <div class="delivery-card-alerts">
+                      <div
+                        v-for="issue in resolveDeliveryAttentionItems(item)"
+                        :key="`${item.orderSn}-${issue}`"
+                        class="delivery-card-alerts__item"
+                      >
+                        {{ issue }}
+                      </div>
+                    </div>
+                    <div class="delivery-card-info">
+                      <div><span>绑定域名</span><strong>{{ item.licenseBoundDomain || '-' }}</strong></div>
+                      <div><span>授权码</span><strong>{{ item.licenseKeyMasked || '-' }}</strong></div>
+                      <div><span>下载状态</span><strong>{{ resolveDeliveryDownloadStatusText(item) }}</strong></div>
+                      <div><span>备注</span><strong>{{ item.deliveryNote || '-' }}</strong></div>
+                    </div>
+                  </article>
+                </div>
+                <el-empty v-else description="当前没有待补充或异常的源码交付订单" />
+              </section>
             </div>
             <el-empty v-else description="暂无需要关注的源码交付记录" />
           </div>
@@ -1500,9 +1819,143 @@ onBeforeUnmount(() => {
   align-items: flex-start;
 }
 
+.delivery-spotlight {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(280px, 0.85fr);
+  gap: 14px;
+}
+
+.delivery-spotlight-main,
+.delivery-spotlight-side {
+  border: 1px solid #e4e7f0;
+  border-radius: 20px;
+  background: #ffffff;
+  padding: 18px;
+}
+
+.delivery-spotlight-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.delivery-spotlight-label {
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #d9d2ff;
+  background: #f3efff;
+  color: #5b47d6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.delivery-spotlight-head h3 {
+  margin: 12px 0 0;
+  font-size: 20px;
+  color: #111827;
+}
+
+.delivery-spotlight-head p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5b6476;
+}
+
+.delivery-spotlight-grid {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delivery-spotlight-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f7f8fb;
+}
+
+.delivery-spotlight-item span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.delivery-spotlight-item strong {
+  font-size: 13px;
+  line-height: 1.6;
+  color: #111827;
+  word-break: break-all;
+}
+
+.delivery-checklist {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.delivery-checklist-item {
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid #f0dca1;
+  background: #fff8e6;
+}
+
+.delivery-checklist-item.is-done {
+  border-color: #cfe9db;
+  background: #eef9f1;
+}
+
+.delivery-checklist-item__label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.delivery-checklist-item__value {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #111827;
+}
+
+.delivery-spotlight-side__title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.delivery-spotlight-side__desc {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #5b6476;
+}
+
+.delivery-spotlight-actions {
+  margin-top: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.delivery-spotlight-note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f7f8fb;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #5b6476;
+}
+
 .delivery-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1531,11 +1984,59 @@ onBeforeUnmount(() => {
   gap: 14px;
 }
 
+.delivery-card-grid--single {
+  grid-template-columns: 1fr;
+}
+
+.delivery-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.delivery-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.delivery-section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border: 1px solid #e4e7f0;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.delivery-section-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.delivery-section-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #6b7280;
+}
+
 .delivery-card {
   padding: 18px;
   border-radius: 20px;
   border: 1px solid #e4e7f0;
   background: #ffffff;
+}
+
+.delivery-card--ready {
+  background: linear-gradient(180deg, #ffffff 0%, #fbfffd 100%);
+}
+
+.delivery-card--attention {
+  background: linear-gradient(180deg, #ffffff 0%, #fffdf7 100%);
 }
 
 .delivery-card-head {
@@ -1562,6 +2063,23 @@ onBeforeUnmount(() => {
   font-size: 13px;
   line-height: 1.6;
   color: #4b5563;
+}
+
+.delivery-card-alerts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.delivery-card-alerts__item {
+  padding: 10px 12px;
+  border-radius: 14px;
+  border: 1px solid #f1dd9a;
+  background: #fff8e8;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #7a5b06;
 }
 
 .delivery-card-info {
@@ -1717,8 +2235,15 @@ onBeforeUnmount(() => {
     flex-wrap: wrap;
   }
 
+  .delivery-spotlight {
+    grid-template-columns: 1fr;
+  }
+
   .delivery-kpi-grid,
+  .delivery-section-grid,
   .delivery-card-grid,
+  .delivery-checklist,
+  .delivery-spotlight-grid,
   .delivery-card-info {
     grid-template-columns: 1fr;
   }

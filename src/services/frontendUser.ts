@@ -123,6 +123,9 @@ export interface FrontendUserOrderItem {
   licenseBoundDomain: string
   licenseKeyMasked: string
   downloadUrl: string
+  downloadCheckStatus: number
+  downloadCheckTime: number
+  downloadCheckMessage: string
   deliveryNote: string
   deliveredTime: number
   remark: string
@@ -506,6 +509,9 @@ const normalizeFrontendUserOrders = (payload: unknown): FrontendUserOrderItem[] 
       licenseBoundDomain: String(item.licenseBoundDomain || '').trim(),
       licenseKeyMasked: String(item.licenseKeyMasked || '').trim(),
       downloadUrl: String(item.downloadUrl || '').trim(),
+      downloadCheckStatus: Math.max(0, Number(item.downloadCheckStatus || 0)),
+      downloadCheckTime: Math.max(0, Number(item.downloadCheckTime || 0)),
+      downloadCheckMessage: String(item.downloadCheckMessage || '').trim(),
       deliveryNote: String(item.deliveryNote || '').trim(),
       deliveredTime: Math.max(0, Number(item.deliveredTime || 0)),
       remark: String(item.remark || '').trim(),
@@ -829,6 +835,9 @@ export const purchaseFrontendUserProduct = async (
     licenseBoundDomain: '',
     licenseKeyMasked: '',
     downloadUrl: '',
+    downloadCheckStatus: 0,
+    downloadCheckTime: 0,
+    downloadCheckMessage: '',
     deliveryNote: '',
     deliveredTime: 0,
     remark: '',
