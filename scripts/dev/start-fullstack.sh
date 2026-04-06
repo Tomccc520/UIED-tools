@@ -1191,6 +1191,34 @@ is_pid_alive() {
   kill -0 "${pid}" >/dev/null 2>&1
 }
 
+# 函数说明：通过 Python 子进程创建新会话并脱离当前 shell，避免 Mac 下脚本退出后开发服务被连带回收。
+spawn_detached_process() {
+  local cwd="$1"
+  local cmd="$2"
+  local log_file="$3"
+
+  python3 - "${cwd}" "${cmd}" "${log_file}" <<'PY'
+import subprocess
+import sys
+
+cwd = sys.argv[1]
+cmd = sys.argv[2]
+log_file = sys.argv[3]
+
+with open(log_file, "ab", buffering=0) as log_handle, open("/dev/null", "rb", buffering=0) as null_in:
+    proc = subprocess.Popen(
+        ["/bin/bash", "-lc", cmd],
+        cwd=cwd,
+        stdin=null_in,
+        stdout=log_handle,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+        close_fds=True,
+    )
+    print(proc.pid)
+PY
+}
+
 # 函数说明：通用后台启动器，统一管理日志和 PID，并在失败时快速提示日志
 start_background_process() {
   local name="$1"
@@ -1199,6 +1227,7 @@ start_background_process() {
   local expected_port="${4:-}"
   local pid_file="${PID_DIR}/${name}.pid"
   local log_file="${LOG_DIR}/${name}.log"
+  local spawned_pid=""
 
   if is_pid_running "${pid_file}" "${expected_port}"; then
     log_info "${name} 已在运行，跳过启动。"
@@ -1208,8 +1237,11 @@ start_background_process() {
   rm -f "${pid_file}"
   : > "${log_file}"
   log_info "启动 ${name}..."
-  nohup bash -lc "cd '${cwd}' && ${cmd}" >"${log_file}" 2>&1 &
-  echo "$!" >"${pid_file}"
+  spawned_pid="$(spawn_detached_process "${cwd}" "${cmd}" "${log_file}")"
+  if [[ -z "${spawned_pid}" ]]; then
+    log_error_and_exit "${name} 启动失败，未获取到有效 PID，请查看日志: ${log_file}"
+  fi
+  echo "${spawned_pid}" >"${pid_file}"
 
   if [[ -z "${expected_port}" ]]; then
     sleep 2
