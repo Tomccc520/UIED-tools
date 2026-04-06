@@ -7,6 +7,7 @@
  * @createDate 2026-03-22
  */
 
+import defaultChangelogTimeline from '@/constants/changelogTimeline'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 export interface SiteLinkItem {
@@ -73,6 +74,21 @@ export interface SiteSeoPageItem {
   image: string
 }
 
+export interface SiteChangelogFeatureItem {
+  title: string
+  points: string[]
+}
+
+export interface SiteChangelogTimelineItem {
+  id: string
+  version: string
+  date: string
+  badgeText: string
+  badgeType: string
+  title: string
+  features: SiteChangelogFeatureItem[]
+}
+
 export interface SitePublicConfig {
   webName: string
   webLogo: string
@@ -106,6 +122,8 @@ export interface SitePublicConfig {
   hotTools: SiteHotToolItem[]
   headerLinks: SiteLinkItem[]
   searchQuickTools: SiteQuickToolItem[]
+  searchProviderLabel: string
+  searchProviderLink: string
   sidebarRecommendLinks: SiteLinkItem[]
   sidebarCategoryMenus: SiteSidebarCategoryMenu[]
   sidebarMenuBlocks: SiteSidebarMenuBlock[]
@@ -120,6 +138,7 @@ export interface SitePublicConfig {
   changelogSplitLink: string
   changelogSplitLinkText: string
   changelogStatsText: string
+  changelogTimeline: SiteChangelogTimelineItem[]
   aiChatHeaderLinks: SiteLinkItem[]
   aiCommonHeaderLinks: SiteLinkItem[]
   footerQuickSections: SiteLinkSection[]
@@ -251,6 +270,8 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
       url: 'https://hao.uied.cn/'
     }
   ],
+  searchProviderLabel: '硅基流动 x 华为云联合 SiliconFlow',
+  searchProviderLink: 'https://cloud.siliconflow.cn/i/AZywGNhl',
   sidebarRecommendLinks: [],
   sidebarCategoryMenus: [],
   sidebarMenuBlocks: DEFAULT_SIDEBAR_MENU_BLOCKS,
@@ -270,6 +291,17 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   changelogSplitLink: 'https://fsuied.com/',
   changelogSplitLinkText: '购买源码与服务支持（fsuied.com）',
   changelogStatsText: '当前工具总数：332个 | 最后更新：2026-03-23 10:30',
+  changelogTimeline: (defaultChangelogTimeline as SiteChangelogTimelineItem[]).map((item) => ({
+    ...item,
+    features: Array.isArray(item.features)
+      ? item.features.map((feature) => ({
+          title: String(feature.title || '').trim(),
+          points: Array.isArray(feature.points)
+            ? feature.points.map((point) => String(point || '').trim()).filter(Boolean)
+            : []
+        }))
+      : []
+  })),
   aiChatHeaderLinks: [],
   aiCommonHeaderLinks: [
     { name: '每日免费分享最新AI资讯', link: 'https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink' },
@@ -416,6 +448,78 @@ const normalizeQuickToolItems = (input: unknown): SiteQuickToolItem[] => {
     return parsed
   }
   return DEFAULT_SITE_PUBLIC_CONFIG.searchQuickTools.map((item) => ({ ...item }))
+}
+
+/**
+ * 函数说明：清洗更新记录页时间线功能块，统一标题与要点格式。
+ */
+const normalizeChangelogFeatureItems = (input: unknown): SiteChangelogFeatureItem[] => {
+  return normalizeArrayInput(input)
+    .map((feature) => {
+      if (!feature || typeof feature !== 'object') {
+        return null
+      }
+      const record = feature as Record<string, unknown>
+      const title = String(record.title || '').trim()
+      const points = normalizeArrayInput(record.points)
+        .map((point) => String(point || '').trim())
+        .filter(Boolean)
+      if (!title || points.length === 0) {
+        return null
+      }
+      return { title, points }
+    })
+    .filter((feature): feature is SiteChangelogFeatureItem => Boolean(feature))
+}
+
+/**
+ * 函数说明：清洗更新记录页时间线配置，兼容后台 JSON 与默认数据兜底。
+ */
+const normalizeChangelogTimeline = (input: unknown): SiteChangelogTimelineItem[] => {
+  const parsed = normalizeArrayInput(input)
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const version = String(record.version || '').trim()
+      const date = String(record.date || '').trim()
+      const title = String(record.title || '').trim()
+      const badgeText = String(record.badgeText || '').trim()
+      const badgeType = String(record.badgeType || '').trim() || 'info'
+      const features = normalizeChangelogFeatureItems(record.features)
+      const id =
+        String(record.id || '').trim() ||
+        `version-${String(version || index + 1)
+          .trim()
+          .replace(/[^\w-]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+          .toLowerCase()}`
+      if (!version || !date || !title || features.length === 0) {
+        return null
+      }
+      return {
+        id,
+        version,
+        date,
+        badgeText,
+        badgeType,
+        title,
+        features
+      }
+    })
+    .filter((item): item is SiteChangelogTimelineItem => Boolean(item))
+
+  if (parsed.length > 0) {
+    return parsed
+  }
+  return DEFAULT_SITE_PUBLIC_CONFIG.changelogTimeline.map((item) => ({
+    ...item,
+    features: item.features.map((feature) => ({
+      title: feature.title,
+      points: [...feature.points]
+    }))
+  }))
 }
 
 /**
@@ -839,6 +943,12 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     hotTools: normalizeHotToolItems(record.toolsHotTools),
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     searchQuickTools: normalizeQuickToolItems(record.toolsSearchQuickTools),
+    searchProviderLabel:
+      String(record.toolsSearchProviderLabel || DEFAULT_SITE_PUBLIC_CONFIG.searchProviderLabel).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.searchProviderLabel,
+    searchProviderLink:
+      String(record.toolsSearchProviderLink || DEFAULT_SITE_PUBLIC_CONFIG.searchProviderLink).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.searchProviderLink,
     sidebarRecommendLinks: normalizeLinkItems(record.toolsSidebarRecommend),
     sidebarCategoryMenus: normalizeSidebarCategoryMenus(record.toolsSidebarCategoryMenus),
     sidebarMenuBlocks: normalizeSidebarMenuBlocks(record.toolsSidebarMenuBlocks),
@@ -865,6 +975,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     changelogStatsText:
       String(record.toolsChangelogStatsText || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).trim() ||
       DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText,
+    changelogTimeline: normalizeChangelogTimeline(record.toolsChangelogTimeline),
     aiChatHeaderLinks: normalizeLinkItems(record.toolsAiChatHeaderLinks),
     aiCommonHeaderLinks: normalizeLinkItems(record.toolsAiCommonHeaderLinks),
     footerQuickSections: normalizeLinkSections(record.toolsFooterQuickSections),

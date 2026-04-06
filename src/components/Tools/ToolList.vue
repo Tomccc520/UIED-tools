@@ -22,8 +22,34 @@
 </template>
 
 <script setup lang="ts">
-import { getToolsCate } from './tools'
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-04-05
+ */
+import { computed, onMounted } from 'vue'
+import { useToolsStore } from '@/store/modules/tools'
 import ToolIcon from './ToolIcon.vue'
 
-const toolsList = getToolsCate()
+const toolsStore = useToolsStore()
+
+/**
+ * 函数说明：工具列表组件统一读取 store 中的工具分类，优先使用后台配置，接口异常时回退前端默认分类。
+ */
+const toolsList = computed(() => toolsStore.cates)
+
+/**
+ * 函数说明：组件挂载时补拉一次工具分类，确保独立使用该组件时也能获得最新后台配置。
+ */
+const initToolList = async () => {
+  if (toolsStore.cates.length > 0) {
+    return
+  }
+  await toolsStore.getToolCate()
+}
+
+onMounted(() => {
+  void initToolList()
+})
 </script> 

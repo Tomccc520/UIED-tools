@@ -144,7 +144,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from '@vue/runtime-core'
-import { getHotTools, getNewTools, getUtilityTools, getRelatedTools } from '@/components/Tools/tools'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { copy } from '@/utils/copy'
@@ -152,10 +151,6 @@ import { copy } from '@/utils/copy'
 declare const lottie: any
 
 const route = useRoute()
-const hotTools = getHotTools(8)  // 获取8个热门工具
-const newTools = getNewTools(8)  // 获取8个新品工具
-const utilityTools = getUtilityTools(8)  // 获取8个实用工具
-const relatedTools = getRelatedTools(route.path, 6, 2)  // 获取6个同类工具和2个其他类工具，总共8个
 
 const currentCopy = ref('')
 const showToast = ref(false)

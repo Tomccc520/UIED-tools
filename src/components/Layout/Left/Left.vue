@@ -195,7 +195,14 @@ const normalizeRoutePath = (rawPath: string): string => {
 
 const aiToolboxHomePath = '/tools/ai/toolbox'
 const normalizedAiToolboxHomePath = normalizeRoutePath(aiToolboxHomePath)
-const sidebarBuiltinToolCategories = getToolsCate()
+const sidebarFallbackToolCategories = getToolsCate()
+
+/**
+ * 函数说明：统一输出左侧菜单使用的工具分类树，优先读取后台配置化分类，前端内置分类仅作兜底。
+ */
+const sidebarResolvedToolCategories = computed<ToolCategory[]>(() => {
+  return toolsStore.cates.length ? toolsStore.cates : sidebarFallbackToolCategories
+})
 
 /**
  * 函数说明：判断链接是否为站内路由链接。
@@ -209,7 +216,7 @@ const isInternalMenuLink = (link: string): boolean => {
  */
 const aiToolRouteSet = computed<Set<string>>(() => {
   const pathSet = new Set<string>([normalizedAiToolboxHomePath])
-  const aiCategory = sidebarBuiltinToolCategories.find((cate: ToolCategory) => cate.title === 'AI工具箱')
+  const aiCategory = sidebarResolvedToolCategories.value.find((cate: ToolCategory) => cate.title === 'AI工具箱')
   const aiRoutes = (aiCategory?.list || [])
     .flatMap((group) => (Array.isArray(group.list) ? group.list : []))
     .map((tool) => String(tool.url || '').trim())
@@ -318,7 +325,7 @@ const resolveSidebarMenuBlockImage = (image: string, icon: string): string => {
  * 函数说明：根据配置中的分类标题匹配工具分类列表，匹配不到时返回空数组
  */
 const resolveCategoryList = (cateTitle: string): ToolSubCategory[] => {
-  return sidebarBuiltinToolCategories.find((cate: ToolCategory) => cate.title === cateTitle)?.list || []
+  return sidebarResolvedToolCategories.value.find((cate: ToolCategory) => cate.title === cateTitle)?.list || []
 }
 
 /**
@@ -627,17 +634,12 @@ const loadSiteConfig = async () => {
     appNet.value = siteConfig.siteSlogan
   }
   sidebarBrandLogo.value = siteConfig.sidebarBrandLogo || ''
-
-  /**
-   * 函数说明：左侧菜单恢复为前端内置默认数据，不再受后台同名配置覆盖。
-   * 仅保留品牌名称、标语与 Logo 由后台配置。
-   */
-  recommendTitle.value = '推荐工具'
-  recommendLinks.value = defaultRecommendLinks
-  sidebarCategoryMenus.value = defaultSidebarCategoryMenus
-  sidebarMenuBlocks.value = []
-  sidebarBottomLinks.value = defaultSidebarBottomLinks
-  aiToolboxSidebarMenus.value = defaultAiToolboxSidebarMenus
+  recommendTitle.value = siteConfig.sidebarRecommendTitle || '推荐工具'
+  recommendLinks.value = siteConfig.sidebarRecommendLinks.length ? siteConfig.sidebarRecommendLinks : defaultRecommendLinks
+  sidebarCategoryMenus.value = siteConfig.sidebarCategoryMenus.length ? siteConfig.sidebarCategoryMenus : defaultSidebarCategoryMenus
+  sidebarMenuBlocks.value = siteConfig.sidebarMenuBlocks.length ? siteConfig.sidebarMenuBlocks : []
+  sidebarBottomLinks.value = siteConfig.sidebarBottomLinks.length ? siteConfig.sidebarBottomLinks : defaultSidebarBottomLinks
+  aiToolboxSidebarMenus.value = siteConfig.aiToolboxSidebarMenus.length ? siteConfig.aiToolboxSidebarMenus : defaultAiToolboxSidebarMenus
 }
 
 // 菜单事件处理
@@ -866,11 +868,24 @@ const handleMenuClick = async (key: string) => {
   }
 }
 
+/**
+ * 函数说明：初始化左侧菜单所需的站点配置、工具分类与热门推荐数据，接口异常时保留本地兜底渲染。
+ */
+const initLeftSidebar = async () => {
+  try {
+    await Promise.all([
+      loadSiteConfig(),
+      getToolCates(),
+      toolsStore.getRecommends()
+    ])
+  } catch (error) {
+    console.error('初始化左侧菜单失败:', error)
+  }
+}
+
 // 生命周期钩子
 onMounted(() => {
-  void loadSiteConfig()
-  getToolCates()
-  toolsStore.getRecommends()  // 获取推荐工具数据
+  void initLeftSidebar()
 })
 </script>
 

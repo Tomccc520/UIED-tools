@@ -9,8 +9,8 @@
           <h2 class="panel-title">AI智能搜索</h2>
           <div class="header-subtitle">
             本服务由
-            <a href="https://cloud.siliconflow.cn/i/AZywGNhl" target="_blank" class="provider-link">
-              硅基流动 x 华为云联合 SiliconFlow
+            <a :href="searchProviderLink" target="_blank" class="provider-link">
+              {{ searchProviderLabel }}
             </a>
             提供
           </div>
@@ -214,6 +214,8 @@ let markedConfigured = false
 const markedReady = ref(false)
 const defaultSearchQuickTools = getDefaultSitePublicConfig().searchQuickTools
 const quickTools = ref<SiteQuickToolItem[]>(defaultSearchQuickTools)
+const searchProviderLabel = ref(getDefaultSitePublicConfig().searchProviderLabel)
+const searchProviderLink = ref(getDefaultSitePublicConfig().searchProviderLink)
 
 /**
  * 按需加载并配置搜索面板 Markdown 渲染器
@@ -456,6 +458,8 @@ const loadSearchQuickTools = async () => {
   quickTools.value = siteConfig.searchQuickTools.length
     ? siteConfig.searchQuickTools
     : defaultSearchQuickTools
+  searchProviderLabel.value = siteConfig.searchProviderLabel || getDefaultSitePublicConfig().searchProviderLabel
+  searchProviderLink.value = siteConfig.searchProviderLink || getDefaultSitePublicConfig().searchProviderLink
 }
 
 // 在新窗口打开链接

@@ -144,7 +144,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from '@vue/runtime-core'
-import { getHotTools, getNewTools, getUtilityTools, getRelatedTools } from '@/components/Tools/tools'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { copy } from '@/utils/copy'
@@ -152,10 +151,6 @@ import { copy } from '@/utils/copy'
 declare const lottie: any
 
 const route = useRoute()
-const hotTools = getHotTools(8)
-const newTools = getNewTools(8)
-const utilityTools = getUtilityTools(8)
-const relatedTools = getRelatedTools(route.path, 6, 2)
 
 const currentQuote = ref('')
 const showToast = ref(false)
