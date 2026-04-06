@@ -49,7 +49,7 @@ const ORDER_CHECK_NOTICE_MAP: Record<OrderCheckStatus, { type: 'success' | 'warn
 const siteConfig = ref(getDefaultSitePublicConfig())
 const profile = ref<FrontendUserProfile | null>(null)
 const saving = ref(false)
-const activeTab = ref<'products' | 'orders' | 'logs'>('products')
+const activeTab = ref<'products' | 'orders' | 'delivery' | 'logs'>('products')
 const productsLoading = ref(false)
 const ordersLoading = ref(false)
 const pointsLogsLoading = ref(false)
@@ -193,6 +193,40 @@ const pendingOrderCount = computed(() => {
 })
 
 /**
+ * 函数说明：聚合需要用户关注的源码交付订单，用于“源码交付”专区统一展示。
+ */
+const deliveryOrderList = computed(() => {
+  return orderList.value.filter((item) => {
+    return Number(item.status) === 1
+      || Number(item.deliveryStatus) > 0
+      || Boolean(String(item.downloadUrl || '').trim())
+      || Boolean(String(item.licenseBoundDomain || '').trim())
+      || Boolean(String(item.licenseKeyMasked || '').trim())
+  })
+})
+
+/**
+ * 函数说明：统计已交付的源码订单数量，便于在交付专区展示当前完成进度。
+ */
+const deliveredOrderCount = computed(() => {
+  return deliveryOrderList.value.filter((item) => Number(item.deliveryStatus) === 1).length
+})
+
+/**
+ * 函数说明：统计待交付或待补充的源码订单数量，便于用户快速判断是否需要继续跟进。
+ */
+const pendingDeliveryOrderCount = computed(() => {
+  return deliveryOrderList.value.filter((item) => Number(item.deliveryStatus) === 0 || Number(item.deliveryStatus) === 2).length
+})
+
+/**
+ * 函数说明：统计已失效的交付订单数量，便于用户关注需要重新处理的记录。
+ */
+const invalidDeliveryOrderCount = computed(() => {
+  return deliveryOrderList.value.filter((item) => Number(item.deliveryStatus) === 3).length
+})
+
+/**
  * 函数说明：读取当前轮询订单，便于在页面中实时展示状态。
  */
 const currentPollingOrder = computed(() => {
@@ -246,6 +280,55 @@ const resolveDeliveryTagType = (status: number): 'success' | 'warning' | 'info' 
     return 'danger'
   }
   return 'info'
+}
+
+/**
+ * 函数说明：将源码交付状态映射为更具体的专区说明文案，便于用户理解当前处理阶段。
+ */
+const resolveDeliverySummaryText = (order: FrontendUserOrderItem): string => {
+  const deliveryStatus = Number(order.deliveryStatus || 0)
+  if (deliveryStatus === 1) {
+    return order.downloadUrl ? '源码与授权信息已准备完成，可直接查看交付资料。' : '授权信息已准备完成，等待补充下载入口。'
+  }
+  if (deliveryStatus === 2) {
+    return '交付资料仍在补充，请等待运营或技术同学更新。'
+  }
+  if (deliveryStatus === 3) {
+    return '当前交付资料已失效，请联系运营重新分配授权或下载包。'
+  }
+  if (Number(order.status) === 1) {
+    return '订单已支付，交付资料尚未发放。'
+  }
+  return '订单尚未完成支付，支付成功后才会进入源码交付流程。'
+}
+
+/**
+ * 函数说明：复制源码绑定域名，方便用户在授权交付流程中直接复用。
+ */
+const handleCopyDeliveryDomain = async (domain: string) => {
+  const value = String(domain || '').trim()
+  if (!value) {
+    showCenterMessage('warning', '当前订单还没有绑定域名')
+    return
+  }
+  if (!navigator?.clipboard?.writeText) {
+    showCenterMessage('warning', '当前浏览器不支持一键复制，请手动复制')
+    return
+  }
+  await navigator.clipboard.writeText(value)
+  showCenterMessage('success', '绑定域名已复制')
+}
+
+/**
+ * 函数说明：打开源码交付下载链接，统一处理空链接兜底，避免模板里直接访问 window。
+ */
+const handleOpenDeliveryDownload = (downloadUrl: string) => {
+  const targetUrl = String(downloadUrl || '').trim()
+  if (!targetUrl) {
+    showCenterMessage('warning', '当前订单还没有可用的源码下载链接')
+    return
+  }
+  window.open(targetUrl, '_blank', 'noopener')
 }
 
 /**
@@ -938,6 +1021,74 @@ onBeforeUnmount(() => {
           </div>
         </el-tab-pane>
 
+        <el-tab-pane label="源码交付" name="delivery">
+          <div class="delivery-board" v-loading="ordersLoading">
+            <div class="delivery-board-hero">
+              <div>
+                <div class="delivery-board-title">源码交付专区</div>
+                <div class="delivery-board-desc">集中查看源码包、绑定域名、授权码与交付备注，避免在订单表里逐条翻找。</div>
+              </div>
+              <div class="delivery-board-actions">
+                <el-button size="small" @click="loadOrders">刷新交付状态</el-button>
+                <el-button size="small" type="primary" plain @click="activeTab = 'orders'">查看完整订单</el-button>
+              </div>
+            </div>
+
+            <div class="delivery-kpi-grid">
+              <div class="delivery-kpi-card">
+                <div class="delivery-kpi-label">可交付订单</div>
+                <div class="delivery-kpi-value">{{ deliveryOrderList.length }}</div>
+              </div>
+              <div class="delivery-kpi-card">
+                <div class="delivery-kpi-label">已交付</div>
+                <div class="delivery-kpi-value">{{ deliveredOrderCount }}</div>
+              </div>
+              <div class="delivery-kpi-card">
+                <div class="delivery-kpi-label">待补充/待交付</div>
+                <div class="delivery-kpi-value">{{ pendingDeliveryOrderCount }}</div>
+              </div>
+              <div class="delivery-kpi-card">
+                <div class="delivery-kpi-label">已失效</div>
+                <div class="delivery-kpi-value">{{ invalidDeliveryOrderCount }}</div>
+              </div>
+            </div>
+
+            <div v-if="deliveryOrderList.length > 0" class="delivery-card-grid">
+              <article v-for="item in deliveryOrderList" :key="`${item.orderSn}-delivery`" class="delivery-card">
+                <div class="delivery-card-head">
+                  <div>
+                    <div class="delivery-card-title">{{ item.productName || '源码交付订单' }}</div>
+                    <div class="delivery-card-sn">订单号：{{ item.orderSn }}</div>
+                  </div>
+                  <el-tag :type="resolveDeliveryTagType(item.deliveryStatus)">
+                    {{ item.deliveryStatusText || '未交付' }}
+                  </el-tag>
+                </div>
+                <div class="delivery-card-desc">{{ resolveDeliverySummaryText(item) }}</div>
+                <div class="delivery-card-info">
+                  <div><span>绑定域名</span><strong>{{ item.licenseBoundDomain || '-' }}</strong></div>
+                  <div><span>授权码</span><strong>{{ item.licenseKeyMasked || '-' }}</strong></div>
+                  <div><span>交付时间</span><strong>{{ formatDateTime(item.deliveredTime) }}</strong></div>
+                  <div><span>备注</span><strong>{{ item.deliveryNote || '-' }}</strong></div>
+                </div>
+                <div class="delivery-card-actions">
+                  <el-button size="small" @click="handleCopyDeliveryDomain(item.licenseBoundDomain)">复制域名</el-button>
+                  <el-button
+                    v-if="item.downloadUrl"
+                    size="small"
+                    type="primary"
+                    plain
+                    @click="handleOpenDeliveryDownload(item.downloadUrl)"
+                  >
+                    打开源码包
+                  </el-button>
+                </div>
+              </article>
+            </div>
+            <el-empty v-else description="暂无需要关注的源码交付记录" />
+          </div>
+        </el-tab-pane>
+
         <el-tab-pane label="积分流水" name="logs">
           <div v-loading="pointsLogsLoading">
             <el-table :data="pointsLogList" border stripe empty-text="暂无积分流水">
@@ -1315,6 +1466,138 @@ onBeforeUnmount(() => {
   color: #6b7280;
 }
 
+.delivery-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.delivery-board-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border: 1px solid #e6e8f2;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(108, 84, 255, 0.08), rgba(44, 182, 125, 0.08));
+}
+
+.delivery-board-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.delivery-board-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  color: #5b6476;
+}
+
+.delivery-board-actions {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.delivery-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.delivery-kpi-card {
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid #e4e7f0;
+  background: #ffffff;
+}
+
+.delivery-kpi-label {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.delivery-kpi-value {
+  margin-top: 8px;
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.delivery-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.delivery-card {
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid #e4e7f0;
+  background: #ffffff;
+}
+
+.delivery-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.delivery-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.delivery-card-sn {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.delivery-card-desc {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.delivery-card-info {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  margin-top: 14px;
+}
+
+.delivery-card-info > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #f7f8fb;
+}
+
+.delivery-card-info span {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.delivery-card-info strong {
+  font-size: 13px;
+  line-height: 1.5;
+  color: #111827;
+  word-break: break-all;
+}
+
+.delivery-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .text-plus {
   color: #16a34a;
   font-weight: 700;
@@ -1423,6 +1706,21 @@ onBeforeUnmount(() => {
 
   .center-actions {
     flex-wrap: wrap;
+  }
+
+  .delivery-board-hero {
+    flex-direction: column;
+  }
+
+  .delivery-board-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .delivery-kpi-grid,
+  .delivery-card-grid,
+  .delivery-card-info {
+    grid-template-columns: 1fr;
   }
 }
 </style>
