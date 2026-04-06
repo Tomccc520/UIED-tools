@@ -546,6 +546,7 @@ apply_member_order_menu_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260330_add_member_order_menu.sql"
   local order_menu_count="0"
   local order_delivery_perm_count="0"
+  local order_check_download_perm_count="0"
 
   if [[ ! -f "${patch_file}" ]]; then
     return
@@ -553,7 +554,8 @@ apply_member_order_menu_patch() {
 
   order_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='order:list';" 2>/dev/null || echo "0")"
   order_delivery_perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='order:delivery';" 2>/dev/null || echo "0")"
-  if [[ "${order_menu_count}" -ge 1 ]] && [[ "${order_delivery_perm_count}" -ge 1 ]]; then
+  order_check_download_perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='order:check_download';" 2>/dev/null || echo "0")"
+  if [[ "${order_menu_count}" -ge 1 ]] && [[ "${order_delivery_perm_count}" -ge 1 ]] && [[ "${order_check_download_perm_count}" -ge 1 ]]; then
     return
   fi
 
@@ -576,8 +578,8 @@ apply_order_delivery_schema_patch() {
     return
   fi
 
-  delivery_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_purchase_order' AND COLUMN_NAME IN ('delivery_status','license_bound_domain','license_key','download_url','delivery_note','delivered_time');" 2>/dev/null || echo "0")"
-  if [[ "${delivery_column_count}" -ge 6 ]]; then
+  delivery_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_purchase_order' AND COLUMN_NAME IN ('delivery_status','license_bound_domain','license_key','download_url','download_check_status','download_check_time','download_check_message','delivery_note','delivered_time');" 2>/dev/null || echo "0")"
+  if [[ "${delivery_column_count}" -ge 9 ]]; then
     return
   fi
 
