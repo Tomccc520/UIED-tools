@@ -593,6 +593,33 @@ apply_order_delivery_schema_patch() {
   log_info "订单交付字段补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：检测并补齐支付回调审计表与回调审计权限，确保重放排障日志可直接落库并可在后台查询。
+apply_purchase_callback_audit_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260408_add_purchase_callback_audit_table.sql"
+  local table_count="0"
+  local menu_perm_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_purchase_callback_audit';" 2>/dev/null || echo "0")"
+  menu_perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='order:callback_audit:list';" 2>/dev/null || echo "0")"
+
+  if [[ "${table_count}" -ge 1 ]] && [[ "${menu_perm_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到支付回调审计表或权限缺失，自动执行审计补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "支付回调审计补齐完成。"
+    return
+  fi
+
+  # 函数说明：审计补丁失败不阻塞全栈启动，避免影响本地联调，可后续手工补执行。
+  log_info "支付回调审计补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
 # 函数说明：补齐后台角色与权限基线，避免角色管理/菜单管理无可用数据。
 apply_role_permission_baseline_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260331_seed_role_permission_baseline.sql"
@@ -1340,6 +1367,7 @@ main() {
   apply_member_commerce_schema_patch
   apply_order_delivery_schema_patch
   apply_member_order_menu_patch
+  apply_purchase_callback_audit_schema_patch
   apply_role_permission_baseline_patch
   apply_license_module_patch
   apply_ai_provider_config_patch
