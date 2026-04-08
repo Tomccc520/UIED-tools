@@ -683,6 +683,36 @@ apply_license_module_patch() {
   log_info "源码授权补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：将历史库中的授权产品编码统一迁移为商业版编码，避免联调仍命中旧项目码。
+apply_license_product_code_alignment_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260408_align_license_product_code.sql"
+  local license_table_count="0"
+  local legacy_product_code_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  license_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_system_license';" 2>/dev/null || echo "0")"
+  if [[ "${license_table_count}" -lt 1 ]]; then
+    return
+  fi
+
+  legacy_product_code_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_license WHERE TRIM(IFNULL(product_code,''))='' OR TRIM(product_code)='uied-tools';" 2>/dev/null || echo "0")"
+  if [[ "${legacy_product_code_count}" -lt 1 ]]; then
+    return
+  fi
+
+  log_info "检测到授权产品编码仍为历史值（${legacy_product_code_count} 条），自动执行产品编码对齐补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "授权产品编码对齐完成。"
+    return
+  fi
+
+  # 函数说明：补丁失败时不阻塞全栈启动，避免影响本地联调流程。
+  log_info "授权产品编码对齐补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
 # 函数说明：检测并补齐 AI Provider 与图片 AI 能力默认配置，确保文本类/图片类 AI 工具都能直接联动。
 apply_ai_provider_config_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_ai_provider_configs.sql"
@@ -1370,6 +1400,7 @@ main() {
   apply_purchase_callback_audit_schema_patch
   apply_role_permission_baseline_patch
   apply_license_module_patch
+  apply_license_product_code_alignment_patch
   apply_ai_provider_config_patch
   repair_garbled_ai_provider_config
   apply_ai_model_menu_split_patch
