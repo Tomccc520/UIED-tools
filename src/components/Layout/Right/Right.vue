@@ -26,7 +26,8 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from '@vue/runtime-core'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import type { Tool } from '@/types/tools'
 import {
@@ -36,6 +37,7 @@ import {
 } from '@/services/toolCatalog'
 
 const route = useRoute()
+const router = useRouter()
 
 // 判断是否显示工具推荐
 const shouldShowRecommend = computed(() => {
@@ -50,6 +52,40 @@ const relatedTools = ref<Tool[]>([])
 const randomTools = ref<Tool[]>([])
 // 最近使用的工具
 const recentTools = ref<Tool[]>([])
+
+/**
+ * 函数说明：判断工具是否在后台被停用（status=0）。
+ */
+const isToolDisabled = (tool: Tool): boolean => {
+  return Number(tool.status ?? 1) === 0
+}
+
+/**
+ * 函数说明：输出工具停用提示文案，优先使用后台配置备注信息。
+ */
+const resolveToolDisabledMessage = (tool: Tool): string => {
+  const toolTitle = String(tool.title || '').trim() || '当前工具'
+  const remark = String(tool.remark || '').trim()
+  if (remark) {
+    return `工具「${toolTitle}」已停用：${remark}`
+  }
+  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
+}
+
+/**
+ * 函数说明：处理右侧推荐工具点击，停用状态阻断并提示，其余按内链/外链正常跳转。
+ */
+const handleToolEntryClick = async (tool: Tool) => {
+  if (isToolDisabled(tool)) {
+    ElMessage.warning(resolveToolDisabledMessage(tool))
+    return
+  }
+  if (tool.isExternal || /^https?:\/\//i.test(tool.url)) {
+    window.open(tool.url, '_blank', 'noopener,noreferrer')
+    return
+  }
+  await router.push(tool.url)
+}
 
 /**
  * 函数说明：基于后台工具分类树刷新右侧“相关工具 / 随机工具”数据。
@@ -158,9 +194,16 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
         </h3>
       </div>
       <div class="divide-y divide-gray-100">
-        <router-link v-for="tool in recentTools" :key="tool.url" :to="tool.url"
-          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group"
-          :aria-label="`使用${tool.title}工具：${tool.desc}`">
+        <div
+          v-for="tool in recentTools"
+          :key="tool.url"
+          :class="[
+            'block px-4 py-3 transition-all duration-200 group',
+            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
+          ]"
+          :aria-label="`使用${tool.title}工具：${tool.desc}`"
+          @click="handleToolEntryClick(tool)"
+        >
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-green-500 transition-colors">
@@ -176,7 +219,7 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
-        </router-link>
+        </div>
       </div>
     </div>
 
@@ -193,9 +236,16 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
         </h3>
       </div>
       <div class="divide-y divide-gray-100">
-        <router-link v-for="tool in relatedTools" :key="tool.url" :to="tool.url"
-          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group"
-          :aria-label="`使用${tool.title}工具：${tool.desc}`">
+        <div
+          v-for="tool in relatedTools"
+          :key="tool.url"
+          :class="[
+            'block px-4 py-3 transition-all duration-200 group',
+            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
+          ]"
+          :aria-label="`使用${tool.title}工具：${tool.desc}`"
+          @click="handleToolEntryClick(tool)"
+        >
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-blue-500 transition-colors">
@@ -211,7 +261,7 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
-        </router-link>
+        </div>
       </div>
     </div>
 
@@ -229,9 +279,16 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
         </h3>
       </div>
       <div class="divide-y divide-gray-100">
-        <router-link v-for="tool in randomTools" :key="tool.url" :to="tool.url"
-          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group"
-          :aria-label="`使用${tool.title}工具：${tool.desc}`">
+        <div
+          v-for="tool in randomTools"
+          :key="tool.url"
+          :class="[
+            'block px-4 py-3 transition-all duration-200 group',
+            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
+          ]"
+          :aria-label="`使用${tool.title}工具：${tool.desc}`"
+          @click="handleToolEntryClick(tool)"
+        >
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-purple-500 transition-colors">
@@ -247,7 +304,7 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
-        </router-link>
+        </div>
       </div>
     </div>
   </div>
