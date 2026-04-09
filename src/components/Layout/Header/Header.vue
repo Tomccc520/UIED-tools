@@ -129,6 +129,7 @@ const initDailyWord = () => {
 const loadSiteConfig = async () => {
   const siteConfig = await getSitePublicConfig({ forceRefresh: true })
   siteConfigState.value = siteConfig
+  headerToolRuntimeEntryMap.value = buildToolRuntimeEntryMap(siteConfig)
   if (siteConfig.webName) {
     siteName.value = siteConfig.webName
   }
@@ -148,6 +149,7 @@ const defaultHeaderLinks: SiteLinkItem[] = [
 const siteConfigState = ref<Awaited<ReturnType<typeof getSitePublicConfig>> | null>(null)
 const headerLinks = ref<SiteLinkItem[]>(defaultHeaderLinks)
 const displayHeaderLinks = computed(() => (headerLinks.value.length ? headerLinks.value : defaultHeaderLinks))
+const headerToolRuntimeEntryMap = ref<Map<string, Tool>>(new Map())
 const loginDialogVisible = ref(false)
 const loginDialogLoading = ref(false)
 const loginDialogReason = ref('')
@@ -207,6 +209,120 @@ const mergeHeaderLinksWithAuthEntries = (
   })
 
   return uniqueLinks
+}
+
+/**
+ * 函数说明：将任意工具地址归一化为可用于匹配的键（去除 hash，保留 path/query）。
+ * @param url 工具地址
+ * @returns 归一化后的地址键
+ */
+const normalizeToolUrlKey = (url: string): string => {
+  const raw = String(url || '').trim()
+  if (!raw) return ''
+  try {
+    const parsed = new URL(raw, window.location.origin)
+    const pathname = parsed.pathname.replace(/\/+$/, '') || '/'
+    const search = parsed.search || ''
+    const normalizedPath = `${pathname}${search}`
+    if (parsed.origin === window.location.origin) {
+      return normalizedPath
+    }
+    return `${parsed.origin}${normalizedPath}`
+  } catch (_error) {
+    return raw.replace(/#.*$/, '').replace(/\/+$/, '')
+  }
+}
+
+/**
+ * 函数说明：构建工具地址的多键匹配集合，兼容 path 与完整 URL 两种来源。
+ * @param url 工具地址
+ * @returns 地址键集合
+ */
+const buildToolUrlCandidateKeys = (url: string): string[] => {
+  const keySet = new Set<string>()
+  const raw = String(url || '').trim()
+  if (!raw) return []
+  const normalized = normalizeToolUrlKey(raw)
+  if (normalized) keySet.add(normalized)
+  try {
+    const parsed = new URL(raw, window.location.origin)
+    const pathname = (parsed.pathname || '').replace(/\/+$/, '') || '/'
+    const pathWithSearch = `${pathname}${parsed.search || ''}`
+    if (pathWithSearch) {
+      keySet.add(pathWithSearch)
+      keySet.add(pathname)
+    }
+  } catch (_error) {
+    if (raw.startsWith('/')) {
+      const pathOnly = raw.replace(/#.*$/, '').replace(/\/+$/, '') || '/'
+      keySet.add(pathOnly)
+    }
+  }
+  return Array.from(keySet).filter(Boolean)
+}
+
+/**
+ * 函数说明：将后台工具分类树拍平为“地址 -> 运行态”映射，供头部入口拦截复用。
+ * @param siteConfig 站点配置对象
+ * @returns 工具运行态映射
+ */
+const buildToolRuntimeEntryMap = (
+  siteConfig: Awaited<ReturnType<typeof getSitePublicConfig>>
+): Map<string, Tool> => {
+  const runtimeMap = new Map<string, Tool>()
+  siteConfig.toolCategories.forEach((category) => {
+    category.list.forEach((subCategory) => {
+      subCategory.list.forEach((tool) => {
+        const candidateKeys = buildToolUrlCandidateKeys(tool.url)
+        candidateKeys.forEach((key) => {
+          if (!runtimeMap.has(key)) {
+            runtimeMap.set(key, tool)
+          }
+        })
+      })
+    })
+  })
+  return runtimeMap
+}
+
+/**
+ * 函数说明：根据链接地址查询后台工具运行态配置。
+ * @param url 目标链接
+ * @returns 匹配到的工具配置
+ */
+const findToolRuntimeEntryByUrl = (url: string): Tool | null => {
+  const candidateKeys = buildToolUrlCandidateKeys(url)
+  for (const key of candidateKeys) {
+    const tool = headerToolRuntimeEntryMap.value.get(key)
+    if (tool) return tool
+  }
+  return null
+}
+
+/**
+ * 函数说明：判断头部链接对应工具是否在后台被停用（status=0）。
+ * @param url 目标链接
+ * @returns 是否停用
+ */
+const isHeaderLinkDisabled = (url: string): boolean => {
+  const matchedTool = findToolRuntimeEntryByUrl(url)
+  return Number(matchedTool?.status ?? 1) === 0
+}
+
+/**
+ * 函数说明：输出头部工具入口停用提示文案，优先展示后台备注。
+ * @param url 目标链接
+ * @param fallbackName 兜底名称
+ * @returns 停用提示文案
+ */
+const resolveHeaderLinkDisabledMessage = (url: string, fallbackName = '该工具'): string => {
+  const matchedTool = findToolRuntimeEntryByUrl(url)
+  const toolTitle = String(matchedTool?.title || fallbackName).trim() || '该工具'
+  const remark = String(matchedTool?.remark || '').trim()
+  if (remark) {
+    return `工具「${toolTitle}」已停用：${remark}`
+  }
+  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
 }
 
 /**
@@ -348,6 +464,10 @@ const handleSearchSelect = (url: string) => {
   console.log('准备跳转到:', url)
 
   try {
+    if (isHeaderLinkDisabled(url)) {
+      ElMessage.warning(resolveHeaderLinkDisabledMessage(url))
+      return
+    }
     // 检查是否是外部链接
     if (url.startsWith('http')) {
       window.open(url, '_blank')
@@ -442,10 +562,15 @@ const handleOpenAuth = (url: string) => {
 /**
  * 函数说明：处理头部链接跳转，站内地址走路由跳转，站外地址保持新窗口行为。
  */
-const handleHeaderLinkClick = async (event: MouseEvent, url: string) => {
+const handleHeaderLinkClick = async (event: MouseEvent, url: string, name = '') => {
   const targetUrl = String(url || '').trim()
   if (!targetUrl) {
     event.preventDefault()
+    return
+  }
+  if (isHeaderLinkDisabled(targetUrl)) {
+    event.preventDefault()
+    ElMessage.warning(resolveHeaderLinkDisabledMessage(targetUrl, name))
     return
   }
   if (isExternalLink(targetUrl)) {
@@ -632,8 +757,8 @@ onUnmounted(() => {
               :href="item.link"
               :target="isExternalLink(item.link) ? '_blank' : '_self'"
               :rel="isExternalLink(item.link) ? 'noopener noreferrer' : undefined"
-              @click="handleHeaderLinkClick($event, item.link)"
-              class="hidden md:flex items-center text-sm text-gray-500 hover:text-blue-500 transition-colors"
+              @click="handleHeaderLinkClick($event, item.link, item.name)"
+              :class="['hidden md:flex items-center text-sm transition-colors header-link-item', { 'header-link--disabled': isHeaderLinkDisabled(item.link) }]"
             >
               <el-tooltip :content="item.name">
                 <span>{{ item.name }}</span>
@@ -861,6 +986,23 @@ onUnmounted(() => {
 
 .menu-icon-btn .el-icon {
   font-size: 20px;
+}
+
+.header-link-item {
+  color: #6b7280;
+}
+
+.header-link-item:hover {
+  color: #3b82f6;
+}
+
+.header-link--disabled {
+  color: #94a3b8 !important;
+  cursor: not-allowed;
+}
+
+.header-link--disabled:hover {
+  color: #94a3b8 !important;
 }
 
 /* 修改菜单折叠按钮悬停颜色 */
