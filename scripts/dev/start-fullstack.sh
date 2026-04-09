@@ -593,6 +593,38 @@ apply_order_delivery_schema_patch() {
   log_info "订单交付字段补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：检测并补齐素材中心附件元信息字段，支持后台按 WP 媒体库展示图片参数并可编辑保存。
+apply_album_media_meta_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260408_add_album_media_meta_columns.sql"
+  local album_table_count="0"
+  local meta_column_count="0"
+  local compress_config_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  album_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_album';" 2>/dev/null || echo "0")"
+  if [[ "${album_table_count}" -lt 1 ]]; then
+    return
+  fi
+
+  meta_column_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_album' AND COLUMN_NAME IN ('mime_type','width','height','title','alt_text','caption','description','bind_type','bind_id','bind_title','bind_url');" 2>/dev/null || echo "0")"
+  compress_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='material' AND name IN ('imageCompressEnabled','imageCompressMinSizeKB','imageCompressJpegQuality','imageCompressPngCompressionLevel');" 2>/dev/null || echo "0")"
+  if [[ "${meta_column_count}" -ge 11 ]] && [[ "${compress_config_count}" -ge 4 ]]; then
+    return
+  fi
+
+  log_info "检测到素材附件参数字段或压缩配置缺失，自动执行素材元信息补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "素材附件参数字段补齐完成。"
+    return
+  fi
+
+  # 函数说明：补丁失败时不阻塞全栈启动，避免影响前后端联调流程。
+  log_info "素材附件参数补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
 # 函数说明：检测并补齐支付回调审计表与回调审计权限，确保重放排障日志可直接落库并可在后台查询。
 apply_purchase_callback_audit_schema_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260408_add_purchase_callback_audit_table.sql"
@@ -1396,6 +1428,7 @@ main() {
   apply_user_member_schema_patch
   apply_member_commerce_schema_patch
   apply_order_delivery_schema_patch
+  apply_album_media_meta_schema_patch
   apply_member_order_menu_patch
   apply_purchase_callback_audit_schema_patch
   apply_role_permission_baseline_patch
