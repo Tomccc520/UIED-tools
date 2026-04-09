@@ -16,6 +16,7 @@ import {
   isFrontendUserLoggedIn,
   type FrontendUserProfile
 } from '@/services/frontendUser'
+import { getSitePublicConfig, type SiteLoginToolConsumeRule } from '@/services/siteConfig'
 
 const TOOL_CONSUME_DEDUPE_WINDOW_MS = 1200
 const toolConsumeTimestampMap = new Map<string, number>()
@@ -78,6 +79,71 @@ export interface ToolConsumeOptions {
   skipConsumeWhen?: (profile: FrontendUserProfile | null) => boolean | Promise<boolean>
 }
 
+interface RuntimeToolConsumePolicy {
+  toolKey: string
+  consumePoints: number
+  memberFree: boolean
+  status: number
+  ruleMatched: boolean
+}
+
+/**
+ * 函数说明：标准化 toolKey，统一小写并去除首尾空格。
+ */
+const normalizeToolKeyText = (value: unknown): string => {
+  return String(value || '').trim().toLowerCase()
+}
+
+/**
+ * 函数说明：根据后端登录策略规则解析当前工具的运行时扣分策略。
+ */
+const resolveRuntimeToolPolicy = async (toolKey: string): Promise<RuntimeToolConsumePolicy | null> => {
+  const normalizedToolKey = normalizeToolKeyText(toolKey)
+  if (!normalizedToolKey) {
+    return null
+  }
+  try {
+    const siteConfig = await getSitePublicConfig()
+    const ruleList = Array.isArray(siteConfig.loginToolConsumeRules)
+      ? siteConfig.loginToolConsumeRules
+      : []
+    const matchedRule = ruleList.find((item: SiteLoginToolConsumeRule) => {
+      return normalizeToolKeyText(item.toolKey) === normalizedToolKey
+    })
+    if (!matchedRule) {
+      return null
+    }
+    const status = Number(matchedRule.status ?? 1) === 0 ? 0 : 1
+    return {
+      toolKey: normalizedToolKey,
+      consumePoints: Math.max(0, Number(matchedRule.consumePoints ?? 1)),
+      memberFree: Boolean(matchedRule.memberFree),
+      status,
+      ruleMatched: status === 1
+    }
+  } catch (error) {
+    return null
+  }
+}
+
+/**
+ * 函数说明：根据用户资料与运行时策略计算预期扣分，用于积分不足提示文案。
+ */
+const resolveExpectedConsumePoints = (
+  profile: FrontendUserProfile | null,
+  runtimePolicy: RuntimeToolConsumePolicy | null
+): number => {
+  const globalConsumePoints = Math.max(1, Number(profile?.pointsToolConsumePoints || 1))
+  if (!runtimePolicy || !runtimePolicy.ruleMatched) {
+    return globalConsumePoints
+  }
+  let consumePoints = Math.max(0, Number(runtimePolicy.consumePoints || 0))
+  if (profile?.memberActive && runtimePolicy.memberFree) {
+    consumePoints = 0
+  }
+  return Math.max(0, consumePoints)
+}
+
 /**
  * 函数说明：提供工具积分消费能力，统一登录校验、积分扣减与异常提示。
  */
@@ -108,10 +174,10 @@ export const useToolConsume = () => {
   /**
    * 函数说明：积分不足时统一提示剩余/消耗信息，并引导前往积分中心。
    */
-  const navigateToPointsCenter = async (redirectPath: string) => {
+  const navigateToPointsCenter = async (redirectPath: string, requiredPoints: number) => {
     const profile = getFrontendUserProfile()
     const remainPoints = Number(profile?.pointsBalance || 0)
-    const consumePoints = Math.max(1, Number(profile?.pointsToolConsumePoints || 1))
+    const consumePoints = Math.max(0, Number(requiredPoints))
     ElMessage.warning(`积分不足：当前剩余 ${remainPoints} 积分，本次需消耗 ${consumePoints} 积分`)
     await router.push(redirectPath)
   }
@@ -141,6 +207,8 @@ export const useToolConsume = () => {
     if (mode === 'check-login') {
       return true
     }
+
+    const runtimePolicy = await resolveRuntimeToolPolicy(toolKey)
 
     if (options.skipConsumeWhen) {
       const profile = getFrontendUserProfile()
@@ -173,7 +241,9 @@ export const useToolConsume = () => {
       clearToolConsumeTimestamp(dedupeKey)
       const message = error instanceof Error ? error.message : '积分扣减失败，请稍后重试'
       if (message.includes('积分') || message.includes('余额')) {
-        await navigateToPointsCenter(insufficientPointsRedirect)
+        const profile = getFrontendUserProfile()
+        const expectedConsumePoints = resolveExpectedConsumePoints(profile, runtimePolicy)
+        await navigateToPointsCenter(insufficientPointsRedirect, expectedConsumePoints)
         return false
       }
       ElMessage.error(message)

@@ -27,6 +27,12 @@ export interface Tool {
   seoKeywords?: string
   seoDescription?: string
   seoImage?: string
+  toolKey?: string
+  consumePoints?: number
+  memberFree?: boolean
+  status?: number
+  sort?: number
+  remark?: string
   children?: Tool[]
 }
 

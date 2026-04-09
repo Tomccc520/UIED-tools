@@ -74,6 +74,16 @@ export interface SiteSeoPageItem {
   image: string
 }
 
+export interface SiteLoginToolConsumeRule {
+  toolKey: string
+  name: string
+  consumePoints: number
+  memberFree: boolean
+  status: number
+  sort: number
+  remark: string
+}
+
 export interface SiteChangelogFeatureItem {
   title: string
   points: string[]
@@ -105,6 +115,7 @@ export interface SitePublicConfig {
   loginQqAuthorizeUrl: string
   loginDailyGiftPoints: number
   loginToolConsumePoints: number
+  loginToolConsumeRules: SiteLoginToolConsumeRule[]
   loginMemberEnabled: boolean
   loginMemberTrialDays: number
   bannerSlides: SiteBannerSlideItem[]
@@ -179,6 +190,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   loginQqAuthorizeUrl: '',
   loginDailyGiftPoints: 50,
   loginToolConsumePoints: 1,
+  loginToolConsumeRules: [],
   loginMemberEnabled: false,
   loginMemberTrialDays: 0,
   bannerSlides: [
@@ -747,6 +759,35 @@ const normalizeToolLogo = (input: unknown): Tool['logo'] => {
 }
 
 /**
+ * 函数说明：清洗登录配置中的按工具计费规则，供前台拦截层读取 status/consumePoints。
+ */
+const normalizeLoginToolConsumeRules = (input: unknown): SiteLoginToolConsumeRule[] => {
+  return normalizeArrayInput(input)
+    .map((item, index) => {
+      if (!item || typeof item !== 'object') {
+        return null
+      }
+      const record = item as Record<string, unknown>
+      const toolKey = String(record.toolKey || '').trim().toLowerCase()
+      if (!toolKey) {
+        return null
+      }
+      const consumePointsRaw = Number(record.consumePoints)
+      const sortRaw = Number(record.sort)
+      return {
+        toolKey,
+        name: String(record.name || '').trim() || toolKey,
+        consumePoints: Number.isFinite(consumePointsRaw) ? Math.max(0, Math.floor(consumePointsRaw)) : 1,
+        memberFree: normalizeBooleanFlag(record.memberFree ?? true),
+        status: Number(record.status ?? 1) === 0 ? 0 : 1,
+        sort: Number.isFinite(sortRaw) ? Math.max(0, Math.floor(sortRaw)) : index + 1,
+        remark: String(record.remark || '').trim()
+      } as SiteLoginToolConsumeRule
+    })
+    .filter((item): item is SiteLoginToolConsumeRule => Boolean(item))
+}
+
+/**
  * 函数说明：清洗后台工具分类树配置，仅保留前端渲染所需字段
  */
 const normalizeToolCategories = (input: unknown): ToolCategory[] => {
@@ -805,6 +846,19 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
               const seoKeywords = String(toolRecord.seoKeywords || '').trim()
               const seoDescription = String(toolRecord.seoDescription || '').trim()
               const seoImage = String(toolRecord.seoImage || '').trim()
+              const toolKey = String(toolRecord.toolKey || '').trim().toLowerCase()
+              const consumePointsRaw = Number(toolRecord.consumePoints)
+              const consumePoints =
+                Number.isFinite(consumePointsRaw) ? Math.max(0, Math.floor(consumePointsRaw)) : undefined
+              const memberFree =
+                typeof toolRecord.memberFree === 'boolean'
+                  ? toolRecord.memberFree
+                  : undefined
+              const statusRaw = Number(toolRecord.status)
+              const status = Number.isFinite(statusRaw) ? (statusRaw === 0 ? 0 : 1) : undefined
+              const sortRaw = Number(toolRecord.sort)
+              const sort = Number.isFinite(sortRaw) ? Math.max(0, Math.floor(sortRaw)) : undefined
+              const remark = String(toolRecord.remark || '').trim()
               const tags = normalizeArrayInput(toolRecord.tags)
                 .map((tag) => String(tag || '').trim())
                 .filter(Boolean)
@@ -828,7 +882,13 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
                 ...(seoTitle ? { seoTitle } : {}),
                 ...(seoKeywords ? { seoKeywords } : {}),
                 ...(seoDescription ? { seoDescription } : {}),
-                ...(seoImage ? { seoImage } : {})
+                ...(seoImage ? { seoImage } : {}),
+                ...(toolKey ? { toolKey } : {}),
+                ...(consumePoints !== undefined ? { consumePoints } : {}),
+                ...(memberFree !== undefined ? { memberFree } : {}),
+                ...(status !== undefined ? { status } : {}),
+                ...(sort !== undefined ? { sort } : {}),
+                ...(remark ? { remark } : {})
               }
               return normalizedTool
             })
@@ -914,6 +974,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     loginQqAuthorizeUrl: String(record.loginQqAuthorizeUrl || '').trim(),
     loginDailyGiftPoints: dailyGiftPoints,
     loginToolConsumePoints: toolConsumePoints,
+    loginToolConsumeRules: normalizeLoginToolConsumeRules(record.loginToolConsumeRules),
     loginMemberEnabled: normalizeBooleanFlag(record.loginMemberEnabled),
     loginMemberTrialDays: memberTrialDays,
     bannerSlides: normalizeBannerSlides(record.toolsBannerSlides),
