@@ -2,13 +2,17 @@
 /**
  * @file App.vue
  * @description 应用程序根组件，提供整体布局框架和响应式设计
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
- * @createDate 2025-1-8
+ * @createDate 2026-04-09
  */
 
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGlobalToolConsumeGuard } from '@/composables/useGlobalToolConsumeGuard'
+import { getSitePublicConfig } from '@/services/siteConfig'
+import type { Tool } from '@/types/tools'
 
 // 导入布局相关组件
 import Header from '@/components/Layout/Header/Header.vue'  // 顶部导航栏
@@ -33,6 +37,138 @@ const banner = ref(null)
 const isToolPage = computed(() => {
   return route.path.includes('/tools/')
 })
+
+interface ToolRuntimeBannerState {
+  disabled: boolean
+  title: string
+  remark: string
+  consumePoints: number
+  memberFree: boolean
+}
+
+const toolRuntimeBannerState = ref<ToolRuntimeBannerState>({
+  disabled: false,
+  title: '',
+  remark: '',
+  consumePoints: 0,
+  memberFree: true
+})
+
+const isCurrentToolDisabled = computed(() => {
+  return Boolean(isToolPage.value && toolRuntimeBannerState.value.disabled)
+})
+
+const currentToolDisabledText = computed(() => {
+  const title = String(toolRuntimeBannerState.value.title || '').trim() || '当前工具'
+  const remark = String(toolRuntimeBannerState.value.remark || '').trim()
+  if (remark) {
+    return `当前工具「${title}」已在后台停用：${remark}`
+  }
+  return `当前工具「${title}」已在后台停用，请在后台启用后再使用。`
+})
+
+const currentToolConsumeText = computed(() => {
+  if (!isToolPage.value || isCurrentToolDisabled.value) {
+    return ''
+  }
+  const consumePoints = Math.max(0, Number(toolRuntimeBannerState.value.consumePoints || 0))
+  const memberFree = Boolean(toolRuntimeBannerState.value.memberFree)
+  if (consumePoints <= 0) {
+    return '当前工具无需消耗积分。'
+  }
+  return memberFree
+    ? `当前工具每次消耗 ${consumePoints} 积分（会员可免积分）。`
+    : `当前工具每次消耗 ${consumePoints} 积分。`
+})
+
+/**
+ * 函数说明：标准化工具路由路径，统一去除 query/hash 与尾斜杠，便于和后台配置比对。
+ */
+const normalizeToolRoutePath = (path: unknown): string => {
+  const normalizedPath = String(path || '')
+    .trim()
+    .split('?')[0]
+    .split('#')[0]
+  if (!normalizedPath) {
+    return ''
+  }
+  if (normalizedPath === '/') {
+    return '/'
+  }
+  return normalizedPath.replace(/\/+$/g, '')
+}
+
+/**
+ * 函数说明：按当前路由在后台工具分类树中查找工具配置项。
+ */
+const findToolByRoutePath = async (routePath: string): Promise<Tool | null> => {
+  const normalizedPath = normalizeToolRoutePath(routePath)
+  if (!normalizedPath.startsWith('/tools/')) {
+    return null
+  }
+  try {
+    const siteConfig = await getSitePublicConfig()
+    const categoryList = Array.isArray(siteConfig.toolCategories) ? siteConfig.toolCategories : []
+    for (const category of categoryList) {
+      const subList = Array.isArray(category.list) ? category.list : []
+      for (const subCategory of subList) {
+        const toolList = Array.isArray(subCategory.list) ? subCategory.list : []
+        const matchedTool = toolList.find((tool) => {
+          return normalizeToolRoutePath(tool.url) === normalizedPath
+        })
+        if (matchedTool) {
+          return matchedTool
+        }
+      }
+    }
+    return null
+  } catch (error) {
+    return null
+  }
+}
+
+/**
+ * 函数说明：根据当前路由刷新工具运行态提示信息（停用状态与积分策略）。
+ */
+const syncToolRuntimeBannerState = async () => {
+  if (!isToolPage.value) {
+    toolRuntimeBannerState.value = {
+      disabled: false,
+      title: '',
+      remark: '',
+      consumePoints: 0,
+      memberFree: true
+    }
+    return
+  }
+  const matchedTool = await findToolByRoutePath(route.path)
+  if (!matchedTool) {
+    toolRuntimeBannerState.value = {
+      disabled: false,
+      title: '',
+      remark: '',
+      consumePoints: 0,
+      memberFree: true
+    }
+    return
+  }
+
+  toolRuntimeBannerState.value = {
+    disabled: Number(matchedTool.status ?? 1) === 0,
+    title: String(matchedTool.title || '').trim(),
+    remark: String(matchedTool.remark || '').trim(),
+    consumePoints: Math.max(0, Number(matchedTool.consumePoints ?? 0)),
+    memberFree: Boolean(matchedTool.memberFree ?? true)
+  }
+}
+
+watch(
+  () => route.fullPath,
+  () => {
+    void syncToolRuntimeBannerState()
+  },
+  { immediate: true }
+)
 
 /**
  * 函数说明：挂载全工具动作拦截层，统一补齐登录与积分扣减校验。
@@ -73,6 +209,22 @@ useGlobalToolConsumeGuard()
         <!-- 主内容区域 -->
         <el-main class="!pt-4"
           :class="{ 'flex-1': isToolPage && !route.meta.hideToolsRecommend, 'w-full': !isToolPage || route.meta.hideToolsRecommend }">
+          <el-alert
+            v-if="isCurrentToolDisabled"
+            class="tool-runtime-alert tool-runtime-alert--warning"
+            type="warning"
+            :closable="false"
+            show-icon
+            :title="currentToolDisabledText"
+          />
+          <el-alert
+            v-else-if="currentToolConsumeText"
+            class="tool-runtime-alert tool-runtime-alert--info"
+            type="info"
+            :closable="false"
+            show-icon
+            :title="currentToolConsumeText"
+          />
           <!-- 路由视图，使用过渡动画 -->
           <router-view v-slot="{ Component }">
             <transition name="animation" mode="out-in">
@@ -156,6 +308,19 @@ useGlobalToolConsumeGuard()
 /* 调整主内容区域右边距 */
 .el-main {
   padding-right: 1rem !important;
+}
+
+.tool-runtime-alert {
+  margin-bottom: 1rem;
+  border-radius: 0.75rem;
+}
+
+.tool-runtime-alert--warning {
+  border-color: #f59e0b;
+}
+
+.tool-runtime-alert--info {
+  border-color: #60a5fa;
 }
 
 @media (max-width: 768px) {
