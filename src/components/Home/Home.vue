@@ -17,6 +17,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed, nextTick, watch } from '@vue/runtime-core'
+import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useRoute } from "vue-router"
 import HotSearch from '@/components/HotSearch/HotSearch.vue'
@@ -118,11 +119,34 @@ const homeCategorySections = computed<HomeCategorySection[]>(() => {
  * 函数说明：处理工具点击事件，外链新开页，站内工具保留当前“新窗口使用”的原有行为
  */
 const handleToolClick = (item: Tool) => {
+  if (isToolDisabled(item)) {
+    ElMessage.warning(resolveToolDisabledMessage(item))
+    return
+  }
   if (item.isExternal) {
     window.open(item.url, '_blank')
   } else {
     window.open(`${window.location.origin}${item.url}`, '_blank')
   }
+}
+
+/**
+ * 函数说明：判断工具是否在后台被停用（status=0）。
+ */
+const isToolDisabled = (tool: Tool): boolean => {
+  return Number(tool.status ?? 1) === 0
+}
+
+/**
+ * 函数说明：输出工具停用提示文案，优先显示后台配置备注。
+ */
+const resolveToolDisabledMessage = (tool: Tool): string => {
+  const title = String(tool.title || '').trim() || '当前工具'
+  const remark = String(tool.remark || '').trim()
+  if (remark) {
+    return `工具「${title}」已停用：${remark}`
+  }
+  return `工具「${title}」已在后台停用，请稍后再试。`
 }
 
 // 3D 效果状态
@@ -209,8 +233,14 @@ watch(
             <div v-for="(item, index) in hotRecommendTools" :key="index" class="tool-card-container" @mousemove="handleMouseMove"
               @mouseleave="handleMouseLeave">
               <div
-                class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
-                :style="getCardStyle" @click="handleToolClick(item)">
+                :class="[
+                  'tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer',
+                  { 'tool-card--disabled': isToolDisabled(item) }
+                ]"
+                :style="getCardStyle"
+                @click="handleToolClick(item)"
+              >
+                <div v-if="isToolDisabled(item)" class="tool-disabled-tag">已停用</div>
                 <div class="flex items-center border-b pb-2 relative z-10">
                   <ToolIcon :icon="item.logo" />
                   <div class="flex flex-col ml-2 w-full">
@@ -266,10 +296,14 @@ watch(
                 @mouseleave="handleMouseLeave"
               >
                 <div
-                  class="tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer"
+                  :class="[
+                    'tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer',
+                    { 'tool-card--disabled': isToolDisabled(item) }
+                  ]"
                   :style="getCardStyle"
                   @click="handleToolClick(item)"
                 >
+                  <div v-if="isToolDisabled(item)" class="tool-disabled-tag">已停用</div>
                   <div class="flex items-center border-b pb-2 relative z-10">
                     <ToolIcon v-if="item.logo" :icon="item.logo" />
                     <div class="flex flex-col ml-2 w-full">
@@ -327,6 +361,32 @@ watch(
   transform: translateY(-8px) scale(1.01);
   border-color: #6C54FF;
   box-shadow: 0 10px 20px rgba(108, 84, 255, 0.1);
+}
+
+.tool-card--disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  filter: grayscale(0.18);
+}
+
+.tool-card--disabled:hover {
+  transform: none;
+  border-color: #e5e7eb;
+  box-shadow: none;
+}
+
+.tool-disabled-tag {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 12;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 /* 移动端样式优化 */

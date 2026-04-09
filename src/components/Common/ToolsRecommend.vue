@@ -52,7 +52,10 @@
       </div>
       <div class="divide-y divide-gray-100">
         <div v-for="tool in relatedTools" :key="tool.id" @click="handleToolClick(tool)"
-          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group cursor-pointer">
+          :class="[
+            'block px-4 py-3 transition-all duration-200 group',
+            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
+          ]">
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-blue-500 transition-colors">{{ tool.title
@@ -141,7 +144,10 @@
       </div>
       <div class="divide-y divide-gray-100">
         <div v-for="tool in newTools" :key="tool.id" @click="handleToolClick(tool)"
-          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group cursor-pointer">
+          :class="[
+            'block px-4 py-3 transition-all duration-200 group',
+            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
+          ]">
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-green-500 transition-colors">{{ tool.title
@@ -177,7 +183,10 @@
       </div>
       <div class="divide-y divide-gray-100">
         <div v-for="tool in utilityTools" :key="tool.id" @click="handleToolClick(tool)"
-          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group cursor-pointer">
+          :class="[
+            'block px-4 py-3 transition-all duration-200 group',
+            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
+          ]">
           <div class="flex items-center justify-between">
             <div>
               <div class="text-sm font-medium text-gray-800 group-hover:text-purple-500 transition-colors">{{ tool.title
@@ -201,6 +210,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import type { Tool } from '@/types/tools'
 import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
 import { useToolsStore } from '@/store/modules/tools'
@@ -224,11 +234,34 @@ const toolsStore = useToolsStore()
  * 外链使用新窗口打开，站内工具使用完整地址打开新标签
  */
 const handleToolClick = (tool: Tool) => {
+  if (isToolDisabled(tool)) {
+    ElMessage.warning(resolveToolDisabledMessage(tool))
+    return
+  }
   if (tool.isExternal) {
     window.open(tool.url, '_blank')
   } else {
     window.open(`${window.location.origin}${tool.url}`, '_blank')
   }
+}
+
+/**
+ * 函数说明：判断工具是否在后台被停用（status=0）。
+ */
+const isToolDisabled = (tool: Tool): boolean => {
+  return Number(tool.status ?? 1) === 0
+}
+
+/**
+ * 函数说明：输出工具停用提示文案，优先显示后台配置备注。
+ */
+const resolveToolDisabledMessage = (tool: Tool): string => {
+  const title = String(tool.title || '').trim() || '当前工具'
+  const remark = String(tool.remark || '').trim()
+  if (remark) {
+    return `工具「${title}」已停用：${remark}`
+  }
+  return `工具「${title}」已在后台停用，请稍后再试。`
 }
 
 /**

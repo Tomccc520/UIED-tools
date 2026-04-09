@@ -16,6 +16,7 @@
  */
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
 import { useToolsStore } from '@/store/modules/tools'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
@@ -36,6 +37,25 @@ const quickToolPaths: string[] = [
   '/tools/ai/portrait-matting',
   '/tools/ai/ocr'
 ]
+
+/**
+ * 函数说明：判断工具是否在后台被停用（status=0）。
+ */
+const isToolDisabled = (tool: Tool): boolean => {
+  return Number(tool.status ?? 1) === 0
+}
+
+/**
+ * 函数说明：输出工具停用提示文案，优先显示后台配置备注。
+ */
+const resolveToolDisabledMessage = (tool: Tool): string => {
+  const toolTitle = String(tool.title || '').trim() || '当前工具'
+  const remark = String(tool.remark || '').trim()
+  if (remark) {
+    return `工具「${toolTitle}」已停用：${remark}`
+  }
+  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
+}
 
 /**
  * 函数说明：页面初始化时加载工具分类数据，保证 AI 聚合页内容可渲染
@@ -152,6 +172,10 @@ const handleMouseLeave = (): void => {
  * 函数说明：统一处理工具跳转，自动兼容站内路由和外链
  */
 const openTool = async (tool: Tool): Promise<void> => {
+  if (isToolDisabled(tool)) {
+    ElMessage.warning(resolveToolDisabledMessage(tool))
+    return
+  }
   if (tool.isExternal || /^https?:\/\//i.test(tool.url)) {
     window.open(tool.url, '_blank', 'noopener,noreferrer')
     return
@@ -268,10 +292,12 @@ watch(
             >
               <button
                 type="button"
-                class="tool-card"
+                :class="['tool-card', { 'tool-card--disabled': isToolDisabled(tool) }]"
                 :style="cardStyle"
+                :disabled="isToolDisabled(tool)"
                 @click="openTool(tool)"
               >
+                <div v-if="isToolDisabled(tool)" class="tool-disabled-tag">已停用</div>
                 <div class="flex items-center border-b pb-2 relative z-10">
                   <ToolIcon v-if="tool.logo" :icon="tool.logo" />
                   <div class="flex flex-col ml-2 w-full">
@@ -316,10 +342,12 @@ watch(
               >
                 <button
                   type="button"
-                  class="tool-card"
+                  :class="['tool-card', { 'tool-card--disabled': isToolDisabled(tool) }]"
                   :style="cardStyle"
+                  :disabled="isToolDisabled(tool)"
                   @click="openTool(tool)"
                 >
+                  <div v-if="isToolDisabled(tool)" class="tool-disabled-tag">已停用</div>
                   <div class="flex items-center border-b pb-2 relative z-10">
                     <ToolIcon v-if="tool.logo" :icon="tool.logo" />
                     <div class="flex flex-col ml-2 w-full">
@@ -492,6 +520,31 @@ watch(
 .tool-card:hover {
   transform: translateY(-4px);
   border-color: #8ac5ee;
+}
+
+.tool-card--disabled {
+  opacity: 0.62;
+  cursor: not-allowed;
+  filter: grayscale(0.18);
+}
+
+.tool-card--disabled:hover {
+  transform: none;
+  border-color: #e5e7eb;
+}
+
+.tool-disabled-tag {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 12;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
 }
 
 .tool-card .font-semibold.text-lg {
