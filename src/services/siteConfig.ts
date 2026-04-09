@@ -7,7 +7,7 @@
  * @createDate 2026-03-22
  */
 
-import defaultChangelogTimeline from '@/constants/changelogTimeline'
+import defaultChangelogTimeline from '../constants/changelogTimeline'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 export interface SiteLinkItem {
