@@ -8,6 +8,7 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useToolConsume } from '@/composables/useToolConsume'
+import { getSitePublicConfig } from '@/services/siteConfig'
 import {
   TOOL_CONSUME_GUARD_ACTION_KEYWORDS,
   TOOL_CONSUME_GUARD_FALSE_POSITIVE_WHITELIST,
@@ -18,6 +19,10 @@ import {
 const AUTO_GUARD_SKIP_ATTR = 'data-tool-consume-guard-skip'
 const MANUAL_GUARD_SKIP_SELECTOR = '[data-skip-tool-consume="1"]'
 const ACTION_TRIGGER_SELECTOR = 'button, a, [role="button"], .el-button'
+const ROUTE_TOOL_KEY_CACHE_TTL_MS = 5 * 60 * 1000
+
+let routeToolKeyCacheExpiresAt = 0
+let routeToolKeyMap = new Map<string, string>()
 
 /**
  * 函数说明：转义关键词中的正则特殊字符，确保动态构造 RegExp 时行为稳定。
@@ -93,7 +98,7 @@ const normalizeRoutePath = (path: string): string => {
 /**
  * 函数说明：从工具路由路径生成 toolKey，统一按 “-” 连接，便于积分扣减统计归类。
  */
-const resolveToolKeyByPath = (path: string): string => {
+const deriveToolKeyByPath = (path: string): string => {
   const normalizedPath = String(path || '')
     .replace(/^\/tools\//, '')
     .replace(/^\/+|\/+$/g, '')
@@ -101,6 +106,53 @@ const resolveToolKeyByPath = (path: string): string => {
     .split('#')[0]
   const key = normalizedPath.replace(/[\/_]+/g, '-').trim()
   return key || 'tools-home'
+}
+
+/**
+ * 函数说明：构建“路由路径 => toolKey”映射缓存，优先读取后台工具主数据里的显式 toolKey。
+ */
+const buildRouteToolKeyCache = async () => {
+  const now = Date.now()
+  if (routeToolKeyMap.size > 0 && now <= routeToolKeyCacheExpiresAt) {
+    return
+  }
+  try {
+    const siteConfig = await getSitePublicConfig()
+    const nextMap = new Map<string, string>()
+    const categoryList = Array.isArray(siteConfig.toolCategories) ? siteConfig.toolCategories : []
+    categoryList.forEach((category) => {
+      const subList = Array.isArray(category.list) ? category.list : []
+      subList.forEach((subCategory) => {
+        const toolList = Array.isArray(subCategory.list) ? subCategory.list : []
+        toolList.forEach((tool) => {
+          const routePath = normalizeRoutePath(tool.url)
+          const toolKey = String(tool.toolKey || '').trim().toLowerCase()
+          if (!routePath || !toolKey) {
+            return
+          }
+          nextMap.set(routePath, toolKey)
+        })
+      })
+    })
+    routeToolKeyMap = nextMap
+    routeToolKeyCacheExpiresAt = now + ROUTE_TOOL_KEY_CACHE_TTL_MS
+  } catch (error) {
+    routeToolKeyMap = new Map<string, string>()
+    routeToolKeyCacheExpiresAt = now + 30 * 1000
+  }
+}
+
+/**
+ * 函数说明：根据路由路径解析 toolKey，优先命中后台工具主数据映射，失败时回退路径推导。
+ */
+const resolveToolKeyByPath = async (path: string): Promise<string> => {
+  const normalizedPath = normalizeRoutePath(path)
+  await buildRouteToolKeyCache()
+  const mappedToolKey = routeToolKeyMap.get(normalizedPath)
+  if (mappedToolKey) {
+    return mappedToolKey
+  }
+  return deriveToolKeyByPath(path)
 }
 
 /**
@@ -254,7 +306,7 @@ export const useGlobalToolConsumeGuard = () => {
 
     try {
       const allow = await ensureToolConsume({
-        toolKey: resolveToolKeyByPath(route.path),
+        toolKey: await resolveToolKeyByPath(route.path),
         action: resolveActionCode(actionText),
         redirectPath: route.fullPath,
         loginWarningText: '请先登录后再继续当前工具操作'

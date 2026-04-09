@@ -17,6 +17,7 @@ import {
   type FrontendUserProfile
 } from '@/services/frontendUser'
 import { getSitePublicConfig, type SiteLoginToolConsumeRule } from '@/services/siteConfig'
+import type { Tool, ToolCategory } from '@/types/tools'
 
 const TOOL_CONSUME_DEDUPE_WINDOW_MS = 1200
 const toolConsumeTimestampMap = new Map<string, number>()
@@ -85,6 +86,7 @@ interface RuntimeToolConsumePolicy {
   memberFree: boolean
   status: number
   ruleMatched: boolean
+  source: 'login-rule' | 'tool-catalog'
 }
 
 /**
@@ -95,10 +97,86 @@ const normalizeToolKeyText = (value: unknown): string => {
 }
 
 /**
+ * 函数说明：标准化工具路径，统一去除 query/hash 与尾部斜杠，便于按路由匹配工具策略。
+ */
+const normalizeToolRoutePath = (value: unknown): string => {
+  const rawPath = String(value || '')
+    .trim()
+    .split('?')[0]
+    .split('#')[0]
+  if (!rawPath) {
+    return ''
+  }
+  if (rawPath === '/') {
+    return '/'
+  }
+  return rawPath.replace(/\/+$/g, '')
+}
+
+/**
+ * 函数说明：根据工具链接推导 toolKey（作为后台未显式配置 toolKey 的兜底）。
+ */
+const deriveToolKeyByUrl = (url: string): string => {
+  const normalizedPath = normalizeToolRoutePath(url)
+    .replace(/^\/tools\//, '')
+    .replace(/^\/+|\/+$/g, '')
+  const key = normalizedPath.replace(/[\/_]+/g, '-').trim()
+  return normalizeToolKeyText(key)
+}
+
+/**
+ * 函数说明：将工具分类树扁平化为工具列表，便于统一按 toolKey/路由进行策略匹配。
+ */
+const flattenToolsFromCategories = (categories: ToolCategory[]): Tool[] => {
+  if (!Array.isArray(categories) || categories.length === 0) {
+    return []
+  }
+  return categories.flatMap((category) => {
+    const subList = Array.isArray(category.list) ? category.list : []
+    return subList.flatMap((subCategory) => (Array.isArray(subCategory.list) ? subCategory.list : []))
+  })
+}
+
+/**
+ * 函数说明：从工具主数据中读取运行时策略（status/consumePoints/memberFree），作为登录规则缺失时的兜底来源。
+ */
+const resolveRuntimePolicyFromToolCatalog = (
+  categories: ToolCategory[],
+  normalizedToolKey: string,
+  normalizedRoutePath: string
+): RuntimeToolConsumePolicy | null => {
+  const flatTools = flattenToolsFromCategories(categories)
+  if (flatTools.length === 0) {
+    return null
+  }
+  const matchedByKey = flatTools.find((tool) => {
+    return normalizeToolKeyText(tool.toolKey) === normalizedToolKey
+  })
+  const matchedTool = matchedByKey || flatTools.find((tool) => {
+    return normalizeToolRoutePath(tool.url) === normalizedRoutePath
+  })
+  if (!matchedTool) {
+    return null
+  }
+  const toolStatus = Number(matchedTool.status ?? 1) === 0 ? 0 : 1
+  const toolConsumePointsRaw = Number(matchedTool.consumePoints ?? 1)
+  const consumePoints = Number.isFinite(toolConsumePointsRaw) ? Math.max(0, Math.floor(toolConsumePointsRaw)) : 1
+  return {
+    toolKey: normalizeToolKeyText(matchedTool.toolKey) || normalizedToolKey || deriveToolKeyByUrl(matchedTool.url),
+    consumePoints,
+    memberFree: Boolean(matchedTool.memberFree ?? true),
+    status: toolStatus,
+    ruleMatched: true,
+    source: 'tool-catalog'
+  }
+}
+
+/**
  * 函数说明：根据后端登录策略规则解析当前工具的运行时扣分策略。
  */
-const resolveRuntimeToolPolicy = async (toolKey: string): Promise<RuntimeToolConsumePolicy | null> => {
+const resolveRuntimeToolPolicy = async (toolKey: string, routePath = ''): Promise<RuntimeToolConsumePolicy | null> => {
   const normalizedToolKey = normalizeToolKeyText(toolKey)
+  const normalizedRoutePath = normalizeToolRoutePath(routePath)
   if (!normalizedToolKey) {
     return null
   }
@@ -111,7 +189,7 @@ const resolveRuntimeToolPolicy = async (toolKey: string): Promise<RuntimeToolCon
       return normalizeToolKeyText(item.toolKey) === normalizedToolKey
     })
     if (!matchedRule) {
-      return null
+      return resolveRuntimePolicyFromToolCatalog(siteConfig.toolCategories, normalizedToolKey, normalizedRoutePath)
     }
     const status = Number(matchedRule.status ?? 1) === 0 ? 0 : 1
     return {
@@ -119,7 +197,8 @@ const resolveRuntimeToolPolicy = async (toolKey: string): Promise<RuntimeToolCon
       consumePoints: Math.max(0, Number(matchedRule.consumePoints ?? 1)),
       memberFree: Boolean(matchedRule.memberFree),
       status,
-      ruleMatched: status === 1
+      ruleMatched: true,
+      source: 'login-rule'
     }
   } catch (error) {
     return null
@@ -198,6 +277,12 @@ export const useToolConsume = () => {
       return false
     }
 
+    const runtimePolicy = await resolveRuntimeToolPolicy(toolKey, route.path)
+    if (runtimePolicy?.status === 0) {
+      ElMessage.warning('当前工具已在后台停用，请稍后再试')
+      return false
+    }
+
     if (!isFrontendUserLoggedIn()) {
       promptLoginDialog(loginWarningText, options.redirectPath, `${toolKey}:${action}`)
       return false
@@ -207,8 +292,6 @@ export const useToolConsume = () => {
     if (mode === 'check-login') {
       return true
     }
-
-    const runtimePolicy = await resolveRuntimeToolPolicy(toolKey)
 
     if (options.skipConsumeWhen) {
       const profile = getFrontendUserProfile()
