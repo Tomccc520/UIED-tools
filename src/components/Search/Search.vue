@@ -90,14 +90,24 @@
               <!-- 工具推荐 -->
               <div v-if="aiResponse.suggestions?.length" class="suggested-tools">
                 <div class="tools-grid">
-                  <div v-for="tool in aiResponse.suggestions" :key="tool.url" class="tool-card"
-                    @click="handleToolClick(tool.url)">
+                  <div
+                    v-for="tool in aiResponse.suggestions"
+                    :key="tool.url"
+                    :class="['tool-card', { 'tool-card--disabled': isToolEntryDisabled(tool.url) }]"
+                    @click="handleToolClick(tool.url, tool.title)"
+                  >
+                    <div v-if="isToolEntryDisabled(tool.url)" class="tool-disabled-tag">已停用</div>
                     <div class="tool-info">
                       <h3 class="tool-title">{{ tool.title }}</h3>
                       <p class="tool-desc">{{ tool.description }}</p>
                     </div>
                     <div class="tool-actions">
-                      <el-button type="primary" size="small" @click.stop="openInNewTab(tool.url)">
+                      <el-button
+                        type="primary"
+                        size="small"
+                        :disabled="isToolEntryDisabled(tool.url)"
+                        @click.stop="handleToolClick(tool.url, tool.title)"
+                      >
                         <el-icon>
                           <LinkIcon />
                         </el-icon>
@@ -121,8 +131,13 @@
           <div class="quick-access">
             <div class="section-title">快捷入口</div>
             <div class="quick-tools-grid">
-              <div v-for="tool in quickTools" :key="tool.url" class="quick-tool-item"
-                @click="handleToolClick(tool.url)">
+              <div
+                v-for="tool in quickTools"
+                :key="tool.url"
+                :class="['quick-tool-item', { 'quick-tool-item--disabled': isToolEntryDisabled(tool.url) }]"
+                @click="handleToolClick(tool.url, tool.title)"
+              >
+                <div v-if="isToolEntryDisabled(tool.url)" class="tool-disabled-tag">已停用</div>
                 <div class="quick-tool-content">
                   <span class="quick-tool-title">{{ tool.title }}</span>
                   <p class="quick-tool-desc">{{ tool.desc }}</p>
@@ -201,6 +216,7 @@ import { Search, Delete, Link as LinkIcon, Close, Loading, User, ChatDotRound, C
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
 import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteQuickToolItem } from '@/services/siteConfig'
+import type { Tool, ToolCategory } from '@/types/tools'
 import logoImg from '@/assets/uiedlogo.png'
 import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 import { debugLog, debugError, isDev } from '@/utils/debug'
@@ -216,6 +232,7 @@ const defaultSearchQuickTools = getDefaultSitePublicConfig().searchQuickTools
 const quickTools = ref<SiteQuickToolItem[]>(defaultSearchQuickTools)
 const searchProviderLabel = ref(getDefaultSitePublicConfig().searchProviderLabel)
 const searchProviderLink = ref(getDefaultSitePublicConfig().searchProviderLink)
+const toolRuntimeEntryMap = ref<Map<string, Tool>>(new Map())
 
 /**
  * 按需加载并配置搜索面板 Markdown 渲染器
@@ -460,11 +477,119 @@ const loadSearchQuickTools = async () => {
     : defaultSearchQuickTools
   searchProviderLabel.value = siteConfig.searchProviderLabel || getDefaultSitePublicConfig().searchProviderLabel
   searchProviderLink.value = siteConfig.searchProviderLink || getDefaultSitePublicConfig().searchProviderLink
+  toolRuntimeEntryMap.value = buildToolRuntimeEntryMap(siteConfig.toolCategories)
 }
 
-// 在新窗口打开链接
-const openInNewTab = (url: string) => {
-  window.open(url, '_blank')
+/**
+ * 函数说明：将任意工具地址归一化为可用于匹配的键（去除 hash，保留 path/query）。
+ * @param url 工具地址
+ * @returns 归一化后的地址键
+ */
+const normalizeToolUrlKey = (url: string): string => {
+  const raw = String(url || '').trim()
+  if (!raw) return ''
+  try {
+    const parsed = new URL(raw, window.location.origin)
+    const pathname = parsed.pathname.replace(/\/+$/, '') || '/'
+    const search = parsed.search || ''
+    const normalizedPath = `${pathname}${search}`
+    if (parsed.origin === window.location.origin) {
+      return normalizedPath
+    }
+    return `${parsed.origin}${normalizedPath}`
+  } catch (_error) {
+    return raw.replace(/#.*$/, '').replace(/\/+$/, '')
+  }
+}
+
+/**
+ * 函数说明：构建工具地址的多键匹配集合，兼容 path 与完整 URL 两种来源。
+ * @param url 工具地址
+ * @returns 地址键集合
+ */
+const buildToolUrlCandidateKeys = (url: string): string[] => {
+  const keySet = new Set<string>()
+  const raw = String(url || '').trim()
+  if (!raw) return []
+  const normalized = normalizeToolUrlKey(raw)
+  if (normalized) keySet.add(normalized)
+  try {
+    const parsed = new URL(raw, window.location.origin)
+    const pathname = (parsed.pathname || '').replace(/\/+$/, '') || '/'
+    const pathWithSearch = `${pathname}${parsed.search || ''}`
+    if (pathWithSearch) {
+      keySet.add(pathWithSearch)
+      keySet.add(pathname)
+    }
+  } catch (_error) {
+    if (raw.startsWith('/')) {
+      const pathOnly = raw.replace(/#.*$/, '').replace(/\/+$/, '') || '/'
+      keySet.add(pathOnly)
+    }
+  }
+  return Array.from(keySet).filter(Boolean)
+}
+
+/**
+ * 函数说明：将后台工具分类树拍平为“地址 -> 运行态”映射，供搜索面板停用拦截复用。
+ * @param categories 后台工具分类树
+ * @returns 工具运行态映射
+ */
+const buildToolRuntimeEntryMap = (categories: ToolCategory[]): Map<string, Tool> => {
+  const runtimeMap = new Map<string, Tool>()
+  categories.forEach((category) => {
+    category.list.forEach((subCategory) => {
+      subCategory.list.forEach((tool) => {
+        const candidateKeys = buildToolUrlCandidateKeys(tool.url)
+        candidateKeys.forEach((key) => {
+          if (!runtimeMap.has(key)) {
+            runtimeMap.set(key, tool)
+          }
+        })
+      })
+    })
+  })
+  return runtimeMap
+}
+
+/**
+ * 函数说明：根据工具地址查询后台运行态配置。
+ * @param url 工具地址
+ * @returns 匹配到的工具配置
+ */
+const findToolRuntimeEntry = (url: string): Tool | null => {
+  const candidateKeys = buildToolUrlCandidateKeys(url)
+  for (const key of candidateKeys) {
+    const tool = toolRuntimeEntryMap.value.get(key)
+    if (tool) return tool
+  }
+  return null
+}
+
+/**
+ * 函数说明：判断搜索入口对应工具是否在后台被停用（status=0）。
+ * @param url 工具地址
+ * @returns 是否停用
+ */
+const isToolEntryDisabled = (url: string): boolean => {
+  const matchedTool = findToolRuntimeEntry(url)
+  return Number(matchedTool?.status ?? 1) === 0
+}
+
+/**
+ * 函数说明：输出搜索入口停用提示文案，优先展示后台配置备注。
+ * @param url 工具地址
+ * @param fallbackTitle 兜底工具标题
+ * @returns 停用提示文案
+ */
+const resolveToolDisabledMessage = (url: string, fallbackTitle = '该工具'): string => {
+  const matchedTool = findToolRuntimeEntry(url)
+  const toolTitle = String(matchedTool?.title || fallbackTitle).trim() || '该工具'
+  const remark = String(matchedTool?.remark || '').trim()
+  if (remark) {
+    return `工具「${toolTitle}」已停用：${remark}`
+  }
+  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
 }
 
 // 处理搜索
@@ -574,12 +699,12 @@ const handleSearch = async () => {
 }
 
 // 处理工具点击
-const handleToolClick = (url: string) => {
-  if (url.startsWith('http')) {
-    window.open(url, '_blank')
-  } else {
-    window.open(url, '_blank')
+const handleToolClick = (url: string, title = '') => {
+  if (isToolEntryDisabled(url)) {
+    ElMessage.warning(resolveToolDisabledMessage(url, title))
+    return
   }
+  window.open(url, '_blank')
 }
 
 // 处理历史记录点击
@@ -1041,6 +1166,19 @@ const handleEnterSearch = () => {
   z-index: 2;
 }
 
+.tool-card--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: #cbd5e1;
+  box-shadow: none;
+}
+
+.tool-card--disabled:hover {
+  transform: none;
+  border-color: #cbd5e1;
+  box-shadow: none;
+}
+
 .tool-card:hover {
   border-color: #6C54FF;
   box-shadow: 0 4px 12px rgba(108, 84, 255, 0.15);
@@ -1161,6 +1299,19 @@ const handleEnterSearch = () => {
   overflow: hidden;
 }
 
+.quick-tool-item--disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  border-color: #cbd5e1;
+  box-shadow: none;
+}
+
+.quick-tool-item--disabled:hover {
+  transform: none;
+  border-color: #cbd5e1;
+  box-shadow: none;
+}
+
 .quick-tool-item::before {
   content: '';
   position: absolute;
@@ -1184,6 +1335,21 @@ const handleEnterSearch = () => {
 
 .quick-tool-item:hover .quick-tool-title {
   color: #6C54FF;
+}
+
+.tool-disabled-tag {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #dc2626;
+  font-size: 12px;
+  line-height: 18px;
+  font-weight: 500;
+  z-index: 2;
 }
 
 .section-title {
