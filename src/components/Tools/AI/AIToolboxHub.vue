@@ -39,6 +39,27 @@ const quickToolPaths: string[] = [
 ]
 
 /**
+ * 函数说明：标准化工具路由路径，统一去除查询、哈希与尾部斜杠。
+ */
+const normalizeRoutePath = (rawPath: string): string => {
+  const normalized = String(rawPath || '').trim().replace(/[?#].*$/, '')
+  if (!normalized) {
+    return '/'
+  }
+  if (normalized.length === 1) {
+    return normalized
+  }
+  return normalized.replace(/\/+$/, '')
+}
+
+/**
+ * 函数说明：判断工具路由是否属于 AI 工具箱命名空间，避免依赖分类标题匹配。
+ */
+const isAiToolPath = (toolPath: string): boolean => {
+  return normalizeRoutePath(toolPath).startsWith('/tools/ai')
+}
+
+/**
  * 函数说明：判断工具是否在后台被停用（status=0）。
  */
 const isToolDisabled = (tool: Tool): boolean => {
@@ -71,6 +92,14 @@ const initToolCates = async (): Promise<void> => {
  * 函数说明：读取 AI 工具箱一级分类，供本页分组渲染
  */
 const aiCategory = computed<ToolCategory | undefined>(() => {
+  const matchedByToolPath = toolsStore.cates.find((cate) => {
+    return (cate.list || []).some((group) => {
+      return (group.list || []).some((tool) => isAiToolPath(tool.url))
+    })
+  })
+  if (matchedByToolPath) {
+    return matchedByToolPath
+  }
   return toolsStore.cates.find((cate) => cate.title === 'AI工具箱')
 })
 

@@ -193,6 +193,13 @@ const normalizeRoutePath = (rawPath: string): string => {
   return normalized.replace(/\/+$/, '')
 }
 
+/**
+ * 函数说明：判断工具路由是否属于 AI 工具箱命名空间，避免依赖固定分类标题。
+ */
+const isAiToolPath = (rawPath: string): boolean => {
+  return normalizeRoutePath(rawPath).startsWith('/tools/ai')
+}
+
 const aiToolboxHomePath = '/tools/ai/toolbox'
 const normalizedAiToolboxHomePath = normalizeRoutePath(aiToolboxHomePath)
 const sidebarFallbackToolCategories = getToolsCate()
@@ -216,11 +223,11 @@ const isInternalMenuLink = (link: string): boolean => {
  */
 const aiToolRouteSet = computed<Set<string>>(() => {
   const pathSet = new Set<string>([normalizedAiToolboxHomePath])
-  const aiCategory = sidebarResolvedToolCategories.value.find((cate: ToolCategory) => cate.title === 'AI工具箱')
-  const aiRoutes = (aiCategory?.list || [])
+  const aiRoutes = sidebarResolvedToolCategories.value
+    .flatMap((cate) => (Array.isArray(cate.list) ? cate.list : []))
     .flatMap((group) => (Array.isArray(group.list) ? group.list : []))
     .map((tool) => String(tool.url || '').trim())
-    .filter((toolPath) => toolPath.startsWith('/'))
+    .filter((toolPath) => isAiToolPath(toolPath))
   aiRoutes.forEach((toolPath) => {
     pathSet.add(normalizeRoutePath(toolPath))
   })
@@ -336,7 +343,11 @@ const resolveCategoryDirectLink = (menu: SiteSidebarCategoryMenu): string => {
   if (rawLink) {
     return rawLink
   }
-  if (menu.key === 'ai' || menu.cateTitle === 'AI工具箱') {
+  const categoryTools = resolveCategoryList(menu.cateTitle)
+  const hasAiTool = categoryTools.some((group) => {
+    return (Array.isArray(group.list) ? group.list : []).some((tool) => isAiToolPath(String(tool.url || '')))
+  })
+  if (menu.key === 'ai' || hasAiTool) {
     return '/tools/ai/toolbox'
   }
   return ''
@@ -346,7 +357,10 @@ const resolveCategoryDirectLink = (menu: SiteSidebarCategoryMenu): string => {
  * 函数说明：判断当前分类菜单是否为 AI 工具箱入口，兼容后台自定义 key 与标题
  */
 const isAiToolboxCategoryMenu = (menu: DisplaySidebarCategoryMenu): boolean => {
-  return menu.key === 'ai' || menu.cateTitle === 'AI工具箱' || menu.resolvedLink === '/tools/ai/toolbox'
+  const hasAiTool = menu.list.some((group) => {
+    return (Array.isArray(group.list) ? group.list : []).some((tool) => isAiToolPath(String(tool.url || '')))
+  })
+  return menu.key === 'ai' || hasAiTool || menu.resolvedLink === '/tools/ai/toolbox'
 }
 
 /**
@@ -456,7 +470,11 @@ const displayAiToolboxSidebarMenus = computed<SiteLinkItem[]>(() => {
     )
   }
 
-  const aiGroups = resolveCategoryList('AI工具箱')
+  const aiGroups = sidebarResolvedToolCategories.value
+    .flatMap((cate) => (Array.isArray(cate.list) ? cate.list : []))
+    .filter((group) => {
+      return (Array.isArray(group.list) ? group.list : []).some((tool) => isAiToolPath(String(tool.url || '')))
+    })
   const categoryAnchorMenus = aiGroups
     .map((group, index) => {
       const title = String(group.title || '').trim()

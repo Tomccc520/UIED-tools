@@ -631,20 +631,67 @@ const loadCenterBusinessData = async () => {
   await Promise.all([loadCommerceProducts(), loadOrders(), loadPointsLogs()])
 }
 
+interface OpenPaymentWindowOptions {
+  reuseWindow?: Window | null
+  sameTabFallback?: boolean
+}
+
 /**
  * 函数说明：新开支付页面，若被浏览器拦截则提示用户手动放行弹窗。
  */
-const openPaymentWindow = (payUrl: string): boolean => {
+const openPaymentWindow = (payUrl: string, options: OpenPaymentWindowOptions = {}): boolean => {
   const targetUrl = String(payUrl || '').trim()
   if (!targetUrl) {
     return false
   }
+  const reuseWindow = options.reuseWindow
+  if (reuseWindow && !reuseWindow.closed) {
+    try {
+      reuseWindow.location.replace(targetUrl)
+      reuseWindow.focus()
+      return true
+    } catch {
+      // 复用窗口不可写时继续走常规弹窗逻辑
+    }
+  }
   const popup = window.open(targetUrl, '_blank', 'noopener,noreferrer')
   if (!popup) {
+    if (options.sameTabFallback) {
+      window.location.assign(targetUrl)
+      showCenterMessage('info', '已自动切换到当前页面继续支付')
+      return true
+    }
     showCenterMessage('warning', '浏览器拦截了支付窗口，请允许弹窗后重试')
     return false
   }
   return true
+}
+
+/**
+ * 函数说明：在用户点击时预开支付占位窗口，降低异步请求后再开窗被浏览器拦截的概率。
+ */
+const preOpenPaymentWindow = (): Window | null => {
+  const popup = window.open('about:blank', '_blank', 'noopener,noreferrer')
+  if (!popup) {
+    return null
+  }
+  try {
+    popup.document.title = '支付处理中'
+    popup.document.body.innerHTML = '<p style="padding:16px;font-size:14px;color:#333;">正在获取支付链接，请稍候...</p>'
+  } catch {
+    // 部分浏览器对 about:blank 写入限制较严格，忽略即可
+  }
+  return popup
+}
+
+/**
+ * 函数说明：关闭未被复用的支付占位窗口，避免残留空白标签页影响体验。
+ */
+const closePaymentPlaceholderWindow = (popup: Window | null): void => {
+  if (!popup || popup.closed) {
+    return
+  }
+  popup.close()
 }
 
 /**
@@ -838,6 +885,8 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
     showCenterMessage('warning', '当前支付渠道未配置完成，请切换其他渠道或联系管理员')
     return
   }
+  const paymentPlaceholderWindow = selectedChannel.code === 'mock' ? null : preOpenPaymentWindow()
+  let placeholderWindowConsumed = false
   buyingKey.value = purchaseKey
   try {
     const result = await purchaseFrontendUserProduct(productType, productCode, selectedChannel.code)
@@ -849,6 +898,7 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
     loadProfile()
     await Promise.all([loadOrders({ withLoading: false, silent: true }), loadPointsLogs()])
     if (result.order.status === 1) {
+      closePaymentPlaceholderWindow(paymentPlaceholderWindow)
       stopPaymentStatusPolling()
       showCenterMessage('success', '支付完成，权益已实时生效')
       return
@@ -857,16 +907,25 @@ const handleBuyProduct = async (productType: 'member_plan' | 'points_pack', prod
     activeTab.value = 'orders'
     startPaymentStatusPolling(result.order.orderSn)
     if (result.payment?.payUrl) {
-      const opened = openPaymentWindow(result.payment.payUrl)
+      const opened = openPaymentWindow(result.payment.payUrl, {
+        reuseWindow: paymentPlaceholderWindow,
+        sameTabFallback: true
+      })
+      placeholderWindowConsumed = opened
       if (opened) {
         showCenterMessage('success', '订单已创建，请在新窗口完成支付，系统将自动刷新到账状态')
       }
     } else {
+      closePaymentPlaceholderWindow(paymentPlaceholderWindow)
       showCenterMessage('info', '订单已创建，等待支付回调，可在“购买记录”中手动刷新')
     }
   } catch (error) {
+    closePaymentPlaceholderWindow(paymentPlaceholderWindow)
     showCenterMessage('error', resolveRuntimeErrorMessage(error, '购买失败，请稍后重试'))
   } finally {
+    if (!placeholderWindowConsumed) {
+      closePaymentPlaceholderWindow(paymentPlaceholderWindow)
+    }
     buyingKey.value = ''
   }
 }
@@ -879,25 +938,37 @@ const handleGoPay = async (order: FrontendUserOrderItem) => {
   if (!targetOrderSn || goPayOrderSn.value === targetOrderSn) {
     return
   }
+  const paymentPlaceholderWindow = preOpenPaymentWindow()
+  let placeholderWindowConsumed = false
   goPayOrderSn.value = targetOrderSn
   try {
     const result = await relaunchFrontendUserOrderPayment(targetOrderSn, order.payChannel || selectedPayChannel.value)
     if (!result) {
+      closePaymentPlaceholderWindow(paymentPlaceholderWindow)
       showCenterMessage('warning', '订单拉起失败，请重新登录后重试')
       await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
       return
     }
     const payUrl = String(result.payment?.payUrl || '').trim()
     if (!payUrl) {
+      closePaymentPlaceholderWindow(paymentPlaceholderWindow)
       showCenterMessage('warning', '支付链接暂不可用，请联系管理员检查支付网关配置')
       await loadOrders({ withLoading: false, silent: true })
       return
     }
-    const opened = openPaymentWindow(payUrl)
+    const opened = openPaymentWindow(payUrl, {
+      reuseWindow: paymentPlaceholderWindow,
+      sameTabFallback: true
+    })
+    placeholderWindowConsumed = opened
     startPaymentStatusPolling(result.order.orderSn, { silent: !opened })
   } catch (error) {
+    closePaymentPlaceholderWindow(paymentPlaceholderWindow)
     showCenterMessage('error', resolveRuntimeErrorMessage(error, '拉起支付失败，请稍后重试'))
   } finally {
+    if (!placeholderWindowConsumed) {
+      closePaymentPlaceholderWindow(paymentPlaceholderWindow)
+    }
     goPayOrderSn.value = ''
   }
 }
