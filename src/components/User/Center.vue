@@ -14,6 +14,7 @@ import { getDefaultSitePublicConfig, getSitePublicConfig } from '@/services/site
 import {
   closeFrontendUserOrder,
   fetchFrontendUserCommerceProducts,
+  fetchFrontendUserOrderStatus,
   fetchFrontendUserOrders,
   fetchFrontendUserPointsLogs,
   getFrontendUserProfile,
@@ -657,9 +658,31 @@ const checkSingleOrderPaymentStatus = async (
   if (!targetOrderSn) {
     return 'missing'
   }
-  const latestOrders = await fetchFrontendUserOrders(1, 50)
-  orderList.value = latestOrders
-  const currentOrder = latestOrders.find((item) => item.orderSn === targetOrderSn)
+  let currentOrder: FrontendUserOrderItem | null = null
+  let singleQueryFailed = false
+
+  try {
+    currentOrder = await fetchFrontendUserOrderStatus(targetOrderSn)
+    if (currentOrder) {
+      const nextOrderList = [...orderList.value]
+      const currentIndex = nextOrderList.findIndex((item) => item.orderSn === targetOrderSn)
+      if (currentIndex >= 0) {
+        nextOrderList.splice(currentIndex, 1, currentOrder)
+      } else {
+        nextOrderList.unshift(currentOrder)
+      }
+      orderList.value = nextOrderList
+    }
+  } catch {
+    singleQueryFailed = true
+  }
+
+  if (!currentOrder) {
+    const latestOrders = await fetchFrontendUserOrders(1, 50)
+    orderList.value = latestOrders
+    currentOrder = latestOrders.find((item) => item.orderSn === targetOrderSn) || null
+  }
+
   if (!currentOrder) {
     if (showPendingTip) {
       notifyOrderCheckStatus('missing')
@@ -682,6 +705,9 @@ const checkSingleOrderPaymentStatus = async (
     return 'closed'
   }
   if (showPendingTip) {
+    if (singleQueryFailed) {
+      paymentPollingNotice.value = '单订单查询暂时不可用，已自动回退到订单列表兜底查询'
+    }
     notifyOrderCheckStatus('pending')
   }
   return 'pending'

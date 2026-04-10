@@ -168,6 +168,7 @@ const FRONTEND_USER_PURCHASE_ENDPOINT = '/api/common/frontend-user/purchase'
 const FRONTEND_USER_PURCHASE_PAY_ENDPOINT = '/api/common/frontend-user/purchase/pay'
 const FRONTEND_USER_PURCHASE_CALLBACK_ENDPOINT = '/api/common/frontend-user/purchase/callback'
 const FRONTEND_USER_PURCHASE_CLOSE_ENDPOINT = '/api/common/frontend-user/purchase/close'
+const FRONTEND_USER_ORDER_STATUS_ENDPOINT = '/api/common/frontend-user/order/status'
 const FRONTEND_USER_ORDERS_ENDPOINT = '/api/common/frontend-user/orders'
 const FRONTEND_USER_POINTS_LOGS_ENDPOINT = '/api/common/frontend-user/points/logs'
 const FRONTEND_USER_LOGOUT_ENDPOINT = '/api/common/frontend-user/logout'
@@ -935,6 +936,28 @@ export const closeFrontendUserOrder = async (orderSn: string): Promise<FrontendU
       method: 'POST',
       body: JSON.stringify({ orderSn: targetOrderSn })
     },
+    frontendToken
+  )
+  const orders = normalizeFrontendUserOrders({ lists: [data.order || {}] })
+  return orders[0] || null
+}
+
+/**
+ * 函数说明：读取当前登录用户指定订单状态，用于支付轮询时的单订单兜底查询。
+ */
+export const fetchFrontendUserOrderStatus = async (orderSn: string): Promise<FrontendUserOrderItem | null> => {
+  const frontendToken = getFrontendUserToken()
+  if (!frontendToken) {
+    return null
+  }
+  const targetOrderSn = String(orderSn || '').trim()
+  if (!targetOrderSn) {
+    return null
+  }
+  const query = `?orderSn=${encodeURIComponent(targetOrderSn)}`
+  const data = await requestFrontendUserApi<{ order?: unknown }>(
+    `${FRONTEND_USER_ORDER_STATUS_ENDPOINT}${query}`,
+    { method: 'GET' },
     frontendToken
   )
   const orders = normalizeFrontendUserOrders({ lists: [data.order || {}] })
