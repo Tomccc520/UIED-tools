@@ -24,13 +24,14 @@ import { useRoute } from "vue-router"
 import HotSearch from '@/components/HotSearch/HotSearch.vue'
 import ToolRankingBoard from '@/components/Common/ToolRankingBoard.vue'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
-import { getSitePublicConfig, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
+import { getSitePublicConfig, type SitePublicConfig, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 // 初始化 store 和路由
 const toolsStore = useToolsStore()
 const route = useRoute()
 const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>([])
+const siteConfig = ref<SitePublicConfig | null>(null)
 const defaultHomeSectionKeyMap: Record<string, string> = {
   'AI工具箱': 'ai',
   '设计工具': 'design',
@@ -68,13 +69,49 @@ const getToolsCate = async () => {
  */
 const loadHomeSiteConfig = async () => {
   try {
-    const siteConfig = await getSitePublicConfig({ forceRefresh: true })
-    sidebarCategoryMenus.value = siteConfig.sidebarCategoryMenus
+    const config = await getSitePublicConfig({ forceRefresh: true })
+    siteConfig.value = config
+    sidebarCategoryMenus.value = config.sidebarCategoryMenus
   } catch (error) {
     console.error('Failed to get home site config:', error)
+    siteConfig.value = null
     sidebarCategoryMenus.value = []
   }
 }
+
+/**
+ * 函数说明：首页读取后台热榜模块开关，统一控制首页是否展示工具热榜入口。
+ */
+const shouldShowHomeToolRanking = computed(() => {
+  if (!siteConfig.value) {
+    return true
+  }
+  return siteConfig.value.toolRankingEnabled && siteConfig.value.toolRankingShowOnHome
+})
+
+/**
+ * 函数说明：首页读取后台热榜标题，未配置时回退默认标题。
+ */
+const homeToolRankingTitle = computed(() => {
+  return siteConfig.value?.toolRankingHomeTitle || '本周工具热榜'
+})
+
+/**
+ * 函数说明：首页读取后台热榜周期，未配置时回退周榜。
+ */
+const homeToolRankingPeriod = computed(() => {
+  return siteConfig.value?.toolRankingHomePeriod || 'week'
+})
+
+/**
+ * 函数说明：首页读取后台热榜数量，未配置时回退 8 条。
+ */
+const homeToolRankingLimit = computed(() => {
+  if (!siteConfig.value) {
+    return 8
+  }
+  return Math.min(12, Math.max(1, Number(siteConfig.value.toolRankingPageLimit || 8)))
+})
 
 /**
  * 函数说明：根据分类标题解析首页区块 key，优先与后台侧栏菜单 key 对齐，保证菜单锚点一致
@@ -276,15 +313,15 @@ watch(
           </div>
         </div>
 
-        <div id="recommend-ranking" class="mt-6">
+        <div v-if="shouldShowHomeToolRanking" id="recommend-ranking" class="mt-6">
           <div class="section-title">
             <div class="title-text">工具热榜</div>
             <div class="title-line"></div>
           </div>
           <ToolRankingBoard
-            title="本周工具热榜"
-            period="week"
-            :limit="8"
+            :title="homeToolRankingTitle"
+            :period="homeToolRankingPeriod"
+            :limit="homeToolRankingLimit"
             :fallback-tools="hotRecommendTools"
             empty-text="当前热榜正在积累数据，先为你展示热门工具推荐"
           />

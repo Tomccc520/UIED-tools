@@ -42,23 +42,25 @@
       <section class="tool-ranking-hero" aria-label="工具热榜榜单">
         <div class="tool-ranking-hero__intro">
           <div class="tool-ranking-hero__badge">工具热榜</div>
-          <h1 class="tool-ranking-hero__title">站内工具使用排行榜</h1>
-          <p class="tool-ranking-hero__desc">
-            这是工具热榜的独立页面，按站内真实访问、开始处理与下载行为聚合。首页与右侧栏只是入口，这里展示完整榜单。
-          </p>
+          <h1 class="tool-ranking-hero__title">{{ toolRankingPageTitle }}</h1>
+          <p class="tool-ranking-hero__desc">{{ toolRankingPageDescription }}</p>
           <div class="tool-ranking-hero__meta">
-            <span>统计口径：本周综合热度</span>
+            <span>统计口径：{{ toolRankingPeriodText }}综合热度</span>
             <span>更新时间：{{ currentTime }}</span>
           </div>
         </div>
 
         <ToolRankingBoard
-          title="本周工具热榜"
-          period="week"
-          :limit="12"
+          v-if="toolRankingEnabled"
+          :title="toolRankingPageTitle"
+          :period="toolRankingDefaultPeriod"
+          :limit="toolRankingPageLimit"
           :fallback-tools="toolRankingFallbackTools"
           empty-text="工具热榜正在积累真实数据，先展示工具目录里的推荐工具"
         />
+        <div v-else class="tool-ranking-hero__disabled">
+          当前站内工具热榜已在后台关闭。你仍可浏览下方全网热榜内容，待后台重新开启后这里会恢复展示。
+        </div>
       </section>
 
       <div class="hot-search-content">
@@ -456,6 +458,13 @@ const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error'>('success')
 const toolRankingFallbackTools = ref<Tool[]>([])
+const toolRankingEnabled = ref(true)
+const toolRankingPageTitle = ref('站内工具使用排行榜')
+const toolRankingPageDescription = ref(
+  '这是工具热榜的独立页面，按站内真实访问、开始处理与下载行为聚合。首页与右侧栏只是入口，这里展示完整榜单。'
+)
+const toolRankingDefaultPeriod = ref<'day' | 'week' | 'month' | 'all'>('week')
+const toolRankingPageLimit = ref(12)
 
 // 添加获取分类平台的方法
 const getPlatformsByCategory = (categoryName: string) => {
@@ -463,16 +472,42 @@ const getPlatformsByCategory = (categoryName: string) => {
 }
 
 /**
+ * 函数说明：输出独立热榜页当前周期文案，避免页面说明继续写死周榜。
+ */
+const toolRankingPeriodText = computed(() => {
+  if (toolRankingDefaultPeriod.value === 'day') return '日榜'
+  if (toolRankingDefaultPeriod.value === 'month') return '月榜'
+  if (toolRankingDefaultPeriod.value === 'all') return '总榜'
+  return '周榜'
+})
+
+/**
  * 函数说明：读取后台工具分类树并构建工具热榜兜底列表，避免独立热榜页在冷启动时没有可展示内容。
  */
 const loadToolRankingFallbackTools = async () => {
   try {
     const siteConfig = await getSitePublicConfig()
-    toolRankingFallbackTools.value = getNewToolsFromCategories(siteConfig.toolCategories || [], 12)
+    toolRankingEnabled.value = Boolean(siteConfig.toolRankingEnabled)
+    toolRankingPageTitle.value = siteConfig.toolRankingPageTitle || '站内工具使用排行榜'
+    toolRankingPageDescription.value =
+      siteConfig.toolRankingPageDescription ||
+      '这是工具热榜的独立页面，按站内真实访问、开始处理与下载行为聚合。首页与右侧栏只是入口，这里展示完整榜单。'
+    toolRankingDefaultPeriod.value = siteConfig.toolRankingDefaultPeriod || 'week'
+    toolRankingPageLimit.value = Math.min(20, Math.max(1, Number(siteConfig.toolRankingPageLimit || 12)))
+    toolRankingFallbackTools.value = getNewToolsFromCategories(
+      siteConfig.toolCategories || [],
+      toolRankingPageLimit.value
+    )
   } catch (error) {
     if (import.meta.env.DEV) {
       console.error('读取工具热榜兜底列表失败:', error)
     }
+    toolRankingEnabled.value = true
+    toolRankingPageTitle.value = '站内工具使用排行榜'
+    toolRankingPageDescription.value =
+      '这是工具热榜的独立页面，按站内真实访问、开始处理与下载行为聚合。首页与右侧栏只是入口，这里展示完整榜单。'
+    toolRankingDefaultPeriod.value = 'week'
+    toolRankingPageLimit.value = 12
     toolRankingFallbackTools.value = []
   }
 }
@@ -1297,6 +1332,20 @@ onBeforeUnmount(() => {
   color: #4338ca;
   font-size: 0.8125rem;
   font-weight: 600;
+}
+
+.tool-ranking-hero__disabled {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  border: 1px dashed rgba(148, 163, 184, 0.5);
+  background: rgba(248, 250, 252, 0.9);
+  color: #64748b;
+  font-size: 0.9375rem;
+  line-height: 1.75rem;
+  text-align: center;
 }
 
 .hot-search-header {

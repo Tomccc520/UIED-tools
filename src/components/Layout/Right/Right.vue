@@ -31,6 +31,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolRankingBoard from '@/components/Common/ToolRankingBoard.vue'
 import { useToolsStore } from '@/store/modules/tools'
+import { getSitePublicConfig, type SitePublicConfig } from '@/services/siteConfig'
 import type { Tool } from '@/types/tools'
 import {
   findToolByUrl,
@@ -54,6 +55,7 @@ const relatedTools = ref<Tool[]>([])
 const randomTools = ref<Tool[]>([])
 // 最近使用的工具
 const recentTools = ref<Tool[]>([])
+const siteConfig = ref<SitePublicConfig | null>(null)
 
 /**
  * 函数说明：判断工具是否在后台被停用（status=0）。
@@ -98,6 +100,18 @@ const getToolsData = async () => {
   await toolsStore.getToolCate()
   relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, route.path, 8, 8)
   randomTools.value = getRandomToolsFromCategories(toolsStore.cates, 8, route.path)
+}
+
+/**
+ * 函数说明：读取右侧栏热榜配置，统一控制工具页右栏热榜模块的显示与标题。
+ */
+const loadRightSiteConfig = async () => {
+  try {
+    siteConfig.value = await getSitePublicConfig()
+  } catch (error) {
+    console.error('获取右侧栏站点配置失败:', error)
+    siteConfig.value = null
+  }
 }
 
 /**
@@ -157,9 +171,33 @@ const addToRecentTools = (currentPath: string) => {
  * 函数说明：同步右侧栏数据与最近使用记录，确保工具分类加载完成后再写入最近使用。
  */
 const syncRightSidebarState = async (currentPath: string) => {
-  await getToolsData()
+  await Promise.all([getToolsData(), loadRightSiteConfig()])
   addToRecentTools(currentPath)
 }
+
+/**
+ * 函数说明：判断右侧栏是否展示工具热榜，需同时满足全局开关与右栏开关开启。
+ */
+const shouldShowSidebarToolRanking = computed(() => {
+  if (!siteConfig.value) {
+    return true
+  }
+  return siteConfig.value.toolRankingEnabled && siteConfig.value.toolRankingShowOnSidebar
+})
+
+/**
+ * 函数说明：读取右侧栏热榜标题，未配置时回退默认标题。
+ */
+const sidebarToolRankingTitle = computed(() => {
+  return siteConfig.value?.toolRankingSidebarTitle || '本周热榜'
+})
+
+/**
+ * 函数说明：读取右侧栏热榜周期，未配置时回退周榜。
+ */
+const sidebarToolRankingPeriod = computed(() => {
+  return siteConfig.value?.toolRankingSidebarPeriod || 'week'
+})
 
 /**
  * 函数说明：监听路由变化，切换工具后同步刷新推荐与最近使用列表。
@@ -268,8 +306,9 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
     </div>
 
     <ToolRankingBoard
-      title="本周热榜"
-      period="week"
+      v-if="shouldShowSidebarToolRanking"
+      :title="sidebarToolRankingTitle"
+      :period="sidebarToolRankingPeriod"
       :limit="5"
       compact
       :fallback-tools="randomTools"

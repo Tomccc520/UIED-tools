@@ -1087,6 +1087,40 @@ apply_official_site_tools_catalog_menu_patch() {
   log_info "官网设置工具主数据菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：检测官网设置是否缺少“热榜管理 / 榜单配置”菜单，缺失时自动补齐菜单与权限。
+apply_official_site_tool_ranking_menu_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260413_add_official_site_tool_ranking_menu.sql"
+  local manage_menu_count="0"
+  local config_menu_count="0"
+  local list_perm_count="0"
+  local summary_perm_count="0"
+  local config_save_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  manage_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:toolranking:detail';" 2>/dev/null || echo "0")"
+  config_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:website:toolranking:config:detail';" 2>/dev/null || echo "0")"
+  list_perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:tool-ranking:list';" 2>/dev/null || echo "0")"
+  summary_perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:tool-ranking:summary';" 2>/dev/null || echo "0")"
+  config_save_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='setting:tool-ranking:config:save';" 2>/dev/null || echo "0")"
+
+  if [[ "${manage_menu_count}" -ge 1 ]] && [[ "${config_menu_count}" -ge 1 ]] \
+    && [[ "${list_perm_count}" -ge 1 ]] && [[ "${summary_perm_count}" -ge 1 ]] \
+    && [[ "${config_save_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到官网设置缺少工具热榜后台菜单，自动执行热榜菜单补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "官网设置工具热榜菜单补齐完成。"
+    return
+  fi
+
+  log_info "官网设置工具热榜菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
 # 函数说明：检测微信公众号是否缺少菜单管理/回复规则页面菜单，缺失时自动补齐菜单与权限。
 apply_wx_oa_reply_menu_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260412_add_wx_oa_reply_menu_seed.sql"
@@ -1598,6 +1632,7 @@ main() {
   apply_wx_oa_reply_menu_patch
   apply_official_site_layout_submenus_patch
   apply_official_site_tools_catalog_menu_patch
+  apply_official_site_tool_ranking_menu_patch
   apply_official_site_seo_menu_patch
   apply_official_site_menu_label_patch
   sync_frontend_ai_provider_env_keys

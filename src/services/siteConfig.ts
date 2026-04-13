@@ -131,6 +131,17 @@ export interface SitePublicConfig {
   footerSupportLinks: SiteLinkItem[]
   footerRecordLinks: SiteLinkItem[]
   hotTools: SiteHotToolItem[]
+  toolRankingEnabled: boolean
+  toolRankingPageTitle: string
+  toolRankingPageDescription: string
+  toolRankingDefaultPeriod: 'day' | 'week' | 'month' | 'all'
+  toolRankingPageLimit: number
+  toolRankingShowOnHome: boolean
+  toolRankingHomeTitle: string
+  toolRankingHomePeriod: 'day' | 'week' | 'month' | 'all'
+  toolRankingShowOnSidebar: boolean
+  toolRankingSidebarTitle: string
+  toolRankingSidebarPeriod: 'day' | 'week' | 'month' | 'all'
   headerLinks: SiteLinkItem[]
   searchQuickTools: SiteQuickToolItem[]
   searchProviderLabel: string
@@ -249,6 +260,17 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   footerSupportLinks: [],
   footerRecordLinks: [],
   hotTools: [],
+  toolRankingEnabled: true,
+  toolRankingPageTitle: '站内工具使用排行榜',
+  toolRankingPageDescription: '这是工具热榜的独立页面，按站内真实访问、开始处理与下载行为聚合，帮助运营快速判断哪些工具最受欢迎。',
+  toolRankingDefaultPeriod: 'week',
+  toolRankingPageLimit: 12,
+  toolRankingShowOnHome: true,
+  toolRankingHomeTitle: '本周工具热榜',
+  toolRankingHomePeriod: 'week',
+  toolRankingShowOnSidebar: true,
+  toolRankingSidebarTitle: '本周热榜',
+  toolRankingSidebarPeriod: 'week',
   headerLinks: [],
   searchQuickTools: [
     {
@@ -943,12 +965,16 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
   const record = extractResponseData(payload)
   const dailyGiftPointsRaw = Number(record.loginDailyGiftPoints)
   const toolConsumePointsRaw = Number(record.loginToolConsumePoints)
+  const toolRankingPageLimitRaw = Number(record.toolsToolRankingPageLimit)
   const dailyGiftPoints = Number.isFinite(dailyGiftPointsRaw)
     ? Math.max(0, dailyGiftPointsRaw)
     : DEFAULT_SITE_PUBLIC_CONFIG.loginDailyGiftPoints
   const toolConsumePoints = Number.isFinite(toolConsumePointsRaw)
     ? Math.max(1, toolConsumePointsRaw)
     : DEFAULT_SITE_PUBLIC_CONFIG.loginToolConsumePoints
+  const toolRankingPageLimit = Number.isFinite(toolRankingPageLimitRaw)
+    ? Math.min(20, Math.max(1, Math.floor(toolRankingPageLimitRaw)))
+    : DEFAULT_SITE_PUBLIC_CONFIG.toolRankingPageLimit
   const memberTrialDaysRaw = Number(record.loginMemberTrialDays)
   const memberTrialDays = Number.isFinite(memberTrialDaysRaw)
     ? Math.max(0, memberTrialDaysRaw)
@@ -1002,6 +1028,33 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     footerSupportLinks: normalizeLinkItems(record.toolsFooterSupportLinks),
     footerRecordLinks: normalizeLinkItems(record.toolsFooterRecordLinks),
     hotTools: normalizeHotToolItems(record.toolsHotTools),
+    toolRankingEnabled: normalizeBooleanFlag(record.toolsToolRankingEnabled ?? DEFAULT_SITE_PUBLIC_CONFIG.toolRankingEnabled),
+    toolRankingPageTitle:
+      String(record.toolsToolRankingPageTitle || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingPageTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.toolRankingPageTitle,
+    toolRankingPageDescription:
+      String(record.toolsToolRankingPageDescription || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingPageDescription).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.toolRankingPageDescription,
+    toolRankingDefaultPeriod:
+      (String(record.toolsToolRankingDefaultPeriod || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod).trim() ||
+        DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod) as SitePublicConfig['toolRankingDefaultPeriod'],
+    toolRankingPageLimit,
+    toolRankingShowOnHome: normalizeBooleanFlag(record.toolsToolRankingShowOnHome ?? DEFAULT_SITE_PUBLIC_CONFIG.toolRankingShowOnHome),
+    toolRankingHomeTitle:
+      String(record.toolsToolRankingHomeTitle || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomeTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomeTitle,
+    toolRankingHomePeriod:
+      (String(record.toolsToolRankingHomePeriod || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomePeriod).trim() ||
+        DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomePeriod) as SitePublicConfig['toolRankingHomePeriod'],
+    toolRankingShowOnSidebar: normalizeBooleanFlag(
+      record.toolsToolRankingShowOnSidebar ?? DEFAULT_SITE_PUBLIC_CONFIG.toolRankingShowOnSidebar
+    ),
+    toolRankingSidebarTitle:
+      String(record.toolsToolRankingSidebarTitle || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarTitle).trim() ||
+      DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarTitle,
+    toolRankingSidebarPeriod:
+      (String(record.toolsToolRankingSidebarPeriod || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarPeriod).trim() ||
+        DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarPeriod) as SitePublicConfig['toolRankingSidebarPeriod'],
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     searchQuickTools: normalizeQuickToolItems(record.toolsSearchQuickTools),
     searchProviderLabel:
