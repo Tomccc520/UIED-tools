@@ -201,7 +201,7 @@ const normalizeToolRankingListResult = (input: unknown): ToolRankingListResult =
   const record = (input || {}) as Record<string, unknown>
   return {
     period: (String(record.period || 'week').trim() || 'week') as ToolRankingPeriod,
-    sortBy: (String(record.sortBy || 'score').trim() || 'score') as ToolRankingSortBy,
+    sortBy: (String(record.sortBy || 'view').trim() || 'view') as ToolRankingSortBy,
     limit: Math.max(1, Number(record.limit || 10) || 10),
     startDate: String(record.startDate || '').trim(),
     endDate: String(record.endDate || '').trim(),

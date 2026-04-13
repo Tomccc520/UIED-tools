@@ -262,7 +262,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   hotTools: [],
   toolRankingEnabled: true,
   toolRankingPageTitle: '站内工具使用排行榜',
-  toolRankingPageDescription: '这是工具热榜的独立页面，按站内真实访问、开始处理与下载行为聚合，帮助运营快速判断哪些工具最受欢迎。',
+  toolRankingPageDescription: '这是工具热榜的独立页面，按站内真实点击量排行，帮助运营快速判断哪些工具最受欢迎。',
   toolRankingDefaultPeriod: 'week',
   toolRankingPageLimit: 12,
   toolRankingShowOnHome: true,

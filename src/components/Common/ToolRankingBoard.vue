@@ -18,6 +18,8 @@ const props = withDefaults(defineProps<{
   period?: ToolRankingPeriod
   limit?: number
   compact?: boolean
+  flat?: boolean
+  showHeader?: boolean
   fallbackTools?: Tool[]
   emptyText?: string
 }>(), {
@@ -25,6 +27,8 @@ const props = withDefaults(defineProps<{
   period: 'week',
   limit: 8,
   compact: false,
+  flat: false,
+  showHeader: true,
   fallbackTools: () => [],
   emptyText: '当前还没有足够的排行榜数据'
 })
@@ -58,7 +62,7 @@ const loadToolRankingList = async () => {
     const result = await getToolRankingList({
       period: props.period,
       limit: props.limit,
-      sortBy: 'score'
+      sortBy: 'view'
     })
     rankingList.value = result.list
     liveRankingReady.value = result.list.length > 0
@@ -95,8 +99,8 @@ const resolveRankingMetaText = (item: ToolRankingListItem): string => {
     }
     return item.cateTitle || '工具热榜'
   }
-  if (item.score > 0) {
-    return `${item.cateTitle || '工具热榜'} · 综合分 ${item.score}`
+  if (item.viewCount > 0) {
+    return `${item.cateTitle || '工具热榜'} · 点击 ${item.viewCount}`
   }
   return item.cateTitle || '工具热榜'
 }
@@ -114,12 +118,12 @@ watch(
 </script>
 
 <template>
-  <div :class="['tool-ranking-board', { 'tool-ranking-board--compact': compact }]">
-    <div class="tool-ranking-board__header">
+  <div :class="['tool-ranking-board', { 'tool-ranking-board--compact': compact, 'tool-ranking-board--flat': flat }]">
+    <div v-if="showHeader" class="tool-ranking-board__header">
       <div>
         <div class="tool-ranking-board__title">{{ title }}</div>
         <div class="tool-ranking-board__subtitle">
-          {{ liveRankingReady ? '实时按工具使用热度聚合' : '当前展示兜底推荐内容，热榜数据会在有埋点后自动接管' }}
+          {{ liveRankingReady ? '实时按工具点击量排行' : '当前展示兜底推荐内容，榜单会在产生真实点击后自动接管' }}
         </div>
       </div>
       <div class="tool-ranking-board__badge">{{ period === 'day' ? '日榜' : period === 'month' ? '月榜' : period === 'all' ? '总榜' : '周榜' }}</div>
@@ -141,7 +145,7 @@ watch(
           <div class="tool-ranking-board__item-meta">{{ resolveRankingMetaText(item) }}</div>
         </div>
         <div v-if="!compact" class="tool-ranking-board__stat">
-          <span>{{ item.viewCount > 0 ? `访问 ${item.viewCount}` : item.score > 0 ? `热度 ${item.score}` : '推荐' }}</span>
+          <span>{{ item.viewCount > 0 ? `点击 ${item.viewCount}` : '推荐' }}</span>
         </div>
       </button>
     </div>
@@ -157,8 +161,15 @@ watch(
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 20px;
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
   padding: 1rem;
+}
+
+.tool-ranking-board--flat {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
 }
 
 .tool-ranking-board--compact {
@@ -215,13 +226,28 @@ watch(
   padding: 0.75rem;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .tool-ranking-board__item:hover {
   transform: translateY(-1px);
   box-shadow: 0 12px 24px rgba(99, 102, 241, 0.12);
   background: #ffffff;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__item {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0;
+  padding: 1rem 0;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__item:hover {
+  box-shadow: none;
+  transform: none;
+  background: rgba(79, 70, 229, 0.03);
+  border-color: rgba(79, 70, 229, 0.16);
 }
 
 .tool-ranking-board__rank {
@@ -239,8 +265,41 @@ watch(
 }
 
 .tool-ranking-board__rank--top {
-  background: linear-gradient(135deg, #7c3aed, #4f46e5);
+  background: #4f46e5;
   color: #ffffff;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__rank {
+  width: 2.4rem;
+  height: 2.4rem;
+  font-size: 1rem;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__content {
+  min-width: 0;
+  flex: 1;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__item-title {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__item-meta {
+  margin-top: 0.125rem;
+  font-size: 0.8125rem;
+  color: #64748b;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__stat {
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.tool-ranking-board--flat .tool-ranking-board__empty {
+  padding: 2rem 0.25rem;
 }
 
 .tool-ranking-board__content {
