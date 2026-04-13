@@ -496,6 +496,30 @@ apply_user_points_schema_patch() {
   log_info "la_user 积分字段补齐完成。"
 }
 
+# 函数说明：检测并补齐工具排行榜按日聚合表，确保前台埋点与热榜查询可直接落库。
+apply_tool_ranking_schema_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260413_add_tool_ranking_daily.sql"
+  local ranking_table_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  ranking_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_tool_ranking_daily';" 2>/dev/null || echo "0")"
+  if [[ "${ranking_table_count}" -ge 1 ]]; then
+    return
+  fi
+
+  log_info "检测到工具排行榜聚合表缺失，自动执行排行榜补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "工具排行榜聚合表补齐完成。"
+    return
+  fi
+
+  # 函数说明：补丁失败时不阻塞启动，避免影响其它模块联调。
+  log_info "工具排行榜聚合表补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
 # 函数说明：检测并补齐 la_user 会员字段与 login 会员配置，确保会员基础能力可用。
 apply_user_member_schema_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260330_add_user_member_columns_and_login_member_config.sql"
@@ -1312,6 +1336,99 @@ is_pid_alive() {
   kill -0 "${pid}" >/dev/null 2>&1
 }
 
+# 函数说明：获取目标文件或目录树里的最新修改时间，用于判断源码是否已更新。
+get_latest_path_mtime() {
+  python3 - "$@" <<'PY'
+import os
+import sys
+
+skip_dirs = {'.git', 'node_modules', 'dist', '.runtime', '__pycache__'}
+latest = 0
+
+for path in sys.argv[1:]:
+    if not path or not os.path.exists(path):
+        continue
+
+    if os.path.isfile(path):
+        try:
+            latest = max(latest, int(os.path.getmtime(path)))
+        except FileNotFoundError:
+            pass
+        continue
+
+    for root, dirs, files in os.walk(path):
+        dirs[:] = [item for item in dirs if item not in skip_dirs]
+        for name in files:
+            full_path = os.path.join(root, name)
+            try:
+                latest = max(latest, int(os.path.getmtime(full_path)))
+            except FileNotFoundError:
+                continue
+
+print(latest)
+PY
+}
+
+# 函数说明：读取 PID 文件自身的修改时间，作为服务最近一次启动时间的近似值。
+get_file_mtime() {
+  local target_file="$1"
+
+  if [[ ! -f "${target_file}" ]]; then
+    echo "0"
+    return
+  fi
+
+  python3 - "${target_file}" <<'PY'
+import os
+import sys
+
+try:
+    print(int(os.path.getmtime(sys.argv[1])))
+except FileNotFoundError:
+    print(0)
+PY
+}
+
+# 函数说明：当源码修改时间晚于服务 PID 文件时，自动重启对应进程，避免继续复用旧二进制。
+restart_process_if_sources_changed() {
+  local name="$1"
+  local pid_file="$2"
+  local expected_port="$3"
+  shift 3
+  local watch_paths=("$@")
+  local latest_source_mtime="0"
+  local pid_file_mtime="0"
+  local running_pid=""
+  local retries=15
+  local i
+
+  if ! is_pid_running "${pid_file}" "${expected_port}"; then
+    return
+  fi
+
+  latest_source_mtime="$(get_latest_path_mtime "${watch_paths[@]}")"
+  pid_file_mtime="$(get_file_mtime "${pid_file}")"
+
+  if [[ "${latest_source_mtime}" -le 0 ]] || [[ "${latest_source_mtime}" -le "${pid_file_mtime}" ]]; then
+    return
+  fi
+
+  running_pid="$(cat "${pid_file}" 2>/dev/null || true)"
+  log_info "${name} 检测到源码已更新（${latest_source_mtime} > ${pid_file_mtime}），自动重启服务..."
+  if [[ -n "${running_pid}" ]]; then
+    kill "${running_pid}" >/dev/null 2>&1 || true
+  fi
+
+  for ((i = 1; i <= retries; i++)); do
+    if ! port_in_use "${expected_port}"; then
+      break
+    fi
+    sleep 1
+  done
+
+  rm -f "${pid_file}"
+}
+
 # 函数说明：通过 Python 子进程创建新会话并脱离当前 shell，避免 Mac 下脚本退出后开发服务被连带回收。
 spawn_detached_process() {
   local cwd="$1"
@@ -1398,6 +1515,14 @@ start_background_process() {
 
 # 函数说明：启动 likeadmin-go 服务端 API
 start_likeadmin_server() {
+  restart_process_if_sources_changed \
+    "likeadmin-server" \
+    "${PID_DIR}/likeadmin-server.pid" \
+    "${GO_API_PORT}" \
+    "${LIKEADMIN_SERVER_DIR}/main.go" \
+    "${LIKEADMIN_SERVER_DIR}/admin" \
+    "${LIKEADMIN_SERVER_DIR}/config" \
+    "${LIKEADMIN_DIR}/sql"
   start_background_process "likeadmin-server" "go run main.go" "${LIKEADMIN_SERVER_DIR}" "${GO_API_PORT}"
 }
 
@@ -1457,6 +1582,7 @@ main() {
   sync_frontend_tool_menus
   apply_user_qq_email_schema_patch
   apply_user_points_schema_patch
+  apply_tool_ranking_schema_patch
   apply_user_member_schema_patch
   apply_member_commerce_schema_patch
   apply_order_delivery_schema_patch

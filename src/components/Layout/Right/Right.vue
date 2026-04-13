@@ -2,6 +2,7 @@
  * @file Right.vue
  * @description 右侧边栏组件，展示推荐工具
  * @author UIED技术团队
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @createDate 2024-03-20
  *
@@ -28,6 +29,7 @@
 import { computed, ref, watch, onMounted } from '@vue/runtime-core'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import ToolRankingBoard from '@/components/Common/ToolRankingBoard.vue'
 import { useToolsStore } from '@/store/modules/tools'
 import type { Tool } from '@/types/tools'
 import {
@@ -265,48 +267,14 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
       </div>
     </div>
 
-    <!-- 随机工具推荐 -->
-    <div class="bg-white rounded-xl shadow-sm">
-      <div class="px-4 py-3 border-b border-gray-100">
-        <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor" aria-hidden="true" role="img">
-            <title>随机推荐工具图标</title>
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
-          </svg>
-          随机推荐
-        </h3>
-      </div>
-      <div class="divide-y divide-gray-100">
-        <div
-          v-for="tool in randomTools"
-          :key="tool.url"
-          :class="[
-            'block px-4 py-3 transition-all duration-200 group',
-            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
-          ]"
-          :aria-label="`使用${tool.title}工具：${tool.desc}`"
-          @click="handleToolEntryClick(tool)"
-        >
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="text-sm font-medium text-gray-800 group-hover:text-purple-500 transition-colors">
-                {{ tool.title }}
-              </div>
-              <div class="text-xs text-gray-500 mt-1 line-clamp-1">
-                {{ tool.desc }}
-              </div>
-            </div>
-            <svg xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-gray-400 group-hover:text-purple-500 transition-colors" fill="none"
-              viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-            </svg>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ToolRankingBoard
+      title="本周热榜"
+      period="week"
+      :limit="5"
+      compact
+      :fallback-tools="randomTools"
+      empty-text="当前热榜还在积累数据，先展示随机推荐"
+    />
   </div>
 </template>
 

@@ -17,6 +17,7 @@ import {
   type FrontendUserProfile
 } from '@/services/frontendUser'
 import { getSitePublicConfig, type SiteLoginToolConsumeRule } from '@/services/siteConfig'
+import { trackToolRankingEvent } from '@/services/toolRanking'
 import type { Tool, ToolCategory } from '@/types/tools'
 
 const TOOL_CONSUME_DEDUPE_WINDOW_MS = 1200
@@ -319,6 +320,16 @@ export const useToolConsume = () => {
       } else if (showConsumeSuccessToast) {
         ElMessage.success(`已扣除 ${consumeResult.consumePoints} 积分，剩余 ${consumeResult.remainPoints} 积分`)
       }
+
+      void trackToolRankingEvent({
+        toolKey,
+        routePath: route.path,
+        eventType: action === 'download' ? 'download' : 'start',
+        toolUrl: route.path,
+        source: 'use-tool-consume'
+      }).catch(() => {
+        // 函数说明：排行榜埋点属于非阻断能力，失败时不影响当前工具继续执行。
+      })
       return true
     } catch (error) {
       clearToolConsumeTimestamp(dedupeKey)

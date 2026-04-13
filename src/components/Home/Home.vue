@@ -1,6 +1,7 @@
 <!--
 * @file Home.vue
 * @description 首页组件，展示工具分类和推荐工具
+ * @copyright Tomda (https://www.tomda.top)
 * @author UIED技术团队
 * @copyright UIED技术团队 (https://fsuied.com)
 * @createDate 2024-1-8
@@ -21,6 +22,7 @@ import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useRoute } from "vue-router"
 import HotSearch from '@/components/HotSearch/HotSearch.vue'
+import ToolRankingBoard from '@/components/Common/ToolRankingBoard.vue'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
 import { getSitePublicConfig, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
@@ -230,8 +232,13 @@ watch(
             <div class="title-line"></div>
           </div>
           <div class="grid gap-4">
-            <div v-for="(item, index) in hotRecommendTools" :key="index" class="tool-card-container" @mousemove="handleMouseMove"
-              @mouseleave="handleMouseLeave">
+            <div
+              v-for="(item, index) in hotRecommendTools"
+              :key="index"
+              class="tool-card-container"
+              @mousemove="handleMouseMove"
+              @mouseleave="handleMouseLeave"
+            >
               <div
                 :class="[
                   'tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer',
@@ -268,6 +275,21 @@ watch(
             </div>
           </div>
         </div>
+
+        <div id="recommend-ranking" class="mt-6">
+          <div class="section-title">
+            <div class="title-text">工具热榜</div>
+            <div class="title-line"></div>
+          </div>
+          <ToolRankingBoard
+            title="本周工具热榜"
+            period="week"
+            :limit="8"
+            :fallback-tools="hotRecommendTools"
+            empty-text="当前热榜正在积累数据，先为你展示热门工具推荐"
+          />
+        </div>
+      </div>
 
         <section
           v-for="section in homeCategorySections"
@@ -336,7 +358,6 @@ watch(
         <el-backtop :right="10" :bottom="50" />
       </div>
     </div>
-  </div>
 </template>
 
 <style scoped>

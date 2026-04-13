@@ -39,6 +39,28 @@
         </div>
       </div>
 
+      <section class="tool-ranking-hero" aria-label="工具热榜榜单">
+        <div class="tool-ranking-hero__intro">
+          <div class="tool-ranking-hero__badge">工具热榜</div>
+          <h1 class="tool-ranking-hero__title">站内工具使用排行榜</h1>
+          <p class="tool-ranking-hero__desc">
+            这是工具热榜的独立页面，按站内真实访问、开始处理与下载行为聚合。首页与右侧栏只是入口，这里展示完整榜单。
+          </p>
+          <div class="tool-ranking-hero__meta">
+            <span>统计口径：本周综合热度</span>
+            <span>更新时间：{{ currentTime }}</span>
+          </div>
+        </div>
+
+        <ToolRankingBoard
+          title="本周工具热榜"
+          period="week"
+          :limit="12"
+          :fallback-tools="toolRankingFallbackTools"
+          empty-text="工具热榜正在积累真实数据，先展示工具目录里的推荐工具"
+        />
+      </section>
+
       <div class="hot-search-content">
         <!-- 分类标题和内容 -->
         <template v-for="category in categories" :key="category.id">
@@ -313,6 +335,10 @@ import { Refresh } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { HotRankingAPI } from '@/api/hot-ranking'
 import { officialAPIs, categories } from '@/api/platforms'
+import ToolRankingBoard from '@/components/Common/ToolRankingBoard.vue'
+import { getSitePublicConfig } from '@/services/siteConfig'
+import { getNewToolsFromCategories } from '@/services/toolCatalog'
+import type { Tool } from '@/types/tools'
 
 interface HotSection {
   id: string;
@@ -429,10 +455,26 @@ let countdownTimer: ReturnType<typeof setInterval> | null = null
 const showToast = ref(false)
 const toastMessage = ref('')
 const toastType = ref<'success' | 'error'>('success')
+const toolRankingFallbackTools = ref<Tool[]>([])
 
 // 添加获取分类平台的方法
 const getPlatformsByCategory = (categoryName: string) => {
   return officialAPIs.filter(platform => platform.category === categoryName);
+}
+
+/**
+ * 函数说明：读取后台工具分类树并构建工具热榜兜底列表，避免独立热榜页在冷启动时没有可展示内容。
+ */
+const loadToolRankingFallbackTools = async () => {
+  try {
+    const siteConfig = await getSitePublicConfig()
+    toolRankingFallbackTools.value = getNewToolsFromCategories(siteConfig.toolCategories || [], 12)
+  } catch (error) {
+    if (import.meta.env.DEV) {
+      console.error('读取工具热榜兜底列表失败:', error)
+    }
+    toolRankingFallbackTools.value = []
+  }
 }
 
 // 修改渲染函数，使用虚拟列表优化
@@ -1136,6 +1178,7 @@ onMounted(async () => {
   document.addEventListener('visibilitychange', handleVisibilityChange)
 
   await nextTick()
+  await loadToolRankingFallbackTools()
   fetchHotList(false)
   updateTime()
   timeUpdateInterval = setInterval(updateTime, 1000)
@@ -1193,6 +1236,67 @@ onBeforeUnmount(() => {
   border-radius: 1rem;
   overflow: hidden;
   background: transparent;
+}
+
+.tool-ranking-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: stretch;
+  margin-bottom: 2rem;
+}
+
+.tool-ranking-hero__intro {
+  padding: 1.5rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+}
+
+.tool-ranking-hero__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.08);
+  color: #dc2626;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.tool-ranking-hero__title {
+  margin: 1rem 0 0;
+  font-size: 1.75rem;
+  line-height: 2.25rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.tool-ranking-hero__desc {
+  margin: 0.875rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.75rem;
+  color: #475569;
+}
+
+.tool-ranking-hero__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.tool-ranking-hero__meta span {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #4338ca;
+  font-size: 0.8125rem;
+  font-weight: 600;
 }
 
 .hot-search-header {
@@ -1552,6 +1656,10 @@ onBeforeUnmount(() => {
 }
 
 @media screen and (max-width: 1024px) {
+  .tool-ranking-hero {
+    grid-template-columns: 1fr;
+  }
+
   .category-content {
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
@@ -1563,6 +1671,15 @@ onBeforeUnmount(() => {
 }
 
 @media screen and (max-width: 640px) {
+  .tool-ranking-hero__intro {
+    padding: 1.25rem;
+  }
+
+  .tool-ranking-hero__title {
+    font-size: 1.4rem;
+    line-height: 1.9rem;
+  }
+
   .category-content {
     grid-template-columns: 1fr;
   }

@@ -1,3 +1,9 @@
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-04-13
+ */
 import type { HotItem, PlatformAPI } from './platforms';
 import { officialAPIs, categories, Category } from './platforms';
 
@@ -52,7 +58,7 @@ export class HotRankingAPI {
         });
 
         if (import.meta.env.DEV) {
-          console.error(`响应不是 JSON 格式 (${platform.name}):`, {
+          console.info(`响应不是 JSON 格式 (${platform.name})，已按降级路径处理:`, {
             contentType,
             text: text.substring(0, 200), // 只显示前200个字符
             url: platform.endpoint,
@@ -77,7 +83,7 @@ export class HotRankingAPI {
       }
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error(`获取 ${platform.name} 数据失败:`, error);
+        console.info(`获取 ${platform.name} 数据失败，准备按重试或降级策略处理:`, error);
       }
 
       // 重试逻辑
@@ -115,7 +121,9 @@ export class HotRankingAPI {
       try {
         list = JSON.parse(list);
       } catch (e) {
-        console.error('解析data字符串失败', e);
+        if (import.meta.env.DEV) {
+          console.info('解析热榜 data 字符串失败，已回退为空列表:', e);
+        }
         list = [];
       }
     }
@@ -166,7 +174,7 @@ export class HotRankingAPI {
       return data;
     } catch (error) {
       if (import.meta.env.DEV) {
-        console.error(`获取${platform.name}数据失败:`, error);
+        console.info(`获取${platform.name}数据失败，已回退为空列表或缓存数据:`, error);
       }
       // 如果缓存存在，在发生错误时返回缓存的数据
       const cached = this.cache.get(platform.name);
@@ -196,7 +204,7 @@ export class HotRankingAPI {
           };
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.error(`获取${platform.name}数据失败:`, error);
+            console.info(`获取${platform.name}分类数据失败，已忽略该平台:`, error);
           }
           return null;
         }
@@ -242,7 +250,7 @@ export class HotRankingAPI {
           };
         } catch (error) {
           if (import.meta.env.DEV) {
-            console.error(`获取${platform.name}数据失败:`, error);
+            console.info(`获取${platform.name}平台热榜失败，已忽略该平台:`, error);
           }
           return null;
         }

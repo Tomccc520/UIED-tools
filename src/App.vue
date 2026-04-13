@@ -11,6 +11,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGlobalToolConsumeGuard } from '@/composables/useGlobalToolConsumeGuard'
+import { useToolRankingTracker } from '@/composables/useToolRankingTracker'
 import { getSitePublicConfig } from '@/services/siteConfig'
 import type { Tool } from '@/types/tools'
 
@@ -174,6 +175,11 @@ watch(
  * 函数说明：挂载全工具动作拦截层，统一补齐登录与积分扣减校验。
  */
 useGlobalToolConsumeGuard()
+
+/**
+ * 函数说明：挂载工具页访问埋点监听，统一补齐工具排行榜 visit 统计。
+ */
+useToolRankingTracker()
 </script>
 
 <template>
