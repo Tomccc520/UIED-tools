@@ -19,21 +19,27 @@ const pageLoading = ref(true)
 const toolRankingEnabled = ref(true)
 const toolRankingPageTitle = ref('站内工具使用排行榜')
 const toolRankingPageDescription = ref('按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。')
-const toolRankingDefaultPeriod = ref<ToolRankingPeriod>('week')
+const activeToolRankingPeriod = ref<ToolRankingPeriod>('week')
 const toolRankingPageLimit = ref(12)
 const toolRankingFallbackTools = ref<Tool[]>([])
+const toolRankingPeriodOptions: Array<{ label: string; value: ToolRankingPeriod }> = [
+  { label: '日榜', value: 'day' },
+  { label: '周榜', value: 'week' },
+  { label: '月榜', value: 'month' },
+  { label: '总榜', value: 'all' }
+]
 
 /**
  * 函数说明：输出当前榜单周期的中文标签，保证页面标题辅助信息清晰稳定。
  */
 const toolRankingPeriodLabel = computed(() => {
-  if (toolRankingDefaultPeriod.value === 'day') {
+  if (activeToolRankingPeriod.value === 'day') {
     return '日榜'
   }
-  if (toolRankingDefaultPeriod.value === 'month') {
+  if (activeToolRankingPeriod.value === 'month') {
     return '月榜'
   }
-  if (toolRankingDefaultPeriod.value === 'all') {
+  if (activeToolRankingPeriod.value === 'all') {
     return '总榜'
   }
   return '周榜'
@@ -60,6 +66,37 @@ const toolRankingHighlights = computed(() => {
 })
 
 /**
+ * 函数说明：切换独立热榜页榜单周期，保持页面只围绕站内工具排行榜切换显示。
+ */
+const handleToolRankingPeriodChange = (period: ToolRankingPeriod) => {
+  activeToolRankingPeriod.value = period
+}
+
+/**
+ * 函数说明：标准化热榜页描述文案，兼容历史旧文案并统一收口到点击量排序口径。
+ */
+const resolveToolRankingPageDescription = (value: string) => {
+  const rawText = String(value || '').trim()
+  if (!rawText) {
+    return '按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。'
+  }
+  if (rawText.includes('开始处理') || rawText.includes('下载行为') || rawText.includes('真实访问')) {
+    return '按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。'
+  }
+  return rawText
+}
+
+/**
+ * 函数说明：同步独立热榜页浏览器标题，避免页面正文与浏览器标题口径不一致。
+ */
+const syncToolRankingDocumentTitle = () => {
+  if (typeof document === 'undefined') {
+    return
+  }
+  document.title = `${toolRankingPageTitle.value} - Tools`
+}
+
+/**
  * 函数说明：读取后台热榜页面配置，并同步生成榜单兜底工具列表。
  */
 const loadToolRankingPageConfig = async () => {
@@ -68,20 +105,19 @@ const loadToolRankingPageConfig = async () => {
     const siteConfig = await getSitePublicConfig({ forceRefresh: true })
     toolRankingEnabled.value = Boolean(siteConfig.toolRankingEnabled)
     toolRankingPageTitle.value = siteConfig.toolRankingPageTitle || '站内工具使用排行榜'
-    toolRankingPageDescription.value =
-      siteConfig.toolRankingPageDescription ||
-      '按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。'
-    toolRankingDefaultPeriod.value = siteConfig.toolRankingDefaultPeriod || 'week'
+    toolRankingPageDescription.value = resolveToolRankingPageDescription(siteConfig.toolRankingPageDescription)
+    activeToolRankingPeriod.value = siteConfig.toolRankingDefaultPeriod || 'week'
     toolRankingPageLimit.value = Math.min(20, Math.max(1, Number(siteConfig.toolRankingPageLimit || 12)))
     toolRankingFallbackTools.value = getNewToolsFromCategories(siteConfig.toolCategories || [], toolRankingPageLimit.value)
   } catch {
     toolRankingEnabled.value = true
     toolRankingPageTitle.value = '站内工具使用排行榜'
     toolRankingPageDescription.value = '按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。'
-    toolRankingDefaultPeriod.value = 'week'
+    activeToolRankingPeriod.value = 'week'
     toolRankingPageLimit.value = 12
     toolRankingFallbackTools.value = []
   } finally {
+    syncToolRankingDocumentTitle()
     pageLoading.value = false
   }
 }
@@ -112,12 +148,24 @@ onMounted(() => {
           <span class="tool-ranking-page__meta-value">{{ item.value }}</span>
         </div>
       </div>
+      <div class="tool-ranking-page__periods">
+        <button
+          v-for="item in toolRankingPeriodOptions"
+          :key="item.value"
+          type="button"
+          class="tool-ranking-page__period-btn"
+          :class="{ 'tool-ranking-page__period-btn--active': activeToolRankingPeriod === item.value }"
+          @click="handleToolRankingPeriodChange(item.value)"
+        >
+          {{ item.label }}
+        </button>
+      </div>
     </section>
 
     <section class="tool-ranking-page__board-shell">
       <div class="tool-ranking-page__board-head">
         <div class="tool-ranking-page__board-title">榜单明细</div>
-        <div class="tool-ranking-page__board-note">站内工具页访问越多，排名越靠前</div>
+        <div class="tool-ranking-page__board-note">站内工具页点击越多，排名越靠前</div>
       </div>
 
       <div v-if="pageLoading" class="tool-ranking-page__status">
@@ -129,7 +177,7 @@ onMounted(() => {
         flat
         :show-header="false"
         :title="toolRankingPageTitle"
-        :period="toolRankingDefaultPeriod"
+        :period="activeToolRankingPeriod"
         :limit="toolRankingPageLimit"
         :fallback-tools="toolRankingFallbackTools"
         empty-text="当前还没有足够的站内工具数据，榜单会在真实使用后自动更新。"
@@ -225,6 +273,38 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.tool-ranking-page__periods {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 1rem;
+}
+
+.tool-ranking-page__period-btn {
+  appearance: none;
+  border: 1px solid rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  color: #334155;
+  border-radius: 999px;
+  padding: 0.625rem 0.95rem;
+  font-size: 0.8125rem;
+  line-height: 1;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+
+.tool-ranking-page__period-btn:hover {
+  border-color: rgba(79, 70, 229, 0.25);
+  color: #1e293b;
+}
+
+.tool-ranking-page__period-btn--active {
+  border-color: rgba(79, 70, 229, 0.18);
+  background: rgba(79, 70, 229, 0.07);
+  color: #4338ca;
 }
 
 .tool-ranking-page__meta-item {
