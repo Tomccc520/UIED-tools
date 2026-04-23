@@ -195,15 +195,15 @@ onMounted(() => {
   width: 100%;
   max-width: 1080px;
   margin: 0 auto;
-  padding: 1.75rem 0 2.5rem;
+  padding: 1.2rem 0 1.75rem;
   color: #0f172a;
 }
 
 .tool-ranking-page__hero {
   position: relative;
   overflow: hidden;
-  margin-bottom: 1rem;
-  padding: 1.5rem 1.5rem 1.25rem;
+  margin-bottom: 0.75rem;
+  padding: 1.1rem 1.1rem 0.95rem;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 28px;
   background:
@@ -229,7 +229,7 @@ onMounted(() => {
 .tool-ranking-page__hero-head {
   display: flex;
   justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   align-items: flex-start;
 }
 
@@ -243,7 +243,7 @@ onMounted(() => {
 }
 
 .tool-ranking-page__eyebrow {
-  margin: 0 0 0.5rem;
+  margin: 0 0 0.35rem;
   font-size: 0.875rem;
   line-height: 1.25rem;
   font-weight: 600;
@@ -262,24 +262,24 @@ onMounted(() => {
 
 .tool-ranking-page__desc {
   max-width: 720px;
-  margin: 0.9rem 0 0;
-  font-size: 0.96rem;
-  line-height: 1.8;
+  margin: 0.65rem 0 0;
+  font-size: 0.92rem;
+  line-height: 1.62;
   color: #64748b;
 }
 
 .tool-ranking-page__meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .tool-ranking-page__periods {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.625rem;
-  margin-top: 1rem;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .tool-ranking-page__period-btn {
@@ -288,7 +288,7 @@ onMounted(() => {
   background: #ffffff;
   color: #334155;
   border-radius: 999px;
-  padding: 0.625rem 0.95rem;
+  padding: 0.5rem 0.82rem;
   font-size: 0.8125rem;
   line-height: 1;
   font-weight: 600;
@@ -311,7 +311,7 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 0.875rem;
+  padding: 0.5rem 0.75rem;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.86);
@@ -329,10 +329,10 @@ onMounted(() => {
 }
 
 .tool-ranking-page__board-shell {
-  min-height: 420px;
-  padding: 1rem 1.25rem 0.5rem;
+  min-height: 360px;
+  padding: 0.85rem 1rem 0.25rem;
   border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 28px;
+  border-radius: 24px;
   background: #ffffff;
 }
 
@@ -340,10 +340,10 @@ onMounted(() => {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
-  padding-bottom: 0.9rem;
+  gap: 0.75rem;
+  padding-bottom: 0.65rem;
   border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.1rem;
 }
 
 .tool-ranking-page__board-title {
@@ -354,7 +354,7 @@ onMounted(() => {
 }
 
 .tool-ranking-page__board-note {
-  font-size: 0.8125rem;
+  font-size: 0.78rem;
   color: #64748b;
 }
 
@@ -362,7 +362,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 420px;
+  min-height: 360px;
   color: #0f172a;
   font-size: 0.95rem;
 }
@@ -373,14 +373,14 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .tool-ranking-page {
-    padding: 1rem 0 1.5rem;
+    padding: 0.75rem 0 1rem;
   }
 
   .tool-ranking-page__hero,
   .tool-ranking-page__board-shell {
-    padding-left: 1rem;
-    padding-right: 1rem;
-    border-radius: 22px;
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+    border-radius: 18px;
   }
 
   .tool-ranking-page__hero-head,
@@ -396,16 +396,16 @@ onMounted(() => {
 
   .tool-ranking-page__desc {
     font-size: 0.875rem;
-    line-height: 1.625rem;
+    line-height: 1.5rem;
   }
 
   .tool-ranking-page__board-shell,
   .tool-ranking-page__status {
-    min-height: 320px;
+    min-height: 280px;
   }
 
   .tool-ranking-page__hero-mark {
-    font-size: 2.5rem;
+    font-size: 2.1rem;
   }
 }
 </style>
