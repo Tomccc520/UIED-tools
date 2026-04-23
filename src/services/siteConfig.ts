@@ -136,9 +136,6 @@ export interface SitePublicConfig {
   toolRankingPageDescription: string
   toolRankingDefaultPeriod: 'day' | 'week' | 'month' | 'all'
   toolRankingPageLimit: number
-  toolRankingShowOnHome: boolean
-  toolRankingHomeTitle: string
-  toolRankingHomePeriod: 'day' | 'week' | 'month' | 'all'
   toolRankingShowOnSidebar: boolean
   toolRankingSidebarTitle: string
   toolRankingSidebarPeriod: 'day' | 'week' | 'month' | 'all'
@@ -265,9 +262,6 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   toolRankingPageDescription: '这是工具热榜的独立页面，按站内真实点击量排行，帮助运营快速判断哪些工具最受欢迎。',
   toolRankingDefaultPeriod: 'week',
   toolRankingPageLimit: 12,
-  toolRankingShowOnHome: true,
-  toolRankingHomeTitle: '本周工具热榜',
-  toolRankingHomePeriod: 'week',
   toolRankingShowOnSidebar: true,
   toolRankingSidebarTitle: '本周热榜',
   toolRankingSidebarPeriod: 'week',
@@ -1039,13 +1033,6 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
       (String(record.toolsToolRankingDefaultPeriod || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod).trim() ||
         DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod) as SitePublicConfig['toolRankingDefaultPeriod'],
     toolRankingPageLimit,
-    toolRankingShowOnHome: normalizeBooleanFlag(record.toolsToolRankingShowOnHome ?? DEFAULT_SITE_PUBLIC_CONFIG.toolRankingShowOnHome),
-    toolRankingHomeTitle:
-      String(record.toolsToolRankingHomeTitle || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomeTitle).trim() ||
-      DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomeTitle,
-    toolRankingHomePeriod:
-      (String(record.toolsToolRankingHomePeriod || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomePeriod).trim() ||
-        DEFAULT_SITE_PUBLIC_CONFIG.toolRankingHomePeriod) as SitePublicConfig['toolRankingHomePeriod'],
     toolRankingShowOnSidebar: normalizeBooleanFlag(
       record.toolsToolRankingShowOnSidebar ?? DEFAULT_SITE_PUBLIC_CONFIG.toolRankingShowOnSidebar
     ),

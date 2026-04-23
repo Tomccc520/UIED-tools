@@ -37,11 +37,12 @@ const router = useRouter()
 const loading = ref(false)
 const rankingList = ref<ToolRankingListItem[]>([])
 const liveRankingReady = ref(false)
+const latestLoadRequestId = ref(0)
 
 /**
- * 函数说明：根据榜单项判断是否为外链，确保站内站外跳转行为一致。
+ * 函数说明：根据榜单项判断是否为外链，兼容协议相对地址和其它 scheme，确保站内站外跳转行为一致。
  */
-const isExternalLink = (url: string): boolean => /^https?:\/\//i.test(String(url || '').trim())
+const isExternalLink = (url: string): boolean => /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(String(url || '').trim())
 
 /**
  * 函数说明：构建当前页面可展示的榜单数据，接口无结果时自动回退到传入的兜底工具列表。
@@ -57,6 +58,8 @@ const displayRankingList = computed<ToolRankingListItem[]>(() => {
  * 函数说明：读取实时工具榜单，失败时保留兜底列表，不打断页面主内容渲染。
  */
 const loadToolRankingList = async () => {
+  const currentRequestId = latestLoadRequestId.value + 1
+  latestLoadRequestId.value = currentRequestId
   loading.value = true
   try {
     const result = await getToolRankingList({
@@ -64,13 +67,21 @@ const loadToolRankingList = async () => {
       limit: props.limit,
       sortBy: 'view'
     })
+    if (currentRequestId !== latestLoadRequestId.value) {
+      return
+    }
     rankingList.value = result.list
     liveRankingReady.value = result.list.length > 0
   } catch {
+    if (currentRequestId !== latestLoadRequestId.value) {
+      return
+    }
     rankingList.value = []
     liveRankingReady.value = false
   } finally {
-    loading.value = false
+    if (currentRequestId === latestLoadRequestId.value) {
+      loading.value = false
+    }
   }
 }
 

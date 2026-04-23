@@ -30,6 +30,17 @@ const toolRankingPeriodOptions: Array<{ label: string; value: ToolRankingPeriod 
 ]
 
 /**
+ * 函数说明：标准化独立热榜页展示数量，兼容后台脏值与非数字值，保证榜单页稳定渲染。
+ */
+const normalizeToolRankingPageLimit = (value: unknown): number => {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue)) {
+    return 12
+  }
+  return Math.min(20, Math.max(1, Math.floor(numericValue)))
+}
+
+/**
  * 函数说明：输出当前榜单周期的中文标签，保证页面标题辅助信息清晰稳定。
  */
 const toolRankingPeriodLabel = computed(() => {
@@ -107,7 +118,7 @@ const loadToolRankingPageConfig = async () => {
     toolRankingPageTitle.value = siteConfig.toolRankingPageTitle || '站内工具使用排行榜'
     toolRankingPageDescription.value = resolveToolRankingPageDescription(siteConfig.toolRankingPageDescription)
     activeToolRankingPeriod.value = siteConfig.toolRankingDefaultPeriod || 'week'
-    toolRankingPageLimit.value = Math.min(20, Math.max(1, Number(siteConfig.toolRankingPageLimit || 12)))
+    toolRankingPageLimit.value = normalizeToolRankingPageLimit(siteConfig.toolRankingPageLimit)
     toolRankingFallbackTools.value = getNewToolsFromCategories(siteConfig.toolCategories || [], toolRankingPageLimit.value)
   } catch {
     toolRankingEnabled.value = true
