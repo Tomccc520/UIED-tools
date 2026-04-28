@@ -9,6 +9,8 @@
     "dev:fullstack:stop": "bash scripts/dev/stop-fullstack.sh",
     "dev:fullstack:stop:all": "bash scripts/dev/stop-fullstack.sh --down-db",
     "dev:fullstack:status": "bash scripts/dev/status-fullstack.sh",
+    "dev:upgrade:apply": "bash scripts/dev/apply-upgrade-patches.sh",
+    "dev:delivery:check": "bash scripts/dev/check-delivery-readiness.sh",
     "check:license-runtime": "bash scripts/dev/check-license-runtime.sh",
     "sync:frontend-menus": "node scripts/dev/sync-frontend-tool-menus-to-backend.mjs",
     "build": "node --max_old_space_size=8192 ./node_modules/vite/bin/vite.js build",
