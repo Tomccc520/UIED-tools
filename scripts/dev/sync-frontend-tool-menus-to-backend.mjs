@@ -81,6 +81,21 @@ const DEFAULT_AI_TOOLBOX_SIDEBAR_MENUS = [
   { name: 'AI分组总览', link: '#ai-groups' }
 ]
 
+/**
+ * 函数说明：批量生成工具主数据预设，减少第三阶段 AI 工具扩展时的重复配置。
+ */
+const createToolMetadataPresetList = (phaseLabel, startSort, items) => {
+  return items.map((item, index) => ({
+    matchUrl: item.matchUrl,
+    toolKey: item.toolKey,
+    consumePoints: item.consumePoints ?? 1,
+    memberFree: item.memberFree ?? true,
+    status: item.status ?? 1,
+    sort: startSort + index * 10,
+    remark: `${phaseLabel}：${item.title}`
+  }))
+}
+
 const FIRST_PHASE_TOOL_METADATA_PRESETS = [
   {
     matchUrl: '/tools/photo/background',
@@ -228,60 +243,405 @@ const FIRST_PHASE_TOOL_METADATA_PRESETS = [
   },
   {
     matchUrl: '/tools/ai/work-summary',
-    toolKey: 'ai-work-summary'
+    toolKey: 'ai-work-summary',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 310,
+    remark: '第二阶段核心 AI 办公工具：工作总结'
   },
   {
     matchUrl: '/tools/ai/work-summary?type=annual',
-    toolKey: 'ai-work-summary-annual'
+    toolKey: 'ai-work-summary-annual',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 320,
+    remark: '第二阶段核心 AI 办公工具：年度工作总结'
   },
   {
     matchUrl: '/tools/ai/work-summary?type=quarterly',
-    toolKey: 'ai-work-summary-quarterly'
+    toolKey: 'ai-work-summary-quarterly',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 330,
+    remark: '第二阶段核心 AI 办公工具：季度工作总结'
   },
   {
     matchUrl: '/tools/ai/work-summary?type=mid_year',
-    toolKey: 'ai-work-summary-mid-year'
+    toolKey: 'ai-work-summary-mid-year',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 340,
+    remark: '第二阶段核心 AI 办公工具：年中工作总结'
   },
   {
     matchUrl: '/tools/ai/work-summary?type=performance',
-    toolKey: 'ai-work-summary-performance'
+    toolKey: 'ai-work-summary-performance',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 350,
+    remark: '第二阶段核心 AI 办公工具：工作考核总结'
   },
   {
     matchUrl: '/tools/ai/work-summary?type=probation',
-    toolKey: 'ai-work-summary-probation'
+    toolKey: 'ai-work-summary-probation',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 360,
+    remark: '第二阶段核心 AI 办公工具：转正工作总结'
   },
   {
     matchUrl: '/tools/ai/work-summary?type=promotion',
-    toolKey: 'ai-work-summary-promotion'
+    toolKey: 'ai-work-summary-promotion',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 370,
+    remark: '第二阶段核心 AI 办公工具：晋升工作总结'
   },
   {
     matchUrl: '/tools/ai/work-summary?type=training',
-    toolKey: 'ai-work-summary-training'
+    toolKey: 'ai-work-summary-training',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 380,
+    remark: '第二阶段核心 AI 办公工具：工作培训总结'
   },
   {
     matchUrl: '/tools/ai/office/work-plan',
-    toolKey: 'ai-office-work-plan'
+    toolKey: 'ai-office-work-plan',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 390,
+    remark: '第二阶段核心 AI 办公工具：工作方案'
   },
   {
     matchUrl: '/tools/ai/office/work-plan?type=department',
-    toolKey: 'ai-office-work-plan-department'
+    toolKey: 'ai-office-work-plan-department',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 400,
+    remark: '第二阶段核心 AI 办公工具：部门计划'
   },
   {
     matchUrl: '/tools/ai/office/work-plan?type=personal',
-    toolKey: 'ai-office-work-plan-personal'
+    toolKey: 'ai-office-work-plan-personal',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 410,
+    remark: '第二阶段核心 AI 办公工具：工作计划'
   },
   {
     matchUrl: '/tools/ai/office/work-report',
-    toolKey: 'ai-office-work-report'
+    toolKey: 'ai-office-work-report',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 420,
+    remark: '第二阶段核心 AI 办公工具：工作汇报'
   },
   {
     matchUrl: '/tools/ai/office/work-report?type=daily',
-    toolKey: 'ai-office-work-report-daily'
+    toolKey: 'ai-office-work-report-daily',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 430,
+    remark: '第二阶段核心 AI 办公工具：工作日报'
   },
   {
     matchUrl: '/tools/ai/office/work-report?type=weekly',
-    toolKey: 'ai-office-work-report-weekly'
+    toolKey: 'ai-office-work-report-weekly',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 440,
+    remark: '第二阶段核心 AI 办公工具：工作周报'
   },
+  {
+    matchUrl: '/tools/ai/office/custom-summary',
+    toolKey: 'ai-office-custom-summary',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 450,
+    remark: '第二阶段核心 AI 办公工具：自定义总结'
+  },
+  {
+    matchUrl: '/tools/ai/debriefing-report',
+    toolKey: 'ai-debriefing-report',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 460,
+    remark: '第二阶段核心 AI 办公工具：述职报告'
+  },
+  {
+    matchUrl: '/tools/ai/office/resume-creation',
+    toolKey: 'ai-office-resume-creation',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 470,
+    remark: '第二阶段核心 AI 办公工具：简历制作'
+  },
+  {
+    matchUrl: '/tools/ai/project-proposal',
+    toolKey: 'ai-project-proposal',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 480,
+    remark: '第二阶段核心 AI 办公工具：项目策划方案'
+  },
+  {
+    matchUrl: '/tools/ai/office/holiday-notice',
+    toolKey: 'ai-office-holiday-notice',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 490,
+    remark: '第二阶段核心 AI 办公工具：放假通知'
+  },
+  {
+    matchUrl: '/tools/ai/office/notice-writing',
+    toolKey: 'ai-office-notice-writing',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 500,
+    remark: '第二阶段核心 AI 办公工具：通知撰写'
+  },
+  {
+    matchUrl: '/tools/ai/office/work-reflections',
+    toolKey: 'ai-office-work-reflections',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 510,
+    remark: '第二阶段核心 AI 办公工具：工作感想'
+  },
+  {
+    matchUrl: '/tools/ai/office/application-report',
+    toolKey: 'ai-office-application-report',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 520,
+    remark: '第二阶段核心 AI 办公工具：申请报告'
+  },
+  {
+    matchUrl: '/tools/ai/office/resignation-letter',
+    toolKey: 'ai-office-resignation-letter',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 530,
+    remark: '第二阶段核心 AI 办公工具：辞职报告'
+  },
+  {
+    matchUrl: '/tools/ai/office/training-scheme',
+    toolKey: 'ai-office-training-scheme',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 540,
+    remark: '第二阶段核心 AI 办公工具：培训方案'
+  },
+  {
+    matchUrl: '/tools/ai/office/contract-template',
+    toolKey: 'ai-office-contract-template',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 550,
+    remark: '第二阶段核心 AI 办公工具：合同模版'
+  },
+  {
+    matchUrl: '/tools/ai/office/meeting-minutes',
+    toolKey: 'ai-office-meeting-minutes',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 560,
+    remark: '第二阶段核心 AI 办公工具：润色会议纪要'
+  },
+  {
+    matchUrl: '/tools/ai/article-generator',
+    toolKey: 'ai-article-generator',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 610,
+    remark: '第二阶段核心 AI 写作工具：AI文章生成'
+  },
+  {
+    matchUrl: '/tools/ai/speech-draft',
+    toolKey: 'ai-speech-draft',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 620,
+    remark: '第二阶段核心 AI 写作工具：演讲稿'
+  },
+  {
+    matchUrl: '/tools/ai/essay-writing',
+    toolKey: 'ai-essay-writing',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 630,
+    remark: '第二阶段核心 AI 写作工具：作文一键写作'
+  },
+  {
+    matchUrl: '/tools/ai/xiaohongshu-note',
+    toolKey: 'ai-xiaohongshu-note',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 640,
+    remark: '第二阶段核心 AI 写作工具：小红书笔记生成'
+  },
+  {
+    matchUrl: '/tools/ai/xiaohongshu-title',
+    toolKey: 'ai-xiaohongshu-title',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 650,
+    remark: '第二阶段核心 AI 写作工具：小红书爆款标题'
+  },
+  {
+    matchUrl: '/tools/ai/xiaohongshu-rewrite',
+    toolKey: 'ai-xiaohongshu-rewrite',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 660,
+    remark: '第二阶段核心 AI 写作工具：小红书笔记改写'
+  },
+  {
+    matchUrl: '/tools/ai/speech-script',
+    toolKey: 'ai-speech-script',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 670,
+    remark: '第二阶段核心 AI 写作工具：讲话稿'
+  },
+  {
+    matchUrl: '/tools/ai/short-video-title',
+    toolKey: 'ai-short-video-title',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 680,
+    remark: '第二阶段核心 AI 写作工具：短视频标题'
+  },
+  {
+    matchUrl: '/tools/ai/short-video-script',
+    toolKey: 'ai-short-video-script',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 690,
+    remark: '第二阶段核心 AI 写作工具：短视频剧本'
+  },
+  {
+    matchUrl: '/tools/ai/article-summary',
+    toolKey: 'ai-article-summary',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 700,
+    remark: '第二阶段核心 AI 写作工具：长文与报告摘要'
+  },
+  {
+    matchUrl: '/tools/ai/article-outline',
+    toolKey: 'ai-article-outline',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 710,
+    remark: '第二阶段核心 AI 写作工具：长文与报告大纲'
+  },
+  {
+    matchUrl: '/tools/ai/article-polishing',
+    toolKey: 'ai-article-polishing',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 720,
+    remark: '第二阶段核心 AI 写作工具：文章降重润色'
+  },
+  ...createToolMetadataPresetList('第三阶段核心 AI 办公工具', 810, [
+    { matchUrl: '/tools/ai/office/competitor-speech', toolKey: 'ai-office-competitor-speech', title: '竞聘演讲稿' },
+    { matchUrl: '/tools/ai/office/design-concept', toolKey: 'ai-office-design-concept', title: '设计理念撰写' },
+    { matchUrl: '/tools/ai/office/questionnaire-design', toolKey: 'ai-office-questionnaire-design', title: '调查问卷设计' },
+    { matchUrl: '/tools/ai/office/tender-writing', toolKey: 'ai-office-tender-writing', title: '标书生成' },
+    { matchUrl: '/tools/ai/office/cover-letter', toolKey: 'ai-office-cover-letter', title: '求职信生成' },
+    { matchUrl: '/tools/ai/office/interview-outline', toolKey: 'ai-office-interview-outline', title: '访谈提纲' },
+    { matchUrl: '/tools/ai/office/okr-generator', toolKey: 'ai-office-okr-generator', title: 'OKR 生成' },
+    { matchUrl: '/tools/ai/office/code-generator', toolKey: 'ai-office-code-generator', title: '代码生成' },
+    { matchUrl: '/tools/ai/office/job-description', toolKey: 'ai-office-job-description', title: '岗位职责生成' },
+    { matchUrl: '/tools/ai/office/lawsuit-document', toolKey: 'ai-office-lawsuit-document', title: '起诉状生成' }
+  ]),
+  ...createToolMetadataPresetList('第三阶段核心 AI 分析工具', 930, [
+    { matchUrl: '/tools/ai/analysis/research-report', toolKey: 'ai-analysis-research-report', title: '调研报告' },
+    { matchUrl: '/tools/ai/analysis/analysis-report', toolKey: 'ai-analysis-analysis-report', title: '分析报告' },
+    { matchUrl: '/tools/ai/analysis/activity-plan', toolKey: 'ai-analysis-activity-plan', title: '活动策划方案' },
+    { matchUrl: '/tools/ai/analysis/business-plan', toolKey: 'ai-analysis-business-plan', title: '商业计划书' },
+    { matchUrl: '/tools/ai/analysis/survey-report', toolKey: 'ai-analysis-survey-report', title: '调查报告' },
+    { matchUrl: '/tools/ai/analysis/industry-report', toolKey: 'ai-analysis-industry-report', title: '行业报告' },
+    { matchUrl: '/tools/ai/analysis/feasibility-study', toolKey: 'ai-analysis-feasibility-study', title: '可行性研究报告' },
+    { matchUrl: '/tools/ai/analysis/project-application', toolKey: 'ai-analysis-project-application', title: '项目申报书' },
+    { matchUrl: '/tools/ai/analysis/pest', toolKey: 'ai-analysis-pest', title: 'PEST 分析' },
+    { matchUrl: '/tools/ai/analysis/swot', toolKey: 'ai-analysis-swot', title: 'SWOT 分析' },
+    { matchUrl: '/tools/ai/analysis/transport-plan', toolKey: 'ai-analysis-transport-plan', title: '运输方案' },
+    { matchUrl: '/tools/ai/analysis/situation-report', toolKey: 'ai-analysis-situation-report', title: '情况报告' },
+    { matchUrl: '/tools/ai/analysis/marketing-4p', toolKey: 'ai-analysis-marketing-4p', title: '4P 营销分析' },
+    { matchUrl: '/tools/ai/analysis/industry-consultant', toolKey: 'ai-analysis-industry-consultant', title: '行业顾问分析' },
+    { matchUrl: '/tools/ai/analysis/startup-ideas', toolKey: 'ai-analysis-startup-ideas', title: '创业点子生成' }
+  ]),
+  ...createToolMetadataPresetList('第三阶段核心 AI 学生工具', 1090, [
+    { matchUrl: '/tools/ai/intern-summary', toolKey: 'ai-intern-summary', title: '实习总结' },
+    { matchUrl: '/tools/ai/practice-report', toolKey: 'ai-practice-report', title: '实践报告' },
+    { matchUrl: '/tools/ai/weekly-summary', toolKey: 'ai-weekly-summary', title: '周报总结' },
+    { matchUrl: '/tools/ai/opening-report', toolKey: 'ai-opening-report', title: '开题报告' },
+    { matchUrl: '/tools/ai/graduation-thesis', toolKey: 'ai-graduation-thesis', title: '毕业论文' },
+    { matchUrl: '/tools/ai/student/internship-comments', toolKey: 'ai-student-internship-comments', title: '实习评语' },
+    { matchUrl: '/tools/ai/student/research-report', toolKey: 'ai-student-research-report', title: '学生调研报告' },
+    { matchUrl: '/tools/ai/student/internship-weekly', toolKey: 'ai-student-internship-weekly', title: '实习周记' },
+    { matchUrl: '/tools/ai/student/internship-summary', toolKey: 'ai-student-internship-summary', title: '实习总结' },
+    { matchUrl: '/tools/ai/student/social-practice', toolKey: 'ai-student-social-practice', title: '社会实践' },
+    { matchUrl: '/tools/ai/student/practice-report', toolKey: 'ai-student-practice-report', title: '学生实践报告' },
+    { matchUrl: '/tools/ai/student/analysis-report', toolKey: 'ai-student-analysis-report', title: '学生分析报告' },
+    { matchUrl: '/tools/ai/student/interview-guide', toolKey: 'ai-student-interview-guide', title: '访谈指南' },
+    { matchUrl: '/tools/ai/student/internship-experience', toolKey: 'ai-student-internship-experience', title: '实习心得' },
+    { matchUrl: '/tools/ai/student/internship-report', toolKey: 'ai-student-internship-report', title: '实习报告' },
+    { matchUrl: '/tools/ai/student/resume-creation', toolKey: 'ai-student-resume-creation', title: '学生简历制作' },
+    { matchUrl: '/tools/ai/student/activity-plan', toolKey: 'ai-student-activity-plan', title: '学生活动策划' }
+  ]),
+  ...createToolMetadataPresetList('第三阶段核心 AI 写作工具', 1280, [
+    { matchUrl: '/tools/ai/book-review', toolKey: 'ai-book-review', title: '读后感生成' },
+    { matchUrl: '/tools/ai/literature-review', toolKey: 'ai-literature-review', title: '文献综述' },
+    { matchUrl: '/tools/ai/training-experience', toolKey: 'ai-training-experience', title: '培训心得' },
+    { matchUrl: '/tools/ai/work-report-ppt', toolKey: 'ai-work-report-ppt', title: '工作汇报 PPT' },
+    { matchUrl: '/tools/ai/novel-plot', toolKey: 'ai-novel-plot', title: '小说情节生成' },
+    { matchUrl: '/tools/ai/essay-contest', toolKey: 'ai-essay-contest', title: '征文稿生成' },
+    { matchUrl: '/tools/ai/spokesperson-speech', toolKey: 'ai-spokesperson-speech', title: '发言人稿件' },
+    { matchUrl: '/tools/ai/literature-recommend', toolKey: 'ai-literature-recommend', title: '文献推荐' },
+    { matchUrl: '/tools/ai/self-reflection', toolKey: 'ai-self-reflection', title: '自我反思' }
+  ]),
   {
     matchUrl: '/tools/unit',
     toolKey: 'unit'
