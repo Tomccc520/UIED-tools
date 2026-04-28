@@ -81,6 +81,245 @@ const DEFAULT_AI_TOOLBOX_SIDEBAR_MENUS = [
   { name: 'AI分组总览', link: '#ai-groups' }
 ]
 
+const FIRST_PHASE_TOOL_METADATA_PRESETS = [
+  {
+    matchUrl: '/tools/photo/background',
+    toolKey: 'photo-background',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 10,
+    remark: '第一阶段高频工具主数据迁后台：证件照换底色'
+  },
+  {
+    matchUrl: '/tools/photo/transparent',
+    toolKey: 'photo-transparent',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 20,
+    remark: '第一阶段高频工具主数据迁后台：证件照免冠处理'
+  },
+  {
+    matchUrl: '/tools/photo/crop',
+    toolKey: 'photo-crop',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 30,
+    remark: '第一阶段高频工具主数据迁后台：证件照尺寸裁剪'
+  },
+  {
+    matchUrl: '/tools/photo/layout',
+    toolKey: 'photo-layout',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 40,
+    remark: '第一阶段高频工具主数据迁后台：证件照排版打印'
+  },
+  {
+    matchUrl: '/tools/video/frame',
+    toolKey: 'video-frame',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 110,
+    remark: '第一阶段高频工具主数据迁后台：视频抽帧'
+  },
+  {
+    matchUrl: '/tools/video/to-audio',
+    toolKey: 'video-to-audio',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 120,
+    remark: '第一阶段高频工具主数据迁后台：视频提取音频'
+  },
+  {
+    matchUrl: '/tools/video/compress',
+    toolKey: 'video-compress',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 130,
+    remark: '第一阶段高频工具主数据迁后台：视频压缩'
+  },
+  {
+    matchUrl: '/tools/video/convert',
+    toolKey: 'video-format-convert',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 140,
+    remark: '第一阶段高频工具主数据迁后台：视频格式转换'
+  },
+  {
+    matchUrl: '/tools/video/merge',
+    toolKey: 'video-merge',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 150,
+    remark: '第一阶段高频工具主数据迁后台：视频拼接'
+  },
+  {
+    matchUrl: '/tools/video/gif',
+    toolKey: 'video-to-gif',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 160,
+    remark: '第一阶段高频工具主数据迁后台：视频转 GIF'
+  },
+  {
+    matchUrl: '/tools/video/watermark',
+    toolKey: 'video-watermark',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 170,
+    remark: '第一阶段高频工具主数据迁后台：视频加水印'
+  },
+  {
+    matchUrl: '/tools/video/speed',
+    toolKey: 'video-speed',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 180,
+    remark: '第一阶段高频工具主数据迁后台：视频倍速处理'
+  },
+  {
+    matchUrl: '/tools/video/rotate',
+    toolKey: 'video-rotate',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 190,
+    remark: '第一阶段高频工具主数据迁后台：视频旋转与翻转'
+  },
+  {
+    matchUrl: '/tools/video/crop',
+    toolKey: 'video-crop',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 200,
+    remark: '第一阶段高频工具主数据迁后台：视频画面裁剪'
+  },
+  {
+    matchUrl: '/tools/video/mute',
+    toolKey: 'video-mute',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 210,
+    remark: '第一阶段高频工具主数据迁后台：视频静音'
+  },
+  {
+    matchUrl: '/tools/video/trimmer',
+    toolKey: 'video-trimmer',
+    consumePoints: 1,
+    memberFree: true,
+    status: 1,
+    sort: 220,
+    remark: '第一阶段高频工具主数据迁后台：视频时长剪辑'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary',
+    toolKey: 'ai-work-summary'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary?type=annual',
+    toolKey: 'ai-work-summary-annual'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary?type=quarterly',
+    toolKey: 'ai-work-summary-quarterly'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary?type=mid_year',
+    toolKey: 'ai-work-summary-mid-year'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary?type=performance',
+    toolKey: 'ai-work-summary-performance'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary?type=probation',
+    toolKey: 'ai-work-summary-probation'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary?type=promotion',
+    toolKey: 'ai-work-summary-promotion'
+  },
+  {
+    matchUrl: '/tools/ai/work-summary?type=training',
+    toolKey: 'ai-work-summary-training'
+  },
+  {
+    matchUrl: '/tools/ai/office/work-plan',
+    toolKey: 'ai-office-work-plan'
+  },
+  {
+    matchUrl: '/tools/ai/office/work-plan?type=department',
+    toolKey: 'ai-office-work-plan-department'
+  },
+  {
+    matchUrl: '/tools/ai/office/work-plan?type=personal',
+    toolKey: 'ai-office-work-plan-personal'
+  },
+  {
+    matchUrl: '/tools/ai/office/work-report',
+    toolKey: 'ai-office-work-report'
+  },
+  {
+    matchUrl: '/tools/ai/office/work-report?type=daily',
+    toolKey: 'ai-office-work-report-daily'
+  },
+  {
+    matchUrl: '/tools/ai/office/work-report?type=weekly',
+    toolKey: 'ai-office-work-report-weekly'
+  },
+  {
+    matchUrl: '/tools/unit',
+    toolKey: 'unit'
+  },
+  {
+    matchUrl: '/tools/unit?active=length',
+    toolKey: 'unit-length'
+  },
+  {
+    matchUrl: '/tools/unit?active=area',
+    toolKey: 'unit-area'
+  },
+  {
+    matchUrl: '/tools/unit?active=weight',
+    toolKey: 'unit-weight'
+  },
+  {
+    matchUrl: '/tools/unit?active=time',
+    toolKey: 'unit-time'
+  },
+  {
+    matchUrl: '/tools/unit?active=temperature',
+    toolKey: 'unit-temperature'
+  },
+  {
+    matchUrl: '/tools/unit?active=pressure',
+    toolKey: 'unit-pressure'
+  },
+  {
+    matchUrl: '/tools/unit?active=heat',
+    toolKey: 'unit-heat'
+  },
+  {
+    matchUrl: '/tools/unit?active=power',
+    toolKey: 'unit-power'
+  }
+]
+
 const DEFAULT_HEADER_LINKS = [
   { name: '个人网站', link: 'https://tomda.top/' }
 ]
@@ -358,6 +597,105 @@ const loadFrontendToolCategories = async () => {
 }
 
 /**
+ * 函数说明：标准化工具路径，统一去掉 query/hash 与末尾斜杠，便于按路由匹配高频工具预设。
+ */
+const normalizeToolRouteMatchKey = (value) => {
+  const rawValue = String(value || '').trim().split('#')[0]
+  if (!rawValue) {
+    return ''
+  }
+  const [pathName, queryString = ''] = rawValue.split('?')
+  const normalizedPath = pathName === '/' ? '/' : pathName.replace(/\/+$/g, '')
+  if (!queryString) {
+    return normalizedPath
+  }
+  return `${normalizedPath}?${queryString}`
+}
+
+const FIRST_PHASE_TOOL_METADATA_PRESET_MAP = new Map(
+  FIRST_PHASE_TOOL_METADATA_PRESETS.map((item) => [normalizeToolRouteMatchKey(item.matchUrl), item])
+)
+
+/**
+ * 函数说明：标准化工具路径，统一去掉 query/hash 与末尾斜杠，便于其它逻辑按路由主路径处理。
+ */
+const normalizeToolRoutePath = (value) => {
+  const rawPath = String(value || '').trim().split('?')[0].split('#')[0]
+  if (!rawPath) {
+    return ''
+  }
+  if (rawPath === '/') {
+    return '/'
+  }
+  return rawPath.replace(/\/+$/g, '')
+}
+
+/**
+ * 函数说明：将第一阶段高频工具的主数据与策略字段注入分类树，先让后台有可审计的基础数据。
+ */
+const enrichToolCategoriesWithFirstPhaseMetadata = (categories) => {
+  if (!Array.isArray(categories) || categories.length === 0) {
+    return categories
+  }
+
+  return categories.map((category) => ({
+    ...category,
+    list: Array.isArray(category?.list)
+      ? category.list.map((subCategory) => ({
+          ...subCategory,
+          list: Array.isArray(subCategory?.list)
+            ? subCategory.list.map((tool) => {
+                const normalizedUrl = normalizeToolRouteMatchKey(tool?.url)
+                const preset = FIRST_PHASE_TOOL_METADATA_PRESET_MAP.get(normalizedUrl)
+                if (!preset) {
+                  return tool
+                }
+                return {
+                  ...tool,
+                  toolKey: String(tool?.toolKey || preset.toolKey).trim(),
+                  consumePoints: Number.isFinite(Number(tool?.consumePoints))
+                    ? Number(tool.consumePoints)
+                    : preset.consumePoints,
+                  memberFree:
+                    typeof tool?.memberFree === 'boolean' ? tool.memberFree : preset.memberFree,
+                  status: Number.isFinite(Number(tool?.status))
+                    ? Number(tool.status)
+                    : preset.status,
+                  sort: Number.isFinite(Number(tool?.sort)) ? Number(tool.sort) : preset.sort,
+                  remark: String(tool?.remark || preset.remark).trim()
+                }
+              })
+            : []
+        }))
+      : []
+  }))
+}
+
+/**
+ * 函数说明：统计当前分类树里已挂上策略字段的高频工具数量，便于同步日志快速确认第一阶段是否生效。
+ */
+const countFirstPhaseStrategyTools = (categories) => {
+  if (!Array.isArray(categories)) {
+    return 0
+  }
+  return categories.reduce((count, category) => {
+    const subCategoryList = Array.isArray(category?.list) ? category.list : []
+    return (
+      count +
+      subCategoryList.reduce((subCount, subCategory) => {
+        const toolList = Array.isArray(subCategory?.list) ? subCategory.list : []
+        return (
+          subCount +
+          toolList.filter((tool) => {
+            return Boolean(String(tool?.toolKey || '').trim()) && Number.isFinite(Number(tool?.status))
+          }).length
+        )
+      }, 0)
+    )
+  }, 0)
+}
+
+/**
  * 函数说明：将 JSON 文本转为 MySQL 可安全写入的十六进制 UTF-8 字符串。
  */
 const toMysqlUtf8Hex = (input) => Buffer.from(String(input), 'utf8').toString('hex')
@@ -395,8 +733,14 @@ const buildConfigUpsertSql = (configName, jsonValue, force = false, repairGarble
  * 函数说明：组装本次同步要写入后台的前端菜单与工具分类配置。
  */
 const buildSyncPayloads = async () => {
-  const toolCategories = await loadFrontendToolCategories()
+  const rawToolCategories = await loadFrontendToolCategories()
+  const toolCategories = enrichToolCategoriesWithFirstPhaseMetadata(rawToolCategories)
   const sidebarBrandLogo = (await loadFrontendDefaultSidebarBrandLogo()) || DEFAULT_SIDEBAR_BRAND_LOGO
+  const firstPhaseStrategyToolCount = countFirstPhaseStrategyTools(toolCategories)
+
+  logInfo(
+    `第一阶段高频工具主数据已注入 ${firstPhaseStrategyToolCount} 项，开始写入 toolsCategoryTree。`
+  )
 
   return [
     {

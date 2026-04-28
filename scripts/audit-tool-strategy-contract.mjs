@@ -46,6 +46,25 @@ const readTextFile = (filePath) => {
 }
 
 /**
+ * 函数说明：兼容公共配置接口里“数组对象”与“JSON 字符串”两种形态，统一解析为数组。
+ */
+const parseConfigArray = (value) => {
+  if (Array.isArray(value)) {
+    return value
+  }
+  const rawText = String(value || '').trim()
+  if (!rawText) {
+    return []
+  }
+  try {
+    const parsedValue = JSON.parse(rawText)
+    return Array.isArray(parsedValue) ? parsedValue : []
+  } catch {
+    return []
+  }
+}
+
+/**
  * 函数说明：规范化工具路径，统一去掉 query、hash 与末尾斜杠。
  */
 const normalizeToolRoutePath = (value) => {
@@ -98,17 +117,16 @@ const flattenTools = (categories) => {
 }
 
 /**
- * 函数说明：解析 router.ts 中的工具路由集合，用于校验工具主数据链接是否可达。
+ * 函数说明：解析 router.ts 中声明过的工具路由主路径，用于校验工具主数据链接是否可达。
  */
 const parseToolRoutes = (routerText) => {
-  const routeReg = /path:\s*'([^']+)'[\s\S]*?component:\s*\(\)\s*=>\s*import\('([^']+)'\)/g
+  const routeReg = /path:\s*'([^']+)'/g
   const routeMap = new Map()
   let match = routeReg.exec(routerText)
   while (match) {
     const routePath = normalizeToolRoutePath(match[1])
-    const componentPath = String(match[2] || '').trim()
     if (routePath.startsWith('/tools/')) {
-      routeMap.set(routePath, componentPath)
+      routeMap.set(routePath, true)
     }
     match = routeReg.exec(routerText)
   }
@@ -171,8 +189,10 @@ const apiBaseUrl = `http://127.0.0.1:${apiPort}`
 const routerText = readTextFile(ROUTER_FILE)
 const routerMap = parseToolRoutes(routerText)
 const siteConfig = await loadSiteConfig(apiBaseUrl)
-const toolCategories = Array.isArray(siteConfig.toolCategories) ? siteConfig.toolCategories : []
-const loginToolConsumeRules = Array.isArray(siteConfig.loginToolConsumeRules) ? siteConfig.loginToolConsumeRules : []
+const toolCategories = parseConfigArray(siteConfig.toolCategories).length
+  ? parseConfigArray(siteConfig.toolCategories)
+  : parseConfigArray(siteConfig.toolsCategoryTree)
+const loginToolConsumeRules = parseConfigArray(siteConfig.loginToolConsumeRules)
 const flatTools = flattenTools(toolCategories)
 const toolRouteCount = routerMap.size
 
