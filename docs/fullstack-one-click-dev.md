@@ -109,6 +109,51 @@ npm run dev:delivery:check
 
 如有 `FAIL`，应先修复失败项；如只有 `WARN`，建议上线前继续处理。
 
+## 执行业务闭环冒烟
+
+适用于以下场景：
+
+- 准备发版前，确认后台登录、官网设置保存、AI 模型保存、热榜配置、授权链路都可用
+- 客户环境已经跑起来，但需要进一步确认“不是只能打开页面，而是真的能保存和生效”
+
+执行命令：
+
+```bash
+npm run dev:business:smoke
+```
+
+该命令会自动完成：
+
+1. 后台管理员登录（验证码开启时自动从 Redis 读取验证码）
+2. 官网设置详情读取与无损回写
+3. AI 模型详情读取与无损回写
+4. 热榜配置详情读取、无损回写与公共热榜接口检查
+5. 授权配置详情读取，并在存在授权码时调用授权运行态自检
+
+如脚本返回 `FAIL`，建议优先修复业务链路，再进入客户演示或正式交付。
+
+## 审计工具主数据与策略中心
+
+适用于以下场景：
+
+- 准备售卖版本发布前
+- 调整了“官网设置 -> 工具主数据”后
+- 执行了“同步执行策略”后，想确认没有 `toolKey` 冲突、死链接、孤儿规则
+
+执行命令：
+
+```bash
+npm run audit:tool-strategy
+```
+
+该命令会检查：
+
+- 工具主数据中的 `toolKey` 是否冲突
+- 工具内部链接是否命中前端路由
+- 登录积分策略是否存在孤儿 `toolKey`
+- 仍有多少工具依赖链接推导 `toolKey`
+- 有多少工具已经显式配置 `status / consumePoints / memberFree`
+
 ## 停止服务
 
 仅停止前后端进程（保留数据库容器）：
@@ -160,8 +205,10 @@ TOOLS_PORT=5279 GO_API_PORT=9001 npm run dev:fullstack:start
 
 ```bash
 npm run dev:fullstack:start
+npm run audit:tool-strategy
 npm run dev:upgrade:apply
+npm run dev:business:smoke
 npm run dev:delivery:check
 ```
 
-如果 `dev:delivery:check` 输出通过或只有少量 `WARN`，再进入业务回归阶段。
+如果 `dev:business:smoke` 与 `dev:delivery:check` 输出通过或只有少量 `WARN`，再进入人工业务回归阶段。

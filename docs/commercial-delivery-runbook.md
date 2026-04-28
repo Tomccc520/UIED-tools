@@ -136,7 +136,9 @@ npm run dev:delivery:check
 
 ```bash
 npm run dev:fullstack:start
+npm run audit:tool-strategy
 npm run dev:upgrade:apply
+npm run dev:business:smoke
 npm run dev:delivery:check
 ```
 
@@ -149,6 +151,12 @@ npm run dev:delivery:check
 5. 工具热榜页可访问
 6. 用户中心可访问
 7. 授权管理页可访问
+
+补充说明：
+
+- `audit:tool-strategy` 用于先检查工具主数据与积分策略是否存在结构性问题
+- `dev:business:smoke` 用于自动验证后台登录、配置保存、热榜、授权这些关键业务链路
+- `dev:delivery:check` 用于验证环境、补丁、服务与交付基础设施
 
 ## 7. 客户排障建议
 
@@ -234,9 +242,11 @@ npm run dev:delivery:check
 
 1. 备份数据库
 2. 拉取新代码
-3. 执行 `npm run dev:upgrade:apply`
-4. 执行 `npm run dev:delivery:check`
-5. 再进入业务回归
+3. 执行 `npm run audit:tool-strategy`
+4. 执行 `npm run dev:upgrade:apply`
+5. 执行 `npm run dev:business:smoke`
+6. 执行 `npm run dev:delivery:check`
+7. 再进入业务回归
 
 重点注意：
 
@@ -251,7 +261,100 @@ npm run dev:delivery:check
   - 授权管理页
   - 用户中心访问
 
-## 12. 客户常见问题（FAQ）
+## 12. 版本升级记录模板
+
+建议每次交付或发版至少补一条版本记录，便于客户升级与回滚：
+
+```markdown
+## vX.Y.Z - YYYY-MM-DD
+
+- 代码基线：
+  - 根仓：<git commit>
+  - backend/likeadmin-go：<git commit>
+- 数据库：
+  - 新增补丁：<sql/upgrade/*.sql 或 sql/patches/*.sql>
+  - 是否需要 --bootstrap-legacy-log：是/否
+- 配置：
+  - 新增配置项：
+  - 废弃配置项：
+- 回归：
+  - audit:tool-strategy：通过/失败
+  - dev:business:smoke：通过/失败
+  - dev:delivery:check：通过/失败
+- 风险提示：
+  - <需要客户手工确认的内容>
+```
+
+## 13. 回滚说明
+
+若升级后出现异常，建议按以下顺序回滚：
+
+1. 停止当前服务：
+
+```bash
+npm run dev:fullstack:stop
+```
+
+2. 切回上一个稳定代码版本：
+
+- 根仓切回上一个稳定 commit
+- `backend/likeadmin-go` 切回对应稳定 commit
+
+3. 恢复升级前数据库备份
+
+4. 重新启动服务：
+
+```bash
+npm run dev:fullstack:start
+```
+
+5. 重新执行最小验证：
+
+```bash
+npm run dev:business:smoke
+npm run dev:delivery:check
+```
+
+回滚原则：
+
+- 代码版本和数据库备份必须成对回退
+- 不要只回代码、不回数据库
+- 如果本次升级包含结构变更，务必优先恢复数据库备份，而不是手工删表删字段
+
+## 14. 交付测试清单
+
+交付给客户前，建议至少完成以下测试：
+
+### 14.1 环境与升级
+
+1. `npm run dev:fullstack:start`
+2. `npm run audit:tool-strategy`
+3. `npm run dev:upgrade:apply`
+4. `npm run dev:business:smoke`
+5. `npm run dev:delivery:check`
+
+### 14.2 后台链路
+
+1. 后台管理员登录
+2. 官网设置读取并保存
+3. AI 模型配置读取并保存
+4. 热榜配置读取并保存
+5. 授权管理页可访问
+
+### 14.3 前台链路
+
+1. 首页可访问
+2. 独立热榜页可访问
+3. 用户中心未登录跳转正常
+4. 至少一个关键工具可正常进入并开始处理
+
+### 14.4 商业能力
+
+1. 积分策略读取正常
+2. 会员/积分配置接口无报错
+3. 授权运行态检查通过或处于可解释的未激活状态
+
+## 15. 客户常见问题（FAQ）
 
 ### Q1：脚本显示启动成功，但页面打不开？
 
@@ -303,13 +406,15 @@ npm run dev:upgrade:apply -- --bootstrap-legacy-log
 6. 用户登录与用户中心可访问
 7. 关键 AI/图片工具至少成功一次
 
-## 13. 当前命令清单
+## 16. 当前命令清单
 
 ```bash
 npm run dev:fullstack:start
 npm run dev:fullstack:status
 npm run dev:fullstack:stop
 npm run dev:fullstack:stop:all
+npm run audit:tool-strategy
 npm run dev:upgrade:apply
+npm run dev:business:smoke
 npm run dev:delivery:check
 ```

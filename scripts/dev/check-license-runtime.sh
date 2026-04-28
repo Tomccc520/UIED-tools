@@ -58,6 +58,20 @@ compose_cmd() {
   docker compose -p "${COMPOSE_PROJECT}" --env-file "${COMPOSE_ENV_FILE}" -f "${BACKEND_DIR}/docker-compose.yml" "$@"
 }
 
+# 函数说明：写入 compose 环境文件，供授权脚本读取 Redis 验证码时复用数据库与端口参数。
+write_compose_env_file() {
+  mkdir -p "${RUNTIME_DIR}"
+  cat >"${COMPOSE_ENV_FILE}" <<EOF
+MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+MYSQL_DATABASE=${DB_NAME}
+MYSQL_USER=uiedtool
+MYSQL_PASSWORD=uiedtool123
+MYSQL_PORT=$(read_port_from_env "MYSQL_PORT" "33069")
+REDIS_PORT=$(read_port_from_env "REDIS_PORT" "16379")
+TZ=Asia/Shanghai
+EOF
+}
+
 # 函数说明：检查依赖命令是否存在，缺失时直接终止自检。
 require_command() {
   if ! command -v "$1" >/dev/null 2>&1; then
@@ -152,6 +166,39 @@ else:
 ' "${field_path}"
 }
 
+# 函数说明：读取后台验证码并从 Redis 中取出明文，实现验证码开启场景下的自动登录。
+fetch_admin_captcha() {
+  local api_base_url="$1"
+  local captcha_response
+  local captcha_http_code
+  local captcha_body
+  local captcha_code
+  local captcha_on
+  local captcha_key
+  local redis_code
+
+  captcha_response="$(http_request "GET" "${api_base_url}/api/system/captcha")"
+  captcha_http_code="$(printf '%s\n' "${captcha_response}" | sed -n '1p')"
+  captcha_body="$(printf '%s\n' "${captcha_response}" | sed '1d')"
+  captcha_code="$(printf '%s' "${captcha_body}" | json_field "code")"
+  captcha_on="$(printf '%s' "${captcha_body}" | json_field "data.captchaOn")"
+  if [[ "${captcha_http_code}" != "200" ]] || [[ "${captcha_code}" != "200" ]]; then
+    printf '\n\n'
+    return 1
+  fi
+  if [[ "${captcha_on}" != "1" ]]; then
+    printf '\n\n'
+    return 0
+  fi
+  captcha_key="$(printf '%s' "${captcha_body}" | json_field "data.captchaKey")"
+  if [[ -z "${captcha_key}" ]]; then
+    printf '\n\n'
+    return 1
+  fi
+  redis_code="$(compose_cmd exec -T redis redis-cli GET "Like:admin:login:captcha:${captcha_key}" 2>/dev/null | tr -d '\r')"
+  printf '%s\n%s\n' "${captcha_key}" "${redis_code}"
+}
+
 # 函数说明：分析当前授权数据库状态，并给出运行时对受保护接口的预期结果。
 analyze_license_runtime() {
   local status="$1"
@@ -234,9 +281,10 @@ require_command docker
 require_command curl
 require_command python3
 
-if [[ ! -f "${COMPOSE_ENV_FILE}" ]]; then
-  log_error_and_exit "未找到 ${COMPOSE_ENV_FILE}，请先执行 scripts/dev/start-fullstack.sh。"
+if [[ ! -f "${PORTS_ENV_FILE}" ]]; then
+  log_error_and_exit "未找到 ${PORTS_ENV_FILE}，请先执行 scripts/dev/start-fullstack.sh。"
 fi
+write_compose_env_file
 
 if ! compose_cmd ps mysql >/dev/null 2>&1; then
   log_error_and_exit "未检测到 mysql 服务，请先执行 scripts/dev/start-fullstack.sh。"
@@ -246,7 +294,7 @@ GO_API_PORT="$(read_port_from_env "GO_API_PORT" "8003")"
 TOOLS_PORT="$(read_port_from_env "TOOLS_PORT" "5179")"
 API_BASE_URL="http://127.0.0.1:${GO_API_PORT}"
 TOOLS_BASE_URL="http://127.0.0.1:${TOOLS_PORT}"
-RUNTIME_HOST="127.0.0.1"
+RUNTIME_HOST="${RUNTIME_HOST:-127.0.0.1}"
 
 log_info "开始执行源码授权运行态自检..."
 
@@ -332,10 +380,18 @@ if [[ -z "${LICENSE_ADMIN_USERNAME}" ]] || [[ -z "${LICENSE_ADMIN_PASSWORD}" ]];
   exit 0
 fi
 
-login_payload="$(python3 - <<'PY' "${LICENSE_ADMIN_USERNAME}" "${LICENSE_ADMIN_PASSWORD}"
+captcha_result="$(fetch_admin_captcha "${API_BASE_URL}")" || log_error_and_exit "后台验证码读取失败，无法执行授权登录自检。"
+captcha_key="$(printf '%s\n' "${captcha_result}" | sed -n '1p')"
+captcha_code="$(printf '%s\n' "${captcha_result}" | sed -n '2p')"
+
+login_payload="$(python3 - <<'PY' "${LICENSE_ADMIN_USERNAME}" "${LICENSE_ADMIN_PASSWORD}" "${captcha_key}" "${captcha_code}"
 import json
 import sys
-print(json.dumps({"username": sys.argv[1], "password": sys.argv[2]}, ensure_ascii=False))
+payload = {"username": sys.argv[1], "password": sys.argv[2]}
+if sys.argv[3].strip() and sys.argv[4].strip():
+    payload["captchaKey"] = sys.argv[3].strip()
+    payload["captchaCode"] = sys.argv[4].strip()
+print(json.dumps(payload, ensure_ascii=False))
 PY
 )"
 login_response="$(http_request "POST" "${API_BASE_URL}/api/system/login" "" "${login_payload}")"
