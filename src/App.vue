@@ -12,6 +12,7 @@ import { computed, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useGlobalToolConsumeGuard } from '@/composables/useGlobalToolConsumeGuard'
 import { useToolRankingTracker } from '@/composables/useToolRankingTracker'
+import { resolveMemberCoreToolExperience, type MemberCoreToolExperience } from '@/config/memberCoreTools'
 import { getSitePublicConfig } from '@/services/siteConfig'
 import type { Tool } from '@/types/tools'
 
@@ -45,6 +46,9 @@ interface ToolRuntimeBannerState {
   remark: string
   consumePoints: number
   memberFree: boolean
+  memberCore: boolean
+  commercialTier: string
+  experience: MemberCoreToolExperience | null
   tool: Tool | null
 }
 
@@ -54,6 +58,9 @@ const toolRuntimeBannerState = ref<ToolRuntimeBannerState>({
   remark: '',
   consumePoints: 0,
   memberFree: true,
+  memberCore: false,
+  commercialTier: 'free',
+  experience: null,
   tool: null
 })
 
@@ -86,6 +93,34 @@ const currentToolConsumeText = computed(() => {
   return memberFree
     ? `当前工具每次消耗 ${consumePoints} 积分（会员可免积分）。`
     : `当前工具每次消耗 ${consumePoints} 积分。`
+})
+
+const currentMemberCoreExperience = computed(() => {
+  return toolRuntimeBannerState.value.experience
+})
+
+const shouldShowMemberCorePanel = computed(() => {
+  return Boolean(isToolPage.value && !isCurrentToolDisabled.value && currentMemberCoreExperience.value)
+})
+
+const currentToolRuntimeBadges = computed(() => {
+  const badges: string[] = []
+  if (toolRuntimeBannerState.value.memberCore || currentMemberCoreExperience.value) {
+    badges.push('会员核心工具')
+  }
+  if (toolRuntimeBannerState.value.commercialTier === 'premium') {
+    badges.push('Premium')
+  }
+  const consumePoints = Math.max(0, Number(toolRuntimeBannerState.value.consumePoints || 0))
+  if (consumePoints > 0) {
+    badges.push(`每次 ${consumePoints} 积分`)
+  } else {
+    badges.push('免积分')
+  }
+  if (toolRuntimeBannerState.value.memberFree && consumePoints > 0) {
+    badges.push('会员免积分')
+  }
+  return badges
 })
 
 /**
@@ -161,22 +196,31 @@ const syncToolRuntimeBannerState = async () => {
       remark: '',
       consumePoints: 0,
       memberFree: true,
+      memberCore: false,
+      commercialTier: 'free',
+      experience: null,
       tool: null
     }
     return
   }
   const matchedTool = await findToolByRoutePath(route.fullPath)
   if (!matchedTool) {
+    const fallbackExperience = resolveMemberCoreToolExperience(route.fullPath)
     toolRuntimeBannerState.value = {
       disabled: false,
-      title: '',
+      title: fallbackExperience?.title || '',
       remark: '',
-      consumePoints: 0,
+      consumePoints: Math.max(0, Number(fallbackExperience?.consumePoints || 0)),
       memberFree: true,
+      memberCore: Boolean(fallbackExperience),
+      commercialTier: fallbackExperience ? 'premium' : 'free',
+      experience: fallbackExperience,
       tool: null
     }
     return
   }
+
+  const experience = resolveMemberCoreToolExperience(matchedTool.url || route.fullPath)
 
   toolRuntimeBannerState.value = {
     disabled: Number(matchedTool.status ?? 1) === 0,
@@ -184,6 +228,9 @@ const syncToolRuntimeBannerState = async () => {
     remark: String(matchedTool.remark || '').trim(),
     consumePoints: Math.max(0, Number(matchedTool.consumePoints ?? 0)),
     memberFree: Boolean(matchedTool.memberFree ?? true),
+    memberCore: Boolean(matchedTool.memberCore || experience),
+    commercialTier: String(matchedTool.commercialTier || (experience ? 'premium' : 'free')).trim(),
+    experience,
     tool: matchedTool
   }
 }
@@ -267,6 +314,30 @@ useToolRankingTracker()
             show-icon
             :title="currentToolConsumeText"
           />
+          <section v-if="shouldShowMemberCorePanel && currentMemberCoreExperience" class="member-core-runtime-panel">
+            <div class="member-core-runtime-panel__main">
+              <div class="member-core-runtime-panel__eyebrow">会员核心卖点</div>
+              <h1>{{ currentMemberCoreExperience.title }}</h1>
+              <p>{{ currentMemberCoreExperience.valuePoint }}</p>
+              <div class="member-core-runtime-panel__badges">
+                <span v-for="badge in currentToolRuntimeBadges" :key="badge">{{ badge }}</span>
+              </div>
+            </div>
+            <div class="member-core-runtime-panel__grid">
+              <div>
+                <strong>输入要求</strong>
+                <span>{{ currentMemberCoreExperience.inputHint }}</span>
+              </div>
+              <div>
+                <strong>输出结果</strong>
+                <span>{{ currentMemberCoreExperience.outputHint }}</span>
+              </div>
+              <div>
+                <strong>失败兜底</strong>
+                <span>{{ currentMemberCoreExperience.failureHint }}</span>
+              </div>
+            </div>
+          </section>
           <!-- 路由视图，使用过渡动画 -->
           <router-view v-if="!isCurrentToolDisabled" v-slot="{ Component }">
             <transition name="animation" mode="out-in">
@@ -422,6 +493,89 @@ useToolRankingTracker()
   border-color: #60a5fa;
 }
 
+.member-core-runtime-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.95fr);
+  gap: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #dbeafe;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  padding: 18px;
+}
+
+.member-core-runtime-panel__eyebrow {
+  width: fit-content;
+  border-radius: 6px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 8px;
+}
+
+.member-core-runtime-panel h1 {
+  margin: 12px 0 0;
+  color: #111827;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.35;
+  letter-spacing: 0;
+}
+
+.member-core-runtime-panel p {
+  margin: 8px 0 0;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.member-core-runtime-panel__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.member-core-runtime-panel__badges span {
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 7px 8px;
+}
+
+.member-core-runtime-panel__grid {
+  display: grid;
+  gap: 10px;
+}
+
+.member-core-runtime-panel__grid div {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.member-core-runtime-panel__grid strong {
+  display: block;
+  color: #111827;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.member-core-runtime-panel__grid span {
+  display: block;
+  margin-top: 5px;
+  color: #4b5563;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
 @media (max-width: 768px) {
   .el-main {
     padding-right: 0 !important;
@@ -433,6 +587,15 @@ useToolRankingTracker()
 
   .tool-disabled-card h1 {
     font-size: 20px;
+  }
+
+  .member-core-runtime-panel {
+    grid-template-columns: 1fr;
+    padding: 14px;
+  }
+
+  .member-core-runtime-panel h1 {
+    font-size: 18px;
   }
 }
 </style>
