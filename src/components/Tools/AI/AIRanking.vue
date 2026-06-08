@@ -286,7 +286,7 @@ import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 import { debounce } from 'lodash'
-import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
+import { isInternalToolRuntimeLink, useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 
 interface Tool {
   id: string | number
@@ -729,18 +729,20 @@ const refreshList = async () => {
 }
 
 /**
- * 函数说明：统一打开 AI 排行榜工具入口，外链也经过安全协议校验，避免绕过工具运行态门禁。
+ * 函数说明：统一打开 AI 排行榜工具入口，站内工具走登录门禁，外链仅做安全协议校验。
  */
 const visitTool = async (tool: Tool) => {
+  const targetUrl = String(tool.url || '').trim()
+  const isInternalTool = isInternalToolRuntimeLink(targetUrl)
   await openToolEntry(
     {
       title: tool.name,
-      url: tool.url,
-      isExternal: true
+      url: targetUrl,
+      isExternal: !isInternalTool
     },
     {
       action: 'open',
-      consumeMode: 'none',
+      consumeMode: isInternalTool ? 'check-login' : 'none',
       source: 'ai-ranking'
     }
   )
