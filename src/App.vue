@@ -343,8 +343,16 @@ useToolRankingTracker()
                 <span>{{ currentMemberCoreExperience.inputHint }}</span>
               </div>
               <div>
+                <strong>示例输入</strong>
+                <span>{{ currentMemberCoreExperience.sampleInput }}</span>
+              </div>
+              <div>
                 <strong>输出结果</strong>
                 <span>{{ currentMemberCoreExperience.outputHint }}</span>
+              </div>
+              <div>
+                <strong>交付样例</strong>
+                <span>{{ currentMemberCoreExperience.deliverableExample }}</span>
               </div>
               <div>
                 <strong>失败兜底</strong>
