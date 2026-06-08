@@ -16,8 +16,9 @@ import {
 
 describe('useToolRuntimeGate 纯函数', () => {
   it('保留 query 参数生成细分工具 toolKey，避免会员核心工具退化为基础工具', () => {
-    expect(deriveRuntimeToolKeyByUrl('/tools/ai/work-summary?type=annual')).toBe('ai-work-summary-type-annual')
+    expect(deriveRuntimeToolKeyByUrl('/tools/ai/work-summary?type=annual')).toBe('ai-work-summary-annual')
     expect(deriveRuntimeToolKeyByUrl('/tools/unit?active=length')).toBe('unit-active-length')
+    expect(deriveRuntimeToolKeyByUrl('/tools/video/convert')).toBe('video-format-convert')
   })
 
   it('识别站内工具入口和安全链接类型', () => {

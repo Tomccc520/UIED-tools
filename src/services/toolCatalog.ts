@@ -93,7 +93,7 @@ const isSameToolGroup = (currentTool: Tool, candidateTool: Tool): boolean => {
 }
 
 /**
- * 函数说明：从工具列表中构建稳定的去重结果，避免同一路由因 query 变体重复出现。
+ * 函数说明：从工具列表中构建稳定的去重结果，保留 query 变体，避免会员核心细分工具被主路径吞并。
  */
 const dedupeTools = (tools: Tool[], limit: number): Tool[] => {
   const seen = new Set<string>()
@@ -103,7 +103,7 @@ const dedupeTools = (tools: Tool[], limit: number): Tool[] => {
     if (result.length >= limit) {
       return
     }
-    const uniqueKey = normalizeToolUrl(tool.url) || `id:${tool.id}`
+    const uniqueKey = normalizeToolUrlMatchKey(tool.url) || `id:${tool.id}`
     if (seen.has(uniqueKey)) {
       return
     }
@@ -125,7 +125,7 @@ export const getRelatedToolsFromCategories = (
 ): Tool[] => {
   const allTools = flattenToolsFromCategories(categories)
   const currentTool = findToolByUrl(categories, currentPath)
-  const normalizedCurrentPath = normalizeToolUrl(currentPath)
+  const normalizedCurrentMatchKey = normalizeToolUrlMatchKey(currentPath)
 
   if (!allTools.length) {
     return []
@@ -133,16 +133,16 @@ export const getRelatedToolsFromCategories = (
 
   if (!currentTool) {
     return dedupeTools(
-      allTools.filter((tool: Tool) => normalizeToolUrl(tool.url) !== normalizedCurrentPath),
+      allTools.filter((tool: Tool) => normalizeToolUrlMatchKey(tool.url) !== normalizedCurrentMatchKey),
       Math.max(0, sameLimit + otherLimit)
     )
   }
 
   const siblingTools = allTools.filter((tool: Tool) => {
-    return normalizeToolUrl(tool.url) !== normalizedCurrentPath && isSameToolGroup(currentTool, tool)
+    return normalizeToolUrlMatchKey(tool.url) !== normalizedCurrentMatchKey && isSameToolGroup(currentTool, tool)
   })
   const otherTools = allTools.filter((tool: Tool) => {
-    return normalizeToolUrl(tool.url) !== normalizedCurrentPath && !isSameToolGroup(currentTool, tool)
+    return normalizeToolUrlMatchKey(tool.url) !== normalizedCurrentMatchKey && !isSameToolGroup(currentTool, tool)
   })
 
   return [
@@ -159,9 +159,9 @@ export const getRandomToolsFromCategories = (
   limit: number = 8,
   excludePath: string = ''
 ): Tool[] => {
-  const normalizedExcludePath = normalizeToolUrl(excludePath)
+  const normalizedExcludePath = normalizeToolUrlMatchKey(excludePath)
   const allTools = flattenToolsFromCategories(categories).filter((tool: Tool) => {
-    return normalizeToolUrl(tool.url) !== normalizedExcludePath
+    return normalizeToolUrlMatchKey(tool.url) !== normalizedExcludePath
   })
   return dedupeTools(allTools, Math.max(0, limit))
 }

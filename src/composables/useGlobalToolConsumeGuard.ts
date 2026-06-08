@@ -7,7 +7,7 @@
 
 import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { useToolConsume } from '@/composables/useToolConsume'
+import { normalizeRuntimeToolKey, useToolConsume } from '@/composables/useToolConsume'
 import { getSitePublicConfig } from '@/services/siteConfig'
 import {
   TOOL_CONSUME_GUARD_ACTION_KEYWORDS,
@@ -23,6 +23,7 @@ const ROUTE_TOOL_KEY_CACHE_TTL_MS = 5 * 60 * 1000
 
 let routeToolKeyCacheExpiresAt = 0
 let routeToolKeyMap = new Map<string, string>()
+let routeToolMatchKeyMap = new Map<string, string>()
 
 /**
  * 函数说明：转义关键词中的正则特殊字符，确保动态构造 RegExp 时行为稳定。
@@ -96,16 +97,37 @@ const normalizeRoutePath = (path: string): string => {
 }
 
 /**
- * 函数说明：从工具路由路径生成 toolKey，统一按 “-” 连接，便于积分扣减统计归类。
+ * 函数说明：标准化完整工具路由匹配键，保留 query 用于区分同一路径下的细分工具。
+ */
+const normalizeRouteMatchKey = (path: string): string => {
+  const rawValue = String(path || '').trim().split('#')[0]
+  if (!rawValue) {
+    return ''
+  }
+  const [rawPath, rawQuery = ''] = rawValue.split('?')
+  const normalizedPath = rawPath === '/' ? '/' : rawPath.replace(/\/+$/g, '')
+  const query = rawQuery.trim()
+  return query ? `${normalizedPath}?${query}` : normalizedPath
+}
+
+/**
+ * 函数说明：从完整工具路由生成 toolKey，保留 query 并归并历史别名，便于积分扣减统计归类。
  */
 const deriveToolKeyByPath = (path: string): string => {
-  const normalizedPath = String(path || '')
+  const [rawPath, rawQuery = ''] = normalizeRouteMatchKey(path).split('?')
+  const routeKey = rawPath
     .replace(/^\/tools\//, '')
     .replace(/^\/+|\/+$/g, '')
-    .split('?')[0]
-    .split('#')[0]
-  const key = normalizedPath.replace(/[\/_]+/g, '-').trim()
-  return key || 'tools-home'
+    .replace(/[\/_]+/g, '-')
+  const queryKey = Array.from(new URLSearchParams(rawQuery).entries())
+    .map(([key, value]) => `${key}-${value}`)
+    .join('-')
+  const key = [routeKey, queryKey]
+    .filter(Boolean)
+    .join('-')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+  return normalizeRuntimeToolKey(key) || 'tools-home'
 }
 
 /**
@@ -118,7 +140,8 @@ const buildRouteToolKeyCache = async () => {
   }
   try {
     const siteConfig = await getSitePublicConfig()
-    const nextMap = new Map<string, string>()
+    const nextPathMap = new Map<string, string>()
+    const nextMatchKeyMap = new Map<string, string>()
     const categoryList = Array.isArray(siteConfig.toolCategories) ? siteConfig.toolCategories : []
     categoryList.forEach((category) => {
       const subList = Array.isArray(category.list) ? category.list : []
@@ -126,18 +149,26 @@ const buildRouteToolKeyCache = async () => {
         const toolList = Array.isArray(subCategory.list) ? subCategory.list : []
         toolList.forEach((tool) => {
           const routePath = normalizeRoutePath(tool.url)
-          const toolKey = String(tool.toolKey || '').trim().toLowerCase()
-          if (!routePath || !toolKey) {
+          const routeMatchKey = normalizeRouteMatchKey(tool.url)
+          const toolKey = normalizeRuntimeToolKey(tool.toolKey)
+          if ((!routePath && !routeMatchKey) || !toolKey) {
             return
           }
-          nextMap.set(routePath, toolKey)
+          if (routeMatchKey) {
+            nextMatchKeyMap.set(routeMatchKey, toolKey)
+          }
+          if (routePath && (!nextPathMap.has(routePath) || routeMatchKey === routePath)) {
+            nextPathMap.set(routePath, toolKey)
+          }
         })
       })
     })
-    routeToolKeyMap = nextMap
+    routeToolKeyMap = nextPathMap
+    routeToolMatchKeyMap = nextMatchKeyMap
     routeToolKeyCacheExpiresAt = now + ROUTE_TOOL_KEY_CACHE_TTL_MS
   } catch (error) {
     routeToolKeyMap = new Map<string, string>()
+    routeToolMatchKeyMap = new Map<string, string>()
     routeToolKeyCacheExpiresAt = now + 30 * 1000
   }
 }
@@ -147,7 +178,12 @@ const buildRouteToolKeyCache = async () => {
  */
 const resolveToolKeyByPath = async (path: string): Promise<string> => {
   const normalizedPath = normalizeRoutePath(path)
+  const normalizedMatchKey = normalizeRouteMatchKey(path)
   await buildRouteToolKeyCache()
+  const mappedExactToolKey = routeToolMatchKeyMap.get(normalizedMatchKey)
+  if (mappedExactToolKey) {
+    return mappedExactToolKey
+  }
   const mappedToolKey = routeToolKeyMap.get(normalizedPath)
   if (mappedToolKey) {
     return mappedToolKey
@@ -306,8 +342,9 @@ export const useGlobalToolConsumeGuard = () => {
 
     try {
       const allow = await ensureToolConsume({
-        toolKey: await resolveToolKeyByPath(route.path),
+        toolKey: await resolveToolKeyByPath(route.fullPath),
         action: resolveActionCode(actionText),
+        routePath: route.fullPath,
         redirectPath: route.fullPath,
         loginWarningText: '请先登录后再继续当前工具操作'
       })

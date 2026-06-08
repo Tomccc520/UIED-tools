@@ -8,6 +8,10 @@
  */
 
 const TOOL_KEY_PATTERN = /[^a-z0-9]+/g
+const TOOL_KEY_ALIAS_MAP = new Map([
+  ['ai-work-summary-type-annual', 'ai-work-summary-annual'],
+  ['video-convert', 'video-format-convert']
+])
 
 export const COMMERCIAL_POLICY_VERSION = '2026-04-commercial-v1'
 
@@ -112,6 +116,14 @@ function normalizeToolKeySegment(value) {
 }
 
 /**
+ * 函数说明：将历史推导 toolKey 归并到当前商业策略主数据 key，避免同一工具产生多套策略。
+ */
+export function normalizeCommercialPolicyToolKey(value) {
+  const normalizedKey = String(value || '').trim().toLowerCase()
+  return TOOL_KEY_ALIAS_MAP.get(normalizedKey) || normalizedKey
+}
+
+/**
  * 函数说明：根据工具 URL 推导稳定 toolKey，query 参数会进入 key 以避免细分工具冲突。
  */
 export function deriveToolKeyByUrl(url) {
@@ -124,13 +136,13 @@ export function deriveToolKeyByUrl(url) {
       .replace(/[/_]+/g, '-')
   )
   if (!queryString) {
-    return routeKey || 'tools-home'
+    return normalizeCommercialPolicyToolKey(routeKey) || 'tools-home'
   }
   const queryKey = Array.from(new URLSearchParams(queryString).entries())
     .map(([key, value]) => `${normalizeToolKeySegment(key)}-${normalizeToolKeySegment(value)}`)
     .filter((item) => item !== '-')
     .join('-')
-  return [routeKey, queryKey].filter(Boolean).join('-') || 'tools-home'
+  return normalizeCommercialPolicyToolKey([routeKey, queryKey].filter(Boolean).join('-')) || 'tools-home'
 }
 
 /**
@@ -154,7 +166,7 @@ function resolveToolCommercialPolicy(tool, sortIndex) {
 
   if (memberCorePreset) {
     return {
-      toolKey: String(tool?.toolKey || memberCorePreset.toolKey).trim().toLowerCase(),
+      toolKey: normalizeCommercialPolicyToolKey(tool?.toolKey || memberCorePreset.toolKey),
       consumePoints:
         tool?.policyVersion === COMMERCIAL_POLICY_VERSION && hasExistingConsumePoints
           ? Math.max(0, Math.floor(existingConsumePoints))
@@ -178,7 +190,7 @@ function resolveToolCommercialPolicy(tool, sortIndex) {
   const defaultNeedLogin = standardCommercialTool
 
   return {
-    toolKey: String(tool?.toolKey || deriveToolKeyByUrl(tool?.url)).trim().toLowerCase(),
+    toolKey: normalizeCommercialPolicyToolKey(tool?.toolKey || deriveToolKeyByUrl(tool?.url)),
     consumePoints: hasExistingConsumePoints ? Math.max(0, Math.floor(existingConsumePoints)) : defaultConsumePoints,
     memberFree: typeof tool?.memberFree === 'boolean' ? tool.memberFree : true,
     status: hasExistingStatus ? (existingStatus === 0 ? 0 : 1) : 1,
@@ -282,7 +294,7 @@ export function countCommercialPolicyTools(categories) {
 export function buildToolConsumeRulesFromCategories(categories) {
   const seenToolKeys = new Set()
   return flattenTools(categories).reduce((rules, tool, index) => {
-    const toolKey = String(tool?.toolKey || '').trim().toLowerCase()
+    const toolKey = normalizeCommercialPolicyToolKey(tool?.toolKey)
     if (!toolKey || seenToolKeys.has(toolKey)) {
       return rules
     }

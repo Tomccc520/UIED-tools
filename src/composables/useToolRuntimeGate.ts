@@ -12,6 +12,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   resolveToolConsumeRuntimePolicy,
   useToolConsume,
+  normalizeRuntimeToolKey,
   type RuntimeToolConsumePolicy,
   type ToolConsumeMode,
   type ToolConsumeOptions
@@ -112,7 +113,7 @@ export const deriveRuntimeToolKeyByUrl = (url: unknown): string => {
     })
     .filter(Boolean)
     .join('-')
-  return [routeKey, queryKey].filter(Boolean).join('-')
+  return normalizeRuntimeToolKey([routeKey, queryKey].filter(Boolean).join('-'))
 }
 
 /**
@@ -165,7 +166,7 @@ export const useToolRuntimeGate = () => {
    * 函数说明：解析入口可用的 toolKey，优先读取后台显式配置，失败时按工具链接推导。
    */
   const resolveRuntimeToolKey = (tool: ToolRuntimeEntry): string => {
-    return String(tool.toolKey || deriveRuntimeToolKeyByUrl(tool.url)).trim().toLowerCase()
+    return normalizeRuntimeToolKey(tool.toolKey || deriveRuntimeToolKeyByUrl(tool.url))
   }
 
   /**

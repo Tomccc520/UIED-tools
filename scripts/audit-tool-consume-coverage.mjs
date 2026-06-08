@@ -65,14 +65,17 @@ const parseToolRoutes = (routerText) => {
 }
 
 /**
- * 函数说明：将 '@/components/Tools/**.vue' import 路径转换为统一的相对路径。
+ * 函数说明：将路由组件 import 路径转换为统一的 Tools 组件相对路径，兼容 @ 别名和 router.ts 内的相对路径。
  */
 const resolveToolComponentRelativePath = (importPath) => {
   const cleaned = String(importPath || '').trim()
-  if (!cleaned.startsWith('@/')) {
+  if (!cleaned) {
     return ''
   }
-  const relativePath = cleaned.replace(/^@\//, 'src/')
+  const absolutePath = cleaned.startsWith('@/')
+    ? path.resolve(PROJECT_ROOT, 'src', cleaned.slice(2))
+    : path.resolve(path.dirname(ROUTER_FILE), cleaned)
+  const relativePath = path.relative(PROJECT_ROOT, absolutePath).split(path.sep).join('/')
   if (!relativePath.startsWith('src/components/Tools/')) {
     return ''
   }
@@ -230,4 +233,3 @@ printAuditReport({
   configMissingRoutes,
   configOrphanRoutes
 })
-

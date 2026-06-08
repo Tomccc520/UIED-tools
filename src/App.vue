@@ -45,6 +45,7 @@ interface ToolRuntimeBannerState {
   remark: string
   consumePoints: number
   memberFree: boolean
+  tool: Tool | null
 }
 
 const toolRuntimeBannerState = ref<ToolRuntimeBannerState>({
@@ -52,7 +53,8 @@ const toolRuntimeBannerState = ref<ToolRuntimeBannerState>({
   title: '',
   remark: '',
   consumePoints: 0,
-  memberFree: true
+  memberFree: true,
+  tool: null
 })
 
 const isCurrentToolDisabled = computed(() => {
@@ -66,6 +68,10 @@ const currentToolDisabledText = computed(() => {
     return `当前工具「${title}」已在后台停用：${remark}`
   }
   return `当前工具「${title}」已在后台停用，请在后台启用后再使用。`
+})
+
+const currentToolDisabledRemark = computed(() => {
+  return String(toolRuntimeBannerState.value.remark || '').trim() || '后台已临时关闭该工具，恢复后即可继续使用。'
 })
 
 const currentToolConsumeText = computed(() => {
@@ -100,10 +106,25 @@ const normalizeToolRoutePath = (path: unknown): string => {
 }
 
 /**
+ * 函数说明：标准化工具完整路由匹配键，保留 query 区分同一路径下的细分会员核心工具。
+ */
+const normalizeToolRouteMatchKey = (path: unknown): string => {
+  const rawValue = String(path || '').trim().split('#')[0]
+  if (!rawValue) {
+    return ''
+  }
+  const [rawPath, rawQuery = ''] = rawValue.split('?')
+  const normalizedPath = rawPath === '/' ? '/' : rawPath.replace(/\/+$/g, '')
+  const query = rawQuery.trim()
+  return query ? `${normalizedPath}?${query}` : normalizedPath
+}
+
+/**
  * 函数说明：按当前路由在后台工具分类树中查找工具配置项。
  */
 const findToolByRoutePath = async (routePath: string): Promise<Tool | null> => {
   const normalizedPath = normalizeToolRoutePath(routePath)
+  const normalizedMatchKey = normalizeToolRouteMatchKey(routePath)
   if (!normalizedPath.startsWith('/tools/')) {
     return null
   }
@@ -114,7 +135,8 @@ const findToolByRoutePath = async (routePath: string): Promise<Tool | null> => {
       const subList = Array.isArray(category.list) ? category.list : []
       for (const subCategory of subList) {
         const toolList = Array.isArray(subCategory.list) ? subCategory.list : []
-        const matchedTool = toolList.find((tool) => {
+        const matchedExactTool = toolList.find((tool) => normalizeToolRouteMatchKey(tool.url) === normalizedMatchKey)
+        const matchedTool = matchedExactTool || toolList.find((tool) => {
           return normalizeToolRoutePath(tool.url) === normalizedPath
         })
         if (matchedTool) {
@@ -138,18 +160,20 @@ const syncToolRuntimeBannerState = async () => {
       title: '',
       remark: '',
       consumePoints: 0,
-      memberFree: true
+      memberFree: true,
+      tool: null
     }
     return
   }
-  const matchedTool = await findToolByRoutePath(route.path)
+  const matchedTool = await findToolByRoutePath(route.fullPath)
   if (!matchedTool) {
     toolRuntimeBannerState.value = {
       disabled: false,
       title: '',
       remark: '',
       consumePoints: 0,
-      memberFree: true
+      memberFree: true,
+      tool: null
     }
     return
   }
@@ -159,7 +183,8 @@ const syncToolRuntimeBannerState = async () => {
     title: String(matchedTool.title || '').trim(),
     remark: String(matchedTool.remark || '').trim(),
     consumePoints: Math.max(0, Number(matchedTool.consumePoints ?? 0)),
-    memberFree: Boolean(matchedTool.memberFree ?? true)
+    memberFree: Boolean(matchedTool.memberFree ?? true),
+    tool: matchedTool
   }
 }
 
@@ -215,14 +240,25 @@ useToolRankingTracker()
         <!-- 主内容区域 -->
         <el-main class="!pt-4"
           :class="{ 'flex-1': isToolPage && !route.meta.hideToolsRecommend, 'w-full': !isToolPage || route.meta.hideToolsRecommend }">
-          <el-alert
-            v-if="isCurrentToolDisabled"
-            class="tool-runtime-alert tool-runtime-alert--warning"
-            type="warning"
-            :closable="false"
-            show-icon
-            :title="currentToolDisabledText"
-          />
+          <section v-if="isCurrentToolDisabled" class="tool-disabled-placeholder">
+            <el-alert
+              class="tool-runtime-alert tool-runtime-alert--warning"
+              type="warning"
+              :closable="false"
+              show-icon
+              :title="currentToolDisabledText"
+            />
+            <div class="tool-disabled-card">
+              <div class="tool-disabled-card__eyebrow">工具维护中</div>
+              <h1>{{ toolRuntimeBannerState.title || '当前工具' }}</h1>
+              <p>{{ currentToolDisabledRemark }}</p>
+              <div class="tool-disabled-card__meta">
+                <span>状态：后台停用</span>
+                <span v-if="toolRuntimeBannerState.consumePoints > 0">原消耗：{{ toolRuntimeBannerState.consumePoints }} 积分</span>
+                <span v-if="toolRuntimeBannerState.memberFree">会员策略：会员免积分</span>
+              </div>
+            </div>
+          </section>
           <el-alert
             v-else-if="currentToolConsumeText"
             class="tool-runtime-alert tool-runtime-alert--info"
@@ -232,9 +268,9 @@ useToolRankingTracker()
             :title="currentToolConsumeText"
           />
           <!-- 路由视图，使用过渡动画 -->
-          <router-view v-slot="{ Component }">
+          <router-view v-if="!isCurrentToolDisabled" v-slot="{ Component }">
             <transition name="animation" mode="out-in">
-              <component :is="Component" :key="route.path" />
+              <component :is="Component" :key="route.fullPath" />
             </transition>
           </router-view>
         </el-main>
@@ -321,6 +357,63 @@ useToolRankingTracker()
   border-radius: 0.75rem;
 }
 
+.tool-disabled-placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tool-disabled-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 28px;
+}
+
+.tool-disabled-card__eyebrow {
+  width: fit-content;
+  border-radius: 6px;
+  background: #fff7ed;
+  color: #c2410c;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 8px;
+}
+
+.tool-disabled-card h1 {
+  margin: 14px 0 0;
+  color: #111827;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.tool-disabled-card p {
+  margin: 10px 0 0;
+  max-width: 640px;
+  color: #4b5563;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.tool-disabled-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+
+.tool-disabled-card__meta span {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 12px;
+  line-height: 1;
+  padding: 7px 8px;
+}
+
 .tool-runtime-alert--warning {
   border-color: #f59e0b;
 }
@@ -332,6 +425,14 @@ useToolRankingTracker()
 @media (max-width: 768px) {
   .el-main {
     padding-right: 0 !important;
+  }
+
+  .tool-disabled-card {
+    padding: 20px;
+  }
+
+  .tool-disabled-card h1 {
+    font-size: 20px;
   }
 }
 </style>

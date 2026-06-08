@@ -71,8 +71,9 @@ test('normalizeToolRouteMatchKey 保留 query 并清理 hash 和尾斜杠', () =
 })
 
 test('deriveToolKeyByUrl 为 query 工具生成稳定唯一 key', () => {
-  assert.equal(deriveToolKeyByUrl('/tools/ai/work-summary?type=annual'), 'ai-work-summary-type-annual')
+  assert.equal(deriveToolKeyByUrl('/tools/ai/work-summary?type=annual'), 'ai-work-summary-annual')
   assert.equal(deriveToolKeyByUrl('/tools/unit?active=length'), 'unit-active-length')
+  assert.equal(deriveToolKeyByUrl('/tools/video/convert'), 'video-format-convert')
 })
 
 test('MEMBER_CORE_TOOL_PRESETS 固定为 20 个会员核心工具', () => {

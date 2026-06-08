@@ -75,8 +75,8 @@ const getToolsData = async () => {
   if (!route.path.startsWith('/tools/') || !shouldShowRecommend.value) return
 
   await toolsStore.getToolCate()
-  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, route.path, 8, 8)
-  randomTools.value = getRandomToolsFromCategories(toolsStore.cates, 8, route.path)
+  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, route.fullPath || route.path, 8, 8)
+  randomTools.value = getRandomToolsFromCategories(toolsStore.cates, 8, route.fullPath || route.path)
 }
 
 /**
@@ -179,7 +179,7 @@ const sidebarToolRankingPeriod = computed(() => {
 /**
  * 函数说明：监听路由变化，切换工具后同步刷新推荐与最近使用列表。
  */
-watch(() => route.path, (newPath) => {
+watch(() => route.fullPath, (newPath) => {
   void syncRightSidebarState(newPath)
 })
 
@@ -188,7 +188,7 @@ watch(() => route.path, (newPath) => {
  */
 onMounted(() => {
   getRecentTools()
-  void syncRightSidebarState(route.path)
+  void syncRightSidebarState(route.fullPath || route.path)
 })
 
 // 判断是否为工具页面

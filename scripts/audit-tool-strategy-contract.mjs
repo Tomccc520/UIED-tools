@@ -11,7 +11,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   MEMBER_CORE_TOOL_PRESETS,
-  countCommercialPolicyTools
+  countCommercialPolicyTools,
+  deriveToolKeyByUrl,
+  normalizeCommercialPolicyToolKey
 } from './lib/tool-commercial-policy.mjs'
 
 const PROJECT_ROOT = process.cwd()
@@ -87,17 +89,6 @@ const normalizeToolRoutePath = (value) => {
  */
 const normalizeToolKey = (value) => {
   return String(value || '').trim().toLowerCase()
-}
-
-/**
- * 函数说明：当工具项未显式填写 toolKey 时，根据 /tools/** 路由推导稳定 key。
- */
-const deriveToolKeyByUrl = (url) => {
-  const normalizedPath = normalizeToolRoutePath(url)
-    .replace(/^\/tools\//, '')
-    .replace(/^\/+|\/+$/g, '')
-  const key = normalizedPath.replace(/[\/_]+/g, '-').trim()
-  return normalizeToolKey(key)
 }
 
 /**
@@ -218,7 +209,7 @@ flatTools.forEach((entry) => {
   const tool = entry.tool || {}
   const title = String(tool.title || '').trim() || '(未命名工具)'
   const url = String(tool.url || '').trim()
-  const resolvedToolKey = normalizeToolKey(tool.toolKey) || deriveToolKeyByUrl(url)
+  const resolvedToolKey = normalizeCommercialPolicyToolKey(tool.toolKey) || deriveToolKeyByUrl(url)
   const routePath = /^https?:\/\//i.test(url) ? '' : normalizeToolRoutePath(url)
 
   if (resolvedToolKey && !TOOL_KEY_PATTERN.test(resolvedToolKey)) {
@@ -245,7 +236,7 @@ for (const [toolKey, positions] of resolvedToolKeyMap.entries()) {
 }
 
 const orphanRules = loginToolConsumeRules
-  .map((item) => normalizeToolKey(item?.toolKey))
+  .map((item) => normalizeCommercialPolicyToolKey(item?.toolKey))
   .filter(Boolean)
   .filter((toolKey) => !resolvedToolKeyMap.has(toolKey))
 

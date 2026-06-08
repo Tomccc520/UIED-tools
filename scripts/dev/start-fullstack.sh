@@ -1153,6 +1153,35 @@ apply_wx_oa_reply_menu_patch() {
   log_info "微信公众号菜单管理/回复规则菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：检测并补齐微信开放平台渠道菜单与保存权限，避免渠道配置页入口或保存按钮不可见。
+apply_channel_wx_dev_menu_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260414_seed_channel_wx_dev_menu.sql"
+  local wx_dev_detail_count="0"
+  local wx_dev_save_count="0"
+  local wx_dev_perm_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  wx_dev_detail_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='channel:wx:detail' AND component='channel/wx_dev' AND is_show=1 AND is_disable=0;" 2>/dev/null || echo "0")"
+  wx_dev_save_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE perms='channel:wx:save' AND is_show=1 AND is_disable=0;" 2>/dev/null || echo "0")"
+  wx_dev_perm_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_perm p JOIN \`${DB_NAME}\`.la_system_auth_menu m ON m.id=p.menu_id WHERE m.perms IN ('channel:wx:detail','channel:wx:save');" 2>/dev/null || echo "0")"
+
+  if [[ "${wx_dev_detail_count}" -ge 1 ]] && [[ "${wx_dev_save_count}" -ge 1 ]] && [[ "${wx_dev_perm_count}" -ge 2 ]]; then
+    return
+  fi
+
+  log_info "检测到微信开放平台渠道菜单或保存权限缺失，自动执行菜单补丁..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "微信开放平台渠道菜单与保存权限补齐完成。"
+    return
+  fi
+
+  # 函数说明：渠道菜单补丁失败时不阻塞启动，避免影响其它模块联调。
+  log_info "微信开放平台渠道菜单补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
 # 函数说明：把历史前端 .env 中的 AI Provider Key 自动同步到后台配置，避免前台继续保存敏感 Key。
 sync_frontend_ai_provider_env_keys() {
   local env_file=""
@@ -1629,6 +1658,7 @@ main() {
   apply_ai_provider_config_patch
   repair_garbled_ai_provider_config
   apply_ai_model_menu_split_patch
+  apply_channel_wx_dev_menu_patch
   apply_wx_oa_reply_menu_patch
   apply_official_site_layout_submenus_patch
   apply_official_site_tools_catalog_menu_patch

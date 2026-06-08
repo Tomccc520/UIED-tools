@@ -1,4 +1,10 @@
 <script setup lang="ts">
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-06-08
+ */
 import { ref, reactive, onMounted, computed, nextTick, onUnmounted } from '@vue/runtime-core'
 import { Search, Delete, ArrowRight, Close, Expand, Fold, Refresh } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus'
@@ -37,80 +43,62 @@ const dailyWord = ref<DailyWord>({
 // 添加定时器引用
 let dailyWordTimer: ReturnType<typeof setInterval> | null = null
 
-// 添加 JSONP 工具函数
-const jsonp = (url: string): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    const callbackName = 'jsonp_' + Date.now() + Math.floor(Math.random() * 1000);
-    const script = document.createElement('script');
+const fallbackDailyWords = [
+  '生活明朗, 万物可爱',
+  '道阻且长，行则将至',
+  '心之所向，素履以往',
+  '生命不息，奋斗不止',
+  '保持热爱，奔赴山海',
+  '山水一程，三生有幸',
+  '愿你眼中有光，心中有爱',
+  '不负韶华，不负自己',
+  '既见君子，云胡不喜',
+  '明月装饰了你的窗子，你装饰了别人的梦'
+]
 
-    // 创建全局回调函数
-    (window as any)[callbackName] = (data: any) => {
-      cleanup();
-      resolve(data);
-    };
+/**
+ * 函数说明：把外部一言接口文本规范为可展示短句，过滤 HTML、JSON 和异常长文本，避免撑破顶部布局。
+ */
+const normalizeDailyWordContent = (rawText: string) => {
+  const content = rawText.replace(/\s+/g, ' ').trim()
+  if (!content || content.length > 80 || /<[^>]+>/.test(content) || /^[{[]/.test(content)) {
+    return ''
+  }
+  return content
+}
 
-    // 清理函数
-    const cleanup = () => {
-      document.body.removeChild(script);
-      delete (window as any)[callbackName];
-      clearTimeout(timeoutId);
-    };
+/**
+ * 函数说明：使用本地短句作为每日一言兜底，避免外部接口异常时页面展示错误内容。
+ */
+const useFallbackDailyWord = () => {
+  dailyWord.value = {
+    id: 0,
+    content: fallbackDailyWords[Math.floor(Math.random() * fallbackDailyWords.length)],
+    form: '本地一言'
+  }
+}
 
-    // 设置超时
-    const timeoutId = setTimeout(() => {
-      cleanup();
-      reject(new Error('JSONP 请求超时'));
-    }, 5000);
-
-    // 处理错误
-    script.onerror = () => {
-      cleanup();
-      reject(new Error('JSONP 请求失败'));
-    };
-
-    // 构建URL
-    const separator = url.includes('?') ? '&' : '?';
-    script.src = `${url}${separator}callback=${callbackName}`;
-    document.body.appendChild(script);
-  });
-};
-
+/**
+ * 函数说明：获取每日一言并做响应格式校验，失败时回退到本地短句。
+ */
 const getDailyWord = async () => {
   try {
-    console.log('开始获取一言...')
     const response = await fetch('https://api.pearktrue.cn/api/hitokoto/')
     const text = await response.text()
+    const content = normalizeDailyWordContent(text)
 
-    if (text) {
+    if (response.ok && content) {
       dailyWord.value = {
         id: 0,
-        content: text,
+        content,
         form: '一言'
       }
-      console.log('一言获取成功:', dailyWord.value)
       return
     }
     throw new Error('获取数据失败')
   } catch (error) {
     console.error('一言获取失败:', error)
-    // 使用本地的随机名言
-    const fallbackQuotes = [
-      '生活明朗, 万物可爱',
-      '道阻且长，行则将至',
-      '心之所向，素履以往',
-      '生命不息，奋斗不止',
-      '保持热爱，奔赴山海',
-      '山水一程，三生有幸',
-      '愿你眼中有光，心中有爱',
-      '不负韶华，不负自己',
-      '既见君子，云胡不喜',
-      '明月装饰了你的窗子，你装饰了别人的梦'
-    ]
-    dailyWord.value = {
-      id: 0,
-      content: fallbackQuotes[Math.floor(Math.random() * fallbackQuotes.length)],
-      form: '本地一言'
-    }
+    useFallbackDailyWord()
   }
 }
 
@@ -704,8 +692,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="h-14 sm:h-16 w-full flex items-center bg-white border-b border-gray-200 rounded-b-xl">
-    <div class="flex items-center">
+  <header class="h-14 sm:h-16 w-full flex items-center bg-white border-b border-gray-200 rounded-b-xl overflow-hidden">
+    <div class="header-left-zone flex items-center min-w-0">
       <!-- 菜单折叠按钮 -->
       <div class="menu-toggle cursor-pointer pl-4" @click="toggleSidebar">
         <el-icon class="text-gray-500 hover:text-blue-500 text-xl">
@@ -730,7 +718,7 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <div class="container mx-auto px-0 md:px-4">
+    <div class="header-right-zone px-0 md:px-4">
       <div class="flex justify-end items-center w-full">
         <div class="flex items-center gap-4">
           <div class="flex items-center space-x-2.5 pr-4 md:pr-0">
@@ -887,6 +875,17 @@ onUnmounted(() => {
 }
 
 /* 一言样式 */
+.header-left-zone {
+  flex: 1 1 auto;
+  max-width: calc(100% - 320px);
+}
+
+.header-right-zone {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-width: 0;
+}
+
 .daily-word-outer {
   cursor: pointer;
   transition: all 0.3s ease;
@@ -894,9 +893,10 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   margin-left: 12px;
-  flex: 1;
-  min-width: 200px;
-  max-width: fit-content;
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .daily-word-outer:hover {
@@ -908,6 +908,7 @@ onUnmounted(() => {
   align-items: flex-start;
   gap: 8px;
   width: 100%;
+  min-width: 0;
 }
 
 .daily-word-prefix {
@@ -931,7 +932,9 @@ onUnmounted(() => {
   font-size: 14px;
   color: #303133;
   line-height: 1.6;
-  display: inline;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -948,20 +951,20 @@ onUnmounted(() => {
 }
 
 @media screen and (max-width: 1400px) {
-  .daily-word-outer {
-    max-width: 800px;
+  .header-left-zone {
+    max-width: calc(100% - 300px);
   }
 }
 
 @media screen and (max-width: 1200px) {
-  .daily-word-outer {
-    max-width: 600px;
+  .header-left-zone {
+    max-width: calc(100% - 280px);
   }
 }
 
 @media screen and (max-width: 992px) {
-  .daily-word-outer {
-    max-width: 400px;
+  .header-left-zone {
+    max-width: calc(100% - 220px);
   }
 }
 

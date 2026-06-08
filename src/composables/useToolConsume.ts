@@ -22,6 +22,10 @@ import type { Tool, ToolCategory } from '@/types/tools'
 
 const TOOL_CONSUME_DEDUPE_WINDOW_MS = 1200
 const toolConsumeTimestampMap = new Map<string, number>()
+const TOOL_KEY_ALIAS_MAP: Record<string, string> = {
+  'ai-work-summary-type-annual': 'ai-work-summary-annual',
+  'video-convert': 'video-format-convert'
+}
 
 /**
  * 函数说明：构建工具积分扣减的短时去重键，避免同一次点击链路被重复扣分。
@@ -103,6 +107,14 @@ const normalizeToolKeyText = (value: unknown): string => {
 }
 
 /**
+ * 函数说明：将历史推导 toolKey 归并到当前商业策略主数据 key，避免后台未显式配置时策略失配。
+ */
+export const normalizeRuntimeToolKey = (value: unknown): string => {
+  const normalizedKey = normalizeToolKeyText(value)
+  return TOOL_KEY_ALIAS_MAP[normalizedKey] || normalizedKey
+}
+
+/**
  * 函数说明：标准化工具路径，统一去除 query/hash 与尾部斜杠，便于按路由匹配工具策略。
  */
 const normalizeToolRoutePath = (value: unknown): string => {
@@ -146,7 +158,7 @@ const deriveToolKeyByUrl = (url: string): string => {
   const queryKey = Array.from(new URLSearchParams(rawQuery).entries())
     .map(([key, value]) => `${key}-${value}`)
     .join('-')
-  return normalizeToolKeyText([routeKey, queryKey].filter(Boolean).join('-').replace(/[^a-z0-9]+/gi, '-'))
+  return normalizeRuntimeToolKey([routeKey, queryKey].filter(Boolean).join('-').replace(/[^a-z0-9]+/gi, '-'))
 }
 
 /**
@@ -176,7 +188,7 @@ const resolveRuntimePolicyFromToolCatalog = (
     return null
   }
   const matchedByKey = flatTools.find((tool) => {
-    return normalizeToolKeyText(tool.toolKey) === normalizedToolKey
+    return normalizeRuntimeToolKey(tool.toolKey) === normalizedToolKey
   })
   const matchedByExactRoute = flatTools.find((tool) => {
     return normalizeToolRouteMatchKey(tool.url) === normalizedRouteMatchKey
@@ -194,7 +206,7 @@ const resolveRuntimePolicyFromToolCatalog = (
   const toolConsumePointsRaw = Number(matchedTool.consumePoints ?? 1)
   const consumePoints = Number.isFinite(toolConsumePointsRaw) ? Math.max(0, Math.floor(toolConsumePointsRaw)) : 1
   return {
-    toolKey: normalizeToolKeyText(matchedTool.toolKey) || normalizedToolKey || deriveToolKeyByUrl(matchedTool.url),
+    toolKey: normalizeRuntimeToolKey(matchedTool.toolKey) || normalizedToolKey || deriveToolKeyByUrl(matchedTool.url),
     consumePoints,
     memberFree: Boolean(matchedTool.memberFree ?? true),
     status: toolStatus,
@@ -212,7 +224,7 @@ export const resolveToolConsumeRuntimePolicy = async (
   toolKey: string,
   routePath = ''
 ): Promise<RuntimeToolConsumePolicy | null> => {
-  const normalizedToolKey = normalizeToolKeyText(toolKey)
+  const normalizedToolKey = normalizeRuntimeToolKey(toolKey)
   const normalizedRoutePath = normalizeToolRoutePath(routePath)
   const normalizedRouteMatchKey = normalizeToolRouteMatchKey(routePath)
   if (!normalizedToolKey) {
@@ -224,7 +236,7 @@ export const resolveToolConsumeRuntimePolicy = async (
       ? siteConfig.loginToolConsumeRules
       : []
     const matchedRule = ruleList.find((item: SiteLoginToolConsumeRule) => {
-      return normalizeToolKeyText(item.toolKey) === normalizedToolKey
+      return normalizeRuntimeToolKey(item.toolKey) === normalizedToolKey
     })
     if (!matchedRule) {
       return resolveRuntimePolicyFromToolCatalog(

@@ -214,7 +214,7 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
-const currentPath = computed(() => props.currentPath || route.path)
+const currentPath = computed(() => props.currentPath || route.fullPath || route.path)
 const toolsStore = useToolsStore()
 const { isToolDisabled, isExternalLink, openToolEntry } = useToolRuntimeGate()
 
