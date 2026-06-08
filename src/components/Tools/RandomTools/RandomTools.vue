@@ -109,13 +109,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
+import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import type { Tool, ToolCategory } from '@/types/tools'
 import ToolIcon from '../ToolIcon.vue'
 
-const router = useRouter()
 const store = useToolsStore()
+const { openToolEntry } = useToolRuntimeGate()
 
 // 状态
 const loading = ref(false)
@@ -127,9 +127,15 @@ const categories = ref([
   ...store.cates
 ])
 
-// 处理工具点击
-const handleToolClick = (tool: Tool) => {
-  window.open(tool.url, '_blank')
+/**
+ * 函数说明：处理随机工具点击，统一走工具运行态门禁，避免停用、登录和扣费策略被绕过。
+ */
+const handleToolClick = async (tool: Tool) => {
+  await openToolEntry(tool, {
+    target: 'blank',
+    action: 'open',
+    source: 'random-tools'
+  })
 }
 
 // 获取分类列表

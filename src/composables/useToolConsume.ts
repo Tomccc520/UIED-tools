@@ -120,14 +120,33 @@ const normalizeToolRoutePath = (value: unknown): string => {
 }
 
 /**
- * 函数说明：根据工具链接推导 toolKey（作为后台未显式配置 toolKey 的兜底）。
+ * 函数说明：标准化工具完整匹配键，保留 query 用于区分同一路由下的细分工具。
+ */
+const normalizeToolRouteMatchKey = (value: unknown): string => {
+  const rawValue = String(value || '').trim().split('#')[0]
+  if (!rawValue) {
+    return ''
+  }
+  const [rawPath, rawQuery = ''] = rawValue.split('?')
+  const normalizedPath = rawPath === '/' ? '/' : rawPath.replace(/\/+$/g, '')
+  const query = rawQuery.trim()
+  return query ? `${normalizedPath}?${query}` : normalizedPath
+}
+
+/**
+ * 函数说明：根据工具链接推导 toolKey（作为后台未显式配置 toolKey 的兜底），保留 query 避免细分工具混用策略。
  */
 const deriveToolKeyByUrl = (url: string): string => {
-  const normalizedPath = normalizeToolRoutePath(url)
+  const normalizedMatchKey = normalizeToolRouteMatchKey(url)
+  const [routePath, rawQuery = ''] = normalizedMatchKey.split('?')
+  const routeKey = routePath
     .replace(/^\/tools\//, '')
     .replace(/^\/+|\/+$/g, '')
-  const key = normalizedPath.replace(/[\/_]+/g, '-').trim()
-  return normalizeToolKeyText(key)
+    .replace(/[\/_]+/g, '-')
+  const queryKey = Array.from(new URLSearchParams(rawQuery).entries())
+    .map(([key, value]) => `${key}-${value}`)
+    .join('-')
+  return normalizeToolKeyText([routeKey, queryKey].filter(Boolean).join('-').replace(/[^a-z0-9]+/gi, '-'))
 }
 
 /**
@@ -149,7 +168,8 @@ const flattenToolsFromCategories = (categories: ToolCategory[]): Tool[] => {
 const resolveRuntimePolicyFromToolCatalog = (
   categories: ToolCategory[],
   normalizedToolKey: string,
-  normalizedRoutePath: string
+  normalizedRoutePath: string,
+  normalizedRouteMatchKey: string
 ): RuntimeToolConsumePolicy | null => {
   const flatTools = flattenToolsFromCategories(categories)
   if (flatTools.length === 0) {
@@ -158,9 +178,15 @@ const resolveRuntimePolicyFromToolCatalog = (
   const matchedByKey = flatTools.find((tool) => {
     return normalizeToolKeyText(tool.toolKey) === normalizedToolKey
   })
-  const matchedTool = matchedByKey || flatTools.find((tool) => {
-    return normalizeToolRoutePath(tool.url) === normalizedRoutePath
+  const matchedByExactRoute = flatTools.find((tool) => {
+    return normalizeToolRouteMatchKey(tool.url) === normalizedRouteMatchKey
   })
+  const matchedTool =
+    matchedByKey ||
+    matchedByExactRoute ||
+    flatTools.find((tool) => {
+      return normalizeToolRoutePath(tool.url) === normalizedRoutePath
+    })
   if (!matchedTool) {
     return null
   }
@@ -188,6 +214,7 @@ export const resolveToolConsumeRuntimePolicy = async (
 ): Promise<RuntimeToolConsumePolicy | null> => {
   const normalizedToolKey = normalizeToolKeyText(toolKey)
   const normalizedRoutePath = normalizeToolRoutePath(routePath)
+  const normalizedRouteMatchKey = normalizeToolRouteMatchKey(routePath)
   if (!normalizedToolKey) {
     return null
   }
@@ -200,7 +227,12 @@ export const resolveToolConsumeRuntimePolicy = async (
       return normalizeToolKeyText(item.toolKey) === normalizedToolKey
     })
     if (!matchedRule) {
-      return resolveRuntimePolicyFromToolCatalog(siteConfig.toolCategories, normalizedToolKey, normalizedRoutePath)
+      return resolveRuntimePolicyFromToolCatalog(
+        siteConfig.toolCategories,
+        normalizedToolKey,
+        normalizedRoutePath,
+        normalizedRouteMatchKey
+      )
     }
     const status = Number(matchedRule.status ?? 1) === 0 ? 0 : 1
     return {

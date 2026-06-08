@@ -10,7 +10,7 @@
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 /**
- * 函数说明：标准化工具链接，统一去掉查询、哈希与结尾斜杠，便于在不同入口间稳定匹配。
+ * 函数说明：标准化工具链接，统一去掉查询、哈希与结尾斜杠，便于在推荐去重时按主路径合并。
  */
 const normalizeToolUrl = (rawUrl: string): string => {
   const normalized = String(rawUrl || '').trim().replace(/[?#].*$/, '')
@@ -21,6 +21,20 @@ const normalizeToolUrl = (rawUrl: string): string => {
     return normalized
   }
   return normalized.replace(/\/+$/, '')
+}
+
+/**
+ * 函数说明：标准化工具完整匹配键，保留 query 用于区分同一路由下的不同会员核心工具。
+ */
+const normalizeToolUrlMatchKey = (rawUrl: string): string => {
+  const rawValue = String(rawUrl || '').trim().split('#')[0]
+  if (!rawValue) {
+    return ''
+  }
+  const [rawPath, rawQuery = ''] = rawValue.split('?')
+  const normalizedPath = rawPath === '/' ? '/' : rawPath.replace(/\/+$/g, '')
+  const query = rawQuery.trim()
+  return query ? `${normalizedPath}?${query}` : normalizedPath
 }
 
 /**
@@ -43,15 +57,24 @@ export const flattenToolsFromCategories = (categories: ToolCategory[]): Tool[] =
 }
 
 /**
- * 函数说明：根据当前工具路径查找工具详情，优先使用标准化后的路径比对。
+ * 函数说明：根据当前工具路径查找工具详情，优先使用保留 query 的完整入口比对，再回退主路径比对。
  */
 export const findToolByUrl = (categories: ToolCategory[], currentPath: string): Tool | null => {
+  const normalizedMatchKey = normalizeToolUrlMatchKey(currentPath)
   const normalizedPath = normalizeToolUrl(currentPath)
   if (!normalizedPath) {
     return null
   }
 
-  const matchedTool = flattenToolsFromCategories(categories).find((tool: Tool) => {
+  const allTools = flattenToolsFromCategories(categories)
+  const matchedExactTool = allTools.find((tool: Tool) => {
+    return normalizeToolUrlMatchKey(tool.url) === normalizedMatchKey
+  })
+  if (matchedExactTool) {
+    return matchedExactTool
+  }
+
+  const matchedTool = allTools.find((tool: Tool) => {
     return normalizeToolUrl(tool.url) === normalizedPath
   })
   return matchedTool || null

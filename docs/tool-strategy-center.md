@@ -187,6 +187,7 @@ npm run audit:tool-strategy
 3. 统一转化路径：未登录、积分不足、会员免扣、工具停用都给明确提示，不让用户进入空白链路。
 4. 统一榜单口径：热榜点击不能绕过停用状态，兜底推荐要继承工具主数据状态。
 5. 统一后台操作：工具主数据页固定保留“同步高频工具 / 同步计费策略 / 一键体检 / 前端预览”四个高频动作。
+6. 统一策略回归：工具入口、计费策略、榜单、搜索推荐都纳入 `audit:tool-runtime-gate`、`audit:tool-consume` 和 P0 smoke 检查。
 
 推进原则：
 
@@ -200,6 +201,8 @@ npm run audit:tool-strategy
 
 ```bash
 npm run audit:tool-strategy
+npm run audit:tool-consume
+npm run audit:tool-runtime-gate
 npm run dev:business:smoke
 npm run dev:delivery:check
 cd backend/likeadmin-go/admin && npm run smoke:p0-actions
@@ -210,6 +213,19 @@ cd backend/likeadmin-go/admin && npm run smoke:p0-actions
 1. 先检查主数据契约
 2. 再跑业务闭环冒烟
 3. 最后跑交付自检
+
+后台 P0 页面可视冒烟建议在后台管理端和后端服务启动后执行：
+
+```bash
+cd backend/likeadmin-go/admin
+ADMIN_BASE_URL=http://127.0.0.1:5180 npm run smoke:p0-actions:visual
+```
+
+说明：
+
+- 可视冒烟会真实打开 P0 页面并检查 `data-admin-smoke` 标记是否可见、未禁用、可被 trial click。
+- 如果后台登录验证码开启，建议使用 `ADMIN_STORAGE_STATE` 或 `ADMIN_TOKEN` 复用测试登录态。
+- `同步高频工具 / 同步计费策略 / 一键体检 / 前端预览` 默认只做可见与可点击性检查，不触发真实业务点击。
 
 这样能同时覆盖：
 

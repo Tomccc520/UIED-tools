@@ -91,12 +91,28 @@ export const isExternalToolLink = (url: unknown): boolean => {
  * 函数说明：根据工具地址推导 toolKey，作为入口没有显式 toolKey 时的兜底。
  */
 export const deriveRuntimeToolKeyByUrl = (url: unknown): string => {
-  const normalizedPath = normalizeToolRuntimeUrl(url)
-    .split('?')[0]
-    .split('#')[0]
+  const normalizedUrl = normalizeToolRuntimeUrl(url).split('#')[0]
+  const [rawPath, rawQuery = ''] = normalizedUrl.split('?')
+  const routeKey = rawPath
     .replace(/^\/tools\//, '')
     .replace(/^\/+|\/+$/g, '')
-  return normalizedPath.replace(/[\/_]+/g, '-').trim().toLowerCase()
+    .replace(/[\/_]+/g, '-')
+    .replace(/[^a-z0-9]+/gi, '-')
+    .replace(/^-+|-+$/g, '')
+    .trim()
+    .toLowerCase()
+  const queryKey = Array.from(new URLSearchParams(rawQuery).entries())
+    .map(([key, value]) => {
+      const normalizedKey = `${key}-${value}`
+        .replace(/[^a-z0-9]+/gi, '-')
+        .replace(/^-+|-+$/g, '')
+        .trim()
+        .toLowerCase()
+      return normalizedKey
+    })
+    .filter(Boolean)
+    .join('-')
+  return [routeKey, queryKey].filter(Boolean).join('-')
 }
 
 /**
@@ -216,14 +232,16 @@ export const useToolRuntimeGate = () => {
       return true
     }
 
-    if (!toolKey) {
+    const gateToolKey = String(runtimePolicy?.toolKey || toolKey).trim().toLowerCase()
+
+    if (!gateToolKey) {
       ElMessage.error('工具运行态配置异常：toolKey 不能为空')
       return false
     }
 
     const mode: ToolConsumeMode = options.consumeMode === 'consume' ? 'consume' : 'check-login'
     return ensureToolConsume({
-      toolKey,
+      toolKey: gateToolKey,
       action: options.action || 'open',
       mode,
       routePath: normalizeToolRuntimeUrl(tool.url),
