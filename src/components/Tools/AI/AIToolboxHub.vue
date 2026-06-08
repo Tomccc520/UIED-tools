@@ -323,21 +323,19 @@ watch(
                 type="button"
                 :class="['tool-card', { 'tool-card--disabled': isToolDisabled(tool) }]"
                 :style="cardStyle"
-                :disabled="isToolDisabled(tool)"
+                :aria-disabled="isToolDisabled(tool)"
                 @click="openTool(tool)"
               >
                 <div v-if="isToolDisabled(tool)" class="tool-disabled-tag">已停用</div>
-                <div class="flex items-center border-b pb-2 relative z-10">
+                <div class="tool-card__head">
                   <ToolIcon v-if="tool.logo" :icon="tool.logo" />
-                  <div class="flex flex-col ml-2 w-full">
-                    <div class="font-semibold text-lg truncate mb-1">{{ tool.title }}</div>
-                    <div class="flex justify-between mt-1">
-                      <el-text size="small" class="truncate">{{ tool.cate }}</el-text>
-                    </div>
+                  <div class="tool-card__content">
+                    <div class="tool-card__title">{{ tool.title }}</div>
+                    <el-text size="small" class="tool-card__category">{{ tool.cate }}</el-text>
                   </div>
                 </div>
-                <div class="flex mt-2 relative z-10">
-                  <el-text class="truncate text-[14px] text-[#666] w-full">{{ tool.desc || '进入工具开始使用' }}</el-text>
+                <div class="tool-card__desc-wrap">
+                  <el-text class="tool-card__desc">{{ tool.desc || '进入工具开始使用' }}</el-text>
                 </div>
                 <div class="card-shine"></div>
                 <div class="card-arrow">
@@ -373,21 +371,19 @@ watch(
                   type="button"
                   :class="['tool-card', { 'tool-card--disabled': isToolDisabled(tool) }]"
                   :style="cardStyle"
-                  :disabled="isToolDisabled(tool)"
+                  :aria-disabled="isToolDisabled(tool)"
                   @click="openTool(tool)"
                 >
                   <div v-if="isToolDisabled(tool)" class="tool-disabled-tag">已停用</div>
-                  <div class="flex items-center border-b pb-2 relative z-10">
+                  <div class="tool-card__head">
                     <ToolIcon v-if="tool.logo" :icon="tool.logo" />
-                    <div class="flex flex-col ml-2 w-full">
-                      <div class="font-semibold text-lg truncate mb-1">{{ tool.title }}</div>
-                      <div class="flex justify-between mt-1">
-                        <el-text size="small" class="truncate">{{ tool.cate }}</el-text>
-                      </div>
+                    <div class="tool-card__content">
+                      <div class="tool-card__title">{{ tool.title }}</div>
+                      <el-text size="small" class="tool-card__category">{{ tool.cate }}</el-text>
                     </div>
                   </div>
-                  <div class="flex mt-2 relative z-10">
-                    <el-text class="truncate text-[14px] text-[#666] w-full">{{ tool.desc || '进入工具开始使用' }}</el-text>
+                  <div class="tool-card__desc-wrap">
+                    <el-text class="tool-card__desc">{{ tool.desc || '进入工具开始使用' }}</el-text>
                   </div>
                   <div class="card-shine"></div>
                   <div class="card-arrow">
@@ -576,17 +572,66 @@ watch(
   line-height: 1.4;
 }
 
-.tool-card .font-semibold.text-lg {
-  width: calc(100% - 0.75rem);
-  min-height: 1.5em;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.tool-card__head {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-.tool-card .flex.justify-between {
-  margin-top: auto;
+.tool-card__content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  margin-left: 0.5rem;
+  padding-right: 1.7rem;
+}
+
+.tool-card__title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.tool-card__category {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  overflow: hidden;
+  color: #6b7280;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-card__desc-wrap {
+  position: relative;
+  z-index: 10;
+  min-height: 2.7rem;
+  margin-top: 0.7rem;
+}
+
+.tool-card__desc {
+  display: -webkit-box;
+  width: 100%;
+  overflow: hidden;
+  color: #4b5563 !important;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .card-shine {

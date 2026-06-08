@@ -33,6 +33,12 @@ export interface Tool {
   status?: number
   sort?: number
   remark?: string
+  needLogin?: boolean
+  allowAnonymousPreview?: boolean
+  anonymousQuota?: number
+  commercialTier?: 'free' | 'standard' | 'premium'
+  memberCore?: boolean
+  policyVersion?: string
   children?: Tool[]
 }
 

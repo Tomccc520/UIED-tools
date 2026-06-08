@@ -31,6 +31,12 @@
 - `memberFree`：会员是否免扣
 - `sort`：排序值
 - `remark`：运营备注
+- `needLogin`：是否必须登录后使用
+- `allowAnonymousPreview`：是否允许匿名预览
+- `anonymousQuota`：匿名额度
+- `commercialTier`：商业分层，`free / standard / premium`
+- `memberCore`：是否为会员核心卖点工具
+- `policyVersion`：策略版本号
 - `seoTitle`
 - `seoKeywords`
 - `seoDescription`
@@ -39,7 +45,7 @@
 说明：
 
 - `toolKey / status / consumePoints / memberFree` 是策略中心最核心的四个字段。
-- `needLogin` 当前仍由登录与积分策略、工具守卫逻辑间接控制，暂未单独收成工具主数据字段；这是下一阶段的建议收口项，不属于当前 V1 硬契约。
+- `needLogin` 已收口到工具主数据与运行时策略：免费工具可匿名使用，标准/会员核心工具默认要求登录。
 
 ## 3. 数据来源与生效顺序
 
@@ -131,29 +137,42 @@ npm run audit:tool-strategy
 - 未显式填写 `toolKey`
 - 还没有显式策略字段的工具
 
-## 6. 商业交付建议
+## 6. 商业分层建议
 
-要把这套能力做成可售卖版本，建议再继续补两层：
+当前策略分三层：
 
-1. `needLogin` 收口到工具主数据
-2. 工具策略版本化
+- `free`：免费引流工具，`consumePoints=0`，默认无需登录。
+- `standard`：标准高价值工具，`consumePoints=1`，登录后使用，会员免扣。
+- `premium`：会员核心工具，`consumePoints>=2`，登录后使用，会员免扣，作为会员售卖主卖点。
 
-### 6.1 needLogin 收口
+### 6.1 会员核心 20 个工具
 
-目标：
+当前会员核心工具固定为 20 个：
 
-- 工具是否必须登录，不再散落在路由、组件、守卫逻辑里
-- 后台可按工具统一开关“匿名可用 / 登录后可用”
+1. 证件照换底色
+2. 证件照免冠处理
+3. 证件照尺寸裁剪
+4. 证件照排版打印
+5. DeepSeek R1 对话
+6. DeepSeek AI 对话
+7. AI OCR 识别
+8. AI 图片变清晰
+9. AI 智能去水印
+10. 工作总结
+11. 年度工作总结
+12. 自定义总结
+13. 简历制作
+14. 润色会议纪要
+15. 研究报告
+16. 商业计划书写作
+17. AI 文章生成
+18. 小红书笔记生成
+19. 视频压缩
+20. 视频格式转换
 
-建议字段：
+### 6.2 工具策略版本化
 
-- `needLogin`
-- `allowAnonymousPreview`
-- `anonymousQuota`
-
-### 6.2 策略版本化
-
-适用于商业售卖后多客户并行升级：
+策略版本化适用于商业售卖后多客户并行升级：
 
 - 每次工具策略变更有版本号
 - 升级补丁可感知策略 schema 是否变更

@@ -469,8 +469,8 @@ const handleSearchSelect = (url: string) => {
       return
     }
     // 检查是否是外部链接
-    if (url.startsWith('http')) {
-      window.open(url, '_blank')
+    if (isExternalLink(url)) {
+      window.open(url, '_blank', 'noopener,noreferrer')
     } else {
       // 使用 router.push 的 catch 来处理导航失败
       router.push(url).catch(err => {
@@ -488,7 +488,7 @@ const handleSearchSelect = (url: string) => {
  * 函数说明：判断链接是否为外部地址，用于顶部快捷入口跳转策略
  */
 const isExternalLink = (url: string) => {
-  return url.startsWith('http://') || url.startsWith('https://')
+  return /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(String(url || '').trim())
 }
 
 /**
@@ -783,7 +783,7 @@ onUnmounted(() => {
 
     <el-dialog
       v-model="loginDialogVisible"
-      width="580px"
+      width="min(580px, calc(100vw - 24px))"
       align-center
       destroy-on-close
       :close-on-click-modal="false"
@@ -1136,10 +1136,13 @@ onUnmounted(() => {
   color: #3d4664;
 }
 
+:deep(.frontend-login-dialog.el-dialog),
 :deep(.frontend-login-dialog .el-dialog) {
   border-radius: 16px;
   border: 1px solid #e8ebf4;
   padding: 4px 4px 2px;
+  box-shadow: none;
+  overflow: hidden;
 }
 
 :deep(.frontend-login-dialog .el-dialog__header) {
@@ -1162,12 +1165,128 @@ onUnmounted(() => {
     display: none;
   }
 
+  :deep(.frontend-login-dialog.el-dialog),
+  :deep(.frontend-login-dialog .el-dialog) {
+    width: calc(100vw - 24px) !important;
+    max-width: 380px;
+    padding: 0;
+    border-radius: 16px;
+  }
+
+  :deep(.frontend-login-dialog .el-dialog__header) {
+    padding: 16px 16px 10px;
+  }
+
+  :deep(.frontend-login-dialog .el-dialog__headerbtn) {
+    top: 10px;
+    right: 10px;
+    width: 32px;
+    height: 32px;
+  }
+
+  :deep(.frontend-login-dialog .el-dialog__body) {
+    max-height: calc(100vh - 120px);
+    padding: 0 16px 16px;
+    overflow-y: auto;
+  }
+
+  .login-dialog-header {
+    padding-right: 30px;
+  }
+
+  .login-dialog-kicker {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .login-dialog-header h3 {
+    margin-top: 6px;
+    font-size: 18px;
+    line-height: 1.35;
+  }
+
+  .login-dialog-header p {
+    margin-top: 6px;
+    font-size: 12px;
+    line-height: 1.55;
+  }
+
   .login-dialog-shell {
-    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .login-dialog-side {
+    border-color: #e6e9f4;
+    background: #f8f9ff;
+    padding: 10px;
+  }
+
+  .login-dialog-side-title {
+    display: none;
+  }
+
+  .login-dialog-points {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .points-chip {
+    border-radius: 8px;
+    padding: 5px 6px;
+    font-size: 11px;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .login-dialog-side-list {
+    display: none;
   }
 
   .login-dialog-main {
-    padding: 10px;
+    border-color: #e6e9f4;
+    padding: 12px;
+  }
+
+  :deep(.frontend-login-dialog .el-form-item) {
+    margin-bottom: 12px;
+  }
+
+  :deep(.frontend-login-dialog .el-input__wrapper) {
+    min-height: 40px;
+  }
+
+  .login-dialog-auth-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .login-auth-button {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .login-dialog-footer {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .login-dialog-footer :deep(.el-button) {
+    width: 100%;
+    min-height: 40px;
+    margin-left: 0 !important;
+  }
+}
+
+@media screen and (max-width: 360px) {
+  .login-dialog-points,
+  .login-dialog-auth-actions,
+  .login-dialog-footer {
+    grid-template-columns: 1fr;
   }
 }
 </style>

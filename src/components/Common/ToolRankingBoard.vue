@@ -10,6 +10,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { buildFallbackToolRankingItems, getToolRankingList, type ToolRankingListItem, type ToolRankingPeriod } from '@/services/toolRanking'
 import type { Tool } from '@/types/tools'
 
@@ -40,18 +41,81 @@ const liveRankingReady = ref(false)
 const latestLoadRequestId = ref(0)
 
 /**
+ * 函数说明：标准化榜单展示数量，避免后台配置异常导致页面列表过长或空白。
+ */
+const normalizedLimit = computed(() => {
+  const limitValue = Number(props.limit || 8)
+  return Math.min(20, Math.max(1, Number.isFinite(limitValue) ? Math.floor(limitValue) : 8))
+})
+
+/**
  * 函数说明：根据榜单项判断是否为外链，兼容协议相对地址和其它 scheme，确保站内站外跳转行为一致。
  */
 const isExternalLink = (url: string): boolean => /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(String(url || '').trim())
 
 /**
+ * 函数说明：判断榜单工具是否已被后台停用，避免从热榜绕过工具状态控制。
+ */
+const isRankingToolDisabled = (item: ToolRankingListItem): boolean => {
+  return Number(item.status ?? 1) === 0
+}
+
+/**
+ * 函数说明：输出榜单停用提示，优先展示后台配置的停用备注。
+ */
+const resolveRankingDisabledMessage = (item: ToolRankingListItem): string => {
+  const toolTitle = String(item.toolTitle || '').trim() || '当前工具'
+  const remark = String(item.remark || '').trim()
+  if (remark) {
+    return `工具「${toolTitle}」已停用：${remark}`
+  }
+  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
+}
+
+/**
  * 函数说明：构建当前页面可展示的榜单数据，接口无结果时自动回退到传入的兜底工具列表。
  */
 const displayRankingList = computed<ToolRankingListItem[]>(() => {
-  if (rankingList.value.length > 0) {
-    return rankingList.value
+  const fallbackRankingItems = buildFallbackToolRankingItems(props.fallbackTools)
+  const mergedRankingItems = [...rankingList.value]
+  const usedKeys = new Set(
+    mergedRankingItems.map((item) => `${String(item.toolKey || '').trim()}@@${String(item.toolUrl || '').trim()}`)
+  )
+
+  for (const item of fallbackRankingItems) {
+    const itemKey = `${String(item.toolKey || '').trim()}@@${String(item.toolUrl || '').trim()}`
+    if (!usedKeys.has(itemKey)) {
+      mergedRankingItems.push(item)
+      usedKeys.add(itemKey)
+    }
   }
-  return buildFallbackToolRankingItems(props.fallbackTools).slice(0, Math.max(1, Number(props.limit || 8)))
+
+  return mergedRankingItems.slice(0, normalizedLimit.value).map((item, index) => ({
+    ...item,
+    rank: index + 1
+  }))
+})
+
+/**
+ * 函数说明：独立排行榜页抽取前三名，用于强化榜单首屏重点信息。
+ */
+const topRankingItems = computed(() => displayRankingList.value.slice(0, 3))
+
+/**
+ * 函数说明：独立排行榜页抽取前三名之后的列表项，避免同一工具重复显示。
+ */
+const secondaryRankingItems = computed(() => {
+  if (props.flat && !props.compact && displayRankingList.value.length > 3) {
+    return displayRankingList.value.slice(3)
+  }
+  return displayRankingList.value
+})
+
+/**
+ * 函数说明：计算当前榜单最高点击量，用于渲染相对热度条。
+ */
+const maxViewCount = computed(() => {
+  return Math.max(1, ...displayRankingList.value.map((item) => Number(item.viewCount || 0)))
 })
 
 /**
@@ -89,6 +153,10 @@ const loadToolRankingList = async () => {
  * 函数说明：处理榜单点击，站外地址新开窗口，站内工具页保持当前页跳转。
  */
 const handleRankingClick = async (item: ToolRankingListItem) => {
+  if (isRankingToolDisabled(item)) {
+    ElMessage.warning(resolveRankingDisabledMessage(item))
+    return
+  }
   const targetUrl = String(item.toolUrl || '').trim()
   if (!targetUrl) {
     return
@@ -116,6 +184,28 @@ const resolveRankingMetaText = (item: ToolRankingListItem): string => {
   return item.cateTitle || '工具热榜'
 }
 
+/**
+ * 函数说明：输出榜单项右侧统计文案，兼容真实点击数据和冷启动推荐数据。
+ */
+const resolveRankingStatText = (item: ToolRankingListItem): string => {
+  if (item.viewCount > 0) {
+    return `点击 ${item.viewCount}`
+  }
+  return '推荐'
+}
+
+/**
+ * 函数说明：根据点击量与排名生成热度条宽度，让榜单视觉层级更明确。
+ */
+const resolveRankingHeatStyle = (item: ToolRankingListItem) => {
+  const viewCount = Number(item.viewCount || 0)
+  const basePercent = viewCount > 0 ? Math.round((viewCount / maxViewCount.value) * 100) : 36
+  const rankBonus = Math.max(0, 18 - Number(item.rank || 0) * 3)
+  return {
+    width: `${Math.min(100, Math.max(18, basePercent + rankBonus))}%`
+  }
+}
+
 onMounted(() => {
   void loadToolRankingList()
 })
@@ -140,9 +230,32 @@ watch(
       <div class="tool-ranking-board__badge">{{ period === 'day' ? '日榜' : period === 'month' ? '月榜' : period === 'all' ? '总榜' : '周榜' }}</div>
     </div>
 
-    <div v-if="displayRankingList.length > 0" class="tool-ranking-board__list">
+    <div v-if="displayRankingList.length > 0 && flat && !compact" class="tool-ranking-board__podium">
       <button
-        v-for="item in displayRankingList"
+        v-for="item in topRankingItems"
+        :key="`podium-${item.toolKey}-${item.rank}`"
+        type="button"
+        class="tool-ranking-board__podium-item"
+        :class="`tool-ranking-board__podium-item--rank-${item.rank}`"
+        @click="handleRankingClick(item)"
+      >
+        <div class="tool-ranking-board__podium-rank">No.{{ item.rank }}</div>
+        <div class="tool-ranking-board__podium-title">{{ item.toolTitle }}</div>
+        <div class="tool-ranking-board__podium-meta">{{ resolveRankingMetaText(item) }}</div>
+        <div class="tool-ranking-board__heat">
+          <span :style="resolveRankingHeatStyle(item)"></span>
+        </div>
+        <div class="tool-ranking-board__podium-stat">{{ resolveRankingStatText(item) }}</div>
+      </button>
+    </div>
+
+    <div
+      v-if="displayRankingList.length > 0"
+      class="tool-ranking-board__list"
+      :class="{ 'tool-ranking-board__list--with-podium': flat && !compact }"
+    >
+      <button
+        v-for="item in secondaryRankingItems"
         :key="`${item.toolKey}-${item.rank}`"
         type="button"
         class="tool-ranking-board__item"
@@ -156,7 +269,8 @@ watch(
           <div class="tool-ranking-board__item-meta">{{ resolveRankingMetaText(item) }}</div>
         </div>
         <div v-if="!compact" class="tool-ranking-board__stat">
-          <span>{{ item.viewCount > 0 ? `点击 ${item.viewCount}` : '推荐' }}</span>
+          <span>{{ resolveRankingStatText(item) }}</span>
+          <i class="tool-ranking-board__stat-bar" :style="resolveRankingHeatStyle(item)"></i>
         </div>
       </button>
     </div>
@@ -172,14 +286,12 @@ watch(
   background: #ffffff;
   border: 1px solid rgba(15, 23, 42, 0.06);
   border-radius: 20px;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.04);
   padding: 1rem;
 }
 
 .tool-ranking-board--flat {
   border: 0;
   background: transparent;
-  box-shadow: none;
   padding: 0;
 }
 
@@ -226,6 +338,106 @@ watch(
   gap: 0.625rem;
 }
 
+.tool-ranking-board__list--with-podium {
+  margin-top: 0.9rem;
+}
+
+.tool-ranking-board__podium {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.tool-ranking-board__podium-item {
+  position: relative;
+  min-height: 148px;
+  overflow: hidden;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  padding: 1rem;
+  background: #ffffff;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.tool-ranking-board__podium-item::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  height: 4px;
+  background: #2563eb;
+}
+
+.tool-ranking-board__podium-item:hover {
+  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.25);
+}
+
+.tool-ranking-board__podium-item--rank-1 {
+  background: linear-gradient(180deg, #ffffff 0%, #fff8e7 100%);
+}
+
+.tool-ranking-board__podium-item--rank-1::before {
+  background: #f59e0b;
+}
+
+.tool-ranking-board__podium-item--rank-2::before {
+  background: #0ea5e9;
+}
+
+.tool-ranking-board__podium-item--rank-3::before {
+  background: #10b981;
+}
+
+.tool-ranking-board__podium-rank {
+  font-size: 0.76rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #475569;
+}
+
+.tool-ranking-board__podium-title {
+  margin-top: 0.55rem;
+  min-height: 2.8rem;
+  font-size: 1.08rem;
+  line-height: 1.35;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tool-ranking-board__podium-meta {
+  margin-top: 0.45rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #64748b;
+}
+
+.tool-ranking-board__podium-stat {
+  margin-top: 0.65rem;
+  font-size: 0.82rem;
+  line-height: 1.2;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.tool-ranking-board__heat {
+  position: relative;
+  width: 100%;
+  height: 5px;
+  margin-top: 0.75rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.tool-ranking-board__heat span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
+}
+
 .tool-ranking-board__item {
   width: 100%;
   display: flex;
@@ -237,28 +449,25 @@ watch(
   padding: 0.75rem;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
 .tool-ranking-board__item:hover {
   transform: translateY(-1px);
-  box-shadow: 0 12px 24px rgba(99, 102, 241, 0.12);
   background: #ffffff;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item {
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 0;
-  padding: 1rem 0;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  padding: 0.86rem 0.95rem;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item:hover {
-  box-shadow: none;
-  transform: none;
-  background: rgba(79, 70, 229, 0.03);
-  border-color: rgba(79, 70, 229, 0.16);
+  transform: translateY(-1px);
+  background: #ffffff;
+  border-color: rgba(37, 99, 235, 0.2);
 }
 
 .tool-ranking-board__rank {
@@ -284,7 +493,7 @@ watch(
   width: 2.4rem;
   height: 2.4rem;
   font-size: 1rem;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__content {
@@ -304,9 +513,20 @@ watch(
 }
 
 .tool-ranking-board--flat .tool-ranking-board__stat {
+  display: grid;
+  min-width: 92px;
+  gap: 0.38rem;
   color: #0f172a;
   font-size: 0.875rem;
   font-weight: 600;
+}
+
+.tool-ranking-board__stat-bar {
+  display: block;
+  height: 4px;
+  max-width: 92px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
 }
 
 .tool-ranking-board--flat .tool-ranking-board__empty {
@@ -386,6 +606,28 @@ watch(
   .tool-ranking-board__header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .tool-ranking-board__podium {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-ranking-board__podium-item {
+    min-height: auto;
+  }
+
+  .tool-ranking-board__podium-title {
+    min-height: auto;
+    font-size: 1rem;
+  }
+
+  .tool-ranking-board--flat .tool-ranking-board__item {
+    align-items: flex-start;
+  }
+
+  .tool-ranking-board--flat .tool-ranking-board__stat {
+    min-width: 72px;
+    text-align: right;
   }
 }
 </style>

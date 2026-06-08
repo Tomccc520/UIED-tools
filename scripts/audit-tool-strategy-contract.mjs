@@ -9,6 +9,10 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import {
+  MEMBER_CORE_TOOL_PRESETS,
+  countCommercialPolicyTools
+} from './lib/tool-commercial-policy.mjs'
 
 const PROJECT_ROOT = process.cwd()
 const PORTS_ENV_PATH = path.resolve(PROJECT_ROOT, '.runtime/ports.env')
@@ -161,6 +165,8 @@ const printReport = (report) => {
   console.log(`策略规则数: ${report.ruleCount}`)
   console.log(`停用工具数: ${report.disabledToolCount}`)
   console.log(`带策略字段工具数: ${report.strategyFieldToolCount}`)
+  console.log(`会员核心工具数: ${report.memberCoreToolCount}`)
+  console.log(`免费/标准/会员核心: ${report.freeToolCount}/${report.standardToolCount}/${report.premiumToolCount}`)
   console.log('')
 
   if (report.hardErrors.length > 0) {
@@ -195,6 +201,7 @@ const toolCategories = parseConfigArray(siteConfig.toolCategories).length
 const loginToolConsumeRules = parseConfigArray(siteConfig.loginToolConsumeRules)
 const flatTools = flattenTools(toolCategories)
 const toolRouteCount = routerMap.size
+const commercialPolicySummary = countCommercialPolicyTools(toolCategories)
 
 const resolvedToolKeyMap = new Map()
 const duplicateToolKeyMap = new Map()
@@ -276,11 +283,15 @@ if (flatTools.length === 0) {
 }
 
 if (missingExplicitToolKeys.length > 0) {
-  warnings.push(`仍有 ${missingExplicitToolKeys.length} 个工具未显式填写 toolKey，当前依赖链接推导。`)
+  hardErrors.push(`仍有 ${missingExplicitToolKeys.length} 个工具未显式填写 toolKey，当前依赖链接推导。`)
 }
 
-if (strategyFieldToolCount === 0) {
-  warnings.push('当前工具分类树里还没有任何工具显式配置 consumePoints/memberFree/status，策略中心仍主要依赖登录规则。')
+if (strategyFieldToolCount !== flatTools.length) {
+  hardErrors.push(`仍有 ${flatTools.length - strategyFieldToolCount} 个工具未显式配置 consumePoints/memberFree/status。`)
+}
+
+if (commercialPolicySummary.memberCoreToolCount !== MEMBER_CORE_TOOL_PRESETS.length) {
+  hardErrors.push(`会员核心工具数量应为 ${MEMBER_CORE_TOOL_PRESETS.length} 个，当前为 ${commercialPolicySummary.memberCoreToolCount} 个。`)
 }
 
 printReport({
@@ -292,6 +303,10 @@ printReport({
   ruleCount: loginToolConsumeRules.length,
   disabledToolCount,
   strategyFieldToolCount,
+  memberCoreToolCount: commercialPolicySummary.memberCoreToolCount,
+  freeToolCount: commercialPolicySummary.freeToolCount,
+  standardToolCount: commercialPolicySummary.standardToolCount,
+  premiumToolCount: commercialPolicySummary.premiumToolCount,
   hardErrors,
   warnings,
 })

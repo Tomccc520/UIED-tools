@@ -401,25 +401,74 @@ watch(
 
 /* 移动端样式优化 */
 @media screen and (max-width: 768px) {
+  .home-container {
+    padding: 0 0 1.5rem;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+  }
+
   .tool-card {
-    padding: 1rem;
-    margin-bottom: 0.75rem;
+    padding: 0.75rem;
+    margin-bottom: 0;
+    border-radius: 0.875rem;
   }
 
   .tool-card .flex.items-center {
-    padding-bottom: 0.5rem;
-    margin-bottom: 0.5rem;
+    align-items: flex-start;
+    padding-bottom: 0.45rem;
+    margin-bottom: 0.45rem;
   }
 
   .tool-card .font-semibold.text-lg {
-    font-size: 1.5rem;
-    line-height: 1.5;
+    width: 100%;
+    min-height: 2.3em;
+    font-size: 0.92rem;
+    line-height: 1.25;
     word-break: break-word;
     white-space: normal;
   }
 
+  .tool-card :deep(.tool-icon) {
+    width: 2rem;
+    height: 2rem;
+    min-width: 2rem;
+    min-height: 2rem;
+  }
+
+  .tool-card :deep(.icon-wrapper),
+  .tool-card :deep(.icon-image),
+  .tool-card :deep(.icon-placeholder) {
+    width: 1.15rem;
+    height: 1.15rem;
+  }
+
+  .tool-card .ml-2 {
+    margin-left: 0.45rem;
+  }
+
+  .tool-card .el-text {
+    line-height: 1.35;
+  }
+
+  .tool-card .flex.mt-2 {
+    margin-top: 0.45rem;
+  }
+
+  .tool-card .flex.mt-2 .el-text {
+    display: -webkit-box;
+    min-height: 2.55em;
+    overflow: hidden;
+    font-size: 0.76rem;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
   .tool-card .text-sm {
-    font-size: 1.125rem;
+    font-size: 0.75rem;
   }
 
   .card-arrow {
@@ -428,7 +477,7 @@ watch(
 
   .section-title {
     margin: 1.5rem 0 0.75rem;
-    font-size: 1.5rem;
+    font-size: 1.05rem;
   }
 
   .sub-title {
@@ -436,7 +485,7 @@ watch(
   }
 
   .scroll-container {
-    padding: 0 0.75rem;
+    padding: 0;
   }
 }
 
@@ -488,8 +537,8 @@ watch(
 
 /* 调整网格布局的响应式断点 */
 .grid {
-  grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 @media (min-width: 640px) {
@@ -636,5 +685,17 @@ watch(
 .scroll-container::-webkit-scrollbar {
   width: 0px;
   background: transparent;
+}
+
+@media screen and (max-width: 768px) {
+  .home-container {
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .scroll-container {
+    padding-left: 0;
+    padding-right: 0;
+  }
 }
 </style>

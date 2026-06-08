@@ -26,8 +26,10 @@ const toolConsumeTimestampMap = new Map<string, number>()
 /**
  * 函数说明：构建工具积分扣减的短时去重键，避免同一次点击链路被重复扣分。
  */
-const buildToolConsumeDedupeKey = (toolKey: string): string => {
-  return String(toolKey || '').trim().toLowerCase()
+const buildToolConsumeDedupeKey = (toolKey: string, action: string): string => {
+  const normalizedToolKey = String(toolKey || '').trim().toLowerCase()
+  const normalizedAction = String(action || 'start').trim().toLowerCase()
+  return `${normalizedToolKey}:${normalizedAction}`
 }
 
 /**
@@ -86,6 +88,7 @@ interface RuntimeToolConsumePolicy {
   consumePoints: number
   memberFree: boolean
   status: number
+  needLogin: boolean
   ruleMatched: boolean
   source: 'login-rule' | 'tool-catalog'
 }
@@ -167,6 +170,7 @@ const resolveRuntimePolicyFromToolCatalog = (
     consumePoints,
     memberFree: Boolean(matchedTool.memberFree ?? true),
     status: toolStatus,
+    needLogin: typeof matchedTool.needLogin === 'boolean' ? matchedTool.needLogin : consumePoints > 0,
     ruleMatched: true,
     source: 'tool-catalog'
   }
@@ -198,6 +202,10 @@ const resolveRuntimeToolPolicy = async (toolKey: string, routePath = ''): Promis
       consumePoints: Math.max(0, Number(matchedRule.consumePoints ?? 1)),
       memberFree: Boolean(matchedRule.memberFree),
       status,
+      needLogin:
+        typeof matchedRule.needLogin === 'boolean'
+          ? matchedRule.needLogin
+          : Math.max(0, Number(matchedRule.consumePoints ?? 1)) > 0,
       ruleMatched: true,
       source: 'login-rule'
     }
@@ -284,6 +292,10 @@ export const useToolConsume = () => {
       return false
     }
 
+    if (runtimePolicy && !runtimePolicy.needLogin && runtimePolicy.consumePoints <= 0) {
+      return true
+    }
+
     if (!isFrontendUserLoggedIn()) {
       promptLoginDialog(loginWarningText, options.redirectPath, `${toolKey}:${action}`)
       return false
@@ -302,7 +314,7 @@ export const useToolConsume = () => {
       }
     }
 
-    const dedupeKey = buildToolConsumeDedupeKey(toolKey)
+    const dedupeKey = buildToolConsumeDedupeKey(toolKey, action)
     if (isToolConsumeDuplicated(dedupeKey)) {
       return true
     }

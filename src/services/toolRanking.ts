@@ -36,6 +36,8 @@ export interface ToolRankingListItem {
   successCount: number
   downloadCount: number
   score: number
+  status: number
+  remark: string
 }
 
 export interface ToolRankingListResult {
@@ -108,6 +110,16 @@ const normalizeToolRankingRoutePath = (value: unknown): string => {
  */
 const normalizeToolRankingKey = (value: unknown): string => {
   return String(value || '').trim().toLowerCase()
+}
+
+/**
+ * 函数说明：标准化排行榜周期，避免后台脏值导致接口请求与前端展示口径不一致。
+ */
+export const normalizeToolRankingPeriod = (value: unknown, fallback: ToolRankingPeriod = 'week'): ToolRankingPeriod => {
+  const normalized = String(value || '').trim()
+  return normalized === 'day' || normalized === 'week' || normalized === 'month' || normalized === 'all'
+    ? normalized
+    : fallback
 }
 
 /**
@@ -188,7 +200,9 @@ const normalizeToolRankingListItems = (input: unknown): ToolRankingListItem[] =>
         startCount: Math.max(0, Number(record.startCount || 0)),
         successCount: Math.max(0, Number(record.successCount || 0)),
         downloadCount: Math.max(0, Number(record.downloadCount || 0)),
-        score: Math.max(0, Number(record.score || 0))
+        score: Math.max(0, Number(record.score || 0)),
+        status: Number(record.status ?? 1) === 0 ? 0 : 1,
+        remark: String(record.remark || '').trim()
       }
     })
     .filter((item): item is ToolRankingListItem => Boolean(item?.toolKey && item.toolTitle && item.toolUrl))
@@ -200,7 +214,7 @@ const normalizeToolRankingListItems = (input: unknown): ToolRankingListItem[] =>
 const normalizeToolRankingListResult = (input: unknown): ToolRankingListResult => {
   const record = (input || {}) as Record<string, unknown>
   return {
-    period: (String(record.period || 'week').trim() || 'week') as ToolRankingPeriod,
+    period: normalizeToolRankingPeriod(record.period),
     sortBy: (String(record.sortBy || 'view').trim() || 'view') as ToolRankingSortBy,
     limit: Math.max(1, Number(record.limit || 10) || 10),
     startDate: String(record.startDate || '').trim(),
@@ -374,6 +388,8 @@ export const buildFallbackToolRankingItems = (toolList: Tool[]): ToolRankingList
       startCount: 0,
       successCount: 0,
       downloadCount: 0,
-      score: 0
+      score: 0,
+      status: Number(tool.status ?? 1) === 0 ? 0 : 1,
+      remark: String(tool.remark || '').trim()
     }))
 }

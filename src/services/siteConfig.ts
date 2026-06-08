@@ -82,6 +82,10 @@ export interface SiteLoginToolConsumeRule {
   status: number
   sort: number
   remark: string
+  needLogin?: boolean
+  commercialTier?: string
+  memberCore?: boolean
+  policyVersion?: string
 }
 
 export interface SiteChangelogFeatureItem {
@@ -408,6 +412,19 @@ const normalizeBooleanFlag = (input: unknown): boolean => {
     return normalized === '1' || normalized === 'true'
   }
   return false
+}
+
+/**
+ * 函数说明：标准化工具排行榜周期，避免后台脏值导致请求参数与页面展示不一致。
+ */
+const normalizeSiteToolRankingPeriod = (
+  input: unknown,
+  fallback: SitePublicConfig['toolRankingDefaultPeriod'] = DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod
+): SitePublicConfig['toolRankingDefaultPeriod'] => {
+  const normalized = String(input || '').trim()
+  return normalized === 'day' || normalized === 'week' || normalized === 'month' || normalized === 'all'
+    ? normalized
+    : fallback
 }
 
 /**
@@ -797,7 +814,11 @@ const normalizeLoginToolConsumeRules = (input: unknown): SiteLoginToolConsumeRul
         memberFree: normalizeBooleanFlag(record.memberFree ?? true),
         status: Number(record.status ?? 1) === 0 ? 0 : 1,
         sort: Number.isFinite(sortRaw) ? Math.max(0, Math.floor(sortRaw)) : index + 1,
-        remark: String(record.remark || '').trim()
+        remark: String(record.remark || '').trim(),
+        ...(record.needLogin !== undefined ? { needLogin: normalizeBooleanFlag(record.needLogin) } : {}),
+        ...(record.commercialTier ? { commercialTier: String(record.commercialTier || '').trim() } : {}),
+        ...(record.memberCore !== undefined ? { memberCore: normalizeBooleanFlag(record.memberCore) } : {}),
+        ...(record.policyVersion ? { policyVersion: String(record.policyVersion || '').trim() } : {})
       } as SiteLoginToolConsumeRule
     })
     .filter((item): item is SiteLoginToolConsumeRule => Boolean(item))
@@ -866,15 +887,29 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
               const consumePointsRaw = Number(toolRecord.consumePoints)
               const consumePoints =
                 Number.isFinite(consumePointsRaw) ? Math.max(0, Math.floor(consumePointsRaw)) : undefined
-              const memberFree =
-                typeof toolRecord.memberFree === 'boolean'
-                  ? toolRecord.memberFree
-                  : undefined
+              const memberFree = toolRecord.memberFree !== undefined ? normalizeBooleanFlag(toolRecord.memberFree) : undefined
               const statusRaw = Number(toolRecord.status)
               const status = Number.isFinite(statusRaw) ? (statusRaw === 0 ? 0 : 1) : undefined
               const sortRaw = Number(toolRecord.sort)
               const sort = Number.isFinite(sortRaw) ? Math.max(0, Math.floor(sortRaw)) : undefined
               const remark = String(toolRecord.remark || '').trim()
+              const needLogin =
+                toolRecord.needLogin !== undefined ? normalizeBooleanFlag(toolRecord.needLogin) : undefined
+              const allowAnonymousPreview =
+                toolRecord.allowAnonymousPreview !== undefined
+                  ? normalizeBooleanFlag(toolRecord.allowAnonymousPreview)
+                  : undefined
+              const anonymousQuotaRaw = Number(toolRecord.anonymousQuota)
+              const anonymousQuota =
+                Number.isFinite(anonymousQuotaRaw) ? Math.max(0, Math.floor(anonymousQuotaRaw)) : undefined
+              const commercialTierRaw = String(toolRecord.commercialTier || '').trim()
+              const commercialTier =
+                commercialTierRaw === 'premium' || commercialTierRaw === 'standard' || commercialTierRaw === 'free'
+                  ? commercialTierRaw
+                  : undefined
+              const memberCore =
+                toolRecord.memberCore !== undefined ? normalizeBooleanFlag(toolRecord.memberCore) : undefined
+              const policyVersion = String(toolRecord.policyVersion || '').trim()
               const tags = normalizeArrayInput(toolRecord.tags)
                 .map((tag) => String(tag || '').trim())
                 .filter(Boolean)
@@ -904,7 +939,13 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
                 ...(memberFree !== undefined ? { memberFree } : {}),
                 ...(status !== undefined ? { status } : {}),
                 ...(sort !== undefined ? { sort } : {}),
-                ...(remark ? { remark } : {})
+                ...(remark ? { remark } : {}),
+                ...(needLogin !== undefined ? { needLogin } : {}),
+                ...(allowAnonymousPreview !== undefined ? { allowAnonymousPreview } : {}),
+                ...(anonymousQuota !== undefined ? { anonymousQuota } : {}),
+                ...(commercialTier ? { commercialTier } : {}),
+                ...(memberCore !== undefined ? { memberCore } : {}),
+                ...(policyVersion ? { policyVersion } : {})
               }
               return normalizedTool
             })
@@ -1029,9 +1070,10 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     toolRankingPageDescription:
       String(record.toolsToolRankingPageDescription || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingPageDescription).trim() ||
       DEFAULT_SITE_PUBLIC_CONFIG.toolRankingPageDescription,
-    toolRankingDefaultPeriod:
-      (String(record.toolsToolRankingDefaultPeriod || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod).trim() ||
-        DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod) as SitePublicConfig['toolRankingDefaultPeriod'],
+    toolRankingDefaultPeriod: normalizeSiteToolRankingPeriod(
+      record.toolsToolRankingDefaultPeriod,
+      DEFAULT_SITE_PUBLIC_CONFIG.toolRankingDefaultPeriod
+    ),
     toolRankingPageLimit,
     toolRankingShowOnSidebar: normalizeBooleanFlag(
       record.toolsToolRankingShowOnSidebar ?? DEFAULT_SITE_PUBLIC_CONFIG.toolRankingShowOnSidebar
@@ -1039,9 +1081,10 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     toolRankingSidebarTitle:
       String(record.toolsToolRankingSidebarTitle || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarTitle).trim() ||
       DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarTitle,
-    toolRankingSidebarPeriod:
-      (String(record.toolsToolRankingSidebarPeriod || DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarPeriod).trim() ||
-        DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarPeriod) as SitePublicConfig['toolRankingSidebarPeriod'],
+    toolRankingSidebarPeriod: normalizeSiteToolRankingPeriod(
+      record.toolsToolRankingSidebarPeriod,
+      DEFAULT_SITE_PUBLIC_CONFIG.toolRankingSidebarPeriod
+    ),
     headerLinks: normalizeLinkItems(record.toolsHeaderLinks),
     searchQuickTools: normalizeQuickToolItems(record.toolsSearchQuickTools),
     searchProviderLabel:

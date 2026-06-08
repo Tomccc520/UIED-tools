@@ -11,6 +11,11 @@ import process from 'node:process'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import ts from 'typescript'
+import {
+  buildToolConsumeRulesFromCategories,
+  countCommercialPolicyTools,
+  enrichToolCategoriesWithCommercialPolicy
+} from '../lib/tool-commercial-policy.mjs'
 
 const CURRENT_FILE = fileURLToPath(import.meta.url)
 const ROOT_DIR = path.resolve(path.dirname(CURRENT_FILE), '../..')
@@ -1063,7 +1068,7 @@ const toMysqlUtf8Hex = (input) => Buffer.from(String(input), 'utf8').toString('h
 /**
  * 函数说明：生成单个配置项的 upsert SQL，默认只补缺失/空值/乱码，force 模式可直接覆盖。
  */
-const buildConfigUpsertSql = (configName, jsonValue, force = false, repairGarbled = false) => {
+const buildConfigUpsertSql = (configName, jsonValue, force = false, repairGarbled = false, configType = 'website') => {
   const hexValue = toMysqlUtf8Hex(jsonValue)
   const conditions = [
     "TRIM(IFNULL(`value`, '')) = ''",
@@ -1080,11 +1085,11 @@ const buildConfigUpsertSql = (configName, jsonValue, force = false, repairGarble
   return [
     `UPDATE la_system_config`,
     `SET \`value\` = CONVERT(0x${hexValue} USING utf8mb4), \`update_time\` = @now_ts`,
-    `WHERE \`type\` = 'website' AND \`name\` = '${configName}' AND (${updateCondition});`,
+    `WHERE \`type\` = '${configType}' AND \`name\` = '${configName}' AND (${updateCondition});`,
     `INSERT INTO la_system_config (\`type\`, \`name\`, \`value\`, \`create_time\`, \`update_time\`)`,
-    `SELECT 'website', '${configName}', CONVERT(0x${hexValue} USING utf8mb4), @now_ts, @now_ts`,
+    `SELECT '${configType}', '${configName}', CONVERT(0x${hexValue} USING utf8mb4), @now_ts, @now_ts`,
     `WHERE NOT EXISTS (`,
-    `  SELECT 1 FROM la_system_config WHERE \`type\` = 'website' AND \`name\` = '${configName}'`,
+    `  SELECT 1 FROM la_system_config WHERE \`type\` = '${configType}' AND \`name\` = '${configName}'`,
     `);`
   ].join('\n')
 }
@@ -1094,12 +1099,17 @@ const buildConfigUpsertSql = (configName, jsonValue, force = false, repairGarble
  */
 const buildSyncPayloads = async () => {
   const rawToolCategories = await loadFrontendToolCategories()
-  const toolCategories = enrichToolCategoriesWithFirstPhaseMetadata(rawToolCategories)
+  const firstPhaseToolCategories = enrichToolCategoriesWithFirstPhaseMetadata(rawToolCategories)
+  const toolCategories = enrichToolCategoriesWithCommercialPolicy(firstPhaseToolCategories)
+  const toolConsumeRules = buildToolConsumeRulesFromCategories(toolCategories)
   const sidebarBrandLogo = (await loadFrontendDefaultSidebarBrandLogo()) || DEFAULT_SIDEBAR_BRAND_LOGO
-  const firstPhaseStrategyToolCount = countFirstPhaseStrategyTools(toolCategories)
+  const commercialPolicySummary = countCommercialPolicyTools(toolCategories)
 
   logInfo(
-    `第一阶段高频工具主数据已注入 ${firstPhaseStrategyToolCount} 项，开始写入 toolsCategoryTree。`
+    `工具商业策略字段已注入 ${commercialPolicySummary.strategyFieldToolCount} 项，开始写入 toolsCategoryTree。`
+  )
+  logInfo(
+    `商业策略收口：工具 ${commercialPolicySummary.toolCount} 项，显式 toolKey ${commercialPolicySummary.explicitToolKeyCount} 项，策略字段 ${commercialPolicySummary.strategyFieldToolCount} 项，会员核心 ${commercialPolicySummary.memberCoreToolCount} 项。`
   )
 
   return [
@@ -1232,6 +1242,12 @@ const buildSyncPayloads = async () => {
       name: 'toolsCategoryTree',
       json: JSON.stringify(toolCategories),
       repairGarbled: false
+    },
+    {
+      type: 'login',
+      name: 'toolConsumeRules',
+      json: JSON.stringify(toolConsumeRules),
+      repairGarbled: false
     }
   ]
 }
@@ -1322,7 +1338,7 @@ const main = async () => {
 
   let sql = 'SET NAMES utf8mb4;\nSET @now_ts = UNIX_TIMESTAMP();\n'
   payloads.forEach((payload) => {
-    sql += `${buildConfigUpsertSql(payload.name, payload.json, force, payload.repairGarbled)}\n`
+    sql += `${buildConfigUpsertSql(payload.name, payload.json, force, payload.repairGarbled, payload.type || 'website')}\n`
   })
 
   logInfo(`准备同步 ${payloads.length} 项前端默认配置到后台（db=${runtimeConfig.dbName}，force=${force ? '1' : '0'}）...`)
