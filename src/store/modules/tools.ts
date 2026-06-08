@@ -46,16 +46,29 @@ const isExternalLink = (url: string): boolean => /^https?:\/\//i.test(url)
 /**
  * 函数说明：将后台热门工具配置转换为前端推荐工具结构
  */
-const buildHotTools = (items: SiteHotToolItem[]): Tool[] => {
-  return items.map((item, index) => ({
-    id: 1000 + index,
-    title: item.title,
-    desc: item.desc || item.title,
-    url: item.link,
-    logo: { type: 'svg', name: 'palette' },
-    cate: '热门工具',
-    isExternal: isExternalLink(item.link)
-  }))
+const buildHotTools = (items: SiteHotToolItem[], categories: ToolCategory[] = []): Tool[] => {
+  return items.map((item, index) => {
+    const matchedTool = findToolByUrl(categories, item.link)
+    return {
+      id: matchedTool?.id || 1000 + index,
+      title: matchedTool?.title || item.title,
+      desc: item.desc || matchedTool?.desc || item.title,
+      url: item.link,
+      logo: matchedTool?.logo || { type: 'svg', name: 'palette' },
+      cate: matchedTool?.cate || '热门工具',
+      isExternal: matchedTool?.isExternal ?? isExternalLink(item.link),
+      toolKey: matchedTool?.toolKey,
+      consumePoints: matchedTool?.consumePoints,
+      memberFree: matchedTool?.memberFree,
+      status: matchedTool?.status,
+      remark: matchedTool?.remark,
+      needLogin: matchedTool?.needLogin,
+      allowAnonymousPreview: matchedTool?.allowAnonymousPreview,
+      commercialTier: matchedTool?.commercialTier,
+      memberCore: matchedTool?.memberCore,
+      policyVersion: matchedTool?.policyVersion
+    }
+  })
 }
 
 /**
@@ -88,7 +101,7 @@ export const useToolsStore = defineStore('tools', {
       try {
         const siteConfig = await getSitePublicConfig({ forceRefresh: true })
         if (siteConfig.hotTools.length > 0) {
-          this.recommends = buildHotTools(siteConfig.hotTools)
+          this.recommends = buildHotTools(siteConfig.hotTools, siteConfig.toolCategories)
         }
       } catch (error) {
         console.error('获取热门工具配置失败，使用默认配置:', error)

@@ -18,12 +18,12 @@
 
 <script setup lang="ts">
 import { onMounted, ref, computed, nextTick, watch } from '@vue/runtime-core'
-import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useRoute } from "vue-router"
 import HotSearch from '@/components/HotSearch/HotSearch.vue'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
 import { getSitePublicConfig, type SitePublicConfig, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
+import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 // 初始化 store 和路由
@@ -31,6 +31,7 @@ const toolsStore = useToolsStore()
 const route = useRoute()
 const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>([])
 const siteConfig = ref<SitePublicConfig | null>(null)
+const { isToolDisabled, openToolEntry } = useToolRuntimeGate()
 const defaultHomeSectionKeyMap: Record<string, string> = {
   'AI工具箱': 'ai',
   '设计工具': 'design',
@@ -122,35 +123,12 @@ const homeCategorySections = computed<HomeCategorySection[]>(() => {
 /**
  * 函数说明：处理工具点击事件，外链新开页，站内工具保留当前“新窗口使用”的原有行为
  */
-const handleToolClick = (item: Tool) => {
-  if (isToolDisabled(item)) {
-    ElMessage.warning(resolveToolDisabledMessage(item))
-    return
-  }
-  if (item.isExternal) {
-    window.open(item.url, '_blank')
-  } else {
-    window.open(`${window.location.origin}${item.url}`, '_blank')
-  }
-}
-
-/**
- * 函数说明：判断工具是否在后台被停用（status=0）。
- */
-const isToolDisabled = (tool: Tool): boolean => {
-  return Number(tool.status ?? 1) === 0
-}
-
-/**
- * 函数说明：输出工具停用提示文案，优先显示后台配置备注。
- */
-const resolveToolDisabledMessage = (tool: Tool): string => {
-  const title = String(tool.title || '').trim() || '当前工具'
-  const remark = String(tool.remark || '').trim()
-  if (remark) {
-    return `工具「${title}」已停用：${remark}`
-  }
-  return `工具「${title}」已在后台停用，请稍后再试。`
+const handleToolClick = async (item: Tool) => {
+  await openToolEntry(item, {
+    target: 'blank',
+    action: 'open',
+    source: 'home-tool-card'
+  })
 }
 
 // 3D 效果状态

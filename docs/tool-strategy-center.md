@@ -178,7 +178,23 @@ npm run audit:tool-strategy
 - 升级补丁可感知策略 schema 是否变更
 - 客户环境可判断是否需要同步重建 `toolConsumeRules`
 
-## 7. 发布前检查
+## 7. 第二阶段体验打磨范围
+
+第二阶段不再优先扩工具数量，围绕固定 20 个会员核心工具做体验增强和卖点展示：
+
+1. 统一入口门禁：停用、外链、站内跳转、登录校验、扣费校验统一走 `useToolRuntimeGate`。
+2. 统一会员卖点：会员核心工具在列表、热榜、搜索和详情页展示一致的会员核心标识。
+3. 统一转化路径：未登录、积分不足、会员免扣、工具停用都给明确提示，不让用户进入空白链路。
+4. 统一榜单口径：热榜点击不能绕过停用状态，兜底推荐要继承工具主数据状态。
+5. 统一后台操作：工具主数据页固定保留“同步高频工具 / 同步计费策略 / 一键体检 / 前端预览”四个高频动作。
+
+推进原则：
+
+- 只做体验增强和卖点展示，不改大范围底层策略。
+- 先打磨会员核心工具，再扩展到标准工具。
+- 每轮改动都跑前台类型检查、后台类型检查和 P0 操作入口 smoke。
+
+## 8. 发布前检查
 
 发布前至少执行：
 
@@ -186,6 +202,7 @@ npm run audit:tool-strategy
 npm run audit:tool-strategy
 npm run dev:business:smoke
 npm run dev:delivery:check
+cd backend/likeadmin-go/admin && npm run smoke:p0-actions
 ```
 
 建议顺序：

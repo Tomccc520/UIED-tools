@@ -105,7 +105,7 @@
                       <el-button
                         type="primary"
                         size="small"
-                        :disabled="isToolEntryDisabled(tool.url)"
+                        :aria-disabled="isToolEntryDisabled(tool.url)"
                         @click.stop="handleToolClick(tool.url, tool.title)"
                       >
                         <el-icon>
@@ -216,6 +216,7 @@ import { Search, Delete, Link as LinkIcon, Close, Loading, User, ChatDotRound, C
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
 import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteQuickToolItem } from '@/services/siteConfig'
+import { resolveToolRuntimeLinkKind, useToolRuntimeGate, type ToolRuntimeEntry } from '@/composables/useToolRuntimeGate'
 import type { Tool, ToolCategory } from '@/types/tools'
 import logoImg from '@/assets/uiedlogo.png'
 import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
@@ -233,6 +234,7 @@ const quickTools = ref<SiteQuickToolItem[]>(defaultSearchQuickTools)
 const searchProviderLabel = ref(getDefaultSitePublicConfig().searchProviderLabel)
 const searchProviderLink = ref(getDefaultSitePublicConfig().searchProviderLink)
 const toolRuntimeEntryMap = ref<Map<string, Tool>>(new Map())
+const { isToolDisabled, openToolEntry } = useToolRuntimeGate()
 
 /**
  * 按需加载并配置搜索面板 Markdown 渲染器
@@ -248,8 +250,11 @@ const ensureSearchMarkedCore = async () => {
     const renderer = new markedCore.Renderer()
     // @ts-ignore - 忽略TypeScript类型错误，运行时能正常工作
     renderer.link = function (href, title, text) {
-      const titleAttr = title ? ` title="${title}"` : ''
-      return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`
+      if (!isSafeSearchAnswerLink(href)) {
+        return escapeSearchHtml(text)
+      }
+      const titleAttr = title ? ` title="${escapeSearchHtml(title)}"` : ''
+      return `<a href="${escapeSearchHtml(href)}"${titleAttr} target="_blank" rel="noopener noreferrer">${escapeSearchHtml(text)}</a>`
     }
 
     markedCore.setOptions({
@@ -314,6 +319,29 @@ let pendingResponseChunk = ''
 let responseFlushRafId: number | null = null
 
 /**
+ * 函数说明：转义搜索回答中的 HTML 属性和文本，避免 Markdown 链接注入危险属性。
+ */
+const escapeSearchHtml = (value: unknown): string => {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * 函数说明：判断搜索回答中的链接是否允许渲染为可点击地址。
+ */
+const isSafeSearchAnswerLink = (href: unknown): boolean => {
+  const targetUrl = String(href || '').trim()
+  if (!targetUrl) {
+    return false
+  }
+  return resolveToolRuntimeLinkKind(targetUrl) !== 'unsafe'
+}
+
+/**
  * 同步解析 Markdown 文本
  * 统一处理解析器未就绪与异常场景，确保渲染流程始终可用
  * @param content Markdown 文本
@@ -325,14 +353,14 @@ const parseMarkdownContent = (content: string) => {
   const ready = markedReady.value
   if (!ready || !markedCore) {
     void ensureSearchMarkedCore()
-    return content
+    return escapeSearchHtml(content)
   }
 
   try {
     return markedCore.parse(content) as string
   } catch (error) {
     debugError('Markdown 解析失败:', error)
-    return content
+    return escapeSearchHtml(content)
   }
 }
 
@@ -572,24 +600,27 @@ const findToolRuntimeEntry = (url: string): Tool | null => {
  * @returns 是否停用
  */
 const isToolEntryDisabled = (url: string): boolean => {
-  const matchedTool = findToolRuntimeEntry(url)
-  return Number(matchedTool?.status ?? 1) === 0
+  return isToolDisabled(findToolRuntimeEntry(url))
 }
 
 /**
- * 函数说明：输出搜索入口停用提示文案，优先展示后台配置备注。
+ * 函数说明：构建搜索入口运行态数据，优先使用后台工具主数据，兜底使用搜索结果标题与 URL。
  * @param url 工具地址
  * @param fallbackTitle 兜底工具标题
- * @returns 停用提示文案
+ * @returns 工具运行态入口
  */
-const resolveToolDisabledMessage = (url: string, fallbackTitle = '该工具'): string => {
+const resolveSearchRuntimeEntry = (url: string, fallbackTitle = '该工具'): ToolRuntimeEntry => {
   const matchedTool = findToolRuntimeEntry(url)
-  const toolTitle = String(matchedTool?.title || fallbackTitle).trim() || '该工具'
-  const remark = String(matchedTool?.remark || '').trim()
-  if (remark) {
-    return `工具「${toolTitle}」已停用：${remark}`
+  return {
+    title: String(matchedTool?.title || fallbackTitle).trim() || '该工具',
+    url,
+    isExternal: matchedTool?.isExternal,
+    status: matchedTool?.status,
+    remark: matchedTool?.remark,
+    toolKey: matchedTool?.toolKey,
+    needLogin: matchedTool?.needLogin,
+    consumePoints: matchedTool?.consumePoints
   }
-  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
 }
 
 // 处理搜索
@@ -699,12 +730,12 @@ const handleSearch = async () => {
 }
 
 // 处理工具点击
-const handleToolClick = (url: string, title = '') => {
-  if (isToolEntryDisabled(url)) {
-    ElMessage.warning(resolveToolDisabledMessage(url, title))
-    return
-  }
-  window.open(url, '_blank')
+const handleToolClick = async (url: string, title = '') => {
+  await openToolEntry(resolveSearchRuntimeEntry(url, title), {
+    target: 'blank',
+    action: 'open',
+    source: 'search-panel'
+  })
 }
 
 // 处理历史记录点击

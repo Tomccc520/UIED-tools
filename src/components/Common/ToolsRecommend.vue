@@ -90,24 +90,12 @@
         </h3>
       </div>
       <div class="divide-y divide-gray-100">
-        <template v-for="tool in hotTools" :key="tool.id">
-          <router-link v-if="!tool.isExternal" :to="tool.url"
-            class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group">
-            <div class="flex items-center justify-between">
-              <div>
-                <div class="text-sm font-medium text-gray-800 group-hover:text-red-500 transition-colors">{{ tool.title
-                }}</div>
-                <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
-              </div>
-              <svg xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
-              </svg>
-            </div>
-          </router-link>
-          <a v-else :href="tool.url" target="_blank" rel="noopener noreferrer"
-            class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group">
+        <div
+          v-for="tool in hotTools"
+          :key="tool.id"
+          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group cursor-pointer"
+          @click="handleToolClick(tool)"
+        >
             <div class="flex items-center justify-between">
               <div>
                 <div class="text-sm font-medium text-gray-800 group-hover:text-red-500 transition-colors">{{ tool.title
@@ -121,8 +109,7 @@
                   d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </div>
-          </a>
-        </template>
+        </div>
       </div>
     </div>
 
@@ -210,11 +197,12 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import type { Tool } from '@/types/tools'
 import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
 import { useToolsStore } from '@/store/modules/tools'
+import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import {
+  findToolByUrl,
   getNewToolsFromCategories,
   getRelatedToolsFromCategories,
   getUtilityToolsFromCategories
@@ -228,60 +216,46 @@ const props = defineProps<{
 const route = useRoute()
 const currentPath = computed(() => props.currentPath || route.path)
 const toolsStore = useToolsStore()
+const { isToolDisabled, isExternalLink, openToolEntry } = useToolRuntimeGate()
 
 /**
  * 处理工具点击跳转
  * 外链使用新窗口打开，站内工具使用完整地址打开新标签
  */
-const handleToolClick = (tool: Tool) => {
-  if (isToolDisabled(tool)) {
-    ElMessage.warning(resolveToolDisabledMessage(tool))
-    return
-  }
-  if (tool.isExternal) {
-    window.open(tool.url, '_blank')
-  } else {
-    window.open(`${window.location.origin}${tool.url}`, '_blank')
-  }
+const handleToolClick = async (tool: Tool) => {
+  await openToolEntry(tool, {
+    target: 'blank',
+    action: 'open',
+    source: 'tools-recommend'
+  })
 }
-
-/**
- * 函数说明：判断工具是否在后台被停用（status=0）。
- */
-const isToolDisabled = (tool: Tool): boolean => {
-  return Number(tool.status ?? 1) === 0
-}
-
-/**
- * 函数说明：输出工具停用提示文案，优先显示后台配置备注。
- */
-const resolveToolDisabledMessage = (tool: Tool): string => {
-  const title = String(tool.title || '').trim() || '当前工具'
-  const remark = String(tool.remark || '').trim()
-  if (remark) {
-    return `工具「${title}」已停用：${remark}`
-  }
-  return `工具「${title}」已在后台停用，请稍后再试。`
-}
-
-/**
- * 函数说明：判断链接是否为外链，支持 http/https 协议
- */
-const isExternalLink = (url: string): boolean => /^https?:\/\//i.test(url)
 
 /**
  * 函数说明：把后台热门工具配置映射为推荐组件可渲染的工具数据结构
  */
-const mapHotToolsToRecommendTools = (items: SiteHotToolItem[]): Tool[] => {
-  return items.map((item, index) => ({
-    id: 8000 + index,
-    title: item.title,
-    desc: item.desc || item.title,
-    url: item.link,
-    logo: { type: 'svg', name: 'palette' },
-    cate: '热门工具',
-    isExternal: isExternalLink(item.link)
-  }))
+const mapHotToolsToRecommendTools = (items: SiteHotToolItem[], categories = toolsStore.cates): Tool[] => {
+  return items.map((item, index) => {
+    const matchedTool = findToolByUrl(categories, item.link)
+    return {
+      id: matchedTool?.id || 8000 + index,
+      title: matchedTool?.title || item.title,
+      desc: item.desc || matchedTool?.desc || item.title,
+      url: item.link,
+      logo: matchedTool?.logo || { type: 'svg', name: 'palette' },
+      cate: matchedTool?.cate || '热门工具',
+      isExternal: matchedTool?.isExternal ?? isExternalLink(item.link),
+      toolKey: matchedTool?.toolKey,
+      consumePoints: matchedTool?.consumePoints,
+      memberFree: matchedTool?.memberFree,
+      status: matchedTool?.status,
+      remark: matchedTool?.remark,
+      needLogin: matchedTool?.needLogin,
+      allowAnonymousPreview: matchedTool?.allowAnonymousPreview,
+      commercialTier: matchedTool?.commercialTier,
+      memberCore: matchedTool?.memberCore,
+      policyVersion: matchedTool?.policyVersion
+    }
+  })
 }
 
 /**
@@ -303,7 +277,7 @@ const loadHotToolsFromSiteConfig = async () => {
   try {
     const siteConfig = await getSitePublicConfig({ forceRefresh: true })
     if (siteConfig.hotTools.length > 0) {
-      hotTools.value = mapHotToolsToRecommendTools(siteConfig.hotTools).slice(0, 8)
+      hotTools.value = mapHotToolsToRecommendTools(siteConfig.hotTools, siteConfig.toolCategories).slice(0, 8)
       return
     }
     hotTools.value = getDefaultHotRecommendTools()

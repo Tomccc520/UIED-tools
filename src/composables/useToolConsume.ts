@@ -76,6 +76,7 @@ export interface ToolConsumeOptions {
   toolKey: string
   action?: string
   mode?: ToolConsumeMode
+  routePath?: string
   loginWarningText?: string
   redirectPath?: string
   showConsumeSuccessToast?: boolean
@@ -83,11 +84,12 @@ export interface ToolConsumeOptions {
   skipConsumeWhen?: (profile: FrontendUserProfile | null) => boolean | Promise<boolean>
 }
 
-interface RuntimeToolConsumePolicy {
+export interface RuntimeToolConsumePolicy {
   toolKey: string
   consumePoints: number
   memberFree: boolean
   status: number
+  remark?: string
   needLogin: boolean
   ruleMatched: boolean
   source: 'login-rule' | 'tool-catalog'
@@ -170,6 +172,7 @@ const resolveRuntimePolicyFromToolCatalog = (
     consumePoints,
     memberFree: Boolean(matchedTool.memberFree ?? true),
     status: toolStatus,
+    remark: String(matchedTool.remark || '').trim(),
     needLogin: typeof matchedTool.needLogin === 'boolean' ? matchedTool.needLogin : consumePoints > 0,
     ruleMatched: true,
     source: 'tool-catalog'
@@ -179,7 +182,10 @@ const resolveRuntimePolicyFromToolCatalog = (
 /**
  * 函数说明：根据后端登录策略规则解析当前工具的运行时扣分策略。
  */
-const resolveRuntimeToolPolicy = async (toolKey: string, routePath = ''): Promise<RuntimeToolConsumePolicy | null> => {
+export const resolveToolConsumeRuntimePolicy = async (
+  toolKey: string,
+  routePath = ''
+): Promise<RuntimeToolConsumePolicy | null> => {
   const normalizedToolKey = normalizeToolKeyText(toolKey)
   const normalizedRoutePath = normalizeToolRoutePath(routePath)
   if (!normalizedToolKey) {
@@ -202,6 +208,7 @@ const resolveRuntimeToolPolicy = async (toolKey: string, routePath = ''): Promis
       consumePoints: Math.max(0, Number(matchedRule.consumePoints ?? 1)),
       memberFree: Boolean(matchedRule.memberFree),
       status,
+      remark: String(matchedRule.remark || '').trim(),
       needLogin:
         typeof matchedRule.needLogin === 'boolean'
           ? matchedRule.needLogin
@@ -286,7 +293,7 @@ export const useToolConsume = () => {
       return false
     }
 
-    const runtimePolicy = await resolveRuntimeToolPolicy(toolKey, route.path)
+    const runtimePolicy = await resolveToolConsumeRuntimePolicy(toolKey, options.routePath || route.path)
     if (runtimePolicy?.status === 0) {
       ElMessage.warning('当前工具已在后台停用，请稍后再试')
       return false

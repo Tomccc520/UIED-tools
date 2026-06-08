@@ -27,11 +27,11 @@
 
 <script setup lang="ts">
 import { computed, ref, watch, onMounted } from '@vue/runtime-core'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import ToolRankingBoard from '@/components/Common/ToolRankingBoard.vue'
 import { useToolsStore } from '@/store/modules/tools'
 import { getSitePublicConfig, type SitePublicConfig } from '@/services/siteConfig'
+import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import type { Tool } from '@/types/tools'
 import {
   findToolByUrl,
@@ -40,7 +40,7 @@ import {
 } from '@/services/toolCatalog'
 
 const route = useRoute()
-const router = useRouter()
+const { isToolDisabled, openToolEntry } = useToolRuntimeGate()
 
 // 判断是否显示工具推荐
 const shouldShowRecommend = computed(() => {
@@ -58,37 +58,14 @@ const recentTools = ref<Tool[]>([])
 const siteConfig = ref<SitePublicConfig | null>(null)
 
 /**
- * 函数说明：判断工具是否在后台被停用（status=0）。
- */
-const isToolDisabled = (tool: Tool): boolean => {
-  return Number(tool.status ?? 1) === 0
-}
-
-/**
- * 函数说明：输出工具停用提示文案，优先使用后台配置备注信息。
- */
-const resolveToolDisabledMessage = (tool: Tool): string => {
-  const toolTitle = String(tool.title || '').trim() || '当前工具'
-  const remark = String(tool.remark || '').trim()
-  if (remark) {
-    return `工具「${toolTitle}」已停用：${remark}`
-  }
-  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
-}
-
-/**
  * 函数说明：处理右侧推荐工具点击，停用状态阻断并提示，其余按内链/外链正常跳转。
  */
 const handleToolEntryClick = async (tool: Tool) => {
-  if (isToolDisabled(tool)) {
-    ElMessage.warning(resolveToolDisabledMessage(tool))
-    return
-  }
-  if (tool.isExternal || /^https?:\/\//i.test(tool.url)) {
-    window.open(tool.url, '_blank', 'noopener,noreferrer')
-    return
-  }
-  await router.push(tool.url)
+  await openToolEntry(tool, {
+    target: 'current',
+    action: 'open',
+    source: 'right-sidebar'
+  })
 }
 
 /**

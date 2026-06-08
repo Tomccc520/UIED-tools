@@ -9,8 +9,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useToolRuntimeGate, type ToolRuntimeEntry } from '@/composables/useToolRuntimeGate'
 import { buildFallbackToolRankingItems, getToolRankingList, type ToolRankingListItem, type ToolRankingPeriod } from '@/services/toolRanking'
 import type { Tool } from '@/types/tools'
 
@@ -34,7 +33,7 @@ const props = withDefaults(defineProps<{
   emptyText: '当前还没有足够的排行榜数据'
 })
 
-const router = useRouter()
+const { openToolEntry } = useToolRuntimeGate()
 const loading = ref(false)
 const rankingList = ref<ToolRankingListItem[]>([])
 const liveRankingReady = ref(false)
@@ -49,27 +48,16 @@ const normalizedLimit = computed(() => {
 })
 
 /**
- * 函数说明：根据榜单项判断是否为外链，兼容协议相对地址和其它 scheme，确保站内站外跳转行为一致。
+ * 函数说明：将榜单项转换为统一工具运行态入口，复用公共门禁处理停用和跳转。
  */
-const isExternalLink = (url: string): boolean => /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(String(url || '').trim())
-
-/**
- * 函数说明：判断榜单工具是否已被后台停用，避免从热榜绕过工具状态控制。
- */
-const isRankingToolDisabled = (item: ToolRankingListItem): boolean => {
-  return Number(item.status ?? 1) === 0
-}
-
-/**
- * 函数说明：输出榜单停用提示，优先展示后台配置的停用备注。
- */
-const resolveRankingDisabledMessage = (item: ToolRankingListItem): string => {
-  const toolTitle = String(item.toolTitle || '').trim() || '当前工具'
-  const remark = String(item.remark || '').trim()
-  if (remark) {
-    return `工具「${toolTitle}」已停用：${remark}`
+const toRankingRuntimeEntry = (item: ToolRankingListItem): ToolRuntimeEntry => {
+  return {
+    title: item.toolTitle,
+    url: item.toolUrl,
+    toolKey: item.toolKey,
+    status: item.status,
+    remark: item.remark
   }
-  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
 }
 
 /**
@@ -153,19 +141,11 @@ const loadToolRankingList = async () => {
  * 函数说明：处理榜单点击，站外地址新开窗口，站内工具页保持当前页跳转。
  */
 const handleRankingClick = async (item: ToolRankingListItem) => {
-  if (isRankingToolDisabled(item)) {
-    ElMessage.warning(resolveRankingDisabledMessage(item))
-    return
-  }
-  const targetUrl = String(item.toolUrl || '').trim()
-  if (!targetUrl) {
-    return
-  }
-  if (isExternalLink(targetUrl)) {
-    window.open(targetUrl, '_blank', 'noopener,noreferrer')
-    return
-  }
-  await router.push(targetUrl)
+  await openToolEntry(toRankingRuntimeEntry(item), {
+    target: 'current',
+    action: 'open',
+    source: 'tool-ranking'
+  })
 }
 
 /**

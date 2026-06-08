@@ -15,16 +15,16 @@
  * @createDate 2026-03-22
  */
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
 import { useToolsStore } from '@/store/modules/tools'
+import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 const route = useRoute()
-const router = useRouter()
 const toolsStore = useToolsStore()
 const scrollContainerRef = ref<HTMLElement | null>(null)
+const { isToolDisabled, openToolEntry } = useToolRuntimeGate()
 
 const mouseX = ref('50%')
 const mouseY = ref('50%')
@@ -57,25 +57,6 @@ const normalizeRoutePath = (rawPath: string): string => {
  */
 const isAiToolPath = (toolPath: string): boolean => {
   return normalizeRoutePath(toolPath).startsWith('/tools/ai')
-}
-
-/**
- * 函数说明：判断工具是否在后台被停用（status=0）。
- */
-const isToolDisabled = (tool: Tool): boolean => {
-  return Number(tool.status ?? 1) === 0
-}
-
-/**
- * 函数说明：输出工具停用提示文案，优先显示后台配置备注。
- */
-const resolveToolDisabledMessage = (tool: Tool): string => {
-  const toolTitle = String(tool.title || '').trim() || '当前工具'
-  const remark = String(tool.remark || '').trim()
-  if (remark) {
-    return `工具「${toolTitle}」已停用：${remark}`
-  }
-  return `工具「${toolTitle}」已在后台停用，请稍后再试。`
 }
 
 /**
@@ -201,15 +182,11 @@ const handleMouseLeave = (): void => {
  * 函数说明：统一处理工具跳转，自动兼容站内路由和外链
  */
 const openTool = async (tool: Tool): Promise<void> => {
-  if (isToolDisabled(tool)) {
-    ElMessage.warning(resolveToolDisabledMessage(tool))
-    return
-  }
-  if (tool.isExternal || /^https?:\/\//i.test(tool.url)) {
-    window.open(tool.url, '_blank', 'noopener,noreferrer')
-    return
-  }
-  await router.push(tool.url)
+  await openToolEntry(tool, {
+    target: 'current',
+    action: 'open',
+    source: 'ai-toolbox'
+  })
 }
 
 /**
