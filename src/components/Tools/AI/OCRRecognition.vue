@@ -106,6 +106,12 @@
             </div>
           </div>
 
+          <MemberCoreToolTips
+            tool-key="ai-ocr"
+            title="OCR 结果交付建议"
+            :items="ocrExperienceTips"
+          />
+
           <!-- 功能说明 -->
           <div class="bg-white border border-gray-200 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">功能说明</div>
@@ -154,6 +160,7 @@ import {
   type AiImageAbilityCurrent
 } from '@/services/aiImageAbility'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 
 // 组件配置信息
 const info = {
@@ -213,6 +220,20 @@ const recognizing = ref(false)
 const recognitionResult = ref<any>(null)
 const imageAbility = ref<AiImageAbilityCurrent | null>(null)
 const { consumeCoreToolRun } = useCoreToolManualConsume()
+const ocrExperienceTips = [
+  {
+    label: '复制前校对',
+    text: '金额、日期、专有名词和表格换行最容易误识别，复制前建议逐项检查。'
+  },
+  {
+    label: '失败兜底',
+    text: '识别失败时先裁掉无关区域，保持文字正向，再换用更清晰图片重试。'
+  },
+  {
+    label: '会员价值',
+    text: '适合批量处理截图、票据和文档图片，运行前显式扣分，会员可免积分。'
+  }
+]
 
 /**
  * 函数说明：读取当前 OCR 图片能力配置，用于识别前判断是否已在后台开启。

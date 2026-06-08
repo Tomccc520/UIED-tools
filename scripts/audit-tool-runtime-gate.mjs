@@ -20,7 +20,9 @@ const requiredGateFiles = [
   'src/components/Common/ToolRankingBoard.vue',
   'src/components/Common/ToolsRecommend.vue',
   'src/components/Search/Search.vue',
-  'src/components/Layout/Right/Right.vue'
+  'src/components/Layout/Right/Right.vue',
+  'src/components/Layout/Left/Left.vue',
+  'src/components/Tools/AI/AIRanking.vue'
 ]
 
 const policyMergeFiles = [
@@ -69,6 +71,14 @@ const forbiddenDirectNavigationChecks = [
   },
   {
     file: 'src/components/Layout/Right/Right.vue',
+    patterns: [/window\.open\s*\(/, /router\.push\s*\(/, /location\.href\s*=/]
+  },
+  {
+    file: 'src/components/Layout/Left/Left.vue',
+    patterns: [/window\.open\s*\(/, /location\.href\s*=/]
+  },
+  {
+    file: 'src/components/Tools/AI/AIRanking.vue',
     patterns: [/window\.open\s*\(/, /router\.push\s*\(/, /location\.href\s*=/]
   }
 ]

@@ -32,6 +32,13 @@
           </div>
         </div>
 
+        <MemberCoreToolTips
+          class="mb-8"
+          tool-key="ai-remove-watermark"
+          title="去水印使用边界"
+          :items="removeWatermarkExperienceTips"
+        />
+
         <!-- 上传区域 -->
         <div class="grid grid-cols-1 gap-8 opacity-50 pointer-events-none select-none grayscale">
           <div class="bg-white border border-gray-200 rounded-lg p-6">
@@ -197,6 +204,7 @@ import { ElMessage } from 'element-plus'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 
 const route = useRoute()
 
@@ -212,6 +220,20 @@ const processedImage = ref<string | null>(null)
 const isProcessing = ref(false)
 const fileInfo = ref<{ name: string; size: number } | null>(null)
 const { consumeCoreToolRun } = useCoreToolManualConsume()
+const removeWatermarkExperienceTips = [
+  {
+    label: '授权提醒',
+    text: '仅建议处理本人拥有授权的素材，商业展示前请确认版权和平台规则。'
+  },
+  {
+    label: '修复检查',
+    text: '下载前重点查看水印区域是否有涂抹、重复纹理或主体细节损坏。'
+  },
+  {
+    label: '失败兜底',
+    text: '水印覆盖主体时建议先裁剪区域，或换用水印位置更明确的图片再处理。'
+  }
+]
 
 const triggerFileInput = () => {
   fileInput.value?.click()

@@ -122,6 +122,12 @@
             </el-button>
           </div>
 
+          <MemberCoreToolTips
+            tool-key="ai-image-enhance"
+            title="图片增强验收建议"
+            :items="imageEnhanceExperienceTips"
+          />
+
           <!-- 功能说明 -->
           <div class="bg-white border border-gray-200 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">功能说明</div>
@@ -188,6 +194,7 @@ import {
   type AiImageAbilityCurrent
 } from '@/services/aiImageAbility'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 
 // 组件配置信息
 const info = {
@@ -251,6 +258,20 @@ const enhancedImageUrl = ref('')
 const processing = ref(false)
 const imageAbility = ref<AiImageAbilityCurrent | null>(null)
 const { consumeCoreToolRun } = useCoreToolManualConsume()
+const imageEnhanceExperienceTips = [
+  {
+    label: '前后对比',
+    text: '下载前放大查看脸部、文字和边缘区域，确认没有过锐化、涂抹或伪影。'
+  },
+  {
+    label: '失败兜底',
+    text: '超大图或严重马赛克素材容易失败，建议先压缩尺寸或换更清晰原图。'
+  },
+  {
+    label: '会员价值',
+    text: '适合头像、商品图和低清素材快速修复，减少反复试错处理成本。'
+  }
+]
 
 // 获取当前路由
 const route = useRoute()

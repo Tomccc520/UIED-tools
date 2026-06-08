@@ -24,6 +24,13 @@
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成高质量文章，支持多种风格和用途，助您高效创作</p>
         </div>
 
+        <MemberCoreToolTips
+          class="mb-8"
+          tool-key="ai-article-generator"
+          title="文章结果交付建议"
+          :items="articleExperienceTips"
+        />
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- 左侧：配置区域 -->
           <div class="lg:col-span-4 space-y-6">
@@ -231,11 +238,26 @@ import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import WritingGuide from './WritingGuide.vue'
 import { generateAIWriting } from '@/services/ai'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 const route = useRoute()
+const articleExperienceTips = [
+  {
+    label: '输入模板',
+    text: '建议补主题、受众、关键词、字数和语气，避免只输入一句话导致结果空泛。'
+  },
+  {
+    label: '二次润色',
+    text: '生成后可用扩写、改写、润色、纠错继续加工，再复制 Markdown 或预览样式。'
+  },
+  {
+    label: '发布检查',
+    text: '发布前补原创案例和品牌口径，核对标题、事实、日期和正文逻辑。'
+  }
+]
 const { consumeCoreToolRun } = useCoreToolManualConsume()
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({

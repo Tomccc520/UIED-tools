@@ -22,6 +22,7 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 import { useToolConsume } from '@/composables/useToolConsume'
 
@@ -127,6 +128,21 @@ const whyChoose = [
   '免安装：无需下载软件，即开即用。',
   '高效安全：所有任务在浏览器本地处理，保护用户隐私。',
   '跨设备支持：兼容 Windows、Mac、iOS、Android 的现代浏览器。'
+]
+
+const videoCompressExperienceTips = [
+  {
+    label: '结果验收',
+    text: '下载前播放检查首尾、音画同步和关键画面清晰度，确认压缩后仍可交付。'
+  },
+  {
+    label: '失败兜底',
+    text: '浏览器内存不足时请减小源文件、降低帧率或提高压缩比例后再试。'
+  },
+  {
+    label: '会员价值',
+    text: '适合上传平台、社群分享和交付文件压缩，运行前显式扣分，会员免积分。'
+  }
 ]
 
 const faqList: FaqItem[] = [
@@ -1163,6 +1179,12 @@ onBeforeRouteLeave((to, from, next) => {
           </p>
         </div>
         <VideoToolNotice class="mb-8" />
+        <MemberCoreToolTips
+          class="mb-8"
+          tool-key="video-compress"
+          title="视频压缩交付建议"
+          :items="videoCompressExperienceTips"
+        />
 
         <div
           v-if="!videoUrl"

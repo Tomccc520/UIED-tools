@@ -14,6 +14,14 @@ import { MEMBER_CORE_TOOL_PRESETS, normalizeToolRouteMatchKey } from './lib/tool
 const projectRoot = process.cwd()
 const experienceConfigFile = path.resolve(projectRoot, 'src/config/memberCoreTools.ts')
 const appFile = path.resolve(projectRoot, 'src/App.vue')
+const priorityExperiencePages = [
+  'src/components/Tools/AI/OCRRecognition.vue',
+  'src/components/Tools/AI/ImageEnhance.vue',
+  'src/components/Tools/AI/RemoveWatermark.vue',
+  'src/components/Tools/AI/Writing/AIArticleGenerator.vue',
+  'src/components/Tools/Video/VideoCompress/VideoCompress.vue',
+  'src/components/Tools/Video/VideoFormatConvert/VideoFormatConvert.vue'
+]
 const requiredExperienceFields = [
   'valuePoint',
   'inputHint',
@@ -130,5 +138,16 @@ if (!appText.includes('currentMemberCoreExperience.sampleInput')) {
 if (!appText.includes('currentMemberCoreExperience.deliverableExample')) {
   errors.push('App.vue 未渲染会员核心工具交付样例')
 }
+
+priorityExperiencePages.forEach((file) => {
+  const pageText = readTextFile(path.resolve(projectRoot, file))
+  if (!pageText) {
+    errors.push(`${file}: 页面不存在或不可读`)
+    return
+  }
+  if (!pageText.includes('MemberCoreToolTips')) {
+    errors.push(`${file}: 未接入 MemberCoreToolTips 页内体验提示`)
+  }
+})
 
 printAuditResult(errors, entries)

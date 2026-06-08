@@ -22,6 +22,7 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 import { useToolConsume } from '@/composables/useToolConsume'
 
@@ -78,6 +79,21 @@ const settings = reactive({
   keepAudio: true,
   frameRate: 24
 })
+
+const videoFormatExperienceTips = [
+  {
+    label: '格式检查',
+    text: '下载后确认目标平台支持该格式，并检查音频、时长和封面帧是否正常。'
+  },
+  {
+    label: '失败兜底',
+    text: 'MOV 或超大文件转换失败时，优先尝试 MP4 / WebM，或换较小文件重试。'
+  },
+  {
+    label: '会员价值',
+    text: '适合不同平台上传前快速适配格式，运行前显式扣分，会员可免积分。'
+  }
+]
 
 let mediaRecorder: MediaRecorder | null = null
 let drawRafId: number | null = null
@@ -686,6 +702,12 @@ onBeforeRouteLeave((to, from, next) => {
           </p>
         </div>
         <VideoToolNotice class="mb-8" />
+        <MemberCoreToolTips
+          class="mb-8"
+          tool-key="video-format-convert"
+          title="视频格式转换验收建议"
+          :items="videoFormatExperienceTips"
+        />
 
         <div
           v-if="!videoUrl"

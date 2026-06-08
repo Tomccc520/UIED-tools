@@ -31,10 +31,12 @@ import {
   type SiteSidebarMenuBlockItem,
   type SiteSidebarMenuBlockType
 } from '@/services/siteConfig'
+import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 
 // 路由实例
 const router: Router = useRouter()
 const route: RouteLocationNormalizedLoaded = useRoute()
+const { openToolEntry } = useToolRuntimeGate()
 
 // 应用信息配置
 const appName = ref('UIED-Tools')
@@ -706,9 +708,25 @@ const gotoCurrentPageAnchor = (id: string) => {
  * @description 跳转到指定的工具页面
  * @param url 目标页面路由
  */
-const gotoTool = (url: string) => {
+const gotoTool = async (url: string) => {
   const targetUrl = String(url || '').trim()
   if (!targetUrl) {
+    return
+  }
+
+  if (targetUrl.startsWith('/tools/')) {
+    await openToolEntry(
+      {
+        title: targetUrl,
+        url: targetUrl,
+        isExternal: false
+      },
+      {
+        action: 'open',
+        consumeMode: 'check-login',
+        source: 'left-sidebar'
+      }
+    )
     return
   }
 
@@ -740,58 +758,69 @@ const gotoTool = (url: string) => {
  * @description 在新标签页打开外部链接
  * @param url 目标链接
  */
-const openExternalLink = (url: string) => {
-  window.open(url, '_blank', 'noopener,noreferrer')
+const openExternalLink = async (url: string, title = '外部链接') => {
+  await openToolEntry(
+    {
+      title,
+      url,
+      isExternal: true
+    },
+    {
+      action: 'open',
+      consumeMode: 'none',
+      source: 'left-sidebar'
+    }
+  )
 }
 
 /**
  * 函数说明：处理推荐工具菜单点击，按链接类型执行路由跳转、锚点滚动或外链打开
  */
-const handleRecommendItemClick = (link: SiteLinkItem) => {
+const handleRecommendItemClick = async (link: SiteLinkItem) => {
   const targetLink = link.link.trim()
   if (!targetLink) {
     return
   }
   if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
-    openExternalLink(targetLink)
+    await openExternalLink(targetLink, link.name)
     return
   }
   if (targetLink.startsWith('#')) {
     gotoAnchor(targetLink.slice(1))
     return
   }
-  gotoTool(targetLink)
+  await gotoTool(targetLink)
 }
 
 /**
  * 函数说明：处理侧栏底部链接点击，自动判断内链、外链和锚点跳转
  */
-const handleBottomLinkItemClick = (link: SiteLinkItem) => {
+const handleBottomLinkItemClick = async (link: SiteLinkItem) => {
   const targetLink = link.link.trim()
   if (!targetLink) {
     return
   }
   if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
-    openExternalLink(targetLink)
+    await openExternalLink(targetLink, link.name)
     return
   }
   if (targetLink.startsWith('#')) {
     gotoAnchor(targetLink.slice(1))
     return
   }
-  gotoTool(targetLink)
+  await gotoTool(targetLink)
 }
 
 /**
  * 函数说明：处理 AI 工具箱独立侧栏菜单点击，支持锚点/内链/外链三种跳转
  */
-const handleAiToolboxSidebarItemClick = (link: SiteLinkItem) => {
+const handleAiToolboxSidebarItemClick = async (link: SiteLinkItem) => {
   const targetLink = link.link.trim()
   if (!targetLink) {
     return
   }
   if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
-    openExternalLink(targetLink)
+    await openExternalLink(targetLink, link.name)
     return
   }
   const anchor = resolveAiToolboxAnchor(targetLink)
@@ -805,49 +834,49 @@ const handleAiToolboxSidebarItemClick = (link: SiteLinkItem) => {
   }
 
   if (targetLink.startsWith('/')) {
-    gotoTool(targetLink)
+    await gotoTool(targetLink)
     return
   }
 
-  gotoTool(targetLink)
+  await gotoTool(targetLink)
 }
 
 /**
  * 函数说明：处理分类菜单点击，支持直达聚合页或外链
  */
-const handleCategoryMenuClick = (menu: DisplaySidebarCategoryMenu) => {
+const handleCategoryMenuClick = async (menu: DisplaySidebarCategoryMenu) => {
   const targetLink = menu.resolvedLink.trim()
   if (!targetLink) {
     return
   }
   if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
-    openExternalLink(targetLink)
+    await openExternalLink(targetLink, menu.title)
     return
   }
   if (targetLink.startsWith('#')) {
     gotoAnchor(targetLink.slice(1))
     return
   }
-  gotoTool(targetLink)
+  await gotoTool(targetLink)
 }
 
 /**
  * 函数说明：处理侧栏菜单样式模块点击，统一支持内链、锚点和外链跳转。
  */
-const handleSidebarMenuBlockItemClick = (item: DisplaySidebarMenuBlockItem) => {
+const handleSidebarMenuBlockItemClick = async (item: DisplaySidebarMenuBlockItem) => {
   const targetLink = String(item.link || '').trim()
   if (!targetLink) {
     return
   }
   if (targetLink.startsWith('http://') || targetLink.startsWith('https://')) {
-    openExternalLink(targetLink)
+    await openExternalLink(targetLink, item.name)
     return
   }
   if (targetLink.startsWith('#')) {
     gotoAnchor(targetLink.slice(1))
     return
   }
-  gotoTool(targetLink)
+  await gotoTool(targetLink)
 }
 
 /**

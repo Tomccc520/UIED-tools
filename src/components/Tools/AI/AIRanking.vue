@@ -228,7 +228,7 @@
             <h3 class="category-title">{{ category.name }}</h3>
             <span class="category-desc">{{ category.description }}</span>
           </div>
-          <div class="ranking-item" v-for="(tool, index) in category.tools" :key="tool.id" @click="visitTool(tool.url)">
+          <div class="ranking-item" v-for="(tool, index) in category.tools" :key="tool.id" @click="visitTool(tool)">
             <div class="rank-number" :class="`rank-${index + 1}`">{{ index + 1 }}</div>
             <div class="tool-logo">
               <img :src="tool.logo" :alt="tool.name" class="logo-image">
@@ -286,6 +286,7 @@ import { ElMessage } from 'element-plus'
 import axios from 'axios'
 import * as cheerio from 'cheerio'
 import { debounce } from 'lodash'
+import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 
 interface Tool {
   id: string | number
@@ -361,6 +362,7 @@ const BATCH_SIZE = 10 // 批量加载数量
 // 添加加载状态管理
 const isInitialLoading = ref(true)
 const isBatchLoading = ref(false)
+const { openToolEntry } = useToolRuntimeGate()
 
 // 优化数据加载函数
 const loadMoreData = async () => {
@@ -726,8 +728,22 @@ const refreshList = async () => {
   }
 }
 
-const visitTool = (url: string) => {
-  window.open(url, '_blank', 'noopener,noreferrer')
+/**
+ * 函数说明：统一打开 AI 排行榜工具入口，外链也经过安全协议校验，避免绕过工具运行态门禁。
+ */
+const visitTool = async (tool: Tool) => {
+  await openToolEntry(
+    {
+      title: tool.name,
+      url: tool.url,
+      isExternal: true
+    },
+    {
+      action: 'open',
+      consumeMode: 'none',
+      source: 'ai-ranking'
+    }
+  )
 }
 
 const formatDate = (dateStr: string) => {
