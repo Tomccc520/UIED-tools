@@ -1,6 +1,8 @@
 <!--
  * @file ImageEnhance.vue
  * @description AI图片变清晰工具组件，支持图片清晰度提升
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
  * @createDate 2024-01-27
  *
@@ -185,6 +187,7 @@ import {
   requestAiImageAbility,
   type AiImageAbilityCurrent
 } from '@/services/aiImageAbility'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 // 组件配置信息
 const info = {
@@ -247,6 +250,7 @@ const imageUrl = ref('')
 const enhancedImageUrl = ref('')
 const processing = ref(false)
 const imageAbility = ref<AiImageAbilityCurrent | null>(null)
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 
 // 获取当前路由
 const route = useRoute()
@@ -346,6 +350,13 @@ const enhanceImage = async () => {
     ElMessage.error('当前图像增强能力未配置，请先在后台 AI 模型管理中启用')
     return
   }
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-image-enhance',
+    action: 'process',
+    routePath: '/tools/ai/image-enhance'
+  })
+  if (!canConsume) return
 
   try {
     processing.value = true

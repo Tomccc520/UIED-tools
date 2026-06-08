@@ -1,6 +1,7 @@
 <!--
  * @file DeepSeekR1.vue
  * @description DeepSeek R1 AI对话组件,基于 SiliconFlow 平台的 DeepSeek R1 模型实现智能对话
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
  * @createDate 2025-5-19
@@ -380,6 +381,7 @@ import {
   requestAiProviderChat,
   type AiProviderModelOption
 } from '@/services/aiProvider'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
@@ -748,6 +750,7 @@ const verifyPassword = ref('')
 const maxFreeUsage = ref(wechatVerifyConfig.maxFreeUsage)
 const route = useRoute()
 const router = useRouter()
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 
 // 添加验证密码的方法
 const verifyAccess = () => {
@@ -843,6 +846,13 @@ const handleSend = async () => {
     showVerifyDialog.value = true
     return
   }
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-deepseek-r1',
+    action: 'chat',
+    routePath: '/tools/ai/deepseek-r1'
+  })
+  if (!canConsume) return
 
   try {
     loading.value = true

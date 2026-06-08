@@ -173,6 +173,71 @@ export const TOOL_CONSUME_MANUAL_ROUTE_LIST: ToolConsumeManualRouteItem[] = [
     path: '/tools/video/to-audio',
     module: 'video',
     note: '页面内已手动接入处理/下载动作积分校验'
+  },
+  {
+    path: '/tools/ai/deepseek-r1',
+    module: 'ai',
+    note: '会员核心工具：页面内已手动接入对话运行积分校验'
+  },
+  {
+    path: '/tools/ai/deepseek',
+    module: 'ai',
+    note: '会员核心工具：页面内已手动接入对话运行积分校验'
+  },
+  {
+    path: '/tools/ai/ocr',
+    module: 'ai',
+    note: '会员核心工具：页面内已手动接入识别运行积分校验'
+  },
+  {
+    path: '/tools/ai/image-enhance',
+    module: 'ai',
+    note: '会员核心工具：页面内已手动接入图片处理运行积分校验'
+  },
+  {
+    path: '/tools/ai/remove-watermark',
+    module: 'ai',
+    note: '会员核心工具：页面内已手动接入图片处理运行积分校验'
+  },
+  {
+    path: '/tools/ai/work-summary',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入工作总结/年度总结运行积分校验'
+  },
+  {
+    path: '/tools/ai/office/custom-summary',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入自定义总结运行积分校验'
+  },
+  {
+    path: '/tools/ai/office/resume-creation',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入简历制作运行积分校验'
+  },
+  {
+    path: '/tools/ai/office/meeting-minutes',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入会议纪要运行积分校验'
+  },
+  {
+    path: '/tools/ai/analysis/research-report',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入研究报告运行积分校验'
+  },
+  {
+    path: '/tools/ai/analysis/business-plan',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入商业计划书运行积分校验'
+  },
+  {
+    path: '/tools/ai/article-generator',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入文章生成运行积分校验'
+  },
+  {
+    path: '/tools/ai/xiaohongshu-note',
+    module: 'ai-writing',
+    note: '会员核心工具：页面内已手动接入小红书笔记运行积分校验'
   }
 ]
 
@@ -180,4 +245,3 @@ export const TOOL_CONSUME_MANUAL_ROUTE_LIST: ToolConsumeManualRouteItem[] = [
  * 函数说明：仅导出路径数组，供全局守卫快速判断当前路由是否应跳过自动拦截。
  */
 export const TOOL_CONSUME_MANUAL_ROUTE_PATHS: string[] = TOOL_CONSUME_MANUAL_ROUTE_LIST.map((item) => item.path)
-

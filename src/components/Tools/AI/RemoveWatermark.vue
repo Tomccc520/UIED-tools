@@ -194,6 +194,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 
@@ -210,6 +211,7 @@ const originalImage = ref<string | null>(null)
 const processedImage = ref<string | null>(null)
 const isProcessing = ref(false)
 const fileInfo = ref<{ name: string; size: number } | null>(null)
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 
 const triggerFileInput = () => {
   fileInput.value?.click()
@@ -253,8 +255,15 @@ const processFile = (file: File) => {
   reader.readAsDataURL(file)
 }
 
-const processImage = () => {
+const processImage = async () => {
   if (!originalImage.value) return
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-remove-watermark',
+    action: 'process',
+    routePath: '/tools/ai/remove-watermark'
+  })
+  if (!canConsume) return
 
   isProcessing.value = true
 

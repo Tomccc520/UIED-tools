@@ -184,8 +184,10 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { generateAIWriting } from '@/services/ai'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 const route = useRoute()
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   project_name: '',
@@ -272,6 +274,13 @@ const generateContent = async () => {
     return
   }
 
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-analysis-business-plan',
+    action: 'generate',
+    routePath: '/tools/ai/analysis/business-plan'
+  })
+  if (!canConsume) return
+
   try {
     ensureResultEditorReady()
     isGenerating.value = true
@@ -310,6 +319,13 @@ ${form.advantages ? `核心优势：${form.advantages}` : ''}
 
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-analysis-business-plan',
+    action: `assist-${type}`,
+    routePath: '/tools/ai/analysis/business-plan'
+  })
+  if (!canConsume) return
 
   ensureResultEditorReady()
   isGenerating.value = true

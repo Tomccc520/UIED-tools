@@ -9,6 +9,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { MEMBER_CORE_TOOL_PRESETS } from './lib/tool-commercial-policy.mjs'
 
 const PROJECT_ROOT = process.cwd()
 const ROUTER_FILE = path.resolve(PROJECT_ROOT, 'src/router/router.ts')
@@ -106,7 +107,12 @@ const scanManualConsumeComponents = (toolsDir) => {
       if (!fileText) {
         return
       }
-      if (fileText.includes('ensureToolConsume(') || fileText.includes('useToolConsume')) {
+      if (
+        fileText.includes('ensureToolConsume(') ||
+        fileText.includes('useToolConsume') ||
+        fileText.includes('consumeCoreToolRun(') ||
+        fileText.includes('useCoreToolManualConsume')
+      ) {
         const relativePath = path.relative(PROJECT_ROOT, absolutePath).split(path.sep).join('/')
         resultSet.add(relativePath)
       }
@@ -137,6 +143,21 @@ const parseManualRoutePathsFromConfig = (configText) => {
 }
 
 /**
+ * 函数说明：检查 20 个会员核心工具是否都已页面内显式接入扣分，避免继续依赖全局兜底。
+ */
+const collectMemberCoreManualMissingRoutes = (manualConfigPathSet, manualByCodeRouteSet) => {
+  return MEMBER_CORE_TOOL_PRESETS
+    .map((preset) => ({
+      path: normalizeRoutePath(preset.matchUrl),
+      toolKey: preset.toolKey,
+      title: preset.title
+    }))
+    .filter((item) => !manualConfigPathSet.has(item.path) || !manualByCodeRouteSet.has(item.path))
+    .map((item) => `${item.path}（${item.toolKey}，${item.title}）`)
+    .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+}
+
+/**
  * 函数说明：打印审计结果，输出覆盖率与待补清单，便于后续 P0/P1 拆分任务。
  */
 const printAuditReport = (payload) => {
@@ -146,7 +167,8 @@ const printAuditReport = (payload) => {
     manualConfigRoutes,
     uncoveredRoutes,
     configMissingRoutes,
-    configOrphanRoutes
+    configOrphanRoutes,
+    memberCoreManualMissingRoutes
   } = payload
 
   const manualConfigCoverage = totalToolRoutes > 0
@@ -161,6 +183,14 @@ const printAuditReport = (payload) => {
   console.log(`手动接入(代码识别): ${manualByCodeRoutes.length} (${manualCodeCoverage}%)`)
   console.log(`手动接入(配置清单): ${manualConfigRoutes.length} (${manualConfigCoverage}%)`)
   console.log(`全局守卫覆盖候选: ${uncoveredRoutes.length}`)
+  console.log('')
+
+  console.log('--- 会员核心工具仍未页面内显式接入 ---')
+  if (memberCoreManualMissingRoutes.length === 0) {
+    console.log('无')
+  } else {
+    memberCoreManualMissingRoutes.forEach((item) => console.log(item))
+  }
   console.log('')
 
   console.log('--- 待补到手动配置清单（代码已接入但配置缺失）---')
@@ -224,6 +254,7 @@ const configMissingRoutes = Array.from(manualByCodeRouteSet)
 const configOrphanRoutes = Array.from(manualConfigPathSet)
   .filter((routePath) => !routePathSet.has(routePath) || !manualByCodeRouteSet.has(routePath))
   .sort((a, b) => a.localeCompare(b, 'zh-Hans-CN'))
+const memberCoreManualMissingRoutes = collectMemberCoreManualMissingRoutes(manualConfigPathSet, manualByCodeRouteSet)
 
 printAuditReport({
   totalToolRoutes: toolRoutes.length,
@@ -231,5 +262,10 @@ printAuditReport({
   manualConfigRoutes: Array.from(manualConfigPathSet),
   uncoveredRoutes,
   configMissingRoutes,
-  configOrphanRoutes
+  configOrphanRoutes,
+  memberCoreManualMissingRoutes
 })
+
+if (memberCoreManualMissingRoutes.length > 0) {
+  process.exitCode = 1
+}

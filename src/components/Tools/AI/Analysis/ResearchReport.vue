@@ -178,8 +178,10 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { generateAIWriting } from '@/services/ai'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 const route = useRoute()
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   topic: '',
@@ -265,6 +267,13 @@ const generateContent = async () => {
     return
   }
 
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-analysis-research-report',
+    action: 'generate',
+    routePath: '/tools/ai/analysis/research-report'
+  })
+  if (!canConsume) return
+
   try {
     ensureResultEditorReady()
     isGenerating.value = true
@@ -302,6 +311,13 @@ ${form.focus ? `重点关注方向：${form.focus}` : ''}
 
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-analysis-research-report',
+    action: `assist-${type}`,
+    routePath: '/tools/ai/analysis/research-report'
+  })
+  if (!canConsume) return
 
   ensureResultEditorReady()
   isGenerating.value = true

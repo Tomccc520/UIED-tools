@@ -233,8 +233,10 @@ import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import WritingGuide from './WritingGuide.vue'
 import { generateAIWriting } from '@/services/ai'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 const route = useRoute()
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   topic: '',
@@ -326,6 +328,13 @@ const generateArticle = async () => {
     return
   }
 
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-article-generator',
+    action: 'generate',
+    routePath: '/tools/ai/article-generator'
+  })
+  if (!canConsume) return
+
   try {
     ensureResultEditorReady()
     isGenerating.value = true
@@ -378,6 +387,13 @@ ${form.keywords ? `关键词：${form.keywords}` : ''}
  */
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-article-generator',
+    action: `assist-${type}`,
+    routePath: '/tools/ai/article-generator'
+  })
+  if (!canConsume) return
 
   ensureResultEditorReady()
   isGenerating.value = true

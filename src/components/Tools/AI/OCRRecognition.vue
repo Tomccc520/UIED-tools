@@ -1,6 +1,7 @@
 <!--
  * @file OCRRecognition.vue
  * @description OCR图像文字识别组件,支持多语言文字识别
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
  * @createDate 2024-2-8
@@ -152,6 +153,7 @@ import {
   requestAiImageAbility,
   type AiImageAbilityCurrent
 } from '@/services/aiImageAbility'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 // 组件配置信息
 const info = {
@@ -210,6 +212,7 @@ const imageUrl = ref('')
 const recognizing = ref(false)
 const recognitionResult = ref<any>(null)
 const imageAbility = ref<AiImageAbilityCurrent | null>(null)
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 
 /**
  * 函数说明：读取当前 OCR 图片能力配置，用于识别前判断是否已在后台开启。
@@ -249,6 +252,13 @@ const startRecognition = async (file?: File) => {
     ElMessage.error('当前 OCR 图片识别能力未配置，请先在后台 AI 模型管理中启用')
     return
   }
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-ocr',
+    action: 'recognize',
+    routePath: '/tools/ai/ocr'
+  })
+  if (!canConsume) return
 
   try {
     recognizing.value = true

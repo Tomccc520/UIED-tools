@@ -236,8 +236,10 @@ import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import WritingGuide from './WritingGuide.vue'
 import { generateAIWriting } from '@/services/ai'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 const route = useRoute()
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   jobTitle: '',
@@ -326,6 +328,17 @@ const ensureResultEditorReady = () => {
 }
 
 /**
+ * 函数说明：根据路由 query 与表单类型解析工作总结细分工具策略，年度总结单独归属会员核心策略。
+ */
+const resolveWorkSummaryConsumeMeta = () => {
+  const isAnnualSummary = route.query.type === 'annual' || form.type === 'annual'
+  return {
+    toolKey: isAnnualSummary ? 'ai-work-summary-annual' : 'ai-work-summary',
+    routePath: isAnnualSummary ? '/tools/ai/work-summary?type=annual' : '/tools/ai/work-summary'
+  }
+}
+
+/**
  * 生成工作总结
  * @description 根据用户输入的职位、成果、问题和计划生成工作总结
  */
@@ -334,6 +347,13 @@ const generateContent = async () => {
     ElMessage.warning('请输入职位名称')
     return
   }
+
+  const consumeMeta = resolveWorkSummaryConsumeMeta()
+  const canConsume = await consumeCoreToolRun({
+    ...consumeMeta,
+    action: 'generate'
+  })
+  if (!canConsume) return
 
   try {
     ensureResultEditorReady()
@@ -384,6 +404,13 @@ ${form.plans ? `下一步计划：${form.plans}` : ''}
  */
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
+
+  const consumeMeta = resolveWorkSummaryConsumeMeta()
+  const canConsume = await consumeCoreToolRun({
+    ...consumeMeta,
+    action: `assist-${type}`
+  })
+  if (!canConsume) return
 
   ensureResultEditorReady()
   isGenerating.value = true

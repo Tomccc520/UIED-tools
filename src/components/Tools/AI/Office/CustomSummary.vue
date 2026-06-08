@@ -195,8 +195,10 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { generateAIWriting } from '@/services/ai'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 const route = useRoute()
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   topic: '',
@@ -283,6 +285,13 @@ const generateContent = async () => {
     return
   }
 
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-office-custom-summary',
+    action: 'generate',
+    routePath: '/tools/ai/office/custom-summary'
+  })
+  if (!canConsume) return
+
   try {
     ensureResultEditorReady()
     isGenerating.value = true
@@ -320,6 +329,13 @@ ${form.audience ? `受众对象：${form.audience}` : ''}
 
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-office-custom-summary',
+    action: `assist-${type}`,
+    routePath: '/tools/ai/office/custom-summary'
+  })
+  if (!canConsume) return
 
   ensureResultEditorReady()
   isGenerating.value = true

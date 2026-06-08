@@ -211,6 +211,7 @@ import {
   requestAiProviderChat,
   type AiProviderCurrent
 } from '@/services/aiProvider'
+import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
 
 // 组件配置信息
 const info = {
@@ -238,6 +239,7 @@ const loading = ref(false)
 const textareaHeight = ref(56)
 const isTyping = ref(false)
 const providerInfo = ref<AiProviderCurrent | null>(null)
+const { consumeCoreToolRun } = useCoreToolManualConsume()
 let typewriterTimer: ReturnType<typeof setTimeout> | null = null
 let scrollRafId: number | null = null
 
@@ -424,6 +426,13 @@ const handleSend = async () => {
     ElMessage.warning('AI能力未配置，请先到后台 AI 模型管理启用可用 Provider')
     return
   }
+
+  const canConsume = await consumeCoreToolRun({
+    toolKey: 'ai-deepseek',
+    action: 'chat',
+    routePath: '/tools/ai/deepseek'
+  })
+  if (!canConsume) return
 
   try {
     loading.value = true
