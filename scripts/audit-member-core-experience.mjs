@@ -14,7 +14,7 @@ import { MEMBER_CORE_TOOL_PRESETS, normalizeToolRouteMatchKey } from './lib/tool
 const projectRoot = process.cwd()
 const experienceConfigFile = path.resolve(projectRoot, 'src/config/memberCoreTools.ts')
 const appFile = path.resolve(projectRoot, 'src/App.vue')
-const requiredExperienceFields = ['valuePoint', 'inputHint', 'outputHint', 'failureHint']
+const requiredExperienceFields = ['valuePoint', 'inputHint', 'outputHint', 'failureHint', 'qualityHint']
 
 /**
  * 函数说明：读取源码文本，读取失败时返回空字符串并交由审计结果输出。
@@ -109,6 +109,10 @@ if (!appText.includes('resolveMemberCoreToolExperience')) {
 
 if (!appText.includes('member-core-runtime-panel')) {
   errors.push('App.vue 未渲染会员核心工具首屏体验面板')
+}
+
+if (!appText.includes('member-core-runtime-panel__policy')) {
+  errors.push('App.vue 未渲染会员核心工具运行扣分策略说明')
 }
 
 printAuditResult(errors, entries)

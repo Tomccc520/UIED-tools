@@ -95,6 +95,17 @@ const currentToolConsumeText = computed(() => {
     : `当前工具每次消耗 ${consumePoints} 积分。`
 })
 
+const currentMemberCoreConsumePolicyText = computed(() => {
+  const consumePoints = Math.max(0, Number(toolRuntimeBannerState.value.consumePoints || 0))
+  if (consumePoints <= 0) {
+    return '当前工具无需积分，登录后可直接运行。'
+  }
+  if (toolRuntimeBannerState.value.memberFree) {
+    return `点击运行前会校验登录并消耗 ${consumePoints} 积分，会员账号本次运行免扣。`
+  }
+  return `点击运行前会校验登录并消耗 ${consumePoints} 积分，请确认输入内容后再运行。`
+})
+
 const currentMemberCoreExperience = computed(() => {
   return toolRuntimeBannerState.value.experience
 })
@@ -322,6 +333,9 @@ useToolRankingTracker()
               <div class="member-core-runtime-panel__badges">
                 <span v-for="badge in currentToolRuntimeBadges" :key="badge">{{ badge }}</span>
               </div>
+              <div class="member-core-runtime-panel__policy">
+                {{ currentMemberCoreConsumePolicyText }}
+              </div>
             </div>
             <div class="member-core-runtime-panel__grid">
               <div>
@@ -335,6 +349,10 @@ useToolRankingTracker()
               <div>
                 <strong>失败兜底</strong>
                 <span>{{ currentMemberCoreExperience.failureHint }}</span>
+              </div>
+              <div>
+                <strong>结果质量建议</strong>
+                <span>{{ currentMemberCoreExperience.qualityHint }}</span>
               </div>
             </div>
           </section>
@@ -547,6 +565,18 @@ useToolRankingTracker()
   font-weight: 700;
   line-height: 1;
   padding: 7px 8px;
+}
+
+.member-core-runtime-panel__policy {
+  margin-top: 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.6;
+  padding: 10px 12px;
 }
 
 .member-core-runtime-panel__grid {

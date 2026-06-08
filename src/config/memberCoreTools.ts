@@ -16,6 +16,7 @@ export interface MemberCoreToolExperience {
   inputHint: string
   outputHint: string
   failureHint: string
+  qualityHint: string
 }
 
 export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
@@ -27,7 +28,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '一键替换证件照背景色，适合报名、考试、简历和工牌场景。',
     inputHint: '上传清晰正面人像，优先选择无遮挡、光线均匀的照片。',
     outputHint: '输出标准背景色证件照，可继续下载或进入尺寸裁剪。',
-    failureHint: '识别失败时请换用更清晰照片，避免多人合照、强阴影或低分辨率图片。'
+    failureHint: '识别失败时请换用更清晰照片，避免多人合照、强阴影或低分辨率图片。',
+    qualityHint: '建议生成后检查头发边缘、肩部轮廓和背景纯度，确认无误再下载。'
   },
   {
     route: '/tools/photo/transparent',
@@ -37,7 +39,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '快速处理证件照免冠透明底，减少反复修图和抠图成本。',
     inputHint: '上传单人半身或头像照片，人物边缘越清晰效果越稳定。',
     outputHint: '输出透明底人像，可继续合成证件照背景或保存素材。',
-    failureHint: '若头发边缘或肩部识别不完整，请换用纯色背景照片后重试。'
+    failureHint: '若头发边缘或肩部识别不完整，请换用纯色背景照片后重试。',
+    qualityHint: '下载前重点检查透明边缘是否干净，必要时先换底色再导出。'
   },
   {
     route: '/tools/photo/crop',
@@ -47,7 +50,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '按常见证件照规格快速裁剪，减少手动调尺寸误差。',
     inputHint: '先上传已处理好的人像照片，再选择目标证件照规格。',
     outputHint: '输出符合尺寸比例的证件照，适合报名系统或资料提交。',
-    failureHint: '裁剪后主体偏移时，请重新调整取景区域或先完成换底处理。'
+    failureHint: '裁剪后主体偏移时，请重新调整取景区域或先完成换底处理。',
+    qualityHint: '提交前核对尺寸、脸部位置和肩部留白，避免报名系统二次驳回。'
   },
   {
     route: '/tools/photo/layout',
@@ -57,7 +61,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '把多张证件照自动排到打印纸上，适合线下冲印和批量交付。',
     inputHint: '上传已完成尺寸裁剪的证件照，选择纸张和排版规格。',
     outputHint: '输出排版后的打印图，便于直接保存或打印。',
-    failureHint: '若排版留白异常，请确认照片尺寸比例正确后重新生成。'
+    failureHint: '若排版留白异常，请确认照片尺寸比例正确后重新生成。',
+    qualityHint: '打印前建议预览纸张方向、单张间距和裁切线，避免浪费相纸。'
   },
   {
     route: '/tools/ai/deepseek-r1',
@@ -67,7 +72,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '面向推理、分析和复杂问题拆解，适合深度思考类任务。',
     inputHint: '输入明确问题、背景信息和期望输出格式，复杂任务建议分步骤描述。',
     outputHint: '输出结构化回答，可继续追问、复制或用于文档整理。',
-    failureHint: '回答中断时请缩短问题或重新发送，必要时切换为更具体的任务描述。'
+    failureHint: '回答中断时请缩短问题或重新发送，必要时切换为更具体的任务描述。',
+    qualityHint: '复杂结论建议继续追问依据、边界和下一步动作，避免直接照搬。'
   },
   {
     route: '/tools/ai/deepseek',
@@ -77,7 +83,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '适合日常问答、写作辅助、资料整理和轻量代码解释。',
     inputHint: '输入问题和上下文，补充语气、长度或格式要求可提升结果可用性。',
     outputHint: '输出可复制的对话结果，适合继续润色或拆分为执行步骤。',
-    failureHint: '若模型响应慢，请稍后重试或减少一次性输入长度。'
+    failureHint: '若模型响应慢，请稍后重试或减少一次性输入长度。',
+    qualityHint: '正式使用前建议核对事实、日期、数字和链接，必要时补充上下文重问。'
   },
   {
     route: '/tools/ai/ocr',
@@ -87,7 +94,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '把截图、票据、文档图片快速识别成可复制文本。',
     inputHint: '上传文字清晰、方向正确的图片，复杂表格建议先裁掉无关区域。',
     outputHint: '输出识别文本，便于复制、整理或继续交给 AI 总结。',
-    failureHint: '识别不准时请提高图片清晰度，避免倾斜、反光和过小字号。'
+    failureHint: '识别不准时请提高图片清晰度，避免倾斜、反光和过小字号。',
+    qualityHint: '复制前建议检查专有名词、金额、日期和表格换行，避免误录。'
   },
   {
     route: '/tools/ai/image-enhance',
@@ -97,7 +105,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '提升模糊图片清晰度，适合头像、商品图和低清素材修复。',
     inputHint: '上传主体明确的图片，避免过度压缩或严重马赛克素材。',
     outputHint: '输出增强后的高清图片，可对比原图后下载。',
-    failureHint: '增强失败时请换用较小尺寸或更清晰原图，避免超大文件。'
+    failureHint: '增强失败时请换用较小尺寸或更清晰原图，避免超大文件。',
+    qualityHint: '下载前建议放大查看脸部、文字和边缘区域，确认没有过锐化或伪影。'
   },
   {
     route: '/tools/ai/remove-watermark',
@@ -107,7 +116,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '辅助清理图片中影响展示的水印、污点或局部瑕疵。',
     inputHint: '上传需要处理的图片，并优先选择水印区域明确的素材。',
     outputHint: '输出修复后的图片，适合继续裁剪、压缩或作为展示素材。',
-    failureHint: '水印覆盖主体时可能影响结果，建议先裁剪区域或降低处理范围。'
+    failureHint: '水印覆盖主体时可能影响结果，建议先裁剪区域或降低处理范围。',
+    qualityHint: '用于商业展示前请确认素材授权，并检查修复区域是否有明显涂抹痕迹。'
   },
   {
     route: '/tools/ai/work-summary',
@@ -117,7 +127,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '快速生成结构完整的阶段工作总结，覆盖成果、问题和计划。',
     inputHint: '填写岗位、周期、关键成果和遇到的问题，内容越具体越可交付。',
     outputHint: '输出可复制的总结正文，可继续调整语气和篇幅。',
-    failureHint: '结果空泛时请补充数据、项目名称和具体工作事项后重新生成。'
+    failureHint: '结果空泛时请补充数据、项目名称和具体工作事项后重新生成。',
+    qualityHint: '提交前建议补充量化成果、项目名称和负责人视角，让总结更可信。'
   },
   {
     route: '/tools/ai/work-summary?type=annual',
@@ -127,7 +138,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '把全年工作沉淀为正式总结，适合述职、绩效和年终汇报。',
     inputHint: '补充年度目标、核心项目、量化成果、问题复盘和下一年规划。',
     outputHint: '输出年度总结框架与正文，可继续扩写为汇报稿。',
-    failureHint: '如篇幅不足，请按季度补充素材，避免只输入一句话需求。'
+    failureHint: '如篇幅不足，请按季度补充素材，避免只输入一句话需求。',
+    qualityHint: '用于述职前建议按季度核对事实，并补充关键指标和下一年计划。'
   },
   {
     route: '/tools/ai/office/custom-summary',
@@ -137,7 +149,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '按自定义主题生成总结，适合会议、项目、学习和运营复盘。',
     inputHint: '填写总结主题、素材要点、对象和输出风格。',
     outputHint: '输出贴合场景的总结内容，可继续复制到办公文档。',
-    failureHint: '结果偏题时请明确总结对象和不要包含的内容。'
+    failureHint: '结果偏题时请明确总结对象和不要包含的内容。',
+    qualityHint: '发送前建议核对受众、语气和敏感信息，必要时删除内部数据。'
   },
   {
     route: '/tools/ai/office/resume-creation',
@@ -147,7 +160,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '把经历整理成更专业的简历表达，突出岗位匹配和成果价值。',
     inputHint: '填写目标岗位、工作经历、项目成果、技能和教育背景。',
     outputHint: '输出简历模块内容，可继续复制到简历模板或精修措辞。',
-    failureHint: '如果表达不够具体，请补充数据指标、职责范围和项目结果。'
+    failureHint: '如果表达不够具体，请补充数据指标、职责范围和项目结果。',
+    qualityHint: '投递前建议把夸张表述改成真实经历，并补充可验证成果。'
   },
   {
     route: '/tools/ai/office/meeting-minutes',
@@ -157,7 +171,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '把零散会议记录整理为议题、结论、待办和责任人。',
     inputHint: '粘贴会议原始记录，补充会议主题、参会角色和重点关注事项。',
     outputHint: '输出结构化会议纪要，适合直接发群或沉淀到项目文档。',
-    failureHint: '待办不清晰时请补充责任人、截止时间和会议结论。'
+    failureHint: '待办不清晰时请补充责任人、截止时间和会议结论。',
+    qualityHint: '发送前建议人工确认决议、责任人和截止时间，避免误派任务。'
   },
   {
     route: '/tools/ai/analysis/research-report',
@@ -167,7 +182,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '快速生成研究报告骨架和正文，适合行业、产品和课题分析。',
     inputHint: '输入研究主题、目标对象、资料要点和需要覆盖的章节。',
     outputHint: '输出报告结构、分析内容和结论建议，可继续人工补充数据。',
-    failureHint: '事实性内容需要人工核验；结果泛化时请补充真实数据来源。'
+    failureHint: '事实性内容需要人工核验；结果泛化时请补充真实数据来源。',
+    qualityHint: '对外发布前必须核验引用、数据口径和时间范围，避免事实错误。'
   },
   {
     route: '/tools/ai/analysis/business-plan',
@@ -177,7 +193,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '辅助整理商业模式、市场机会、产品策略和落地计划。',
     inputHint: '填写项目背景、目标用户、收入模式、竞品和资源条件。',
     outputHint: '输出商业计划书章节内容，适合继续扩写或做路演材料。',
-    failureHint: '财务和市场数据需自行核验；信息不足时先补业务假设再生成。'
+    failureHint: '财务和市场数据需自行核验；信息不足时先补业务假设再生成。',
+    qualityHint: '路演前建议补真实市场数据、财务模型和团队信息，AI 文案只作初稿。'
   },
   {
     route: '/tools/ai/article-generator',
@@ -187,7 +204,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '按主题快速生成文章正文，适合运营内容、公众号和知识分享。',
     inputHint: '填写主题、受众、关键词、字数和语气风格。',
     outputHint: '输出文章标题、结构和正文，可继续润色、复制或二次编辑。',
-    failureHint: '结果重复或空泛时，请补充观点、案例和需要规避的表述。'
+    failureHint: '结果重复或空泛时，请补充观点、案例和需要规避的表述。',
+    qualityHint: '发布前建议加入原创案例和品牌口径，并检查标题与正文是否一致。'
   },
   {
     route: '/tools/ai/xiaohongshu-note',
@@ -197,7 +215,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '快速生成更适合种草传播的小红书标题、正文和标签。',
     inputHint: '填写产品/主题、目标人群、卖点、语气和注意事项。',
     outputHint: '输出笔记正文和标签建议，适合继续人工调整真实体验细节。',
-    failureHint: '营销味过重时请补充真实使用感受和不夸大的表达要求。'
+    failureHint: '营销味过重时请补充真实使用感受和不夸大的表达要求。',
+    qualityHint: '发布前建议加入真实图片、体验细节和合规表达，避免夸大宣传。'
   },
   {
     route: '/tools/video/compress',
@@ -207,7 +226,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '在尽量保留画质的前提下降低视频体积，适合上传和分享。',
     inputHint: '上传本地视频，选择压缩强度、输出格式和目标清晰度。',
     outputHint: '输出压缩后视频和体积对比，可确认效果后下载。',
-    failureHint: '处理失败时请减小视频体积或更换格式，避免浏览器内存不足。'
+    failureHint: '处理失败时请减小视频体积或更换格式，避免浏览器内存不足。',
+    qualityHint: '下载前建议播放检查首尾、音画同步和关键画面清晰度。'
   },
   {
     route: '/tools/video/convert',
@@ -217,7 +237,8 @@ export const MEMBER_CORE_TOOL_EXPERIENCES: MemberCoreToolExperience[] = [
     valuePoint: '把视频转换为常用格式，适配不同平台上传和播放要求。',
     inputHint: '上传视频后选择目标格式，必要时调整分辨率和编码参数。',
     outputHint: '输出转换后视频文件，可下载并用于目标平台。',
-    failureHint: '转换失败时请尝试较小文件或常见源格式，如 MP4、MOV、WEBM。'
+    failureHint: '转换失败时请尝试较小文件或常见源格式，如 MP4、MOV、WEBM。',
+    qualityHint: '上传平台前建议检查格式、时长、音频和封面帧是否符合要求。'
   }
 ]
 
