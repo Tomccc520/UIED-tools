@@ -2,6 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import GifCompress from './GifCompress.vue'
 
+/**
+ * 函数说明：为 GifCompress 单测提供与生产全局函数一致的标题兜底，避免引入剪贴板工具依赖。
+ */
+const ensureFreeToolTitleForTest = (title: string): string => {
+  const rawTitle = String(title || '').trim()
+  if (!rawTitle || rawTitle.includes('免费')) {
+    return rawTitle
+  }
+  return /^[A-Za-z0-9]/.test(rawTitle) ? `免费 ${rawTitle}` : `免费${rawTitle}`
+}
+
 // Mock 路由与 SEO 依赖，避免测试环境缺少注入上下文
 vi.mock('vue-router', () => {
   return {
@@ -72,10 +83,14 @@ describe('GifCompress.vue', () => {
   beforeEach(() => {
     wrapper = mount(GifCompress, {
       global: {
+        mocks: {
+          $ensureFreeToolTitle: ensureFreeToolTitleForTest
+        },
         stubs: {
           'router-link': {
             template: '<a><slot /></a>'
-          }
+          },
+          ToolsRecommend: true
         }
       }
     })

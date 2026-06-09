@@ -774,6 +774,16 @@ export default defineConfig({
 
   // 单元测试配置
   test: {
-    environment: 'jsdom'
+    environment: 'jsdom',
+    include: ['src/**/*.{spec,test}.{ts,tsx,js,jsx}'],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      'output/**',
+      '.runtime/**',
+      'backend/**',
+      'server/**',
+      'scripts/**'
+    ]
   }
 })
