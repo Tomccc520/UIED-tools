@@ -24,6 +24,7 @@
     "audit:tool-runtime-gate": "node scripts/audit-tool-runtime-gate.mjs",
     "smoke:core-tools": "node scripts/smoke-core-tools.mjs",
     "smoke:core-tools:visual": "node scripts/smoke-core-tools-visual.mjs",
+    "smoke:frontend-mobile:visual": "node scripts/smoke-frontend-mobile-visual.mjs",
     "preview": "vite preview",
     "test:unit": "vitest"
   },
