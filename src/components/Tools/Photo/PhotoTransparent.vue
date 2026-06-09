@@ -40,6 +40,13 @@
             </div>
           </div>
 
+          <MemberCoreToolTips
+            v-if="currentMemberCoreExperience"
+            :tool-key="currentMemberCoreExperience.toolKey"
+            :title="memberCoreTipsTitle"
+            :items="memberCoreTipsItems"
+          />
+
           <div v-if="currentImage" class="bg-gray-50 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">选择证件类型（用于后续裁剪参考）</div>
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -128,8 +135,10 @@ import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { requestMattingImage, warmupMattingModelId } from '@/services/matting'
 import { useToolConsume } from '@/composables/useToolConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const info = reactive({
   title: '证件照透明背景工具',
@@ -157,6 +166,11 @@ const selectedFile = ref<File | null>(null)
 const processedObjectUrl = ref('')
 const route = useRoute()
 const { ensureToolConsume } = useToolConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 
 const faq = [
   {

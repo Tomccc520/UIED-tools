@@ -55,6 +55,13 @@
             </div>
           </div>
 
+          <MemberCoreToolTips
+            v-if="currentMemberCoreExperience"
+            :tool-key="currentMemberCoreExperience.toolKey"
+            :title="memberCoreTipsTitle"
+            :items="memberCoreTipsItems"
+          />
+
           <!-- 排版设置面板 -->
           <div v-if="currentImage" class="bg-gray-50 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">排版设置</div>
@@ -230,8 +237,10 @@
 import { ref, reactive } from '@vue/runtime-core'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { useRoute } from 'vue-router'
 import { useToolConsume } from '@/composables/useToolConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 // 组件配置信息
 const info = reactive({
@@ -261,6 +270,11 @@ const imageWidth = ref(0)
 const imageHeight = ref(0)
 const route = useRoute()
 const { ensureToolConsume } = useToolConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 
 // 排版预设配置
 const layoutPresets = [

@@ -57,6 +57,14 @@
           </div>
         </div>
 
+        <MemberCoreToolTips
+          v-if="currentMemberCoreExperience"
+          class="mb-6"
+          :tool-key="currentMemberCoreExperience.toolKey"
+          :title="memberCoreTipsTitle"
+          :items="memberCoreTipsItems"
+        />
+
         <!-- 对话区域 -->
         <div class="flex flex-col space-y-4 mb-6">
           <!-- 模型选择 -->
@@ -370,6 +378,7 @@ import { ref, onMounted, computed, onBeforeUnmount } from '@vue/runtime-core'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { useHead } from '@vueuse/head'
 import { wechatVerifyConfig } from '@/utils/verify'
 import { ensureHighlightRuntime, ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
@@ -382,6 +391,7 @@ import {
   type AiProviderModelOption
 } from '@/services/aiProvider'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 type HighlightCore = typeof import('highlight.js')['default']
 let highlightCore: HighlightCore | null = null
@@ -751,6 +761,11 @@ const maxFreeUsage = ref(wechatVerifyConfig.maxFreeUsage)
 const route = useRoute()
 const router = useRouter()
 const { consumeCoreToolRun } = useCoreToolManualConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 
 // 添加验证密码的方法
 const verifyAccess = () => {

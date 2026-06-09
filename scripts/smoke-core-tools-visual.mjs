@@ -1,0 +1,208 @@
+/**
+ * @file smoke-core-tools-visual.mjs
+ * @description 20 个会员核心工具 Playwright 可视冒烟，检查首屏会员卖点和页内体验提示可见
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-06-09
+ */
+
+import net from 'node:net'
+import path from 'node:path'
+import { spawn } from 'node:child_process'
+import { setTimeout as delay } from 'node:timers/promises'
+import { chromium } from 'playwright'
+import { MEMBER_CORE_TOOL_PRESETS } from './lib/tool-commercial-policy.mjs'
+
+const projectRoot = process.cwd()
+const host = '127.0.0.1'
+const consumeApiPatterns = [
+  '/api/common/frontend-user/points/consume',
+  '/api/user/points/consume',
+  '/points/consume'
+]
+
+/**
+ * 函数说明：获取一个本地空闲端口，避免和用户当前开发服务冲突。
+ */
+const findFreePort = () => {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer()
+    server.once('error', reject)
+    server.listen(0, host, () => {
+      const address = server.address()
+      const port = typeof address === 'object' && address ? address.port : 0
+      server.close(() => resolve(port))
+    })
+  })
+}
+
+/**
+ * 函数说明：等待 Vite 服务可访问，避免 Playwright 过早打开页面。
+ */
+const waitForServerReady = async (baseUrl, serverProcess) => {
+  const startedAt = Date.now()
+  while (Date.now() - startedAt < 30000) {
+    if (serverProcess.exitCode !== null) {
+      throw new Error(`Vite 服务提前退出，退出码：${serverProcess.exitCode}`)
+    }
+    try {
+      const response = await fetch(baseUrl)
+      if (response.ok || response.status < 500) {
+        return
+      }
+    } catch {
+      await delay(400)
+    }
+  }
+  throw new Error(`Vite 服务启动超时：${baseUrl}`)
+}
+
+/**
+ * 函数说明：启动当前项目 Vite 服务，供可视冒烟逐页访问。
+ */
+const startViteServer = async () => {
+  const port = await findFreePort()
+  const baseUrl = `http://${host}:${port}`
+  const viteBin = path.resolve(projectRoot, 'node_modules/vite/bin/vite.js')
+  const serverProcess = spawn(process.execPath, [viteBin, '--host', host, '--port', String(port)], {
+    cwd: projectRoot,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: {
+      ...process.env,
+      NODE_ENV: 'development'
+    }
+  })
+
+  let serverOutput = ''
+  serverProcess.stdout.on('data', (chunk) => {
+    serverOutput += String(chunk)
+  })
+  serverProcess.stderr.on('data', (chunk) => {
+    serverOutput += String(chunk)
+  })
+
+  try {
+    await waitForServerReady(baseUrl, serverProcess)
+  } catch (error) {
+    serverProcess.kill('SIGTERM')
+    throw new Error(`${error instanceof Error ? error.message : String(error)}\n${serverOutput}`)
+  }
+
+  return {
+    baseUrl,
+    serverProcess
+  }
+}
+
+/**
+ * 函数说明：读取元素文本并压缩空白，便于输出稳定的断言错误。
+ */
+const readVisibleText = async (locator) => {
+  const text = await locator.textContent()
+  return String(text || '').replace(/\s+/g, ' ').trim()
+}
+
+/**
+ * 函数说明：断言指定文本片段存在于页面区域内。
+ */
+const expectTextIncludes = (text, snippets, context) => {
+  snippets.forEach((snippet) => {
+    if (!text.includes(snippet)) {
+      throw new Error(`${context} 缺少文案：${snippet}`)
+    }
+  })
+}
+
+/**
+ * 函数说明：检查首页可渲染，作为核心工具路由前的基础页面冒烟。
+ */
+const verifyHomePage = async (page, baseUrl) => {
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+  await page.locator('body').waitFor({ state: 'visible', timeout: 15000 })
+  const bodyText = await readVisibleText(page.locator('body'))
+  if (bodyText.length < 20) {
+    throw new Error('首页渲染内容过少，可能为空白页')
+  }
+}
+
+/**
+ * 函数说明：检查单个会员核心工具的首屏会员面板和页内体验提示。
+ */
+const verifyCoreToolPage = async (page, baseUrl, tool) => {
+  await page.goto(`${baseUrl}${tool.matchUrl}`, { waitUntil: 'domcontentloaded' })
+
+  const runtimePanel = page.locator('.member-core-runtime-panel')
+  await runtimePanel.waitFor({ state: 'visible', timeout: 15000 })
+  const runtimeText = await readVisibleText(runtimePanel)
+  expectTextIncludes(
+    runtimeText,
+    [
+      tool.title,
+      '会员核心卖点',
+      '输入要求',
+      '示例输入',
+      '输出结果',
+      '交付样例',
+      '失败兜底',
+      '结果质量建议'
+    ],
+    `${tool.matchUrl} 首屏会员面板`
+  )
+
+  const tips = page.locator(`.member-core-tool-tips[data-member-core-tool-key="${tool.toolKey}"]`)
+  await tips.waitFor({ state: 'visible', timeout: 15000 })
+  const tipsItemCount = await tips.locator('.member-core-tool-tips__item').count()
+  if (tipsItemCount < 3) {
+    throw new Error(`${tool.matchUrl} 页内会员体验提示不足 3 项`)
+  }
+}
+
+/**
+ * 函数说明：执行 Playwright 可视冒烟并保证关闭浏览器和本地服务。
+ */
+const main = async () => {
+  let serverProcess = null
+  let browser = null
+  const consumeRequests = []
+
+  try {
+    const server = await startViteServer()
+    serverProcess = server.serverProcess
+    browser = await chromium.launch({ headless: true })
+    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
+
+    page.on('request', (request) => {
+      const requestUrl = request.url()
+      if (consumeApiPatterns.some((pattern) => requestUrl.includes(pattern))) {
+        consumeRequests.push(requestUrl)
+      }
+    })
+
+    const baseUrl = server.baseUrl
+    await verifyHomePage(page, baseUrl)
+    for (const tool of MEMBER_CORE_TOOL_PRESETS) {
+      await verifyCoreToolPage(page, baseUrl, tool)
+    }
+
+    if (consumeRequests.length > 0) {
+      throw new Error(`可视冒烟不应触发扣费接口：${consumeRequests.join(', ')}`)
+    }
+
+    console.log(`✅ 会员核心工具可视冒烟通过：首页 + ${MEMBER_CORE_TOOL_PRESETS.length} 个核心工具。`)
+  } finally {
+    if (browser) {
+      await browser.close()
+    }
+    if (serverProcess && serverProcess.exitCode === null) {
+      serverProcess.kill('SIGTERM')
+    }
+  }
+}
+
+main().catch((error) => {
+  const message = error instanceof Error ? error.message : String(error)
+  console.error('❌ 会员核心工具可视冒烟失败：')
+  console.error(message)
+  process.exit(1)
+})

@@ -41,6 +41,14 @@
               <p class="text-sm text-gray-500">支持 JPG、PNG、WebP 格式</p>
             </div>
           </div>
+
+          <MemberCoreToolTips
+            v-if="currentMemberCoreExperience"
+            class="mt-6"
+            :tool-key="currentMemberCoreExperience.toolKey"
+            :title="memberCoreTipsTitle"
+            :items="memberCoreTipsItems"
+          />
         </div>
 
         <template v-else>
@@ -185,11 +193,18 @@ import { useRoute } from 'vue-router'
 import VueCropper from 'vue-cropperjs'
 import 'cropperjs/dist/cropper.css'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { useToolConsume } from '@/composables/useToolConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 // 获取当前路由
 const route = useRoute()
 const { ensureToolConsume } = useToolConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 
 // 组件配置信息
 const info = {

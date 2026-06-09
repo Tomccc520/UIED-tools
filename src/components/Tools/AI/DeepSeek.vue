@@ -29,6 +29,14 @@
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
+        <MemberCoreToolTips
+          v-if="currentMemberCoreExperience"
+          class="mb-8"
+          :tool-key="currentMemberCoreExperience.toolKey"
+          :title="memberCoreTipsTitle"
+          :items="memberCoreTipsItems"
+        />
+
         <!-- 对话区域 -->
         <div class="grid grid-cols-1 gap-8">
           <!-- 主对话区 -->
@@ -205,6 +213,8 @@
  */
 import { computed, ref, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute } from 'vue-router'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import {
   getCurrentAiProvider,
   parseAiProviderErrorMessage,
@@ -212,6 +222,7 @@ import {
   type AiProviderCurrent
 } from '@/services/aiProvider'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 // 组件配置信息
 const info = {
@@ -239,7 +250,13 @@ const loading = ref(false)
 const textareaHeight = ref(56)
 const isTyping = ref(false)
 const providerInfo = ref<AiProviderCurrent | null>(null)
+const route = useRoute()
 const { consumeCoreToolRun } = useCoreToolManualConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 let typewriterTimer: ReturnType<typeof setTimeout> | null = null
 let scrollRafId: number | null = null
 

@@ -23,6 +23,14 @@
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成深度研究报告，涵盖研究背景、方法、结果与结论，助力学术与商业研究</p>
         </div>
 
+        <MemberCoreToolTips
+          v-if="currentMemberCoreExperience"
+          class="mb-8"
+          :tool-key="currentMemberCoreExperience.toolKey"
+          :title="memberCoreTipsTitle"
+          :items="memberCoreTipsItems"
+        />
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div class="lg:col-span-4 space-y-6">
             <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
@@ -177,11 +185,18 @@ import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { generateAIWriting } from '@/services/ai'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const route = useRoute()
 const { consumeCoreToolRun } = useCoreToolManualConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   topic: '',

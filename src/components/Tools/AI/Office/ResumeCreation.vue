@@ -24,6 +24,14 @@
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成专业简历，优化工作经历和技能描述，提升求职成功率</p>
         </div>
 
+        <MemberCoreToolTips
+          v-if="currentMemberCoreExperience"
+          class="mb-8"
+          :tool-key="currentMemberCoreExperience.toolKey"
+          :title="memberCoreTipsTitle"
+          :items="memberCoreTipsItems"
+        />
+
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- 左侧：配置区域 -->
           <div class="lg:col-span-4 space-y-6">
@@ -207,11 +215,18 @@ import { nextTick, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { generateAIWriting } from '@/services/ai'
 import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const route = useRoute()
 const { consumeCoreToolRun } = useCoreToolManualConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   intention: '',
