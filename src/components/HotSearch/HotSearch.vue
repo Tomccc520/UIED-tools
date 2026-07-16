@@ -25,7 +25,7 @@
           </router-link>
           <span class="header-time">{{ currentTime }}</span>
           <div class="header-actions">
-            <el-icon :class="['action-icon', { refreshing: isRefreshing }]" @click="refreshList">
+            <el-icon :class="['action-icon', { refreshing: isRefreshing }]" @click="refreshList(true)">
               <Refresh />
             </el-icon>
           </div>
@@ -89,6 +89,13 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { Refresh, ArrowRight } from '@element-plus/icons-vue'
+import {
+  getDefaultHomepageLearningConfig,
+  getHomepageLearningFeed,
+  type HomepageLearningFeedConfig,
+  type HomepageLearningFeedItem,
+  type HomepageLearningFeedResult
+} from '@/services/homepageLearning'
 import '@/assets/io-hot.css'
 
 interface Article {
@@ -98,24 +105,16 @@ interface Article {
   hot: number
 }
 
-interface RequestParams {
-  [key: string]: string | undefined
-  _fields: string
-  per_page: string
-  orderby: string
-  order: string
-  categories_exclude?: string
-  categories?: string
-  tags?: string
-}
-
 interface HotSectionConfig {
-  key: string
+  key: 'learn' | 'relax' | 'deepseek' | 'aigc'
   domId: string
   platformName: string
   platformType?: string
-  url: string
-  params: RequestParams
+}
+
+interface HotSearchCacheData {
+  sections: Record<string, Article[]>
+  learningConfig: HomepageLearningFeedConfig
 }
 
 const loading = ref(false)
@@ -124,8 +123,9 @@ const isRefreshing = ref(false)
 const lastRefreshTime = ref(0)
 const timeTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const autoRefreshTimer = ref<ReturnType<typeof setInterval> | null>(null)
+const learningConfig = ref<HomepageLearningFeedConfig>(getDefaultHomepageLearningConfig())
 
-const CACHE_KEY = 'hot_search_cache'
+const CACHE_KEY = 'hot_search_cache_v3'
 const CACHE_EXPIRY = 10 * 60 * 1000
 const REFRESH_COOLDOWN = 30 * 1000
 
@@ -133,54 +133,23 @@ const sectionConfigs: HotSectionConfig[] = [
   {
     key: 'learn',
     domId: 'learn_hot',
-    platformName: '每日学习',
-    url: 'https://www.uied.cn/wp-json/wp/v2/posts',
-    params: {
-      _fields: 'title,link,date',
-      per_page: '30',
-      orderby: 'date',
-      order: 'desc',
-      categories_exclude: '337,388'
-    }
+    platformName: '每日学习'
   },
   {
     key: 'relax',
     domId: 'relax_hot',
-    platformName: '累了摸鱼',
-    url: 'https://www.uied.cn/wp-json/wp/v2/circle',
-    params: {
-      _fields: 'title,link,date',
-      per_page: '30',
-      orderby: 'date',
-      order: 'desc'
-    }
+    platformName: '累了摸鱼'
   },
   {
     key: 'deepseek',
     domId: 'font_hot',
     platformName: 'DeepSeek教程',
-    platformType: '最近爆火',
-    url: 'https://www.uied.cn/wp-json/wp/v2/posts',
-    params: {
-      _fields: 'title,link,date',
-      per_page: '30',
-      orderby: 'date',
-      order: 'desc',
-      tags: '3842'
-    }
+    platformType: '最近爆火'
   },
   {
     key: 'aigc',
     domId: 'aigc_hot',
-    platformName: 'AIGC学习',
-    url: 'https://www.uied.cn/wp-json/wp/v2/posts',
-    params: {
-      _fields: 'title,link,date',
-      per_page: '30',
-      orderby: 'date',
-      order: 'desc',
-      categories: '417'
-    }
+    platformName: 'AIGC学习'
   }
 ]
 
@@ -192,16 +161,24 @@ const sectionArticles = reactive<Record<string, Article[]>>(
 )
 
 const hotSections = computed(() =>
-  sectionConfigs.map((item) => ({
-    ...item,
-    items: sectionArticles[item.key] || []
-  }))
+  sectionConfigs
+    .filter((item) => {
+      if (item.key === 'learn') {
+        return learningConfig.value.enabled
+      }
+      return loading.value || (sectionArticles[item.key] || []).length > 0
+    })
+    .map((item) => ({
+      ...item,
+      platformName: item.key === 'learn' ? learningConfig.value.title : item.platformName,
+      items: sectionArticles[item.key] || []
+    }))
 )
 
 /**
  * 函数说明：读取热榜缓存，命中有效缓存时直接回填响应式列表，避免刷新阶段再次触发 DOM 竞争。
  */
-const getCache = (): Record<string, Article[]> | null => {
+const getCache = (): HotSearchCacheData | null => {
   try {
     const cache = localStorage.getItem(CACHE_KEY)
     if (!cache) {
@@ -213,7 +190,19 @@ const getCache = (): Record<string, Article[]> | null => {
       localStorage.removeItem(CACHE_KEY)
       return null
     }
-    return data as Record<string, Article[]>
+    if (!data || typeof data !== 'object') {
+      localStorage.removeItem(CACHE_KEY)
+      return null
+    }
+    const cacheData = data as Partial<HotSearchCacheData>
+    if (!cacheData.sections || typeof cacheData.sections !== 'object') {
+      localStorage.removeItem(CACHE_KEY)
+      return null
+    }
+    return {
+      sections: cacheData.sections,
+      learningConfig: cacheData.learningConfig || getDefaultHomepageLearningConfig()
+    }
   } catch (error) {
     console.error('读取热榜缓存失败:', error)
     localStorage.removeItem(CACHE_KEY)
@@ -224,7 +213,7 @@ const getCache = (): Record<string, Article[]> | null => {
 /**
  * 函数说明：缓存热榜接口结果，降低首页多次刷新时的请求压力。
  */
-const setCache = (data: Record<string, Article[]>) => {
+const setCache = (data: HotSearchCacheData) => {
   try {
     localStorage.setItem(
       CACHE_KEY,
@@ -253,16 +242,14 @@ const updateTime = () => {
 }
 
 /**
- * 函数说明：把接口返回文章统一格式化成热榜展示结构，避免模板层再拼接随机热度。
+ * 函数说明：将后端解析后的文章条目转换为首页热榜统一结构。
  */
-const normalizeArticles = (posts: any[]): Article[] => {
-  return posts.map((post, index) => ({
-    title: String(post?.title?.rendered || '')
-      .replace(/&#8211;/g, '-')
-      .trim(),
-    url: String(post?.link || '').trim(),
-    date: String(post?.date || '').trim(),
-    hot: Math.floor(Math.random() * 5000 + 1000 + index * 7)
+const normalizeLearningArticles = (items: HomepageLearningFeedItem[]): Article[] => {
+  return items.map((item, index) => ({
+    title: item.title,
+    url: item.url,
+    date: item.publishedAt,
+    hot: Math.max(1000, 5200 - index * 97)
   }))
 }
 
@@ -276,58 +263,28 @@ const applySectionArticles = (data: Record<string, Article[]>) => {
 }
 
 /**
- * 函数说明：为热榜请求增加超时和有限重试，避免个别源站抖动直接打断整组渲染。
+ * 函数说明：将后端一次返回的四个首页栏目数据映射为热榜列表，避免浏览器跨域请求旧接口。
  */
-const fetchWithRetry = async (
-  url: string,
-  params: RequestParams,
-  retryCount = 0
-): Promise<any[]> => {
-  const retryLimit = 2
-  const retryDelay = 500
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 6000)
-
-  try {
-    const validParams = Object.fromEntries(
-      Object.entries(params).filter(([, value]) => value !== undefined)
-    ) as Record<string, string>
-
-    const response = await fetch(`${url}?${new URLSearchParams(validParams).toString()}`, {
-      signal: controller.signal,
-      headers: {
-        Accept: 'application/json',
-        'Cache-Control': 'no-cache',
-        Pragma: 'no-cache'
-      }
-    })
-
-    clearTimeout(timeoutId)
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    return await response.json()
-  } catch (error) {
-    clearTimeout(timeoutId)
-    if (retryCount < retryLimit) {
-      await new Promise((resolve) => setTimeout(resolve, retryDelay))
-      return fetchWithRetry(url, params, retryCount + 1)
-    }
-    throw error
+const normalizeHomepageSections = (result: HomepageLearningFeedResult): Record<string, Article[]> => {
+  learningConfig.value = result.config
+  return {
+    learn: normalizeLearningArticles(result.items),
+    relax: normalizeLearningArticles(result.sections.relax),
+    deepseek: normalizeLearningArticles(result.sections.deepseek),
+    aigc: normalizeLearningArticles(result.sections.aigc)
   }
 }
 
 /**
- * 函数说明：刷新热榜数据，命中缓存则直接回填；未命中时分批拉取并统一回写。
+ * 函数说明：刷新热榜数据，自动刷新优先使用缓存，手动刷新则绕过缓存便于验收后台配置。
  */
-const refreshList = async () => {
+const refreshList = async (forceRefresh = false) => {
   if (loading.value) {
     return
   }
 
   const now = Date.now()
-  if (now - lastRefreshTime.value < REFRESH_COOLDOWN) {
+  if (!forceRefresh && now - lastRefreshTime.value < REFRESH_COOLDOWN) {
     return
   }
 
@@ -336,50 +293,21 @@ const refreshList = async () => {
   lastRefreshTime.value = now
 
   try {
-    const cachedData = getCache()
+    const cachedData = forceRefresh ? null : getCache()
     if (cachedData) {
-      applySectionArticles(cachedData)
+      learningConfig.value = cachedData.learningConfig
+      applySectionArticles(cachedData.sections)
       return
     }
 
-    const batchSize = 2
-    const batchDelay = 200
-    const nextData: Record<string, Article[]> = {}
-
-    for (let i = 0; i < sectionConfigs.length; i += batchSize) {
-      const batch = sectionConfigs.slice(i, i + batchSize)
-      const results = await Promise.allSettled(
-        batch.map(async (item) => {
-          try {
-            const posts = await fetchWithRetry(item.url, item.params)
-            return {
-              key: item.key,
-              data: normalizeArticles(Array.isArray(posts) ? posts : [])
-            }
-          } catch (error) {
-            console.error(`获取热榜失败: ${item.platformName}`, error)
-            return {
-              key: item.key,
-              data: []
-            }
-          }
-        })
-      )
-
-      results.forEach((result) => {
-        if (result.status === 'fulfilled') {
-          nextData[result.value.key] = result.value.data
-        }
-      })
-
-      if (i + batchSize < sectionConfigs.length) {
-        await new Promise((resolve) => setTimeout(resolve, batchDelay))
-      }
-    }
+    const nextData = normalizeHomepageSections(await getHomepageLearningFeed())
 
     applySectionArticles(nextData)
     if (Object.values(nextData).some((items) => items.length > 0)) {
-      setCache(nextData)
+      setCache({
+        sections: nextData,
+        learningConfig: learningConfig.value
+      })
     }
   } catch (error) {
     console.error('刷新热榜失败:', error)
@@ -420,16 +348,16 @@ onUnmounted(() => {
   border-radius: 0.75rem;
   padding: 1rem;
   margin: 0 auto;
-  box-shadow: 0 0.0625rem 0.125rem 0 rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .hot-search-header {
   padding: 0.375rem 0.5rem;
-  border-bottom: 0.0625rem solid #f0f0f0;
+  border-bottom: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.5rem;
 }
 
 .header-left {
@@ -495,28 +423,27 @@ onUnmounted(() => {
 
 .hot-search-content {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  padding: 0.75rem 0.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.25rem;
+  padding: 0.5rem;
 }
 
 .hot-list-section {
-  background: #ffffff;
-  border-radius: 0.75rem;
-  border: 0.0625rem solid #ebeef5;
+  background: transparent;
+  border-radius: 0.5rem;
+  border: 0;
   display: flex;
   flex-direction: column;
   height: 26.25rem;
-  transition: all 0.3s;
+  transition: background-color 0.2s ease;
   min-width: 0;
   position: relative;
-  box-shadow: 0 0.0625rem 0.1875rem rgba(0, 0, 0, 0.05);
+  box-shadow: none;
 }
 
 .hot-list-section:hover {
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border-color: #e0e0e0;
-  transform: translateY(-2px);
+  box-shadow: none;
+  transform: none;
 }
 
 .hot-list-section:nth-child(1) {
@@ -553,11 +480,11 @@ onUnmounted(() => {
 
 .section-header {
   padding: 12px 16px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 0;
   flex-shrink: 0;
-  background: #fafafa;
-  border-radius: 12px 12px 0 0;
-  transition: all 0.3s ease;
+  background: #f6f7f9;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s ease;
 }
 
 .platform-info {
@@ -595,9 +522,19 @@ onUnmounted(() => {
   overflow-y: auto;
   scrollbar-width: thin;
   scrollbar-color: #e0e0e0 transparent;
-  padding: 8px 0;
+  padding: 6px 0;
   height: calc(100% - 50px);
   position: relative;
+}
+
+.io-hot-item {
+  border-bottom: 0;
+}
+
+.io-hot-index-1,
+.io-hot-index-2,
+.io-hot-index-3 {
+  box-shadow: none;
 }
 
 .hot-list-container::-webkit-scrollbar {

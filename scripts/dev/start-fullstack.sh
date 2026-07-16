@@ -565,6 +565,31 @@ apply_member_commerce_schema_patch() {
   log_info "会员套餐/积分包/流水补齐完成。"
 }
 
+# 函数说明：检测并补齐工具积分预扣状态表，确保核心工具失败时可以按 requestId 幂等退款。
+apply_points_consume_ledger_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260714_add_user_points_consume_ledger.sql"
+  local ledger_table_count="0"
+  local scheduler_index_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  ledger_table_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_points_consume';" 2>/dev/null || echo "0")"
+  if [[ "${ledger_table_count}" -ge 1 ]]; then
+    scheduler_index_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA='${DB_NAME}' AND TABLE_NAME='la_user_points_consume' AND INDEX_NAME='idx_status_expire';" 2>/dev/null || echo "0")"
+    if [[ "${scheduler_index_count}" -lt 1 ]]; then
+      log_info "检测到积分预扣表缺少定时回收索引，自动补齐..."
+      compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot "${DB_NAME}" -e "ALTER TABLE la_user_points_consume ADD INDEX idx_status_expire (status, expires_at, id);"
+    fi
+    return
+  fi
+
+  log_info "检测到工具积分预扣状态表缺失，自动执行积分结算补丁..."
+  compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"
+  log_info "工具积分预扣与失败退款表补齐完成。"
+}
+
 # 函数说明：检测并补齐后台“订单管理”菜单与权限，确保运营端可直接管理会员订单。
 apply_member_order_menu_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260330_add_member_order_menu.sql"
@@ -1648,6 +1673,7 @@ main() {
   apply_tool_ranking_schema_patch
   apply_user_member_schema_patch
   apply_member_commerce_schema_patch
+  apply_points_consume_ledger_patch
   apply_order_delivery_schema_patch
   apply_album_media_meta_schema_patch
   apply_member_order_menu_patch

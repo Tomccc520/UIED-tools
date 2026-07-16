@@ -40,11 +40,21 @@ interface FrontendUserProfileSavePayload {
 }
 
 export interface FrontendUserPointsConsumeResult {
+  requestId: string
+  status: 'reserved' | 'committed' | 'refunded' | 'expired'
   toolKey: string
   action: string
   consumePoints: number
   remainPoints: number
   dailyGiftApplied: boolean
+  profile: FrontendUserProfile
+}
+
+export interface FrontendUserPointsConsumeResolveResult {
+  requestId: string
+  status: 'reserved' | 'committed' | 'refunded' | 'expired'
+  consumePoints: number
+  remainPoints: number
   profile: FrontendUserProfile
 }
 
@@ -151,6 +161,8 @@ export interface FrontendUserLoginPromptPayload {
   reason?: string
   redirectPath?: string
   source?: string
+  consumePoints?: number
+  memberFree?: boolean
   timestamp?: number
 }
 
@@ -163,6 +175,7 @@ const FRONTEND_USER_LOGIN_ENDPOINT = '/api/common/frontend-user/login'
 const FRONTEND_USER_PROFILE_ENDPOINT = '/api/common/frontend-user/profile'
 const FRONTEND_USER_PROFILE_SAVE_ENDPOINT = '/api/common/frontend-user/profile/save'
 const FRONTEND_USER_POINTS_CONSUME_ENDPOINT = '/api/common/frontend-user/points/consume'
+const FRONTEND_USER_POINTS_CONSUME_RESOLVE_ENDPOINT = '/api/common/frontend-user/points/consume/resolve'
 const FRONTEND_USER_PRODUCTS_ENDPOINT = '/api/common/frontend-user/products'
 const FRONTEND_USER_PURCHASE_ENDPOINT = '/api/common/frontend-user/purchase'
 const FRONTEND_USER_PURCHASE_PAY_ENDPOINT = '/api/common/frontend-user/purchase/pay'
@@ -299,6 +312,12 @@ export const dispatchFrontendUserLoginPrompt = (payload: FrontendUserLoginPrompt
     redirectPath: String(payload.redirectPath || '').trim(),
     source: String(payload.source || '').trim(),
     timestamp: Number(payload.timestamp || Date.now())
+  }
+  if (typeof payload.consumePoints === 'number' && Number.isFinite(payload.consumePoints)) {
+    eventPayload.consumePoints = Math.max(0, Math.floor(payload.consumePoints))
+  }
+  if (typeof payload.memberFree === 'boolean') {
+    eventPayload.memberFree = payload.memberFree
   }
   window.dispatchEvent(new CustomEvent(FRONTEND_USER_LOGIN_PROMPT_EVENT, { detail: eventPayload }))
 }
@@ -695,7 +714,8 @@ export const saveFrontendUserProfileToServer = async (
  */
 export const consumeFrontendUserPoints = async (
   toolKey: string,
-  action = 'use'
+  action = 'use',
+  requestId = ''
 ): Promise<FrontendUserPointsConsumeResult | null> => {
   const frontendToken = getFrontendUserToken()
   if (!frontendToken) {
@@ -704,6 +724,8 @@ export const consumeFrontendUserPoints = async (
 
   try {
     const data = await requestFrontendUserApi<{
+      requestId?: string
+      status?: string
       toolKey?: string
       action?: string
       consumePoints?: number
@@ -716,7 +738,8 @@ export const consumeFrontendUserPoints = async (
         method: 'POST',
         body: JSON.stringify({
           toolKey: String(toolKey || '').trim(),
-          action: String(action || '').trim() || 'use'
+          action: String(action || '').trim() || 'use',
+          requestId: String(requestId || '').trim()
         })
       },
       frontendToken
@@ -729,6 +752,8 @@ export const consumeFrontendUserPoints = async (
     saveFrontendUserProfileToLocal(profile)
     dispatchFrontendUserAuthChanged()
     return {
+      requestId: String(data.requestId || '').trim(),
+      status: (String(data.status || '').trim() || 'committed') as FrontendUserPointsConsumeResult['status'],
       toolKey: String(data.toolKey || toolKey).trim(),
       action: String(data.action || action).trim(),
       consumePoints: Math.max(0, Number(data.consumePoints ?? profile.pointsToolConsumePoints ?? 0)),
@@ -744,6 +769,51 @@ export const consumeFrontendUserPoints = async (
       return null
     }
     throw error
+  }
+}
+
+/**
+ * 函数说明：按 requestId 确认核心工具运行成功，或在失败时请求后端幂等退还预扣积分。
+ */
+export const resolveFrontendUserPointsConsume = async (
+  requestId: string,
+  outcome: 'success' | 'failed',
+  reason = ''
+): Promise<FrontendUserPointsConsumeResolveResult | null> => {
+  const frontendToken = getFrontendUserToken()
+  if (!frontendToken) {
+    return null
+  }
+  const data = await requestFrontendUserApi<{
+    requestId?: string
+    status?: string
+    consumePoints?: number
+    remainPoints?: number
+    profile?: unknown
+  }>(
+    FRONTEND_USER_POINTS_CONSUME_RESOLVE_ENDPOINT,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        requestId: String(requestId || '').trim(),
+        outcome,
+        reason: String(reason || '').trim().slice(0, 200)
+      })
+    },
+    frontendToken
+  )
+  const profile = normalizeFrontendUserProfile(data.profile)
+  if (!profile.uid) {
+    return null
+  }
+  saveFrontendUserProfileToLocal(profile)
+  dispatchFrontendUserAuthChanged()
+  return {
+    requestId: String(data.requestId || requestId || '').trim(),
+    status: (String(data.status || '').trim() || 'reserved') as FrontendUserPointsConsumeResolveResult['status'],
+    consumePoints: Math.max(0, Number(data.consumePoints || 0)),
+    remainPoints: Math.max(0, Number(data.remainPoints ?? profile.pointsBalance ?? 0)),
+    profile
   }
 }
 
@@ -858,9 +928,11 @@ export const purchaseFrontendUserProduct = async (
         method: 'POST',
         body: JSON.stringify({
           orderSn: currentOrder.orderSn,
-          payChannel: 'mock'
+          payChannel: 'mock',
+          status: 'success'
         })
-      }
+      },
+      frontendToken
     )
     const callbackOrders = normalizeFrontendUserOrders({ lists: [callbackData.order || {}] })
     if (callbackOrders[0]) {

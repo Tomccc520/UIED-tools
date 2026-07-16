@@ -336,6 +336,152 @@ print(json.dumps(payload, ensure_ascii=False))')"
   fi
 }
 
+# 函数说明：清理本地业务冒烟创建的公众号回复记录，避免重复执行积累测试数据。
+cleanup_oa_smoke_replies() {
+  local database_name
+  database_name="$(read_env_value "${PORTS_ENV_FILE}" "DB_NAME" "uiedtool")"
+  compose_cmd exec -T mysql mysql -uroot -p"${MYSQL_ROOT_PASSWORD}" "${database_name}" \
+    -e "DELETE FROM la_official_reply WHERE keyword LIKE 'codex\\_smoke\\_%';" \
+    >/dev/null 2>&1 || true
+}
+
+# 函数说明：验证公众号菜单保存与关键词回复增删改查闭环，确认页面已对接真实接口。
+check_oa_management_roundtrip() {
+  local api_base_url="$1"
+  local token="$2"
+  local menu_response menu_http menu_body menu_code menu_payload menu_save_response menu_save_http menu_save_body menu_save_code
+  local smoke_suffix smoke_name smoke_keyword add_payload add_response add_http add_body add_code
+  local list_response list_http list_body list_code reply_id detail_response detail_http detail_body detail_code
+  local edit_payload edit_response edit_http edit_body edit_code status_response status_http status_body status_code
+  local reset_response reset_http reset_body reset_code delete_response delete_http delete_body delete_code
+
+  menu_response="$(http_request "GET" "${api_base_url}/api/channel/oaMenu/detail" "${token}")"
+  menu_http="$(printf '%s\n' "${menu_response}" | sed -n '1p')"
+  menu_body="$(printf '%s\n' "${menu_response}" | sed '1d')"
+  menu_code="$(printf '%s' "${menu_body}" | json_field "code")"
+  if [[ "${menu_http}" != "200" ]] || [[ "${menu_code}" != "200" ]]; then
+    mark_fail "公众号菜单详情读取失败"
+    return
+  fi
+  menu_payload="$(printf '%s' "${menu_body}" | python3 -c 'import json,sys
+raw=json.load(sys.stdin)
+data=raw.get("data")
+print(json.dumps(data if isinstance(data, list) else [], ensure_ascii=False))')"
+  menu_save_response="$(http_request "POST" "${api_base_url}/api/channel/oaMenu/save" "${token}" "${menu_payload}")"
+  menu_save_http="$(printf '%s\n' "${menu_save_response}" | sed -n '1p')"
+  menu_save_body="$(printf '%s\n' "${menu_save_response}" | sed '1d')"
+  menu_save_code="$(printf '%s' "${menu_save_body}" | json_field "code")"
+  if [[ "${menu_save_http}" != "200" ]] || [[ "${menu_save_code}" != "200" ]]; then
+    mark_fail "公众号菜单保存回环失败"
+    return
+  fi
+
+  cleanup_oa_smoke_replies
+  smoke_suffix="$(date +%s)"
+  smoke_name="Codex冒烟-${smoke_suffix}"
+  smoke_keyword="codex_smoke_${smoke_suffix}"
+  add_payload="$(python3 - <<'PY' "${smoke_name}" "${smoke_keyword}"
+import json
+import sys
+print(json.dumps({
+  "name": sys.argv[1],
+  "type": "keyword",
+  "keyword": sys.argv[2],
+  "matchingType": 1,
+  "contentType": 1,
+  "content": "公众号关键词回复冒烟内容",
+  "status": 0,
+  "sort": 9999,
+}, ensure_ascii=False))
+PY
+)"
+  add_response="$(http_request "POST" "${api_base_url}/api/channel/oaReplyKeyword/add" "${token}" "${add_payload}")"
+  add_http="$(printf '%s\n' "${add_response}" | sed -n '1p')"
+  add_body="$(printf '%s\n' "${add_response}" | sed '1d')"
+  add_code="$(printf '%s' "${add_body}" | json_field "code")"
+  if [[ "${add_http}" != "200" ]] || [[ "${add_code}" != "200" ]]; then
+    cleanup_oa_smoke_replies
+    mark_fail "公众号关键词回复新增失败"
+    return
+  fi
+
+  list_response="$(http_request "GET" "${api_base_url}/api/channel/oaReplyKeyword/list?pageNo=1&pageSize=100" "${token}")"
+  list_http="$(printf '%s\n' "${list_response}" | sed -n '1p')"
+  list_body="$(printf '%s\n' "${list_response}" | sed '1d')"
+  list_code="$(printf '%s' "${list_body}" | json_field "code")"
+  reply_id="$(printf '%s' "${list_body}" | python3 -c 'import json,sys
+target=sys.argv[1]
+raw=json.load(sys.stdin)
+items=((raw.get("data") or {}).get("lists") or [])
+print(next((item.get("id", "") for item in items if item.get("name") == target), ""))' "${smoke_name}")"
+  if [[ "${list_http}" != "200" ]] || [[ "${list_code}" != "200" ]] || [[ -z "${reply_id}" ]]; then
+    cleanup_oa_smoke_replies
+    mark_fail "公众号关键词回复列表回读失败"
+    return
+  fi
+
+  detail_response="$(http_request "GET" "${api_base_url}/api/channel/oaReplyKeyword/detail?id=${reply_id}" "${token}")"
+  detail_http="$(printf '%s\n' "${detail_response}" | sed -n '1p')"
+  detail_body="$(printf '%s\n' "${detail_response}" | sed '1d')"
+  detail_code="$(printf '%s' "${detail_body}" | json_field "code")"
+  if [[ "${detail_http}" != "200" ]] || [[ "${detail_code}" != "200" ]]; then
+    cleanup_oa_smoke_replies
+    mark_fail "公众号关键词回复详情回读失败"
+    return
+  fi
+
+  edit_payload="$(python3 - <<'PY' "${reply_id}" "${smoke_name}" "${smoke_keyword}"
+import json
+import sys
+print(json.dumps({
+  "id": int(sys.argv[1]),
+  "name": sys.argv[2],
+  "type": "keyword",
+  "keyword": sys.argv[3],
+  "matchingType": 2,
+  "contentType": 1,
+  "content": "公众号关键词回复冒烟编辑内容",
+  "status": 0,
+  "sort": 9998,
+}, ensure_ascii=False))
+PY
+)"
+  edit_response="$(http_request "POST" "${api_base_url}/api/channel/oaReplyKeyword/edit" "${token}" "${edit_payload}")"
+  edit_http="$(printf '%s\n' "${edit_response}" | sed -n '1p')"
+  edit_body="$(printf '%s\n' "${edit_response}" | sed '1d')"
+  edit_code="$(printf '%s' "${edit_body}" | json_field "code")"
+  if [[ "${edit_http}" != "200" ]] || [[ "${edit_code}" != "200" ]]; then
+    cleanup_oa_smoke_replies
+    mark_fail "公众号关键词回复编辑失败"
+    return
+  fi
+
+  status_response="$(http_request "POST" "${api_base_url}/api/channel/oaReplyKeyword/status" "${token}" "{\"id\":${reply_id}}")"
+  status_http="$(printf '%s\n' "${status_response}" | sed -n '1p')"
+  status_body="$(printf '%s\n' "${status_response}" | sed '1d')"
+  status_code="$(printf '%s' "${status_body}" | json_field "code")"
+  reset_response="$(http_request "POST" "${api_base_url}/api/channel/oaReplyKeyword/status" "${token}" "{\"id\":${reply_id}}")"
+  reset_http="$(printf '%s\n' "${reset_response}" | sed -n '1p')"
+  reset_body="$(printf '%s\n' "${reset_response}" | sed '1d')"
+  reset_code="$(printf '%s' "${reset_body}" | json_field "code")"
+  if [[ "${status_http}" != "200" ]] || [[ "${status_code}" != "200" ]] || [[ "${reset_http}" != "200" ]] || [[ "${reset_code}" != "200" ]]; then
+    cleanup_oa_smoke_replies
+    mark_fail "公众号关键词回复启停回环失败"
+    return
+  fi
+
+  delete_response="$(http_request "POST" "${api_base_url}/api/channel/oaReplyKeyword/del" "${token}" "{\"id\":${reply_id}}")"
+  delete_http="$(printf '%s\n' "${delete_response}" | sed -n '1p')"
+  delete_body="$(printf '%s\n' "${delete_response}" | sed '1d')"
+  delete_code="$(printf '%s' "${delete_body}" | json_field "code")"
+  cleanup_oa_smoke_replies
+  if [[ "${delete_http}" == "200" ]] && [[ "${delete_code}" == "200" ]]; then
+    mark_pass "公众号菜单保存与回复规则 CRUD 闭环通过"
+  else
+    mark_fail "公众号关键词回复删除失败"
+  fi
+}
+
 # 函数说明：读取授权配置并调用授权运行态脚本，验证授权详情与后台白名单链路可用。
 check_license_roundtrip() {
   local api_base_url="$1"
@@ -369,7 +515,7 @@ print_summary() {
 - 通过: ${PASS_COUNT}
 - 警告: ${WARN_COUNT}
 - 失败: ${FAIL_COUNT}
-- 覆盖链路: 后台登录 / 官网设置保存 / AI模型保存 / 热榜配置 / 授权运行态
+- 覆盖链路: 后台登录 / 官网设置保存 / AI模型保存 / 热榜配置 / 公众号菜单与回复 / 授权运行态
 SUMMARY
   if [[ "${FAIL_COUNT}" -gt 0 ]]; then
     printf "\033[31m[RESULT]\033[0m 业务闭环冒烟未通过，请先修复 FAIL 项。\n"
@@ -406,6 +552,7 @@ mark_pass "后台管理员登录通过"
 check_website_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
 check_ai_model_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
 check_tool_ranking_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
+check_oa_management_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
 check_license_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
 
 if curl -fsS --max-time 8 "${TOOLS_BASE_URL}/tools/hot-ranking" >/dev/null 2>&1; then

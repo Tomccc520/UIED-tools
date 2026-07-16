@@ -61,24 +61,13 @@ const toRankingRuntimeEntry = (item: ToolRankingListItem): ToolRuntimeEntry => {
 }
 
 /**
- * 函数说明：构建当前页面可展示的榜单数据，接口无结果时自动回退到传入的兜底工具列表。
+ * 函数说明：构建当前页面可展示的榜单数据，真实榜单非空时仅展示真实榜单，接口无结果时才回退到兜底工具列表。
  */
 const displayRankingList = computed<ToolRankingListItem[]>(() => {
   const fallbackRankingItems = buildFallbackToolRankingItems(props.fallbackTools)
-  const mergedRankingItems = [...rankingList.value]
-  const usedKeys = new Set(
-    mergedRankingItems.map((item) => `${String(item.toolKey || '').trim()}@@${String(item.toolUrl || '').trim()}`)
-  )
+  const displayItems = rankingList.value.length > 0 ? rankingList.value : fallbackRankingItems
 
-  for (const item of fallbackRankingItems) {
-    const itemKey = `${String(item.toolKey || '').trim()}@@${String(item.toolUrl || '').trim()}`
-    if (!usedKeys.has(itemKey)) {
-      mergedRankingItems.push(item)
-      usedKeys.add(itemKey)
-    }
-  }
-
-  return mergedRankingItems.slice(0, normalizedLimit.value).map((item, index) => ({
+  return displayItems.slice(0, normalizedLimit.value).map((item, index) => ({
     ...item,
     rank: index + 1
   }))

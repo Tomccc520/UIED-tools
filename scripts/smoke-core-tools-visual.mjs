@@ -9,6 +9,7 @@
 
 import net from 'node:net'
 import path from 'node:path'
+import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { setTimeout as delay } from 'node:timers/promises'
 import { chromium } from 'playwright'
@@ -16,6 +17,20 @@ import { MEMBER_CORE_TOOL_PRESETS } from './lib/tool-commercial-policy.mjs'
 
 const projectRoot = process.cwd()
 const host = '127.0.0.1'
+const systemBrowserCandidates = [
+  {
+    name: 'Google Chrome',
+    executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
+  },
+  {
+    name: 'Microsoft Edge',
+    executablePath: '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge'
+  },
+  {
+    name: 'Chromium',
+    executablePath: '/Applications/Chromium.app/Contents/MacOS/Chromium'
+  }
+]
 const consumeApiPatterns = [
   '/api/common/frontend-user/points/consume',
   '/api/user/points/consume',
@@ -96,6 +111,36 @@ const startViteServer = async () => {
 }
 
 /**
+ * 函数说明：启动 Chromium 浏览器，托管浏览器缺失时回退到 Mac 本机 Chrome、Edge 或 Chromium。
+ */
+const launchChromiumBrowser = async () => {
+  try {
+    return await chromium.launch({ headless: true })
+  } catch (managedBrowserError) {
+    const fallbackBrowser = systemBrowserCandidates.find((item) => existsSync(item.executablePath))
+    if (!fallbackBrowser) {
+      throw managedBrowserError
+    }
+
+    try {
+      const browser = await chromium.launch({
+        headless: true,
+        executablePath: fallbackBrowser.executablePath
+      })
+      console.log(`ℹ️ Playwright 托管 Chromium 不可用，已使用本机浏览器：${fallbackBrowser.name}`)
+      return browser
+    } catch (fallbackBrowserError) {
+      const managedMessage = managedBrowserError instanceof Error ? managedBrowserError.message : String(managedBrowserError)
+      const fallbackMessage =
+        fallbackBrowserError instanceof Error ? fallbackBrowserError.message : String(fallbackBrowserError)
+      throw new Error(
+        `Playwright 浏览器启动失败。\n托管 Chromium 错误：${managedMessage}\n本机浏览器回退错误：${fallbackMessage}`
+      )
+    }
+  }
+}
+
+/**
  * 函数说明：读取元素文本并压缩空白，便于输出稳定的断言错误。
  */
 const readVisibleText = async (locator) => {
@@ -169,7 +214,7 @@ const main = async () => {
   try {
     const server = await startViteServer()
     serverProcess = server.serverProcess
-    browser = await chromium.launch({ headless: true })
+    browser = await launchChromiumBrowser()
     const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } })
 
     page.on('request', (request) => {

@@ -221,7 +221,10 @@ import {
   requestAiProviderChat,
   type AiProviderCurrent
 } from '@/services/aiProvider'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 // 组件配置信息
@@ -251,7 +254,7 @@ const textareaHeight = ref(56)
 const isTyping = ref(false)
 const providerInfo = ref<AiProviderCurrent | null>(null)
 const route = useRoute()
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const {
   currentMemberCoreExperience,
   memberCoreTipsTitle,
@@ -444,9 +447,11 @@ const handleSend = async () => {
     return
   }
 
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-deepseek',
     action: 'chat',
+    requestId,
     routePath: '/tools/ai/deepseek'
   })
   if (!canConsume) return
@@ -491,6 +496,7 @@ const handleSend = async () => {
 
       // 打字机效果（分帧批量输出）
       startTypewriterOutput(assistantMessage, aiMessage)
+      await resolveCoreToolRun(requestId, 'success')
     } else {
       throw new Error('AI返回内容为空，请检查后台 Provider 模型配置')
     }
@@ -502,6 +508,7 @@ const handleSend = async () => {
     scheduleScrollToBottom()
 
   } catch (error) {
+    await resolveCoreToolRun(requestId, 'failed', error instanceof Error ? error.message : '发送消息失败，请重试')
     console.error('发送消息失败:', error)
     ElMessage.error(error instanceof Error ? error.message : '发送消息失败，请重试')
   } finally {

@@ -390,7 +390,10 @@ import {
   requestAiProviderChat,
   type AiProviderModelOption
 } from '@/services/aiProvider'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 type HighlightCore = typeof import('highlight.js')['default']
@@ -760,7 +763,7 @@ const verifyPassword = ref('')
 const maxFreeUsage = ref(wechatVerifyConfig.maxFreeUsage)
 const route = useRoute()
 const router = useRouter()
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const {
   currentMemberCoreExperience,
   memberCoreTipsTitle,
@@ -862,9 +865,11 @@ const handleSend = async () => {
     return
   }
 
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-deepseek-r1',
     action: 'chat',
+    requestId,
     routePath: '/tools/ai/deepseek-r1'
   })
   if (!canConsume) return
@@ -1024,6 +1029,10 @@ const handleSend = async () => {
     }
 
     // 保存最终的推理内容
+    if (!responseText.trim()) {
+      throw new Error('AI返回内容为空，请检查后台 Provider 模型配置')
+    }
+    await resolveCoreToolRun(requestId, 'success')
     if (reasoningText) {
       messages.value[currentIndex].reasoning_content = reasoningText
     }
@@ -1031,6 +1040,7 @@ const handleSend = async () => {
     void getMessageHtml(messages.value[currentIndex].content)
 
   } catch (error: any) {
+    await resolveCoreToolRun(requestId, 'failed', error?.message || '请求失败，请重试')
     console.error('请求出错:', error)
     if (error.name === 'AbortError') {
       messages.value[messages.value.length - 1].content += '\n\n[生成已终止]'

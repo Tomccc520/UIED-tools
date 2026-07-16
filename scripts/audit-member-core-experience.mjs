@@ -146,6 +146,27 @@ const collectMemberCorePageErrors = (routeMap) => {
       errors.push(`${item.component}: 未绑定 ${item.toolKey} 的页内体验提示`)
     }
 
+    if (pageText.includes('consumeCoreToolRun')) {
+      if (!pageText.includes('createCoreToolRunRequestId')) {
+        errors.push(`${item.component}: 核心工具扣分未生成 requestId`)
+      }
+      if (!pageText.includes('resolveCoreToolRun')) {
+        errors.push(`${item.component}: 核心工具扣分未接入成功确认/失败退款`)
+      }
+      const hasSuccessSettlement =
+        /resolveCoreToolRun\([^,]+,\s*['"]success['"]/.test(pageText) ||
+        /settleActiveCoreToolRun\(\s*['"]success['"]/.test(pageText)
+      const hasFailedSettlement =
+        /resolveCoreToolRun\([^,]+,\s*['"]failed['"]/.test(pageText) ||
+        /settleActiveCoreToolRun\(\s*['"]failed['"]/.test(pageText)
+      if (!hasSuccessSettlement) {
+        errors.push(`${item.component}: 核心工具扣分缺少成功结算`)
+      }
+      if (!hasFailedSettlement) {
+        errors.push(`${item.component}: 核心工具扣分缺少失败退款`)
+      }
+    }
+
     return errors
   })
 }

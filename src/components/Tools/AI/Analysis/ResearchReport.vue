@@ -187,11 +187,14 @@ import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { generateAIWriting } from '@/services/ai'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const route = useRoute()
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const {
   currentMemberCoreExperience,
   memberCoreTipsTitle,
@@ -282,9 +285,11 @@ const generateContent = async () => {
     return
   }
 
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-analysis-research-report',
     action: 'generate',
+    requestId,
     routePath: '/tools/ai/analysis/research-report'
   })
   if (!canConsume) return
@@ -305,7 +310,7 @@ ${form.focus ? `重点关注方向：${form.focus}` : ''}
 2. 内容详实，逻辑性强，提供专业见解。
 3. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号。`
 
-    await generateAIWriting({
+    const generatedContent = await generateAIWriting({
       prompt,
       systemPrompt: '你是一个资深的研究员，擅长进行深度分析和撰写专业报告。',
       temperature: 0.7
@@ -313,10 +318,15 @@ ${form.focus ? `重点关注方向：${form.focus}` : ''}
       appendResultChunk(content)
     })
     forceFlushPendingResultChunk()
+    if (!generatedContent.trim() && !resultText.value.trim()) {
+      throw new Error('生成失败，请稍后重试')
+    }
+    await resolveCoreToolRun(requestId, 'success')
 
     ElMessage.success('生成完成')
   } catch (error) {
     forceFlushPendingResultChunk()
+    await resolveCoreToolRun(requestId, 'failed', error instanceof Error ? error.message : '生成失败，请稍后重试')
     ElMessage.error('生成失败，请稍后重试')
   } finally {
     isGenerating.value = false
@@ -327,39 +337,46 @@ ${form.focus ? `重点关注方向：${form.focus}` : ''}
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
 
+  const originalText = resultText.value
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-analysis-research-report',
     action: `assist-${type}`,
+    requestId,
     routePath: '/tools/ai/analysis/research-report'
   })
   if (!canConsume) return
 
-  ensureResultEditorReady()
-  isGenerating.value = true
-  const originalText = resultText.value
-  let prompt = ''
-
-  switch (type) {
-    case 'depth':
-      prompt = `请对以下研究报告进行深度挖掘，增加更多的理论支撑或数据分析维度：\n\n${originalText}`
-      break
-    case 'expand':
-      prompt = `请扩充以下研究报告的内容，使其更加丰富详实：\n\n${originalText}`
-      break
-  }
-
   try {
+    ensureResultEditorReady()
+    isGenerating.value = true
+    let prompt = ''
+
+    switch (type) {
+      case 'depth':
+        prompt = `请对以下研究报告进行深度挖掘，增加更多的理论支撑或数据分析维度：\n\n${originalText}`
+        break
+      case 'expand':
+        prompt = `请扩充以下研究报告的内容，使其更加丰富详实：\n\n${originalText}`
+        break
+    }
+
     resetResultStreamState()
     resultText.value = ''
-    await generateAIWriting({
+    const generatedContent = await generateAIWriting({
       prompt,
       systemPrompt: '你是一个资深的研究员，擅长进行深度分析和撰写专业报告。'
     }, (chunk) => {
       appendResultChunk(chunk)
     })
     forceFlushPendingResultChunk()
+    if (!generatedContent.trim() && !resultText.value.trim()) {
+      throw new Error('AI助手处理失败，请重试')
+    }
+    await resolveCoreToolRun(requestId, 'success')
   } catch (error) {
     forceFlushPendingResultChunk()
+    await resolveCoreToolRun(requestId, 'failed', error instanceof Error ? error.message : 'AI助手处理失败，请重试')
     ElMessage.error('AI助手处理失败，请重试')
     resultText.value = originalText
   } finally {

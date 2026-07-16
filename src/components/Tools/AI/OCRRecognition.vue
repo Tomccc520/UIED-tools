@@ -159,7 +159,10 @@ import {
   requestAiImageAbility,
   type AiImageAbilityCurrent
 } from '@/services/aiImageAbility'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 
 // 组件配置信息
@@ -219,7 +222,7 @@ const imageUrl = ref('')
 const recognizing = ref(false)
 const recognitionResult = ref<any>(null)
 const imageAbility = ref<AiImageAbilityCurrent | null>(null)
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const ocrExperienceTips = [
   {
     label: '复制前校对',
@@ -243,6 +246,17 @@ const loadImageAbility = async () => {
     ability: 'ocr',
     forceRefresh: true
   })
+}
+
+/**
+ * 函数说明：判断 OCR 返回数据是否包含可交付的非空结果。
+ */
+const hasValidOcrResult = (data: unknown): boolean => {
+  if (!data) return false
+  if (typeof data === 'string') return data.trim().length > 0
+  if (Array.isArray(data)) return data.length > 0
+  if (typeof data === 'object') return Object.keys(data).length > 0
+  return false
 }
 
 // 触发文件选择
@@ -274,9 +288,11 @@ const startRecognition = async (file?: File) => {
     return
   }
 
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-ocr',
     action: 'recognize',
+    requestId,
     routePath: '/tools/ai/ocr'
   })
   if (!canConsume) return
@@ -306,8 +322,9 @@ const startRecognition = async (file?: File) => {
 
       const resultData = await response.json()
 
-      if (resultData.code === 200) {
+      if (resultData.code === 200 && hasValidOcrResult(resultData.data)) {
         recognitionResult.value = resultData.data
+        await resolveCoreToolRun(requestId, 'success')
         ElMessage.success('识别成功')
       } else {
         throw new Error(resultData.msg || '识别失败')
@@ -328,13 +345,15 @@ const startRecognition = async (file?: File) => {
 
     const resultData = await response.json()
 
-    if (resultData.code === 200) {
+    if (resultData.code === 200 && hasValidOcrResult(resultData.data)) {
       recognitionResult.value = resultData.data
+      await resolveCoreToolRun(requestId, 'success')
       ElMessage.success('识别成功')
     } else {
       throw new Error(resultData.msg || '识别失败')
     }
   } catch (error: any) {
+    await resolveCoreToolRun(requestId, 'failed', error?.message || '识别失败')
     console.error('识别失败:', error)
     ElMessage.error(error.message || '识别失败，请重试')
   } finally {

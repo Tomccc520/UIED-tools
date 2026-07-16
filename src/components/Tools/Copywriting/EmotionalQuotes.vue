@@ -24,7 +24,7 @@
                 @click="getRandomQuote">随机一言</span>
             </div>
           </h2>
-          <p class="text-gray-500 text-sm mt-6">每次都能获取最新的随机一言</p>
+          <p class="text-gray-500 text-sm mt-6">每次随机获取一条精选一言</p>
         </div>
 
         <!-- 语录展示区域 -->
@@ -110,7 +110,7 @@
             <div class="pb-6 border-b border-gray-200 last:border-0">
               <h4 class="text-base font-medium text-gray-900 mb-3">语录内容从哪里来？</h4>
               <p class="text-sm text-gray-600 leading-relaxed">
-                所有语录均来自网络精选，经过筛选和整理，确保内容的质量。
+                所有语录均来自项目内置精选语录库，经过筛选和整理，确保内容稳定可用。
               </p>
             </div>
             <div class="pb-6 border-b border-gray-200 last:border-0">
@@ -269,35 +269,17 @@ const typeText = (text: string) => {
 }
 
 /**
- * 获取随机一言
- * API: https://api.52vmy.cn/api/wl/yan/yiyan
+ * 函数说明：从项目内置精选语录库中随机切换内容，避免失效公共接口拖慢工具响应。
  */
-const getRandomQuote = async () => {
-  try {
-    // 播放刷新动画
-    if (refreshAnimation) {
-      refreshAnimation.goToAndPlay(0)
-    }
-
-    // 使用代理地址
-    const response = await fetch('/api/yiyan')
-    const data = await response.json()
-
-    // 检查响应格式
-    if (data.code === 200 && data.data?.hitokoto) {
-      currentQuote.value = data.data.hitokoto
-      typeText(data.data.hitokoto)
-    } else {
-      throw new Error('Invalid response format')
-    }
-  } catch (error) {
-    console.log('API请求失败，使用本地数据:', error)
-    // 使用本地数据
-    const randomIndex = Math.floor(Math.random() * localInspiringQuotes.length)
-    const quote = localInspiringQuotes[randomIndex]
-    currentQuote.value = quote
-    typeText(quote)
+const getRandomQuote = () => {
+  if (refreshAnimation) {
+    refreshAnimation.goToAndPlay(0)
   }
+
+  const randomIndex = Math.floor(Math.random() * localInspiringQuotes.length)
+  const quote = localInspiringQuotes[randomIndex]
+  currentQuote.value = quote
+  typeText(quote)
 }
 
 const copyText = async () => {

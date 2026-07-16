@@ -2646,7 +2646,7 @@ const toolsCategories: ToolCategory[] = [
               id: 1111,
               title: '随机一言',
               logo: { type: 'svg', name: 'emotionalQuote' },
-              desc: '每次都能获取最新的随机一言',
+              desc: '每次随机获取一条精选一言',
               url: '/tools/copywriting/emotional-quotes',
               cate: '每日一言'
             },

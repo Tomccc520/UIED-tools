@@ -193,11 +193,14 @@ import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { generateAIWriting } from '@/services/ai'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const route = useRoute()
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const {
   currentMemberCoreExperience,
   memberCoreTipsTitle,
@@ -289,9 +292,11 @@ const generateContent = async () => {
     return
   }
 
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-analysis-business-plan',
     action: 'generate',
+    requestId,
     routePath: '/tools/ai/analysis/business-plan'
   })
   if (!canConsume) return
@@ -313,7 +318,7 @@ ${form.advantages ? `核心优势：${form.advantages}` : ''}
 2. 逻辑严密，数据详实，突出项目的投资价值和可行性。
 3. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号。`
 
-    await generateAIWriting({
+    const generatedContent = await generateAIWriting({
       prompt,
       systemPrompt: '你是一个资深的商业分析师和投资顾问，擅长撰写高质量的商业计划书。',
       temperature: 0.7
@@ -321,10 +326,15 @@ ${form.advantages ? `核心优势：${form.advantages}` : ''}
       appendResultChunk(content)
     })
     forceFlushPendingResultChunk()
+    if (!generatedContent.trim() && !resultText.value.trim()) {
+      throw new Error('生成失败，请稍后重试')
+    }
+    await resolveCoreToolRun(requestId, 'success')
 
     ElMessage.success('生成完成')
   } catch (error) {
     forceFlushPendingResultChunk()
+    await resolveCoreToolRun(requestId, 'failed', error instanceof Error ? error.message : '生成失败，请稍后重试')
     ElMessage.error('生成失败，请稍后重试')
   } finally {
     isGenerating.value = false
@@ -335,39 +345,46 @@ ${form.advantages ? `核心优势：${form.advantages}` : ''}
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
 
+  const originalText = resultText.value
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-analysis-business-plan',
     action: `assist-${type}`,
+    requestId,
     routePath: '/tools/ai/analysis/business-plan'
   })
   if (!canConsume) return
 
-  ensureResultEditorReady()
-  isGenerating.value = true
-  const originalText = resultText.value
-  let prompt = ''
-
-  switch (type) {
-    case 'optimize':
-      prompt = `请优化以下商业计划书的逻辑结构，使其更加清晰有力：\n\n${originalText}`
-      break
-    case 'finance':
-      prompt = `请细化以下商业计划书的财务预测部分，增加更多的财务指标和数据估算：\n\n${originalText}`
-      break
-  }
-
   try {
+    ensureResultEditorReady()
+    isGenerating.value = true
+    let prompt = ''
+
+    switch (type) {
+      case 'optimize':
+        prompt = `请优化以下商业计划书的逻辑结构，使其更加清晰有力：\n\n${originalText}`
+        break
+      case 'finance':
+        prompt = `请细化以下商业计划书的财务预测部分，增加更多的财务指标和数据估算：\n\n${originalText}`
+        break
+    }
+
     resetResultStreamState()
     resultText.value = ''
-    await generateAIWriting({
+    const generatedContent = await generateAIWriting({
       prompt,
       systemPrompt: '你是一个资深的商业分析师和投资顾问，擅长撰写高质量的商业计划书。'
     }, (chunk) => {
       appendResultChunk(chunk)
     })
     forceFlushPendingResultChunk()
+    if (!generatedContent.trim() && !resultText.value.trim()) {
+      throw new Error('AI助手处理失败，请重试')
+    }
+    await resolveCoreToolRun(requestId, 'success')
   } catch (error) {
     forceFlushPendingResultChunk()
+    await resolveCoreToolRun(requestId, 'failed', error instanceof Error ? error.message : 'AI助手处理失败，请重试')
     ElMessage.error('AI助手处理失败，请重试')
     resultText.value = originalText
   } finally {

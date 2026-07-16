@@ -215,11 +215,14 @@ import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { generateAIWriting } from '@/services/ai'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const route = useRoute()
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const {
   currentMemberCoreExperience,
   memberCoreTipsTitle,
@@ -231,6 +234,49 @@ const resultText = ref('')
 const showResultEditor = ref(false)
 let pendingResultChunk = ''
 let resultStreamFlushRafId: number | null = null
+let activeCoreToolRunRequestId: string | null = null
+let activeCoreToolRunSettled = false
+
+/**
+ * 函数说明：按当前运行 requestId 幂等结算核心工具运行，避免成功与退款重复提交。
+ */
+const settleActiveCoreToolRun = async (
+  outcome: 'success' | 'failed',
+  reason = ''
+): Promise<boolean> => {
+  const requestId = activeCoreToolRunRequestId
+  if (!requestId || activeCoreToolRunSettled) return false
+  activeCoreToolRunSettled = true
+  const settled = await resolveCoreToolRun(requestId, outcome, reason)
+  if (activeCoreToolRunRequestId === requestId) {
+    activeCoreToolRunRequestId = null
+  }
+  return settled
+}
+
+/**
+ * 函数说明：生成本次运行唯一 requestId 并在真实扣费前完成核心工具积分预扣。
+ */
+const beginCoreToolRun = async (options: {
+  toolKey: string
+  action: string
+  routePath: string
+}): Promise<string | null> => {
+  const requestId = createCoreToolRunRequestId()
+  activeCoreToolRunRequestId = requestId
+  activeCoreToolRunSettled = false
+  try {
+    const canConsume = await consumeCoreToolRun({ ...options, requestId })
+    if (!canConsume) {
+      activeCoreToolRunRequestId = null
+      return null
+    }
+    return requestId
+  } catch (error) {
+    await settleActiveCoreToolRun('failed', '积分预扣请求异常')
+    throw error
+  }
+}
 
 /**
  * 刷新待写入的流式文本分片
@@ -316,12 +362,12 @@ const generateContent = async () => {
     return
   }
 
-  const canConsume = await consumeCoreToolRun({
+  const requestId = await beginCoreToolRun({
     toolKey: 'ai-office-meeting-minutes',
     action: 'generate',
     routePath: '/tools/ai/office/meeting-minutes'
   })
-  if (!canConsume) return
+  if (!requestId) return
 
   try {
     ensureResultEditorReady()
@@ -343,18 +389,27 @@ ${form.content}
 4. 格式清晰，层次分明。
 5. 标题请使用 Markdown 三级标题格式（### 标题），严禁在标题行使用 ** 加粗符号。`
 
-    await generateAIWriting({
+    const generatedResult = await generateAIWriting({
       prompt,
       systemPrompt: '你是一个专业的行政秘书，擅长整理和润色会议纪要。',
       temperature: 0.3
     }, (content) => {
+      if (activeCoreToolRunRequestId !== requestId) return
       appendResultChunk(content)
     })
     forceFlushPendingResultChunk()
+    if (activeCoreToolRunRequestId !== requestId) return
+    if (!generatedResult.trim() || !resultText.value.trim()) {
+      await settleActiveCoreToolRun('failed', '接口返回空结果')
+      ElMessage.error('生成失败，请稍后重试')
+      return
+    }
+    await settleActiveCoreToolRun('success')
 
     ElMessage.success('生成完成')
   } catch (error) {
     forceFlushPendingResultChunk()
+    await settleActiveCoreToolRun('failed', '生成接口失败')
     ElMessage.error('生成失败，请稍后重试')
   } finally {
     isGenerating.value = false
@@ -365,12 +420,12 @@ ${form.content}
 const handleAiAssist = async (type: string) => {
   if (!resultText.value) return
 
-  const canConsume = await consumeCoreToolRun({
+  const requestId = await beginCoreToolRun({
     toolKey: 'ai-office-meeting-minutes',
     action: `assist-${type}`,
     routePath: '/tools/ai/office/meeting-minutes'
   })
-  if (!canConsume) return
+  if (!requestId) return
 
   let prompt = ''
   let systemPrompt = ''
@@ -406,18 +461,28 @@ const handleAiAssist = async (type: string) => {
   isGenerating.value = true
     resultText.value = ''
 
-    await generateAIWriting({
+    const generatedResult = await generateAIWriting({
       prompt,
       systemPrompt,
       temperature: 0.3
     }, (content) => {
+      if (activeCoreToolRunRequestId !== requestId) return
       appendResultChunk(content)
     })
     forceFlushPendingResultChunk()
+    if (activeCoreToolRunRequestId !== requestId) return
+    if (!generatedResult.trim() || !resultText.value.trim()) {
+      await settleActiveCoreToolRun('failed', '辅助接口返回空结果')
+      ElMessage.error('操作失败，请重试')
+      resultText.value = originalText
+      return
+    }
+    await settleActiveCoreToolRun('success')
 
     ElMessage.success('优化完成')
   } catch (error) {
     forceFlushPendingResultChunk()
+    await settleActiveCoreToolRun('failed', '辅助接口失败')
     resultText.value = originalText
     ElMessage.error('操作失败，请重试')
   } finally {
@@ -460,13 +525,19 @@ const copyPreviewHtml = async () => {
   }
 }
 
-const clearResult = () => {
+const clearResult = async () => {
+  if (activeCoreToolRunRequestId && !activeCoreToolRunSettled) {
+    await settleActiveCoreToolRun('failed', '用户主动清空结果')
+  }
   resetResultStreamState()
   resultText.value = ''
   isGenerating.value = false
 }
 
-onBeforeUnmount(() => {
+onBeforeUnmount(async () => {
+  if (activeCoreToolRunRequestId && !activeCoreToolRunSettled) {
+    await settleActiveCoreToolRun('failed', '组件卸载导致运行中止')
+  }
   resetResultStreamState()
 })
 

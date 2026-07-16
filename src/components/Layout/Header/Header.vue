@@ -56,21 +56,26 @@ const fallbackDailyWords = [
   '明月装饰了你的窗子，你装饰了别人的梦'
 ]
 
-/**
- * 函数说明：把外部一言接口文本规范为可展示短句，过滤 HTML、JSON 和异常长文本，避免撑破顶部布局。
- */
-const normalizeDailyWordContent = (rawText: string) => {
-  const content = rawText.replace(/\s+/g, ' ').trim()
-  if (!content || content.length > 80 || /<[^>]+>/.test(content) || /^[{[]/.test(content)) {
-    return ''
-  }
-  return content
-}
+const localDailyWordCandidates = (
+  quotes as Array<{ id?: number; quote?: string; author?: string }>
+)
+  .map((item) => ({
+    id: Number(item.id || 0),
+    content: String(item.quote || '').replace(/\s+/g, ' ').trim(),
+    form: String(item.author || '设计一言').trim()
+  }))
+  .filter((item) => item.content && item.content.length <= 80)
 
 /**
- * 函数说明：使用本地短句作为每日一言兜底，避免外部接口异常时页面展示错误内容。
+ * 函数说明：从项目内置设计语录中随机选择每日一言，语录资源异常时再使用基础短句兜底。
  */
-const useFallbackDailyWord = () => {
+const useLocalDailyWord = () => {
+  const candidate = localDailyWordCandidates[Math.floor(Math.random() * localDailyWordCandidates.length)]
+  if (candidate) {
+    dailyWord.value = candidate
+    return
+  }
+
   dailyWord.value = {
     id: 0,
     content: fallbackDailyWords[Math.floor(Math.random() * fallbackDailyWords.length)],
@@ -79,27 +84,10 @@ const useFallbackDailyWord = () => {
 }
 
 /**
- * 函数说明：获取每日一言并做响应格式校验，失败时回退到本地短句。
+ * 函数说明：刷新每日一言，避免公共接口故障拖慢首页或持续产生控制台错误。
  */
-const getDailyWord = async () => {
-  try {
-    const response = await fetch('https://api.pearktrue.cn/api/hitokoto/')
-    const text = await response.text()
-    const content = normalizeDailyWordContent(text)
-
-    if (response.ok && content) {
-      dailyWord.value = {
-        id: 0,
-        content,
-        form: '一言'
-      }
-      return
-    }
-    throw new Error('获取数据失败')
-  } catch (error) {
-    console.error('一言获取失败:', error)
-    useFallbackDailyWord()
-  }
+const getDailyWord = () => {
+  useLocalDailyWord()
 }
 
 // 初始化每日一言
@@ -142,11 +130,23 @@ const loginDialogVisible = ref(false)
 const loginDialogLoading = ref(false)
 const loginDialogReason = ref('')
 const loginDialogRedirectPath = ref('/user/center')
+const loginDialogToolConsumePoints = ref<number | null>(null)
+const loginDialogToolMemberFree = ref<boolean | null>(null)
 const loginDialogForm = reactive({
   nickname: '',
   password: ''
 })
 const loginDialogSiteConfig = computed(() => siteConfigState.value ?? getDefaultSitePublicConfig())
+
+/**
+ * 函数说明：解析登录弹窗中的工具消耗积分，缺少工具级策略时兼容使用全局配置。
+ */
+const loginDialogConsumePoints = computed(() => {
+  if (loginDialogToolConsumePoints.value !== null) {
+    return loginDialogToolConsumePoints.value
+  }
+  return Math.max(0, Number(loginDialogSiteConfig.value.loginToolConsumePoints || 0))
+})
 
 /**
  * 函数说明：合并后台基础头部链接与登录入口链接，并去重保证渲染稳定。
@@ -495,6 +495,11 @@ const openLoginDialog = (payload: FrontendUserLoginPromptPayload = {}) => {
   const reason = String(payload.reason || '').trim()
   loginDialogReason.value = reason
   loginDialogRedirectPath.value = redirectPath
+  const consumePoints = Number(payload.consumePoints)
+  loginDialogToolConsumePoints.value = Number.isFinite(consumePoints)
+    ? Math.max(0, Math.floor(consumePoints))
+    : null
+  loginDialogToolMemberFree.value = typeof payload.memberFree === 'boolean' ? payload.memberFree : null
   loginDialogVisible.value = true
   loginDialogLoading.value = false
   loginDialogForm.nickname = ''
@@ -590,7 +595,9 @@ const handleFrontendLoginPromptEvent = (event: Event) => {
   openLoginDialog({
     reason: String(payload.reason || '').trim() || '请先登录后继续操作',
     redirectPath: String(payload.redirectPath || router.currentRoute.value.fullPath || '/').trim() || '/',
-    source: String(payload.source || '').trim()
+    source: String(payload.source || '').trim(),
+    consumePoints: payload.consumePoints,
+    memberFree: payload.memberFree
   })
 }
 
@@ -793,7 +800,10 @@ onUnmounted(() => {
               每日赠送 +{{ loginDialogSiteConfig.loginDailyGiftPoints }}
             </div>
             <div class="points-chip">
-              每次工具消耗 -{{ loginDialogSiteConfig.loginToolConsumePoints }}
+              每次工具消耗 -{{ loginDialogConsumePoints }}
+            </div>
+            <div class="points-chip" v-if="loginDialogToolMemberFree !== null">
+              会员策略：{{ loginDialogToolMemberFree ? '会员免扣' : '会员按规则扣费' }}
             </div>
             <div class="points-chip" v-if="loginDialogSiteConfig.loginMemberEnabled && loginDialogSiteConfig.loginMemberTrialDays > 0">
               新用户会员试用 {{ loginDialogSiteConfig.loginMemberTrialDays }} 天

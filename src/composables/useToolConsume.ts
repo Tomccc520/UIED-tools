@@ -20,58 +20,9 @@ import { getSitePublicConfig, type SiteLoginToolConsumeRule } from '@/services/s
 import { trackToolRankingEvent } from '@/services/toolRanking'
 import type { Tool, ToolCategory } from '@/types/tools'
 
-const TOOL_CONSUME_DEDUPE_WINDOW_MS = 1200
-const toolConsumeTimestampMap = new Map<string, number>()
 const TOOL_KEY_ALIAS_MAP: Record<string, string> = {
   'ai-work-summary-type-annual': 'ai-work-summary-annual',
   'video-convert': 'video-format-convert'
-}
-
-/**
- * 函数说明：构建工具积分扣减的短时去重键，避免同一次点击链路被重复扣分。
- */
-const buildToolConsumeDedupeKey = (toolKey: string, action: string): string => {
-  const normalizedToolKey = String(toolKey || '').trim().toLowerCase()
-  const normalizedAction = String(action || 'start').trim().toLowerCase()
-  return `${normalizedToolKey}:${normalizedAction}`
-}
-
-/**
- * 函数说明：判断当前工具是否处于短时去重窗口，命中时直接跳过重复扣分。
- */
-const isToolConsumeDuplicated = (dedupeKey: string): boolean => {
-  const key = String(dedupeKey || '').trim()
-  if (!key) {
-    return false
-  }
-  const now = Date.now()
-  const previousTimestamp = Number(toolConsumeTimestampMap.get(key) || 0)
-  if (previousTimestamp > 0 && now - previousTimestamp <= TOOL_CONSUME_DEDUPE_WINDOW_MS) {
-    return true
-  }
-  return false
-}
-
-/**
- * 函数说明：写入工具扣分时间戳，用于短时去重控制。
- */
-const markToolConsumeTimestamp = (dedupeKey: string) => {
-  const key = String(dedupeKey || '').trim()
-  if (!key) {
-    return
-  }
-  toolConsumeTimestampMap.set(key, Date.now())
-}
-
-/**
- * 函数说明：清理失败请求的去重标记，确保用户可立即重试。
- */
-const clearToolConsumeTimestamp = (dedupeKey: string) => {
-  const key = String(dedupeKey || '').trim()
-  if (!key) {
-    return
-  }
-  toolConsumeTimestampMap.delete(key)
 }
 
 export type ToolConsumeMode = 'consume' | 'check-login'
@@ -79,6 +30,7 @@ export type ToolConsumeMode = 'consume' | 'check-login'
 export interface ToolConsumeOptions {
   toolKey: string
   action?: string
+  requestId?: string
   mode?: ToolConsumeMode
   routePath?: string
   loginWarningText?: string
@@ -301,12 +253,23 @@ export const useToolConsume = () => {
   /**
    * 函数说明：统一拉起登录弹窗事件，并保留登录后回跳路径。
    */
-  const promptLoginDialog = (warningText: string, customRedirectPath?: string, source = '') => {
+  const promptLoginDialog = (
+    warningText: string,
+    customRedirectPath?: string,
+    source = '',
+    runtimePolicy: RuntimeToolConsumePolicy | null = null
+  ) => {
     ElMessage.warning(warningText)
     dispatchFrontendUserLoginPrompt({
       reason: warningText,
       redirectPath: buildActionRedirectPath(customRedirectPath),
-      source
+      source,
+      ...(runtimePolicy
+        ? {
+            consumePoints: runtimePolicy.consumePoints,
+            memberFree: runtimePolicy.memberFree
+          }
+        : {})
     })
   }
 
@@ -348,7 +311,7 @@ export const useToolConsume = () => {
     }
 
     if (!isFrontendUserLoggedIn()) {
-      promptLoginDialog(loginWarningText, options.redirectPath, `${toolKey}:${action}`)
+      promptLoginDialog(loginWarningText, options.redirectPath, `${toolKey}:${action}`, runtimePolicy)
       return false
     }
 
@@ -365,16 +328,15 @@ export const useToolConsume = () => {
       }
     }
 
-    const dedupeKey = buildToolConsumeDedupeKey(toolKey, action)
-    if (isToolConsumeDuplicated(dedupeKey)) {
-      return true
-    }
-    markToolConsumeTimestamp(dedupeKey)
-
     try {
-      const consumeResult = await consumeFrontendUserPoints(toolKey, action)
+      const consumeResult = await consumeFrontendUserPoints(toolKey, action, options.requestId)
       if (!consumeResult) {
-        promptLoginDialog('登录状态已失效，请重新登录后再试', options.redirectPath, `${toolKey}:${action}:expired`)
+        promptLoginDialog(
+          '登录状态已失效，请重新登录后再试',
+          options.redirectPath,
+          `${toolKey}:${action}:expired`,
+          runtimePolicy
+        )
         return false
       }
 
@@ -395,7 +357,6 @@ export const useToolConsume = () => {
       })
       return true
     } catch (error) {
-      clearToolConsumeTimestamp(dedupeKey)
       const message = error instanceof Error ? error.message : '积分扣减失败，请稍后重试'
       if (message.includes('积分') || message.includes('余额')) {
         const profile = getFrontendUserProfile()

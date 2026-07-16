@@ -201,7 +201,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
@@ -219,7 +222,7 @@ const originalImage = ref<string | null>(null)
 const processedImage = ref<string | null>(null)
 const isProcessing = ref(false)
 const fileInfo = ref<{ name: string; size: number } | null>(null)
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const removeWatermarkExperienceTips = [
   {
     label: '授权提醒',
@@ -280,23 +283,36 @@ const processFile = (file: File) => {
 const processImage = async () => {
   if (!originalImage.value) return
 
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-remove-watermark',
     action: 'process',
+    requestId,
     routePath: '/tools/ai/remove-watermark'
   })
   if (!canConsume) return
 
-  isProcessing.value = true
+  try {
+    isProcessing.value = true
 
-  // 模拟处理过程
-  setTimeout(() => {
+    // 模拟处理过程
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 2000))
+    const processedResult = originalImage.value
+    if (!processedResult) {
+      throw new Error('处理失败，请重试')
+    }
     isProcessing.value = false
     // 这里实际应该调用后端 API
     // 目前作为演示，直接返回原图
-    processedImage.value = originalImage.value
+    processedImage.value = processedResult
+    await resolveCoreToolRun(requestId, 'success')
     ElMessage.success('处理完成！')
-  }, 2000)
+  } catch (error) {
+    await resolveCoreToolRun(requestId, 'failed', error instanceof Error ? error.message : '处理失败，请重试')
+    console.error('处理图片失败:', error)
+  } finally {
+    isProcessing.value = false
+  }
 }
 
 const downloadImage = () => {

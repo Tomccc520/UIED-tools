@@ -193,7 +193,10 @@ import {
   requestAiImageAbility,
   type AiImageAbilityCurrent
 } from '@/services/aiImageAbility'
-import { useCoreToolManualConsume } from '@/composables/useCoreToolManualConsume'
+import {
+  createCoreToolRunRequestId,
+  useCoreToolManualConsume
+} from '@/composables/useCoreToolManualConsume'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 
 // 组件配置信息
@@ -257,7 +260,7 @@ const imageUrl = ref('')
 const enhancedImageUrl = ref('')
 const processing = ref(false)
 const imageAbility = ref<AiImageAbilityCurrent | null>(null)
-const { consumeCoreToolRun } = useCoreToolManualConsume()
+const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const imageEnhanceExperienceTips = [
   {
     label: '前后对比',
@@ -372,9 +375,11 @@ const enhanceImage = async () => {
     return
   }
 
+  const requestId = createCoreToolRunRequestId()
   const canConsume = await consumeCoreToolRun({
     toolKey: 'ai-image-enhance',
     action: 'process',
+    requestId,
     routePath: '/tools/ai/image-enhance'
   })
   if (!canConsume) return
@@ -408,14 +413,16 @@ const enhanceImage = async () => {
 
     const resultData = await result.json()
 
-    if (resultData.code === 200) {
+    if (resultData.code === 200 && typeof resultData.image_url === 'string' && resultData.image_url.trim()) {
       // 直接使用返回的图片URL
       enhancedImageUrl.value = resultData.image_url
+      await resolveCoreToolRun(requestId, 'success')
       ElMessage.success('图片处理成功，点击图片可放大预览')
     } else {
-      ElMessage.error(resultData.msg || '图片处理失败，请重试')
+      throw new Error(resultData.msg || '图片处理失败，请重试')
     }
   } catch (error: any) {
+    await resolveCoreToolRun(requestId, 'failed', error?.message || '图片处理失败，请重试')
     console.error('处理图片时出错:', error)
     ElMessage.error(error.message || '处理图片时出错，请重试')
   } finally {
