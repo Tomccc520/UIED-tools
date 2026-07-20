@@ -10,7 +10,7 @@
 <template>
   <section class="member-core-tool-tips" :data-member-core-tool-key="toolKey">
     <div class="member-core-tool-tips__head">
-      <span class="member-core-tool-tips__eyebrow">会员核心体验</span>
+      <span class="member-core-tool-tips__eyebrow">{{ eyebrow || '会员核心体验' }}</span>
       <strong>{{ title }}</strong>
     </div>
     <div class="member-core-tool-tips__grid">
@@ -33,6 +33,7 @@ interface MemberCoreTipItem {
 const props = defineProps<{
   toolKey: string
   title?: string
+  eyebrow?: string
   items: MemberCoreTipItem[]
 }>()
 

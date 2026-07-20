@@ -109,6 +109,7 @@ export interface SitePublicConfig {
   webFavicon: string
   webBackdrop: string
   ossDomain: string
+  loginEnabled: boolean
   userCenterEnabled: boolean
   userCenterTitle: string
   userCenterLink: string
@@ -192,6 +193,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webFavicon: '',
   webBackdrop: '',
   ossDomain: '',
+  loginEnabled: false,
   userCenterEnabled: false,
   userCenterTitle: '用户中心',
   userCenterLink: '/user/center',
@@ -349,42 +351,49 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   seoDefaultKeywords:
     '免费在线工具,UIED,UIED-Tools,免费AI工具箱,AI工具,AI工具箱,AI工具大全,AI工具网站,AI工具网站大全,AI工具网站推荐,AI工具网站排行榜',
   seoDefaultDescription: 'UIED免费在线工具大全',
-  seoDefaultImage: '/logo.png',
+  seoDefaultImage: '/favicon.ico',
   seoPages: [
     {
       path: '/',
       title: '首页',
       keywords: 'tools-web,在线工具,开发人员工具,时间戳转换,加密,解密,md5,进制转换,二维码,正则表达式,json格式化,照片处理,字数统计',
       description: 'tools-web,在线工具,在线工具大全,开发人员工具,日常生活工具,办公助手,时间戳转换,加密,解密,md5,进制转换,二维码,正则表达式,json格式化,照片处理,字数统计',
-      image: '/logo.png'
+      image: '/favicon.ico'
     },
     {
       path: '/changelog',
       title: '更新日志',
       keywords: 'UIED-Tools更新日志,版本历史,功能更新',
       description: 'UIED-Tools的更新日志，记录了所有版本的功能更新和变更信息',
-      image: '/logo.png'
+      image: '/favicon.ico'
+    },
+    {
+      path: '/about',
+      title: '关于我们',
+      keywords: 'UIED Tools,UIED-Tools,在线工具平台,免费在线工具,AI工具,图片处理工具,办公效率工具',
+      description: '了解 UIED Tools 在线工具平台、产品能力、服务方向与开发团队。平台提供 AI、设计、图片处理、办公和开发等实用在线工具。',
+      image: '/favicon.ico'
     },
     {
       path: '/user/login',
       title: '用户登录',
       keywords: '用户登录,QQ登录,微信登录,个人中心',
       description: 'UIED Tools 用户登录页，支持登录后进入个人中心，管理账号资料与QQ邮箱绑定。',
-      image: '/logo.png'
+      image: '/favicon.ico'
     },
     {
       path: '/user/center',
       title: '个人中心',
       keywords: '个人中心,QQ邮箱绑定,用户资料',
       description: 'UIED Tools 个人中心，支持维护昵称与QQ邮箱绑定信息。',
-      image: '/logo.png'
+      image: '/favicon.ico'
     },
     {
       path: '/tools/ai/toolbox',
       title: 'AI工具箱',
       keywords: 'AI工具箱,AI工具导航,AI工具合集,免费AI工具',
       description: 'UIED Tools AI工具箱聚合页，按分类整合对话、写作、图像、办公等高频 AI 工具。',
-      image: '/logo.png'
+      image: '/favicon.ico'
     }
   ]
 }
@@ -1021,6 +1030,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     webFavicon: String(record.webFavicon || '').trim(),
     webBackdrop: String(record.webBackdrop || '').trim(),
     ossDomain: String(record.ossDomain || '').trim(),
+    loginEnabled: normalizeBooleanFlag(record.loginEnabled),
     userCenterEnabled: normalizeBooleanFlag(record.userCenterEnabled),
     userCenterTitle:
       String(record.userCenterTitle || DEFAULT_SITE_PUBLIC_CONFIG.userCenterTitle).trim() ||

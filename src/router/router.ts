@@ -1056,9 +1056,10 @@ export const constantRoute: RouteRecordRaw[] = [
     component: () => import('../components/Home/About.vue'),
     name: 'about',
     meta: {
-      title: "关于",
-      keywords: '关于ranblogs,关于工具站',
-      description: '',
+      title: '关于我们',
+      keywords: 'UIED Tools,UIED-Tools,在线工具平台,免费在线工具,AI工具,图片处理工具,办公效率工具',
+      description: '了解 UIED Tools 在线工具平台、产品能力、服务方向与开发团队。平台提供 AI、设计、图片处理、办公和开发等实用在线工具。',
+      image: '/favicon.ico',
     }
   },
   //其他路由
@@ -1074,6 +1075,9 @@ export const constantRoute: RouteRecordRaw[] = [
     path: '/tools/random-tools',
     component: () => import('../components/Tools/RandomTools/RandomTools.vue'),
     name: 'randomTools',
+    meta: {
+      hideToolsRecommend: true
+    }
   },
   // 头像工具路由
   {

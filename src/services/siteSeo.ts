@@ -21,6 +21,15 @@ interface ResolvedSeoPayload {
   image: string
 }
 
+interface RouteStructuredDataPayload {
+  title: string
+  description: string
+  image: string
+  siteName: string
+  siteUrl: string
+  url: string
+}
+
 /**
  * 函数说明：统一规范路由路径，去掉 hash 与末尾斜杠，便于匹配后台 SEO 配置。
  */
@@ -163,7 +172,7 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     pageSource?.image,
     routeMeta.image,
     siteConfig.seoDefaultImage,
-    '/logo.png'
+    '/favicon.ico'
   )
 
   return {
@@ -193,22 +202,58 @@ const upsertMetaTag = (selector: string, attrName: string, attrValue: string): v
 }
 
 /**
+ * 函数说明：为当前路由写入唯一的 WebPage/AboutPage 结构化数据，提升搜索引擎对页面语义的理解。
+ */
+const upsertRouteStructuredData = (route: RouteLike, payload: RouteStructuredDataPayload): void => {
+  let scriptElement = document.querySelector<HTMLScriptElement>('script#site-route-seo-schema')
+  if (!scriptElement) {
+    scriptElement = document.createElement('script')
+    scriptElement.id = 'site-route-seo-schema'
+    scriptElement.type = 'application/ld+json'
+    document.head.appendChild(scriptElement)
+  }
+
+  const pageType = normalizeSeoPath(route.path || '') === '/about' ? 'AboutPage' : 'WebPage'
+  scriptElement.textContent = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': pageType,
+    name: payload.title,
+    description: payload.description,
+    url: payload.url,
+    inLanguage: 'zh-CN',
+    primaryImageOfPage: {
+      '@type': 'ImageObject',
+      url: payload.image
+    },
+    isPartOf: {
+      '@type': 'WebSite',
+      name: payload.siteName,
+      url: payload.siteUrl
+    }
+  })
+}
+
+/**
  * 函数说明：将解析出的 SEO 结果写入 document，统一维护 title、meta、OG、Twitter 与 canonical。
  */
 const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConfig, resolvedSeo: ResolvedSeoPayload): void => {
-  const siteUrl = import.meta.env.VITE_APP_URL || window.location.origin
-  const currentUrl = window.location.href
+  const siteUrl = String(import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/+$/, '')
+  const canonicalPath = normalizeSeoPath(route.fullPath || route.path || '/') || '/'
+  const currentUrl = new URL(canonicalPath, `${siteUrl}/`).toString()
   const absoluteImageUrl = /^https?:\/\//i.test(resolvedSeo.image)
     ? resolvedSeo.image
     : `${siteUrl}${resolvedSeo.image.startsWith('/') ? resolvedSeo.image : `/${resolvedSeo.image}`}`
+  const siteName = siteConfig.webName || import.meta.env.VITE_APP_TITLE || 'UIED Tools'
 
   document.title = resolvedSeo.title
   upsertMetaTag('meta[name="keywords"]', 'name', resolvedSeo.keywords)
   upsertMetaTag('meta[name="description"]', 'name', resolvedSeo.description)
+  upsertMetaTag('meta[name="robots"]', 'name', 'index,follow,max-image-preview:large')
   upsertMetaTag('meta[property="og:title"]', 'property', resolvedSeo.title)
-  upsertMetaTag('meta[property="og:site_name"]', 'property', siteConfig.webName || import.meta.env.VITE_APP_TITLE || 'UIED Tools')
+  upsertMetaTag('meta[property="og:site_name"]', 'property', siteName)
   upsertMetaTag('meta[property="og:description"]', 'property', resolvedSeo.description)
   upsertMetaTag('meta[property="og:type"]', 'property', 'website')
+  upsertMetaTag('meta[property="og:locale"]', 'property', 'zh_CN')
   upsertMetaTag('meta[property="og:url"]', 'property', currentUrl)
   upsertMetaTag('meta[property="og:image"]', 'property', absoluteImageUrl)
   upsertMetaTag('meta[name="twitter:card"]', 'name', 'summary_large_image')
@@ -223,6 +268,15 @@ const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConf
     document.head.appendChild(canonicalElement)
   }
   canonicalElement.setAttribute('href', currentUrl)
+
+  upsertRouteStructuredData(route, {
+    title: resolvedSeo.title,
+    description: resolvedSeo.description,
+    image: absoluteImageUrl,
+    siteName,
+    siteUrl: `${siteUrl}/`,
+    url: currentUrl
+  })
 }
 
 /**

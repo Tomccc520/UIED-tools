@@ -1,6 +1,6 @@
 /**
  * @file smoke-frontend-mobile-visual.mjs
- * @description 前台移动端 Playwright 可视冒烟，检查首页、热榜和登录弹窗关键布局
+ * @description 前台移动端 Playwright 可视冒烟，检查首页、热榜、登录开关和弹窗关键布局
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
@@ -229,7 +229,8 @@ const launchChromiumBrowser = async () => {
 /**
  * 函数说明：安装前台移动端可视冒烟的只读接口 mock，降低本地后台状态对视觉回归的影响。
  */
-const installFrontendVisualApiMocks = async (page) => {
+const installFrontendVisualApiMocks = async (page, options = {}) => {
+  const loginEnabled = options.loginEnabled !== false
   await page.route('**/api/common/index/config**', async (route) => {
     await route.fulfill({
       status: 200,
@@ -237,6 +238,7 @@ const installFrontendVisualApiMocks = async (page) => {
       body: JSON.stringify({
         code: 200,
         data: {
+          loginEnabled,
           toolsToolRankingEnabled: 1,
           toolsToolRankingPageTitle: '站内工具使用排行榜',
           toolsToolRankingPageDescription: '按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。',
@@ -475,6 +477,38 @@ const verifyLoginDialogMobileLayout = async (page, baseUrl) => {
 }
 
 /**
+ * 函数说明：检查关闭前台登录后不再展示账号入口或登录弹窗，工具入口保持免登录放行。
+ */
+const verifyLoginDisabledBypass = async (page, baseUrl) => {
+  await page.goto(baseUrl, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('header', { state: 'visible', timeout: 15000 })
+  await page.waitForFunction(
+    () => !document.querySelector('.header-link-item--account'),
+    { timeout: 15000 }
+  )
+  await page.evaluate(() => {
+    window.dispatchEvent(
+      new CustomEvent('uiedtool:frontend-user-login-prompt', {
+        detail: {
+          reason: '请先登录后再使用该工具',
+          redirectPath: '/tools/ai/article-generator',
+          source: 'frontend-mobile-visual-smoke-disabled'
+        }
+      })
+    )
+  })
+  await page.waitForTimeout(300)
+
+  const state = await page.evaluate(() => ({
+    accountEntryCount: document.querySelectorAll('.header-link-item--account').length,
+    loginDialogCount: document.querySelectorAll('.frontend-login-dialog').length
+  }))
+  if (state.accountEntryCount !== 0 || state.loginDialogCount !== 0) {
+    throw new Error(`关闭前台登录后仍出现登录入口或弹窗：${JSON.stringify(state)}`)
+  }
+}
+
+/**
  * 函数说明：执行前台移动端可视冒烟，并保证浏览器和临时服务退出。
  */
 const main = async () => {
@@ -500,11 +534,21 @@ const main = async () => {
     await verifyHotRankingMobileLayout(page, server.baseUrl)
     await verifyLoginDialogMobileLayout(page, server.baseUrl)
 
+    const loginDisabledPage = await browser.newPage({ viewport: mobileViewport })
+    await installFrontendVisualApiMocks(loginDisabledPage, { loginEnabled: false })
+    loginDisabledPage.on('request', (request) => {
+      const requestUrl = request.url()
+      if (consumeApiPatterns.some((pattern) => requestUrl.includes(pattern))) {
+        consumeRequests.push(requestUrl)
+      }
+    })
+    await verifyLoginDisabledBypass(loginDisabledPage, server.baseUrl)
+
     if (consumeRequests.length > 0) {
       throw new Error(`移动端可视冒烟不应触发扣费接口：${consumeRequests.join(', ')}`)
     }
 
-    console.log('✅ 前台移动端可视冒烟通过：首页两列、热榜无阴影、登录弹窗布局正常。')
+    console.log('✅ 前台移动端可视冒烟通过：首页两列、热榜无阴影、登录开关与弹窗布局正常。')
   } finally {
     if (browser) {
       await browser.close()

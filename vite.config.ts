@@ -55,7 +55,7 @@ const isProd = process.env.NODE_ENV === 'production'
 const BASE_API = isProd ? '' : ''  // 移除生产环境的基础URL
 const enableCoep = process.env.VITE_ENABLE_COEP === 'true'
 const mattingProxyTarget = process.env.VITE_MATTING_PROXY_TARGET || 'http://127.0.0.1:8091'
-const backendProxyTarget = process.env.VITE_BACKEND_PROXY_TARGET || 'http://127.0.0.1:8848'
+const backendProxyTarget = process.env.VITE_BACKEND_PROXY_TARGET || 'http://127.0.0.1:8003'
 
 /**
  * 修复第三方样式中的历史拼写错误
@@ -503,8 +503,7 @@ export default defineConfig({
         // rewrite: (path) => path.replace(/^\/api/, ''),
         secure: false,
         headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
+          'Accept': 'application/json'
         }
       },
 

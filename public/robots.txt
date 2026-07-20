@@ -5,6 +5,7 @@ User-agent: *
 Allow: /
 Allow: /tools/
 Allow: /changelog
+Allow: /about
 Allow: /sitemap.xml
 Allow: /rss.xml
 

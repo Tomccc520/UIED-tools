@@ -1011,6 +1011,12 @@ const handleLogout = async () => {
 }
 
 onMounted(async () => {
+  await loadSiteConfig()
+  if (!siteConfig.value.loginEnabled) {
+    showCenterMessage('info', '当前站点未开启登录，工具可直接免登录使用')
+    await router.replace('/')
+    return
+  }
   if (!isFrontendUserLoggedIn()) {
     await router.replace(`/user/login?redirect=${encodeURIComponent(route.fullPath)}`)
     return
@@ -1022,7 +1028,7 @@ onMounted(async () => {
     return
   }
   loadProfile()
-  await Promise.all([loadSiteConfig(), loadCenterBusinessData()])
+  await loadCenterBusinessData()
   const latestPendingOrder = orderList.value.find((item) => item.status === 0)
   if (latestPendingOrder) {
     startPaymentStatusPolling(latestPendingOrder.orderSn, { silent: true })

@@ -1,6 +1,6 @@
 /**
  * @file smoke-core-tools-visual.mjs
- * @description 20 个会员核心工具 Playwright 可视冒烟，检查首屏会员卖点和页内体验提示可见
+ * @description 20 个会员核心工具 Playwright 可视冒烟，检查首屏不展示大型卖点面板且结果提示接入完整
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
@@ -149,17 +149,6 @@ const readVisibleText = async (locator) => {
 }
 
 /**
- * 函数说明：断言指定文本片段存在于页面区域内。
- */
-const expectTextIncludes = (text, snippets, context) => {
-  snippets.forEach((snippet) => {
-    if (!text.includes(snippet)) {
-      throw new Error(`${context} 缺少文案：${snippet}`)
-    }
-  })
-}
-
-/**
  * 函数说明：检查首页可渲染，作为核心工具路由前的基础页面冒烟。
  */
 const verifyHomePage = async (page, baseUrl) => {
@@ -172,30 +161,23 @@ const verifyHomePage = async (page, baseUrl) => {
 }
 
 /**
- * 函数说明：检查单个会员核心工具的首屏会员面板和页内体验提示。
+ * 函数说明：检查单个会员核心工具首屏不展示大型卖点面板，并验证页内结果提示接入。
  */
 const verifyCoreToolPage = async (page, baseUrl, tool) => {
   await page.goto(`${baseUrl}${tool.matchUrl}`, { waitUntil: 'domcontentloaded' })
 
   const runtimePanel = page.locator('.member-core-runtime-panel')
-  await runtimePanel.waitFor({ state: 'visible', timeout: 15000 })
-  const runtimeText = await readVisibleText(runtimePanel)
-  expectTextIncludes(
-    runtimeText,
-    [
-      tool.title,
-      '会员核心卖点',
-      '输入要求',
-      '示例输入',
-      '输出结果',
-      '交付样例',
-      '失败兜底',
-      '结果质量建议'
-    ],
-    `${tool.matchUrl} 首屏会员面板`
-  )
+  if (await runtimePanel.count()) {
+    throw new Error(`${tool.matchUrl} 首屏不应展示大型会员卖点面板`)
+  }
 
   const tips = page.locator(`.member-core-tool-tips[data-member-core-tool-key="${tool.toolKey}"]`)
+  if (tool.toolKey === 'video-compress') {
+    if (await tips.count()) {
+      throw new Error(`${tool.matchUrl} 完成提醒不应在压缩前展示`)
+    }
+    return
+  }
   await tips.waitFor({ state: 'visible', timeout: 15000 })
   const tipsItemCount = await tips.locator('.member-core-tool-tips__item').count()
   if (tipsItemCount < 3) {

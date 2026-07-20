@@ -125,7 +125,7 @@ const timeTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const autoRefreshTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const learningConfig = ref<HomepageLearningFeedConfig>(getDefaultHomepageLearningConfig())
 
-const CACHE_KEY = 'hot_search_cache_v3'
+const CACHE_KEY = 'hot_search_cache_v5'
 const CACHE_EXPIRY = 10 * 60 * 1000
 const REFRESH_COOLDOWN = 30 * 1000
 
@@ -138,13 +138,12 @@ const sectionConfigs: HotSectionConfig[] = [
   {
     key: 'relax',
     domId: 'relax_hot',
-    platformName: '累了摸鱼'
+    platformName: '设计干货'
   },
   {
     key: 'deepseek',
     domId: 'font_hot',
-    platformName: 'DeepSeek教程',
-    platformType: '最近爆火'
+    platformName: '交互灵感'
   },
   {
     key: 'aigc',

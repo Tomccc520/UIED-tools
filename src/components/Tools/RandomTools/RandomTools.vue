@@ -1,330 +1,567 @@
 <!--
-* @file RandomTools.vue
-* @description 随机工具推荐页面
-* @author UIED技术团队
-* @copyright UIED技术团队 (https://fsuied.com)
-* @createDate 2025-1-10
-*
-* 功能特性：
-* 1. 随机推荐工具
-* 2. 按分类随机
-* 3. 动画效果
-* 4. 自动轮播
-* 5. 交互式推荐
--->
-
-<template>
-  <div class="random-tools-container p-6">
-    <!-- 顶部操作区 -->
-    <div class="mb-12">
-      <!-- 标题和操作区 -->
-      <div class="flex flex-col sm:flex-row justify-between items-center gap-6 mb-8">
-        <div class="flex-1 w-full">
-          <h1
-            class="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-2">
-            免费随机工具推荐
-          </h1>
-          <p class="text-gray-500 text-sm">每次为你精选不同的实用工具，助你提高效率</p>
-        </div>
-        <div class="w-full sm:w-auto">
-          <button
-            class="refresh-button group w-full bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white rounded-xl px-8 py-4 flex items-center justify-center gap-3 transition-all duration-300"
-            @click="refreshTools" :disabled="loading">
-            <div class="w-6 h-6" :class="{ 'animate-spin': loading }">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                class="transform group-hover:rotate-180 transition-transform duration-500">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-            </div>
-            <span class="text-lg font-medium">换一批推荐</span>
-            <div
-              class="absolute inset-0 rounded-xl bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            </div>
-          </button>
-        </div>
-      </div>
-
-      <!-- 分类筛选 -->
-      <div class="categories-wrapper bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6">
-        <div class="flex flex-wrap gap-3">
-          <button v-for="cate in categories" :key="cate.id"
-            class="category-tag px-5 py-2.5 rounded-lg text-sm font-medium transition-all duration-300"
-            :class="selectedCategory === cate.id ? 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-50 hover:shadow-sm'"
-            @click="selectCategory(cate.id)">
-            {{ cate.title }}
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 工具卡片网格 -->
-    <TransitionGroup name="tools-grid" tag="div" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-      <div v-for="tool in randomTools" :key="tool.id"
-        class="tool-card group relative bg-white rounded-2xl transition-all duration-300 cursor-pointer"
-        @click="handleToolClick(tool)">
-        <!-- 卡片内容 -->
-        <div class="p-8">
-          <!-- 图标和标题区 -->
-          <div class="flex items-start gap-4 mb-4">
-            <div
-              class="tool-icon-wrapper w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
-              <ToolIcon :icon="tool.logo" class="w-6 h-6" />
-            </div>
-            <div class="flex-1 min-w-0">
-              <h3 class="text-lg font-semibold text-gray-900 mb-1 truncate">{{ tool.title }}</h3>
-              <div class="category-badge">{{ tool.cate }}</div>
-            </div>
-          </div>
-
-          <!-- 描述 -->
-          <p class="text-gray-600 text-sm leading-relaxed line-clamp-2 mb-6">{{ tool.desc }}</p>
-
-          <!-- 使用按钮 -->
-          <div
-            class="absolute bottom-0 left-0 right-0 h-16 px-8 flex items-center justify-between border-t border-gray-100">
-            <span class="text-sm text-gray-500">点击使用</span>
-            <div class="flex items-center text-blue-600">
-              <span
-                class="text-sm font-medium mr-2 opacity-0 transform translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">立即使用</span>
-              <svg class="w-5 h-5 transform group-hover:translate-x-1 transition-transform duration-300" fill="none"
-                viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </div>
-          </div>
-        </div>
-
-        <!-- 悬停效果装饰 -->
-        <div
-          class="absolute inset-0 rounded-2xl border border-gray-200 group-hover:border-blue-200 transition-colors duration-300">
-        </div>
-        <div
-          class="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-300 -z-10">
-        </div>
-      </div>
-    </TransitionGroup>
-  </div>
-</template>
+ * @file RandomTools.vue
+ * @description 使用循环 WebGL 画廊呈现随机工具推荐
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-07-17
+ -->
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useToolsStore } from '@/store/modules/tools'
+import { computed, onMounted, ref } from 'vue'
+import { ArrowPathIcon, CursorArrowRaysIcon } from '@heroicons/vue/24/outline'
+import CircularGallery, { type CircularGalleryItem } from '@/components/Common/CircularGallery.vue'
 import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
+import { flattenToolsFromCategories } from '@/services/toolCatalog'
+import { useToolsStore } from '@/store/modules/tools'
 import type { Tool, ToolCategory } from '@/types/tools'
-import ToolIcon from '../ToolIcon.vue'
+
+interface RandomToolCategory {
+  key: string
+  title: string
+  categoryIndex?: number
+}
+
+interface CoverPalette {
+  background: string
+  foreground: string
+  accent: string
+  muted: string
+}
 
 const store = useToolsStore()
 const { openToolEntry } = useToolRuntimeGate()
-
-// 状态
 const loading = ref(false)
-const selectedCategory = ref(0)
+const selectedCategory = ref('all')
 const randomTools = ref<Tool[]>([])
-const categories = ref([
-  { id: 0, title: '全部分类' },
-  { id: -1, title: '热门工具' },
-  ...store.cates
+const categories = ref<RandomToolCategory[]>([
+  { key: 'all', title: '全部分类' },
+  { key: 'hot', title: '热门工具' }
 ])
 
+const coverPalettes: CoverPalette[] = [
+  { background: '#15171c', foreground: '#f8fafc', accent: '#ffcc33', muted: '#3a3d45' },
+  { background: '#123c36', foreground: '#f4fff9', accent: '#65d6ad', muted: '#28685d' },
+  { background: '#e8edf4', foreground: '#162033', accent: '#2f6fed', muted: '#c3ccda' },
+  { background: '#702f3d', foreground: '#fff8f4', accent: '#ffb199', muted: '#9b5260' },
+  { background: '#27324a', foreground: '#f7f8ff', accent: '#9bb5ff', muted: '#455474' },
+  { background: '#f3e9d2', foreground: '#252018', accent: '#d55332', muted: '#d8c7a6' },
+  { background: '#283b24', foreground: '#f6faef', accent: '#b6da74', muted: '#52694b' },
+  { background: '#312a3f', foreground: '#fff9ff', accent: '#e8a6d7', muted: '#5c4c70' }
+]
+
 /**
- * 函数说明：处理随机工具点击，统一走工具运行态门禁，避免停用、登录和扣费策略被绕过。
+ * 函数说明：将后台一级工具分类转换为随机工具页筛选项。
  */
-const handleToolClick = async (tool: Tool) => {
-  await openToolEntry(tool, {
+const buildCategoryOptions = (toolCategories: ToolCategory[]): RandomToolCategory[] => {
+  return [
+    { key: 'all', title: '全部分类' },
+    { key: 'hot', title: '热门工具' },
+    ...toolCategories.map((category, categoryIndex) => ({
+      key: `category-${categoryIndex}-${category.id}`,
+      title: category.title,
+      categoryIndex
+    }))
+  ]
+}
+
+/**
+ * 函数说明：按工具链接去重，避免后台推荐和分类主数据重复进入循环画廊。
+ */
+const dedupeTools = (tools: Tool[]): Tool[] => {
+  const seen = new Set<string>()
+  return tools.filter((tool) => {
+    const uniqueKey = String(tool.url || tool.id)
+    if (seen.has(uniqueKey)) {
+      return false
+    }
+    seen.add(uniqueKey)
+    return true
+  })
+}
+
+/**
+ * 函数说明：使用 Fisher-Yates 算法生成不修改原数组的随机工具顺序。
+ */
+const shuffleTools = (tools: Tool[]): Tool[] => {
+  const shuffledTools = [...tools]
+  for (let index = shuffledTools.length - 1; index > 0; index -= 1) {
+    const randomIndex = Math.floor(Math.random() * (index + 1))
+    ;[shuffledTools[index], shuffledTools[randomIndex]] = [shuffledTools[randomIndex], shuffledTools[index]]
+  }
+  return shuffledTools
+}
+
+/**
+ * 函数说明：根据当前分类构建候选工具池，热门工具为空时回退全部工具。
+ */
+const resolveToolPool = (): Tool[] => {
+  const allTools = flattenToolsFromCategories(store.cates)
+  if (selectedCategory.value === 'hot') {
+    const recommendTools = dedupeTools(store.recommends || [])
+    return recommendTools.length ? recommendTools : allTools
+  }
+  if (selectedCategory.value === 'all') {
+    return dedupeTools([...allTools, ...(store.recommends || [])])
+  }
+  const selectedOption = categories.value.find((category) => category.key === selectedCategory.value)
+  const matchedCategory = typeof selectedOption?.categoryIndex === 'number'
+    ? store.cates[selectedOption.categoryIndex]
+    : undefined
+  return matchedCategory ? flattenToolsFromCategories([matchedCategory]) : allTools
+}
+
+/**
+ * 函数说明：控制 Canvas 标题行宽，兼容中英文长工具名。
+ */
+const splitCoverTitle = (title: string): string[] => {
+  const normalizedTitle = String(title || '实用工具').trim()
+  if (normalizedTitle.length <= 9) {
+    return [normalizedTitle]
+  }
+  const splitIndex = Math.min(10, Math.ceil(normalizedTitle.length / 2))
+  return [normalizedTitle.slice(0, splitIndex), normalizedTitle.slice(splitIndex, splitIndex + 10)]
+}
+
+/**
+ * 函数说明：为缺少封面图的工具生成稳定 Canvas 位图，供 WebGL 作为真实纹理加载。
+ */
+const createToolCover = (tool: Tool, index: number): string => {
+  const canvas = document.createElement('canvas')
+  const context = canvas.getContext('2d')
+  if (!context) {
+    return ''
+  }
+
+  const palette = coverPalettes[index % coverPalettes.length]
+  const width = 720
+  const height = 900
+  canvas.width = width
+  canvas.height = height
+  context.fillStyle = palette.background
+  context.fillRect(0, 0, width, height)
+
+  context.strokeStyle = palette.muted
+  context.lineWidth = 2
+  for (let x = 56; x < width; x += 74) {
+    context.beginPath()
+    context.moveTo(x, 0)
+    context.lineTo(x, height)
+    context.stroke()
+  }
+
+  context.fillStyle = palette.accent
+  context.fillRect(0, 0, 16, height)
+  context.fillRect(56, 68, 112, 8)
+  context.fillRect(width - 180, height - 76, 124, 8)
+
+  context.fillStyle = palette.muted
+  context.fillRect(width - 172, 54, 116, 116)
+  context.fillStyle = palette.accent
+  context.fillRect(width - 146, 80, 64, 64)
+
+  context.fillStyle = palette.foreground
+  context.font = '700 25px "PingFang SC", "Microsoft YaHei", sans-serif'
+  context.textBaseline = 'top'
+  context.fillText(`NO. ${String(index + 1).padStart(2, '0')}`, 56, 104)
+  context.fillStyle = palette.accent
+  context.font = '600 24px "PingFang SC", "Microsoft YaHei", sans-serif'
+  context.fillText(tool.cate || '效率工具', 56, 158)
+
+  context.fillStyle = palette.foreground
+  context.font = '800 58px "PingFang SC", "Microsoft YaHei", sans-serif'
+  splitCoverTitle(tool.title).forEach((line, lineIndex) => {
+    context.fillText(line, 56, 346 + lineIndex * 78)
+  })
+
+  context.fillStyle = palette.foreground
+  context.globalAlpha = 0.72
+  context.font = '400 23px "PingFang SC", "Microsoft YaHei", sans-serif'
+  const description = String(tool.desc || '发现一个新的实用工具').replace(/\s+/g, ' ').slice(0, 34)
+  context.fillText(description, 56, height - 102)
+  context.globalAlpha = 1
+  return canvas.toDataURL('image/png')
+}
+
+/**
+ * 函数说明：将当前随机工具转换为 CircularGallery 所需的封面数据。
+ */
+const galleryItems = computed<CircularGalleryItem[]>(() => {
+  if (typeof document === 'undefined') {
+    return []
+  }
+  return randomTools.value.map((tool, index) => ({
+    key: tool.toolKey || tool.url || tool.id,
+    image: createToolCover(tool, index),
+    text: tool.title
+  }))
+})
+
+/**
+ * 函数说明：重新读取后台工具主数据并随机抽取八个候选工具。
+ */
+const refreshTools = async (reloadCatalog: boolean = true) => {
+  loading.value = true
+  try {
+    if (reloadCatalog || !store.cates.length) {
+      await store.getToolCate()
+    }
+    categories.value = buildCategoryOptions(store.cates)
+    randomTools.value = shuffleTools(resolveToolPool()).slice(0, 8)
+  } catch (error) {
+    console.error('随机工具加载失败:', error)
+    randomTools.value = []
+  } finally {
+    loading.value = false
+  }
+}
+
+/**
+ * 函数说明：切换工具分类并立即生成该分类的新一轮随机推荐。
+ */
+const selectCategory = (categoryKey: string) => {
+  if (selectedCategory.value === categoryKey && randomTools.value.length) {
+    return
+  }
+  selectedCategory.value = categoryKey
+  void refreshTools(false)
+}
+
+/**
+ * 函数说明：点击画廊工具后统一走运行态门禁，避免绕过停用、登录和计费策略。
+ */
+const handleGallerySelect = async (index: number) => {
+  const selectedTool = randomTools.value[index]
+  if (!selectedTool) {
+    return
+  }
+  await openToolEntry(selectedTool, {
     target: 'blank',
     action: 'open',
     source: 'random-tools'
   })
 }
 
-// 获取分类列表
-const getCategoryList = (toolsCate: ToolCategory[]) => {
-  const categories = [
-    { id: 0, title: '全部分类' },
-    { id: -1, title: '热门工具' }
-  ]
-
-  // 只添加顶级分类
-  toolsCate.forEach((cate: ToolCategory) => {
-    categories.push({
-      id: cate.id,
-      title: cate.title
-    })
-  })
-
-  return categories
-}
-
-// 刷新工具列表
-const refreshTools = async () => {
-  loading.value = true
-  try {
-    // 等待获取工具分类数据
-    await store.getToolCate()
-    // 直接从store中获取工具分类
-    const toolsCate = store.cates
-    console.log('获取到的分类数据:', toolsCate)
-
-    // 更新分类列表
-    categories.value = getCategoryList(toolsCate)
-
-    // 递归获取所有工具
-    const getAllTools = (items: any[]): Tool[] => {
-      let tools: Tool[] = []
-      for (const item of items) {
-        console.log('正在处理的item:', item)
-        if (item.list && Array.isArray(item.list)) {
-          // 如果有list属性，继续递归
-          tools = [...tools, ...getAllTools(item.list)]
-        } else if (item.url) {
-          // 如果有url属性，说明是最终的工具
-          tools.push(item)
-        }
-      }
-      return tools
-    }
-
-    // 获取所有工具
-    const allTools: Tool[] = []
-    toolsCate.forEach((cate: ToolCategory) => {
-      console.log('处理分类:', cate.title)
-      const categoryTools = getAllTools(cate.list)
-      console.log('该分类获取到的工具:', categoryTools)
-      allTools.push(...categoryTools)
-    })
-
-    console.log('所有获取到的工具:', allTools)
-    const adTools = store.recommends || []
-    console.log('广告工具:', adTools)
-
-    // 根据选中的分类筛选工具
-    let filteredTools: Tool[] = []
-    if (selectedCategory.value === 0) {
-      // 全部分类，包含所有工具和热门工具
-      filteredTools = [...allTools, ...adTools]
-    } else if (selectedCategory.value === -1) {
-      // 热门工具分类，只显示热门工具
-      filteredTools = adTools
-    } else {
-      // 其他分类，按分类ID筛选
-      filteredTools = allTools.filter((tool: Tool) => {
-        // 获取工具所属的顶级分类
-        const parentCate = toolsCate.find((cate: ToolCategory) => {
-          // 遍历所有层级查找工具
-          const findToolInList = (items: any[]): boolean => {
-            for (const item of items) {
-              if (item.url === tool.url) {
-                return true
-              }
-              if (item.list && Array.isArray(item.list)) {
-                if (findToolInList(item.list)) {
-                  return true
-                }
-              }
-            }
-            return false
-          }
-
-          return findToolInList(cate.list)
-        })
-
-        return parentCate?.id === selectedCategory.value
-      })
-    }
-
-    console.log('筛选后的工具:', filteredTools)
-    // 随机选择工具
-    randomTools.value = shuffleArray(filteredTools).slice(0, 6)
-    console.log('最终展示的工具:', randomTools.value)
-  } catch (error) {
-    console.error('获取工具列表失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
-// 选择分类
-const selectCategory = (cateId: number) => {
-  selectedCategory.value = cateId
-  refreshTools()
-}
-
-// 打乱数组
-const shuffleArray = <T extends Tool>(array: T[]): T[] => {
-  const newArray = [...array]
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1))
-      ;[newArray[i], newArray[j]] = [newArray[j], newArray[i]]
-  }
-  return newArray
-}
-
-// 生命周期钩子
 onMounted(() => {
-  refreshTools()
+  void refreshTools()
 })
 </script>
 
+<template>
+  <div class="random-tools-page">
+    <header class="random-tools-page__header">
+      <div class="random-tools-page__heading">
+        <p class="random-tools-page__eyebrow">DISCOVER / 随机发现</p>
+        <h1>换个方向，遇见新工具</h1>
+        <p>从现有工具库随机挑选一组，也许下一个正好解决你手头的问题。</p>
+      </div>
+
+      <button
+        type="button"
+        class="random-tools-page__refresh"
+        :disabled="loading"
+        title="换一批推荐"
+        aria-label="换一批推荐"
+        @click="refreshTools(false)"
+      >
+        <ArrowPathIcon :class="{ 'is-spinning': loading }" aria-hidden="true" />
+        <span>换一批</span>
+      </button>
+    </header>
+
+    <nav class="random-tools-page__categories" aria-label="随机工具分类">
+      <button
+        v-for="category in categories"
+        :key="category.key"
+        type="button"
+        class="random-tools-page__category"
+        :class="{ 'random-tools-page__category--active': selectedCategory === category.key }"
+        :aria-pressed="selectedCategory === category.key"
+        @click="selectCategory(category.key)"
+      >
+        {{ category.title }}
+      </button>
+    </nav>
+
+    <section class="random-tools-page__stage" aria-label="随机工具画廊">
+      <div class="random-tools-page__stage-topline">
+        <span>{{ loading ? '正在重新组合' : `本轮 ${randomTools.length} 个工具` }}</span>
+        <CursorArrowRaysIcon aria-hidden="true" />
+      </div>
+
+      <div v-if="loading" class="random-tools-page__loading" role="status">
+        <i></i>
+        <span>正在发现新的工具组合</span>
+      </div>
+
+      <CircularGallery
+        v-else-if="galleryItems.length"
+        class="random-tools-page__gallery"
+        :items="galleryItems"
+        :bend="2.4"
+        text-color="#ffffff"
+        :border-radius="0.035"
+        font="700 30px 'PingFang SC', 'Microsoft YaHei', sans-serif"
+        :scroll-speed="2"
+        :scroll-ease="0.055"
+        @select="handleGallerySelect"
+      />
+
+      <div v-else class="random-tools-page__empty">
+        当前分类暂时没有可推荐的工具
+      </div>
+    </section>
+  </div>
+</template>
+
 <style scoped>
-.tool-card {
-  height: 280px;
+.random-tools-page {
+  width: 100%;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 2rem 0 1.5rem;
+  color: #15171c;
 }
 
-.category-badge {
+.random-tools-page__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 0 0.25rem 1.5rem;
+}
+
+.random-tools-page__heading {
+  min-width: 0;
+}
+
+.random-tools-page__eyebrow {
+  margin: 0 0 0.5rem;
+  color: #5b54e8;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  font-weight: 800;
+}
+
+.random-tools-page__heading h1 {
+  margin: 0;
+  color: #111318;
+  font-size: 2.25rem;
+  line-height: 1.2;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.random-tools-page__heading > p:last-child {
+  max-width: 620px;
+  margin: 0.65rem 0 0;
+  color: #687080;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+
+.random-tools-page__refresh {
+  min-width: 116px;
+  height: 44px;
   display: inline-flex;
   align-items: center;
-  padding: 0.25rem 0.75rem;
-  background-color: #f3f4f6;
-  color: #6b7280;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  background: #15171c;
+  color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
-/* 网格动画 */
-.tools-grid-enter-active,
-.tools-grid-leave-active {
-  transition: all 0.5s ease;
+.random-tools-page__refresh:hover:not(:disabled) {
+  background: #343842;
+  transform: translateY(-1px);
 }
 
-.tools-grid-enter-from,
-.tools-grid-leave-to {
-  opacity: 0;
-  transform: translateY(20px);
+.random-tools-page__refresh:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
-.tools-grid-leave-active {
+.random-tools-page__refresh svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.random-tools-page__refresh svg.is-spinning {
+  animation: random-tools-spin 0.8s linear infinite;
+}
+
+.random-tools-page__categories {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+  padding: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.random-tools-page__categories::-webkit-scrollbar {
+  display: none;
+}
+
+.random-tools-page__category {
+  min-height: 34px;
+  padding: 0 0.8rem;
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #656d7c;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+
+.random-tools-page__category:hover {
+  background: #eceef3;
+  color: #15171c;
+}
+
+.random-tools-page__category--active {
+  background: #e4e1ff;
+  color: #4038c8;
+}
+
+.random-tools-page__stage {
+  position: relative;
+  height: min(610px, calc(100vh - 270px));
+  min-height: 500px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #0c0e12;
+}
+
+.random-tools-page__stage::before {
+  content: '';
   position: absolute;
+  inset: 0 0 auto;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.16);
+  pointer-events: none;
+  z-index: 2;
 }
 
-@media (max-width: 640px) {
-  .tool-card {
-    height: 240px;
+.random-tools-page__stage-topline {
+  position: absolute;
+  top: 1rem;
+  right: 1.1rem;
+  left: 1.1rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 0.72rem;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.random-tools-page__stage-topline svg {
+  width: 1.05rem;
+  height: 1.05rem;
+}
+
+.random-tools-page__gallery {
+  width: 100%;
+  height: 100%;
+}
+
+.random-tools-page__loading,
+.random-tools-page__empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.88rem;
+}
+
+.random-tools-page__loading i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ffcc33;
+  animation: random-tools-pulse 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes random-tools-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
-.refresh-button {
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 8px 16px -4px rgba(59, 130, 246, 0.2), 0 4px 8px -2px rgba(59, 130, 246, 0.1);
+@keyframes random-tools-pulse {
+  from {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.15);
+  }
 }
 
-.refresh-button:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
+@media (max-width: 768px) {
+  .random-tools-page {
+    padding: 1rem 0 0.75rem;
+  }
+
+  .random-tools-page__header {
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 0 0.1rem 1rem;
+  }
+
+  .random-tools-page__heading h1 {
+    font-size: 1.7rem;
+    line-height: 2.1rem;
+  }
+
+  .random-tools-page__heading > p:last-child {
+    font-size: 0.82rem;
+    line-height: 1.5rem;
+  }
+
+  .random-tools-page__refresh {
+    min-width: 42px;
+    width: 42px;
+    height: 42px;
+    padding: 0;
+  }
+
+  .random-tools-page__refresh span {
+    display: none;
+  }
+
+  .random-tools-page__categories {
+    margin-right: -0.25rem;
+    margin-left: -0.25rem;
+  }
+
+  .random-tools-page__stage {
+    height: min(560px, calc(100vh - 245px));
+    min-height: 450px;
+    border-radius: 6px;
+  }
 }
 
-.refresh-button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 20px -4px rgba(59, 130, 246, 0.3), 0 6px 12px -2px rgba(59, 130, 246, 0.15);
-}
-
-.category-tag {
-  border: 1px solid rgba(226, 232, 240, 0.8);
-}
-
-.category-tag:hover {
-  transform: translateY(-1px);
+@media (prefers-reduced-motion: reduce) {
+  .random-tools-page__refresh,
+  .random-tools-page__category {
+    transition: none;
+  }
 }
 </style>

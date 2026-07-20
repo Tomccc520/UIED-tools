@@ -306,6 +306,11 @@ export const useToolConsume = () => {
       return false
     }
 
+    const siteConfig = await getSitePublicConfig()
+    if (!siteConfig.loginEnabled) {
+      return true
+    }
+
     if (runtimePolicy && !runtimePolicy.needLogin && runtimePolicy.consumePoints <= 0) {
       return true
     }

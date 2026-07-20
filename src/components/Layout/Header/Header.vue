@@ -6,7 +6,20 @@
  * @createDate 2026-06-08
  */
 import { ref, reactive, onMounted, computed, nextTick, onUnmounted } from '@vue/runtime-core'
-import { Search, Delete, ArrowRight, Close, Expand, Fold, Refresh } from '@element-plus/icons-vue';
+import {
+  Search,
+  Delete,
+  ArrowRight,
+  Close,
+  Expand,
+  Fold,
+  Refresh,
+  User,
+  Lock,
+  House,
+  CollectionTag,
+  TopRight
+} from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus'
 import { useToolsStore } from '@/store/modules/tools'
 import { useComponentStore } from '@/store/modules/component'
@@ -100,15 +113,12 @@ const initDailyWord = () => {
 }
 
 /**
- * 函数说明：读取后台站点配置并更新顶部展示名称
+ * 函数说明：读取后台站点配置并同步头部入口和工具运行策略。
  */
 const loadSiteConfig = async () => {
   const siteConfig = await getSitePublicConfig({ forceRefresh: true })
   siteConfigState.value = siteConfig
   headerToolRuntimeEntryMap.value = buildToolRuntimeEntryMap(siteConfig)
-  if (siteConfig.webName) {
-    siteName.value = siteConfig.webName
-  }
   headerLinks.value = mergeHeaderLinksWithAuthEntries(siteConfig)
 }
 
@@ -118,13 +128,9 @@ const options = ref<Tool[]>([])
 //store
 const toolsStore = useToolsStore()
 const componentStore = useComponentStore()
-const siteName = ref('UIED-Tools')
-const defaultHeaderLinks: SiteLinkItem[] = [
-  { name: '个人网站', link: 'https://tomda.top/' }
-]
 const siteConfigState = ref<Awaited<ReturnType<typeof getSitePublicConfig>> | null>(null)
-const headerLinks = ref<SiteLinkItem[]>(defaultHeaderLinks)
-const displayHeaderLinks = computed(() => (headerLinks.value.length ? headerLinks.value : defaultHeaderLinks))
+const headerLinks = ref<SiteLinkItem[]>([])
+const displayHeaderLinks = computed(() => headerLinks.value)
 const headerToolRuntimeEntryMap = ref<Map<string, Tool>>(new Map())
 const loginDialogVisible = ref(false)
 const loginDialogLoading = ref(false)
@@ -149,35 +155,46 @@ const loginDialogConsumePoints = computed(() => {
 })
 
 /**
+ * 函数说明：识别仅在页脚保留的个人网站入口，避免后台旧配置再次注入顶部区域。
+ */
+const isFooterOnlyPersonalWebsiteLink = (item: SiteLinkItem): boolean => {
+  const name = String(item.name || '').trim()
+  const link = String(item.link || '').trim().replace(/\/+$/, '').toLowerCase()
+  return name === '个人网站' || link === 'https://tomda.top' || link === 'https://www.tomda.top'
+}
+
+/**
  * 函数说明：合并后台基础头部链接与登录入口链接，并去重保证渲染稳定。
  */
 const mergeHeaderLinksWithAuthEntries = (
   siteConfig: Awaited<ReturnType<typeof getSitePublicConfig>>
 ): SiteLinkItem[] => {
-  const mergedLinks: SiteLinkItem[] = siteConfig.headerLinks.length
-    ? [...siteConfig.headerLinks]
-    : [...defaultHeaderLinks]
+  const mergedLinks: SiteLinkItem[] = siteConfig.headerLinks.filter(
+    (item) => !isFooterOnlyPersonalWebsiteLink(item)
+  )
 
-  if (isFrontendUserLoggedIn()) {
-    const userProfile = getFrontendUserProfile()
-    const userCenterLink = siteConfig.userCenterEnabled && siteConfig.userCenterLink
-      ? siteConfig.userCenterLink
-      : '/user/center'
-    mergedLinks.push({
-      name: userProfile?.nickname ? `${userProfile.nickname}·${siteConfig.userCenterTitle || '个人中心'}` : (siteConfig.userCenterTitle || '个人中心'),
-      link: userCenterLink
-    })
-  } else {
-    mergedLinks.push({
-      name: '登录',
-      link: '/user/login'
-    })
-  }
-  if (siteConfig.loginOpenOtherAuth && siteConfig.loginOpenWechatAuth && siteConfig.loginWechatAuthorizeUrl) {
-    mergedLinks.push({ name: '微信登录', link: siteConfig.loginWechatAuthorizeUrl })
-  }
-  if (siteConfig.loginOpenOtherAuth && siteConfig.loginOpenQqAuth && siteConfig.loginQqAuthorizeUrl) {
-    mergedLinks.push({ name: 'QQ登录', link: siteConfig.loginQqAuthorizeUrl })
+  if (siteConfig.loginEnabled) {
+    if (isFrontendUserLoggedIn()) {
+      const userProfile = getFrontendUserProfile()
+      const userCenterLink = siteConfig.userCenterEnabled && siteConfig.userCenterLink
+        ? siteConfig.userCenterLink
+        : '/user/center'
+      mergedLinks.push({
+        name: userProfile?.nickname ? `${userProfile.nickname}·${siteConfig.userCenterTitle || '个人中心'}` : (siteConfig.userCenterTitle || '个人中心'),
+        link: userCenterLink
+      })
+    } else {
+      mergedLinks.push({
+        name: '登录',
+        link: '/user/login'
+      })
+    }
+    if (siteConfig.loginOpenOtherAuth && siteConfig.loginOpenWechatAuth && siteConfig.loginWechatAuthorizeUrl) {
+      mergedLinks.push({ name: '微信登录', link: siteConfig.loginWechatAuthorizeUrl })
+    }
+    if (siteConfig.loginOpenOtherAuth && siteConfig.loginOpenQqAuth && siteConfig.loginQqAuthorizeUrl) {
+      mergedLinks.push({ name: 'QQ登录', link: siteConfig.loginQqAuthorizeUrl })
+    }
   }
 
   const seen = new Set<string>()
@@ -488,9 +505,20 @@ const isLoginRouteLink = (url: string): boolean => {
 }
 
 /**
+ * 函数说明：判断头部链接是否为账号入口，用于统一登录和个人中心的主操作视觉。
+ */
+const isAccountHeaderLink = (url: string): boolean => {
+  const targetUrl = String(url || '').trim()
+  return isLoginRouteLink(targetUrl) || targetUrl === '/user/center' || targetUrl.startsWith('/user/center?')
+}
+
+/**
  * 函数说明：打开头部登录弹窗并记录登录成功后回跳地址。
  */
 const openLoginDialog = (payload: FrontendUserLoginPromptPayload = {}) => {
+  if (!loginDialogSiteConfig.value.loginEnabled) {
+    return
+  }
   const redirectPath = String(payload.redirectPath || '/user/center').trim() || '/user/center'
   const reason = String(payload.reason || '').trim()
   loginDialogReason.value = reason
@@ -728,46 +756,52 @@ onUnmounted(() => {
     <div class="header-right-zone px-0 md:px-4">
       <div class="flex justify-end items-center w-full">
         <div class="flex items-center gap-4">
-          <div class="flex items-center space-x-2.5 pr-4 md:pr-0">
+          <div class="header-action-cluster pr-4 md:pr-0">
             <!-- 搜索按钮 -->
-            <div class="menu-icon-btn" @click="toggleSearch">
-              <el-icon class="text-gray-500 hover:text-blue-500">
+            <button type="button" class="menu-icon-btn" aria-label="搜索工具" @click="toggleSearch">
+              <el-icon>
                 <Search />
               </el-icon>
+            </button>
+
+            <span class="header-action-divider hidden md:block" aria-hidden="true"></span>
+
+            <div class="header-link-group hidden md:flex">
+              <a
+                v-for="(item, index) in displayHeaderLinks"
+                :key="`${item.name}-${item.link}-${index}`"
+                :href="item.link"
+                :target="isExternalLink(item.link) ? '_blank' : '_self'"
+                :rel="isExternalLink(item.link) ? 'noopener noreferrer' : undefined"
+                @click="handleHeaderLinkClick($event, item.link, item.name)"
+                :class="[
+                  'header-link-item',
+                  {
+                    'header-link-item--account': isAccountHeaderLink(item.link),
+                    'header-link--disabled': isHeaderLinkDisabled(item.link)
+                  }
+                ]"
+              >
+                <el-icon v-if="!isAccountHeaderLink(item.link)" class="header-link-icon">
+                  <House />
+                </el-icon>
+                <span>{{ item.name }}</span>
+                <el-icon v-if="isExternalLink(item.link)" class="header-link-external">
+                  <TopRight />
+                </el-icon>
+              </a>
             </div>
 
-            <router-link to="/about" class="menu-icon-btn hover:text-blue-500">
-              <el-tooltip :content="`关于${siteName}`">
-                <svg class="w-5 h-5" viewBox="0 0 1024 1024">
-                  <path
-                    d="M511.899716 948.506609c-241.310951 0-437.636339-196.318224-437.636339-437.636339 0-241.323231 196.325387-437.639408 437.636339-437.639408s437.636339 196.316178 437.636339 437.639408C949.536055 752.188384 753.210667 948.506609 511.899716 948.506609zM511.899716 113.944122c-218.866776 0-396.926148 178.064488-396.926148 396.926148 0 218.856543 178.059372 396.926148 396.926148 396.926148 218.868823 0 396.926148-178.069605 396.926148-396.926148C908.825864 292.00861 730.768539 113.944122 511.899716 113.944122zM561.15656 335.324138c-29.853935 0-54.03773-24.189935-54.03773-54.047963 0-29.855982 24.184819-54.047963 54.03773-54.047963 29.838585 0 54.0408 24.191982 54.0408 54.047963C615.19736 311.134203 590.995145 335.324138 561.15656 335.324138zM424.962691 430.321746c0-4.394077 0-8.806573 0-13.19758 42.878576-17.016559 108.943224-10.793834 153.201218-26.418696 1.75804 0 3.510964 0 5.27719 0-21.329794 108.134813-66.391083 206.496028-76.599585 316.955792 2.425236 1.850138 2.086521 1.473561 5.287423 2.623757 33.247218 11.155061 52.320623-66.110697 73.948199-60.727083 21.644973 5.38873-13.548574 43.733037-18.47784 50.193169-19.400862 25.362644-56.465013 68.439742-100.376105 68.657706-31.008224 0.181125-63.159482-19.378349-58.101279-71.301929 5.056156-51.981908 34.219359-124.319423 50.172703-182.263114C472.184179 468.050022 488.801648 429.049776 424.962691 430.321746z"
-                    fill="currentColor"></path>
-                </svg>
-              </el-tooltip>
-            </router-link>
-
-            <a
-              v-for="(item, index) in displayHeaderLinks"
-              :key="`${item.name}-${item.link}-${index}`"
-              :href="item.link"
-              :target="isExternalLink(item.link) ? '_blank' : '_self'"
-              :rel="isExternalLink(item.link) ? 'noopener noreferrer' : undefined"
-              @click="handleHeaderLinkClick($event, item.link, item.name)"
-              :class="['hidden md:flex items-center text-sm transition-colors header-link-item', { 'header-link--disabled': isHeaderLinkDisabled(item.link) }]"
-            >
-              <el-tooltip :content="item.name">
-                <span>{{ item.name }}</span>
-              </el-tooltip>
-            </a>
-
-            <el-button type="primary" @click="addToBookmark" class="hidden md:flex ml-2.5">
-              <span class="flex items-center">
-                <svg class="w-5 h-5 mr-1" viewBox="0 0 24 24">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z" fill="currentColor" />
-                </svg>
-                收藏到书签
-              </span>
-            </el-button>
+            <el-tooltip content="收藏到书签" placement="bottom">
+              <button
+                type="button"
+                class="header-bookmark-action hidden md:inline-flex"
+                aria-label="收藏到书签"
+                @click="addToBookmark"
+              >
+                <el-icon><CollectionTag /></el-icon>
+              </button>
+            </el-tooltip>
           </div>
         </div>
       </div>
@@ -778,7 +812,7 @@ onUnmounted(() => {
 
     <el-dialog
       v-model="loginDialogVisible"
-      width="min(580px, calc(100vw - 24px))"
+      width="min(540px, calc(100vw - 24px))"
       align-center
       destroy-on-close
       :close-on-click-modal="false"
@@ -786,7 +820,7 @@ onUnmounted(() => {
     >
       <template #header>
         <div class="login-dialog-header">
-          <div class="login-dialog-kicker">账号登录</div>
+          <div class="login-dialog-kicker">UIED ACCOUNT</div>
           <h3>登录用户中心</h3>
           <p>{{ loginDialogReason || '登录后可进入个人中心，查看每日积分并绑定 QQ 邮箱。' }}</p>
         </div>
@@ -794,32 +828,48 @@ onUnmounted(() => {
 
       <div class="login-dialog-shell">
         <aside class="login-dialog-side">
-          <div class="login-dialog-side-title">登录权益</div>
+          <div class="login-dialog-side-head">
+            <div class="login-dialog-side-title">账户权益</div>
+            <span>登录后自动生效</span>
+          </div>
           <div class="login-dialog-points">
             <div class="points-chip">
-              每日赠送 +{{ loginDialogSiteConfig.loginDailyGiftPoints }}
+              <span>每日赠送</span>
+              <strong>+{{ loginDialogSiteConfig.loginDailyGiftPoints }}</strong>
             </div>
             <div class="points-chip">
-              每次工具消耗 -{{ loginDialogConsumePoints }}
+              <span>单次工具消耗</span>
+              <strong>-{{ loginDialogConsumePoints }}</strong>
             </div>
             <div class="points-chip" v-if="loginDialogToolMemberFree !== null">
-              会员策略：{{ loginDialogToolMemberFree ? '会员免扣' : '会员按规则扣费' }}
+              <span>会员策略</span>
+              <strong>{{ loginDialogToolMemberFree ? '会员免扣' : '规则扣费' }}</strong>
             </div>
             <div class="points-chip" v-if="loginDialogSiteConfig.loginMemberEnabled && loginDialogSiteConfig.loginMemberTrialDays > 0">
-              新用户会员试用 {{ loginDialogSiteConfig.loginMemberTrialDays }} 天
+              <span>新用户试用</span>
+              <strong>{{ loginDialogSiteConfig.loginMemberTrialDays }} 天</strong>
             </div>
           </div>
-          <ul class="login-dialog-side-list">
-            <li><span>●</span> 登录后可直接进入个人中心</li>
-            <li><span>●</span> 支持绑定 QQ 邮箱，便于通知提醒</li>
-            <li><span>●</span> 会员与积分权益实时到账</li>
-          </ul>
+          <div class="login-dialog-side-note">
+            <span>积分与会员状态实时同步</span>
+            <span>支持绑定 QQ 邮箱</span>
+          </div>
         </aside>
 
         <section class="login-dialog-main">
-          <el-form label-position="top" @submit.prevent>
+          <el-form label-position="top" class="login-dialog-form" @submit.prevent>
             <el-form-item label="昵称">
-              <el-input v-model="loginDialogForm.nickname" placeholder="请输入昵称" maxlength="24" clearable />
+              <el-input
+                v-model="loginDialogForm.nickname"
+                placeholder="请输入昵称"
+                maxlength="24"
+                clearable
+                autofocus
+              >
+                <template #prefix>
+                  <el-icon><User /></el-icon>
+                </template>
+              </el-input>
             </el-form-item>
             <el-form-item label="密码">
               <el-input
@@ -829,32 +879,43 @@ onUnmounted(() => {
                 placeholder="请输入密码（6位以上）"
                 maxlength="32"
                 clearable
-              />
+                @keyup.enter="handleLoginFromDialog"
+              >
+                <template #prefix>
+                  <el-icon><Lock /></el-icon>
+                </template>
+              </el-input>
             </el-form-item>
           </el-form>
 
-          <div class="login-dialog-auth-actions">
-            <el-button
-              v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenWechatAuth"
-              plain
-              class="login-auth-button"
-              @click="handleOpenAuth(loginDialogSiteConfig.loginWechatAuthorizeUrl)"
-            >
-              微信登录
-            </el-button>
-            <el-button
-              v-if="loginDialogSiteConfig.loginOpenOtherAuth && loginDialogSiteConfig.loginOpenQqAuth"
-              plain
-              class="login-auth-button"
-              @click="handleOpenAuth(loginDialogSiteConfig.loginQqAuthorizeUrl)"
-            >
-              QQ登录
-            </el-button>
+          <div
+            v-if="loginDialogSiteConfig.loginOpenOtherAuth && (loginDialogSiteConfig.loginOpenWechatAuth || loginDialogSiteConfig.loginOpenQqAuth)"
+            class="login-dialog-auth"
+          >
+            <div class="login-dialog-auth-label">其他登录方式</div>
+            <div class="login-dialog-auth-actions">
+              <el-button
+                v-if="loginDialogSiteConfig.loginOpenWechatAuth"
+                plain
+                class="login-auth-button"
+                @click="handleOpenAuth(loginDialogSiteConfig.loginWechatAuthorizeUrl)"
+              >
+                微信登录
+              </el-button>
+              <el-button
+                v-if="loginDialogSiteConfig.loginOpenQqAuth"
+                plain
+                class="login-auth-button"
+                @click="handleOpenAuth(loginDialogSiteConfig.loginQqAuthorizeUrl)"
+              >
+                QQ登录
+              </el-button>
+            </div>
           </div>
 
           <div class="login-dialog-footer">
-            <el-button @click="loginDialogVisible = false">取消</el-button>
-            <el-button type="primary" :loading="loginDialogLoading" @click="handleLoginFromDialog">
+            <el-button class="login-dialog-cancel" @click="loginDialogVisible = false">取消</el-button>
+            <el-button class="login-dialog-submit" type="primary" :loading="loginDialogLoading" @click="handleLoginFromDialog">
               登录并继续
             </el-button>
           </div>
@@ -979,6 +1040,12 @@ onUnmounted(() => {
 }
 
 /* 统一图标按钮样式 */
+.header-action-cluster {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .menu-icon-btn {
   width: 32px;
   height: 32px;
@@ -988,25 +1055,102 @@ onUnmounted(() => {
   cursor: pointer;
   transition: all 0.3s ease;
   color: #515151;
+  border: 0;
   border-radius: 8px;
+  background: transparent;
 }
 
 .menu-icon-btn:hover {
   color: #6C54FF;
   background-color: #f0edff;
-  transform: translateY(-1px);
 }
 
 .menu-icon-btn .el-icon {
-  font-size: 20px;
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.header-action-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: #e4e7ed;
+}
+
+.header-link-group {
+  align-items: center;
+  gap: 4px;
 }
 
 .header-link-item {
-  color: #6b7280;
+  min-height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 9px;
+  color: #5f6673;
+  font-size: 13px;
+  line-height: 1;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .header-link-item:hover {
-  color: #3b82f6;
+  color: #292d36;
+  background: #f4f5f7;
+}
+
+.header-link-item--account {
+  color: #ffffff;
+  border-color: #5b54e8;
+  background: #5b54e8;
+}
+
+.header-link-item--account:hover {
+  color: #ffffff;
+  border-color: #4d47d0;
+  background: #4d47d0;
+}
+
+.header-link-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
+}
+
+.header-link-external {
+  color: #9aa0aa;
+  font-size: 11px;
+}
+
+.header-link-item--account .header-link-external {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.header-bookmark-action {
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  color: #5b54e8;
+  border: 1px solid #dedcfb;
+  border-radius: 6px;
+  background: #f4f3ff;
+  transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.header-bookmark-action:hover {
+  color: #ffffff;
+  border-color: #5b54e8;
+  background: #5b54e8;
+}
+
+.header-bookmark-action .el-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 16px;
 }
 
 .header-link--disabled {
@@ -1040,136 +1184,240 @@ onUnmounted(() => {
   border-color: #5842cc !important;
 }
 
+.login-dialog-header {
+  padding-right: 38px;
+}
+
 .login-dialog-header h3 {
-  margin: 4px 0 0;
-  font-size: 20px;
-  font-weight: 700;
-  color: #222743;
+  margin: 7px 0 0;
+  color: #17191f;
+  font-size: 22px;
+  line-height: 1.35;
+  font-weight: 800;
 }
 
 .login-dialog-header p {
-  margin: 8px 0 0;
+  max-width: 430px;
+  margin: 5px 0 0;
+  color: #697180;
   font-size: 13px;
-  color: #6f768a;
-  line-height: 1.6;
+  line-height: 1.55;
 }
 
 .login-dialog-kicker {
-  width: fit-content;
-  border-radius: 999px;
-  border: 1px solid #dbd3ff;
-  background: #f4f1ff;
-  color: #5d48d6;
-  font-size: 12px;
-  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #5b54e8;
+  font-size: 10px;
   line-height: 1;
-  padding: 4px 10px;
+  font-weight: 900;
+}
+
+.login-dialog-kicker::before {
+  content: '';
+  width: 22px;
+  height: 3px;
+  background: #5b54e8;
 }
 
 .login-dialog-shell {
-  display: grid;
-  grid-template-columns: 214px 1fr;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
 .login-dialog-side {
-  border: 1px solid #e7e0ff;
-  background: linear-gradient(165deg, #f7f4ff 0%, #f2f8ff 100%);
-  border-radius: 12px;
-  padding: 12px 12px 10px;
+  padding: 13px;
+  border-radius: 6px;
+  background: #f3f5f8;
+}
+
+.login-dialog-side-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 9px;
 }
 
 .login-dialog-side-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #272c49;
-  margin-bottom: 10px;
+  color: #262a33;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 800;
+}
+
+.login-dialog-side-head > span {
+  color: #7a8290;
+  font-size: 11px;
 }
 
 .login-dialog-points {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 7px;
 }
 
 .points-chip {
-  border: 1px solid #ddd6ff;
-  background: #f7f4ff;
-  color: #5240c8;
-  border-radius: 999px;
-  font-size: 12px;
-  padding: 4px 9px;
-  line-height: 1.4;
-}
-
-.login-dialog-side-list {
-  margin: 12px 0 0;
-  padding: 0;
-  list-style: none;
-  color: #656d82;
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.login-dialog-side-list li {
+  min-width: 0;
+  min-height: 45px;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid #5b54e8;
+  border-radius: 4px;
+  background: #ffffff;
+}
+
+.points-chip:nth-child(1) {
+  border-left-color: #18845d;
+}
+
+.points-chip:nth-child(2) {
+  border-left-color: #d15c36;
+}
+
+.points-chip span {
+  overflow: hidden;
+  color: #707887;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.points-chip strong {
+  flex-shrink: 0;
+  color: #242832;
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+.login-dialog-side-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin-top: 9px;
+  color: #6d7583;
+  font-size: 11px;
+}
+
+.login-dialog-side-note span {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
 }
 
-.login-dialog-side-list li span {
-  color: #6c54ff;
+.login-dialog-side-note span::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #5b54e8;
 }
 
 .login-dialog-main {
   display: flex;
   flex-direction: column;
-  border: 1px solid #eceff6;
-  border-radius: 12px;
-  background: #ffffff;
-  padding: 12px;
+  padding-top: 15px;
+}
+
+.login-dialog-form {
+  width: 100%;
+}
+
+.login-dialog-auth {
+  padding-top: 12px;
+  border-top: 1px solid #eceef2;
+}
+
+.login-dialog-auth-label {
+  margin-bottom: 8px;
+  color: #7b8290;
+  font-size: 11px;
 }
 
 .login-dialog-auth-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
-  margin-top: 4px;
 }
 
 .login-dialog-footer {
-  display: flex;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 14px;
+}
+
+.login-dialog-footer :deep(.el-button) {
+  width: 100%;
+  min-height: 42px;
+  margin-left: 0;
+  border-radius: 5px;
+  font-weight: 700;
 }
 
 .login-auth-button {
-  border-color: #d8dcf3;
-  color: #3d4664;
+  width: 100%;
+  margin-left: 0 !important;
+  border-color: #dfe2e8;
+  color: #3d4350;
 }
 
 :deep(.frontend-login-dialog.el-dialog),
 :deep(.frontend-login-dialog .el-dialog) {
-  border-radius: 16px;
-  border: 1px solid #e8ebf4;
-  padding: 4px 4px 2px;
-  box-shadow: none;
   overflow: hidden;
+  padding: 0;
+  border: 1px solid #dfe2e8;
+  border-radius: 8px;
+  box-shadow: none;
 }
 
 :deep(.frontend-login-dialog .el-dialog__header) {
   margin-right: 0;
-  padding-bottom: 8px;
+  padding: 20px 20px 12px;
+}
+
+:deep(.frontend-login-dialog .el-dialog__headerbtn) {
+  top: 14px;
+  right: 14px;
+  width: 32px;
+  height: 32px;
 }
 
 :deep(.frontend-login-dialog .el-dialog__body) {
-  padding-top: 0;
+  padding: 0 20px 20px;
+}
+
+:deep(.frontend-login-dialog .el-form-item) {
+  margin-bottom: 13px;
 }
 
 :deep(.frontend-login-dialog .el-form-item__label) {
-  color: #364057;
-  font-weight: 600;
+  height: auto;
+  margin-bottom: 5px;
+  color: #343a46;
+  font-size: 12px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+
+:deep(.frontend-login-dialog .el-input__wrapper) {
+  min-height: 43px;
+  border-radius: 5px;
+  box-shadow: 0 0 0 1px #dfe2e8 inset;
+}
+
+:deep(.frontend-login-dialog .el-input__wrapper.is-focus) {
+  box-shadow: 0 0 0 1px #5b54e8 inset;
+}
+
+:deep(.frontend-login-dialog .el-input__prefix) {
+  color: #8a91a0;
 }
 
 /* 移动端适配 */
@@ -1181,13 +1429,13 @@ onUnmounted(() => {
   :deep(.frontend-login-dialog.el-dialog),
   :deep(.frontend-login-dialog .el-dialog) {
     width: calc(100vw - 24px) !important;
-    max-width: 380px;
+    max-width: 366px;
     padding: 0;
-    border-radius: 16px;
+    border-radius: 8px;
   }
 
   :deep(.frontend-login-dialog .el-dialog__header) {
-    padding: 16px 16px 10px;
+    padding: 16px 16px 11px;
   }
 
   :deep(.frontend-login-dialog .el-dialog__headerbtn) {
@@ -1208,13 +1456,12 @@ onUnmounted(() => {
   }
 
   .login-dialog-kicker {
-    padding: 4px 8px;
-    font-size: 11px;
+    font-size: 9px;
   }
 
   .login-dialog-header h3 {
-    margin-top: 6px;
-    font-size: 18px;
+    margin-top: 7px;
+    font-size: 19px;
     line-height: 1.35;
   }
 
@@ -1225,19 +1472,11 @@ onUnmounted(() => {
   }
 
   .login-dialog-shell {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    gap: 0;
   }
 
   .login-dialog-side {
-    border-color: #e6e9f4;
-    background: #f8f9ff;
     padding: 10px;
-  }
-
-  .login-dialog-side-title {
-    display: none;
   }
 
   .login-dialog-points {
@@ -1247,20 +1486,25 @@ onUnmounted(() => {
   }
 
   .points-chip {
-    border-radius: 8px;
-    padding: 5px 6px;
-    font-size: 11px;
-    text-align: center;
-    white-space: normal;
+    min-height: 43px;
+    padding: 7px 8px;
   }
 
-  .login-dialog-side-list {
-    display: none;
+  .points-chip span {
+    font-size: 10px;
+  }
+
+  .points-chip strong {
+    font-size: 13px;
+  }
+
+  .login-dialog-side-note {
+    gap: 4px 12px;
+    font-size: 10px;
   }
 
   .login-dialog-main {
-    border-color: #e6e9f4;
-    padding: 12px;
+    padding-top: 13px;
   }
 
   :deep(.frontend-login-dialog .el-form-item) {
@@ -1296,10 +1540,13 @@ onUnmounted(() => {
 }
 
 @media screen and (max-width: 360px) {
-  .login-dialog-points,
-  .login-dialog-auth-actions,
-  .login-dialog-footer {
-    grid-template-columns: 1fr;
+  .points-chip {
+    padding-right: 6px;
+    padding-left: 6px;
+  }
+
+  .points-chip span {
+    max-width: 72px;
   }
 }
 </style>

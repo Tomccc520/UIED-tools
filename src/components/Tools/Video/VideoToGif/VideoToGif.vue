@@ -19,9 +19,10 @@ import { ref, reactive, onUnmounted, computed } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import VideoUploadZone from '@/components/Tools/Video/Shared/VideoUploadZone.vue'
+import VideoWorkspaceIntro from '@/components/Tools/Video/Shared/VideoWorkspaceIntro.vue'
 import { ensureGifRuntime } from '@/utils/toolRuntimeLoaders'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 import { useToolConsume } from '@/composables/useToolConsume'
@@ -43,6 +44,11 @@ const processStartedAt = ref(0)
 const resultGifSizeMB = ref(0)
 const isCancelRequested = ref(false)
 let activeGifEncoder: any = null
+
+const MAX_GIF_SOURCE_SIZE_MB = 200
+const MAX_GIF_CLIP_SECONDS = 30
+const MAX_GIF_FRAMES = 450
+const MAX_GIF_PIXEL_WORKLOAD = 80_000_000
 
 // Settings
 const settings = reactive({
@@ -70,14 +76,43 @@ const outputDuration = computed(() => {
   return clipDuration.value / settings.speed
 })
 
+/**
+ * 函数说明：将起止时间映射为范围滑块值，并保证修改后仍保持合法顺序。
+ */
+const clipRange = computed<[number, number]>({
+  get: (): [number, number] => [settings.startTime, settings.endTime],
+  set: ([startTime, endTime]) => {
+    settings.startTime = Math.max(0, Number(startTime || 0))
+    settings.endTime = Math.max(settings.startTime, Number(endTime || 0))
+  }
+})
+
+const estimatedFrameCount = computed(() => {
+  return Math.max(1, Math.ceil(clipDuration.value * settings.fps))
+})
+
+const estimatedPixelWorkload = computed(() => {
+  return Math.max(0, settings.width * settings.height * estimatedFrameCount.value)
+})
+
+const outputResolutionText = computed(() => {
+  return settings.width && settings.height ? `${settings.width} × ${settings.height}` : '-'
+})
+
+/**
+ * 函数说明：格式化源视频体积，统一用于文件摘要与结果对比。
+ */
+const sourceSizeText = computed(() => {
+  return `${((videoFile.value?.size || 0) / 1024 / 1024).toFixed(2)} MB`
+})
+
 const resultComparisonMetrics = computed(() => {
-  const sourceSizeText = `${((videoFile.value?.size || 0) / 1024 / 1024).toFixed(2)} MB`
   const resultSizeText = gifUrl.value ? `${resultGifSizeMB.value.toFixed(2)} MB` : '-'
 
   return [
     {
       label: '文件体积',
-      before: sourceSizeText,
+      before: sourceSizeText.value,
       after: resultSizeText
     },
     {
@@ -94,6 +129,23 @@ const resultComparisonMetrics = computed(() => {
 })
 
 /**
+ * 函数说明：校验 GIF 源视频格式和浏览器本地处理文件大小上限。
+ */
+const validateGifSourceFile = (file: File) => {
+  const extension = file.name.split('.').pop()?.toLowerCase() || ''
+  const supportedExtensions = ['mp4', 'mov', 'webm', 'avi', 'mkv', 'm4v']
+  if (!file.type.startsWith('video/') && !supportedExtensions.includes(extension)) {
+    ElMessage.warning('请选择 MP4、MOV、WebM、AVI 或 MKV 视频')
+    return false
+  }
+  if (file.size > MAX_GIF_SOURCE_SIZE_MB * 1024 * 1024) {
+    ElMessage.warning(`视频大小不能超过 ${MAX_GIF_SOURCE_SIZE_MB}MB`)
+    return false
+  }
+  return true
+}
+
+/**
  * 处理文件选择
  * @param event - 事件对象
  */
@@ -101,10 +153,8 @@ const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     const file = target.files[0]
-    if (file.type.startsWith('video/')) {
+    if (validateGifSourceFile(file)) {
       loadVideo(file)
-    } else {
-      ElMessage.warning('请选择有效的视频文件')
     }
   }
 }
@@ -205,8 +255,18 @@ const normalizeSettings = () => {
  * @param targetTime - 目标时间
  */
 const waitForSeeked = (video: HTMLVideoElement, targetTime: number) => {
-  return new Promise<void>((resolve) => {
+  return new Promise<void>((resolve, reject) => {
+    if (Math.abs(video.currentTime - targetTime) < 0.02 && video.readyState >= 2) {
+      resolve()
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      video.removeEventListener('seeked', handleSeeked)
+      reject(new Error('视频定位超时，请更换编码格式后重试'))
+    }, 5000)
     const handleSeeked = () => {
+      window.clearTimeout(timeoutId)
       video.removeEventListener('seeked', handleSeeked)
       resolve()
     }
@@ -222,6 +282,18 @@ const generateGif = async () => {
   if (!videoRef.value) return
   if (!normalizeSettings()) {
     ElMessage.warning('请先加载视频并设置有效的截取片段')
+    return
+  }
+  if (clipDuration.value > MAX_GIF_CLIP_SECONDS) {
+    ElMessage.warning(`单次 GIF 片段请控制在 ${MAX_GIF_CLIP_SECONDS} 秒以内`)
+    return
+  }
+  if (estimatedFrameCount.value > MAX_GIF_FRAMES) {
+    ElMessage.warning(`当前预计 ${estimatedFrameCount.value} 帧，请缩短片段或降低帧率至 ${MAX_GIF_FRAMES} 帧以内`)
+    return
+  }
+  if (estimatedPixelWorkload.value > MAX_GIF_PIXEL_WORKLOAD) {
+    ElMessage.warning('当前尺寸与帧数占用内存过高，请降低宽度、帧率或片段时长')
     return
   }
 
@@ -388,21 +460,10 @@ const downloadGif = async () => {
  * 拖拽处理
  */
 const dropHandler = (ev: DragEvent) => {
-  ev.preventDefault()
-  if (ev.dataTransfer?.items) {
-    [...ev.dataTransfer.items].forEach((item, i) => {
-      if (item.kind === 'file') {
-        const file = item.getAsFile()
-        if (file && file.type.startsWith('video/')) {
-          loadVideo(file)
-        }
-      }
-    })
+  const file = ev.dataTransfer?.files?.[0]
+  if (file && validateGifSourceFile(file)) {
+    loadVideo(file)
   }
-}
-
-const dragOverHandler = (ev: DragEvent) => {
-  ev.preventDefault()
 }
 
 onUnmounted(() => {
@@ -417,234 +478,462 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="gif-tool-page min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4">
-        <div class="text-center mb-6">
-          <h2
-            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
-            免费视频转 GIF
-          </h2>
-          <p class="text-gray-500 text-sm">
-            在线将视频转换为 GIF 动图，支持截取片段、调整尺寸和帧率，本地处理保护隐私
-          </p>
-        </div>
-        <VideoToolNotice class="mb-8" />
+      <section class="gif-workspace mb-4">
+        <VideoWorkspaceIntro
+          title="视频转 GIF"
+          description="截取视频片段并导出 GIF，可调整尺寸、帧率和播放速度。"
+          :specs="['本地处理', '最长 30 秒', '最多 450 帧']"
+          :notices="['视频仅在当前浏览器处理，不会上传服务器', '建议优先使用 480px、10fps 获得更小体积']"
+        />
 
-        <!-- Initial Upload Area -->
-        <div v-if="!videoUrl" @drop="dropHandler" @dragover="dragOverHandler"
-          class="border-2 border-dashed border-gray-300 rounded-xl p-16 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer mb-8 group"
-          @click="fileInput?.click()">
-          <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
-          <div
-            class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h3 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition-colors">
-            点击或拖拽视频文件到此处
-          </h3>
-          <p class="text-gray-500">支持 MP4, WebM, MOV 等常见视频格式</p>
-        </div>
+        <input
+          ref="fileInput"
+          type="file"
+          class="hidden"
+          accept="video/*,.mp4,.mov,.webm,.avi,.mkv,.m4v"
+          @change="handleFileChange"
+        >
 
-        <!-- Editor Area -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <!-- Left: Configuration Panel -->
-          <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
-                <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                  </svg>
-                </span>
-                操作面板
-              </h3>
+        <VideoUploadZone
+          v-if="!videoUrl"
+          title="上传需要转换的视频"
+          formats="支持 MP4、MOV、WebM、AVI、MKV，最大 200MB"
+          @select="fileInput?.click()"
+          @drop="dropHandler"
+        />
 
-              <!-- File Info -->
-              <div class="bg-white rounded-lg p-4 border border-gray-200 mb-6">
-                <div class="flex items-center space-x-3">
-                  <div class="w-10 h-10 bg-indigo-50 rounded-lg flex items-center justify-center text-indigo-600">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <div class="overflow-hidden flex-1">
-                    <div class="text-sm font-medium text-gray-800 truncate">{{ videoFile?.name }}</div>
-                    <div class="text-xs text-gray-500">{{ (videoFile?.size ? videoFile.size / 1024 / 1024 :
-                      0).toFixed(2) }}
-                      MB</div>
-                  </div>
-                  <button @click="fileInput?.click()" class="text-xs text-indigo-600 hover:text-indigo-800">
-                    更换
+        <div v-else class="gif-editor grid grid-cols-1 lg:grid-cols-12">
+          <aside class="lg:col-span-4">
+            <div class="gif-controls">
+              <div class="gif-controls__head">
+                <h3>GIF 设置</h3>
+                <button type="button" :disabled="isProcessing" @click="fileInput?.click()">更换视频</button>
+              </div>
+
+              <dl class="gif-source-summary">
+                <div><dt>文件</dt><dd :title="videoFile?.name">{{ videoFile?.name }}</dd></div>
+                <div><dt>体积</dt><dd>{{ sourceSizeText }}</dd></div>
+                <div><dt>源尺寸</dt><dd>{{ videoMeta.width || '-' }} × {{ videoMeta.height || '-' }}</dd></div>
+                <div><dt>时长</dt><dd>{{ formatTime(videoMeta.duration) }}</dd></div>
+              </dl>
+
+              <div class="gif-control-section">
+                <div class="gif-control-label">
+                  <span>截取片段</span>
+                  <strong>{{ clipDuration.toFixed(1) }}s</strong>
+                </div>
+                <el-slider v-model="clipRange" range :min="0" :max="videoMeta.duration" :step="0.1" />
+                <div class="gif-range-inputs">
+                  <el-input-number v-model="settings.startTime" :min="0" :max="settings.endTime" :step="0.1" size="small" />
+                  <span>至</span>
+                  <el-input-number v-model="settings.endTime" :min="settings.startTime" :max="videoMeta.duration" :step="0.1" size="small" />
+                </div>
+              </div>
+
+              <div class="gif-control-section">
+                <div class="gif-control-label"><span>输出宽度</span><strong>{{ outputResolutionText }}</strong></div>
+                <el-input-number v-model="settings.width" :min="80" :max="960" :step="20" @change="handleWidthChange" />
+              </div>
+
+              <div class="gif-control-section">
+                <div class="gif-control-label"><span>帧率</span><strong>{{ settings.fps }} FPS</strong></div>
+                <el-slider v-model="settings.fps" :min="1" :max="30" :step="1" />
+              </div>
+
+              <div class="gif-control-section">
+                <div class="gif-control-label"><span>播放速度</span><strong>{{ settings.speed }}x</strong></div>
+                <div class="gif-speed-options">
+                  <button
+                    v-for="speed in [0.5, 1, 1.5, 2]"
+                    :key="speed"
+                    type="button"
+                    :class="{ 'is-active': settings.speed === speed }"
+                    @click="settings.speed = speed"
+                  >
+                    {{ speed }}x
                   </button>
-                  <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
                 </div>
               </div>
 
-              <!-- Controls -->
-              <div class="space-y-4">
-                <!-- Time Range -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">
-                    截取片段 ({{ formatTime(settings.startTime) }} - {{ formatTime(settings.endTime) }})
-                    <span class="text-xs text-gray-500 ml-2">时长: {{ (settings.endTime - settings.startTime).toFixed(1)
-                      }}s</span>
-                  </label>
-                  <div class="flex items-center gap-2 mb-2">
-                    <el-input-number v-model="settings.startTime" :min="0" :max="settings.endTime" :step="0.1"
-                      size="small" class="w-full" />
-                    <span class="text-gray-400">-</span>
-                    <el-input-number v-model="settings.endTime" :min="settings.startTime" :max="videoMeta.duration"
-                      :step="0.1" size="small" class="w-full" />
-                  </div>
-                  <el-slider v-model="settings.startTime" :max="videoMeta.duration" :step="0.1" size="small" />
-                  <el-slider v-model="settings.endTime" :max="videoMeta.duration" :step="0.1" size="small" />
-                </div>
-
-                <!-- Size -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">宽度 (px)</label>
-                  <el-input-number v-model="settings.width" :min="50" :max="1920" @change="handleWidthChange"
-                    class="w-full" />
-                  <p class="text-xs text-gray-500 mt-1">高度将自动按比例调整: {{ settings.height }}px</p>
-                </div>
-
-                <!-- FPS -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">帧率 (FPS): {{ settings.fps }}</label>
-                  <el-slider v-model="settings.fps" :min="1" :max="30" :step="1" />
-                </div>
-
-                <!-- Speed -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">播放速度</label>
-                  <div class="grid grid-cols-4 gap-2">
-                    <button v-for="speed in [0.5, 1, 1.5, 2]" :key="speed" @click="settings.speed = speed"
-                      :class="[settings.speed === speed ? 'bg-indigo-600 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200']"
-                      class="py-1.5 rounded-lg text-xs font-medium transition-colors">
-                      {{ speed }}x
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Quality -->
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">画质 ({{ settings.quality }})</label>
-                  <el-slider v-model="settings.quality" :min="1" :max="30" :step="1" />
-                  <p class="text-xs text-gray-500 mt-1">数值越小画质越好，但处理越慢</p>
-                </div>
-
-                <VideoProcessStatus
-                  v-if="isProcessing"
-                  :progress="progress"
-                  :status-text="statusText"
-                  :eta-text="etaText"
-                  @cancel="cancelProcessing"
-                />
-
-                <div v-if="errorText" class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                  {{ errorText }}
-                </div>
-
-                <button @click="generateGif" :disabled="isProcessing"
-                  class="w-full py-3.5 px-4 bg-gradient-to-r from-sky-600 to-emerald-600 hover:from-sky-700 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-[0.98]">
-                  <span v-if="!isProcessing" class="flex items-center">
-                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    生成 GIF
-                  </span>
-                  <span v-else class="flex items-center">
-                    <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                      viewBox="0 0 24 24">
-                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                      <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                      </path>
-                    </svg>
-                    处理中...
-                  </span>
-                </button>
+              <div class="gif-control-section">
+                <div class="gif-control-label"><span>画质</span><strong>{{ settings.quality }}</strong></div>
+                <el-slider v-model="settings.quality" :min="1" :max="30" :step="1" />
+                <p class="gif-control-hint">数值越小越清晰，处理时间与文件体积也会增加。</p>
               </div>
-            </div>
-          </div>
 
-          <!-- Right: Preview & Result -->
-          <div class="lg:col-span-8 space-y-6">
-            <!-- Video Player -->
-            <div
-              class="border border-gray-200 rounded-xl overflow-hidden bg-black flex items-center justify-center relative group">
-              <video ref="videoRef" :src="videoUrl" controls class="w-full max-h-[500px]"
-                @loadedmetadata="onVideoLoaded"></video>
+              <div class="gif-output-estimate">
+                <div><span>输出尺寸</span><strong>{{ outputResolutionText }}</strong></div>
+                <div><span>预计帧数</span><strong>{{ estimatedFrameCount }} 帧</strong></div>
+                <div><span>输出时长</span><strong>{{ outputDuration.toFixed(1) }}s</strong></div>
+              </div>
+
+              <VideoProcessStatus
+                v-if="isProcessing"
+                :progress="progress"
+                :status-text="statusText"
+                :eta-text="etaText"
+                @cancel="cancelProcessing"
+              />
+
+              <div v-if="errorText" class="gif-error">{{ errorText }}</div>
+
+              <button type="button" class="gif-primary" :disabled="isProcessing" @click="generateGif">
+                {{ isProcessing ? '正在生成...' : '生成 GIF' }}
+              </button>
+            </div>
+          </aside>
+
+          <div class="gif-preview-column lg:col-span-8">
+            <div class="gif-preview-panel">
+              <video
+                ref="videoRef"
+                :src="videoUrl"
+                controls
+                class="gif-preview-video"
+                @loadedmetadata="onVideoLoaded"
+              ></video>
             </div>
 
-            <!-- Result -->
-            <div v-if="gifUrl" class="bg-white rounded-xl border border-gray-200 p-6 animate-fade-in">
-              <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-4">
-                <div class="flex items-center space-x-2">
-                  <div class="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
-                    ✓
-                  </div>
-                  <h3 class="font-bold text-gray-800">生成成功</h3>
+            <section v-if="gifUrl" class="gif-result-panel animate-fade-in">
+              <div class="gif-result-head">
+                <div>
+                  <span class="gif-result-status">处理完成</span>
+                  <h3>GIF 已生成</h3>
                 </div>
-                <button @click="downloadGif"
-                  class="text-sm text-indigo-600 hover:text-indigo-800 font-medium flex items-center bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 transition-colors">
-                  <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                  </svg>
-                  下载 GIF
-                </button>
+                <button type="button" class="gif-download" @click="downloadGif">下载 GIF</button>
               </div>
 
               <VideoResultComparison :metrics="resultComparisonMetrics" class="mb-4" />
 
-              <div
-                class="flex flex-col items-center justify-center bg-gray-50 rounded-lg border border-dashed border-gray-200 p-4">
-                <img :src="gifUrl" class="max-w-full max-h-[400px] object-contain rounded" />
-                <p class="text-xs text-gray-500 mt-2">长按图片可保存或拖拽到桌面</p>
+              <div class="gif-result-preview">
+                <img :src="gifUrl" alt="生成后的 GIF 预览">
+                <p>可直接下载，移动端也可长按图片保存。</p>
               </div>
-            </div>
+            </section>
           </div>
         </div>
+      </section>
 
-        <!-- Usage Instructions -->
-        <div class="bg-white rounded-xl p-6 border border-gray-100 mt-8">
-          <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            使用说明
-          </h3>
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
-            <div class="space-y-2">
-              <h4 class="font-medium text-gray-900">1. 调整片段</h4>
-              <p>使用滑块选择要转换的视频起止时间。建议片段不要过长，以免生成时间过久。</p>
-            </div>
-            <div class="space-y-2">
-              <h4 class="font-medium text-gray-900">2. 设置参数</h4>
-              <p>调整宽度会自动按比例计算高度。帧率越高画面越流畅但文件越大。画质数值越小越清晰。</p>
-            </div>
-            <div class="space-y-2">
-              <h4 class="font-medium text-gray-900">3. 生成下载</h4>
-              <p>点击生成按钮，等待处理完成后即可预览和下载。GIF 生成完全在本地进行，不消耗流量。</p>
-            </div>
-          </div>
+      <section class="gif-guide mb-4">
+        <h3>使用说明</h3>
+        <div class="gif-guide-grid">
+          <div><strong>1. 选择片段</strong><p>拖动范围滑块或输入起止时间，单次最多处理 30 秒。</p></div>
+          <div><strong>2. 控制体积</strong><p>优先降低宽度与帧率；帧数越少，生成速度越快。</p></div>
+          <div><strong>3. 预览下载</strong><p>生成后检查尺寸、时长和体积，再下载最终 GIF。</p></div>
         </div>
-      </div>
-  </div>
+      </section>
+
     <ToolsRecommend :currentPath="route.path" />
+    </div>
   </div>
 </template>
 
 <style scoped>
+.gif-tool-page {
+  --gif-primary: #2563eb;
+  --gif-border: #e2e8f0;
+  --gif-muted: #64748b;
+  color: #0f172a;
+}
+
+.gif-workspace {
+  border: 1px solid var(--gif-border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.gif-editor {
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.gif-controls {
+  position: sticky;
+  top: 16px;
+  border: 1px solid var(--gif-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 20px;
+}
+
+.gif-controls__head,
+.gif-control-label,
+.gif-result-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gif-controls__head h3,
+.gif-result-head h3,
+.gif-guide h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0;
+}
+
+.gif-controls__head button {
+  border: 0;
+  background: transparent;
+  color: var(--gif-primary);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.gif-controls__head button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.gif-source-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin: 16px 0 0;
+  border-top: 1px solid var(--gif-border);
+  padding-top: 16px;
+}
+
+.gif-source-summary div {
+  min-width: 0;
+}
+
+.gif-source-summary dt {
+  margin-bottom: 3px;
+  color: var(--gif-muted);
+  font-size: 12px;
+}
+
+.gif-source-summary dd {
+  margin: 0;
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gif-control-section {
+  margin-top: 18px;
+  border-top: 1px solid var(--gif-border);
+  padding-top: 16px;
+}
+
+.gif-control-label {
+  margin-bottom: 8px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.gif-control-label strong {
+  color: #0f172a;
+  font-size: 12px;
+}
+
+.gif-range-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.gif-range-inputs span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+.gif-speed-options {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.gif-speed-options button {
+  min-height: 34px;
+  border: 1px solid var(--gif-border);
+  border-radius: 6px;
+  background: #ffffff;
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.gif-speed-options button.is-active {
+  border-color: var(--gif-primary);
+  background: var(--gif-primary);
+  color: #ffffff;
+}
+
+.gif-control-hint {
+  margin: 4px 0 0;
+  color: var(--gif-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.gif-output-estimate {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+  border-left: 3px solid #60a5fa;
+  background: #eff6ff;
+  padding: 12px;
+}
+
+.gif-output-estimate span,
+.gif-output-estimate strong {
+  display: block;
+}
+
+.gif-output-estimate span {
+  margin-bottom: 4px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.gif-output-estimate strong {
+  color: #1e3a8a;
+  font-size: 12px;
+}
+
+.gif-error {
+  margin-top: 14px;
+  border: 1px solid #fecdd3;
+  border-radius: 6px;
+  background: #fff1f2;
+  padding: 10px 12px;
+  color: #be123c;
+  font-size: 13px;
+}
+
+.gif-primary,
+.gif-download {
+  min-height: 42px;
+  border: 1px solid var(--gif-primary);
+  border-radius: 6px;
+  background: var(--gif-primary);
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.gif-primary {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.gif-primary:hover,
+.gif-download:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.gif-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.gif-preview-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+.gif-preview-panel {
+  display: flex;
+  min-height: 320px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: #020617;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.gif-preview-video {
+  width: 100%;
+  max-height: 500px;
+}
+
+.gif-result-panel {
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #22c55e;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 22px;
+}
+
+.gif-result-status {
+  display: block;
+  margin-bottom: 4px;
+  color: #15803d;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.gif-download {
+  min-width: 96px;
+  padding: 0 14px;
+}
+
+.gif-result-preview {
+  display: flex;
+  min-height: 220px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  padding: 16px;
+  align-items: center;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.gif-result-preview img {
+  max-width: 100%;
+  max-height: 400px;
+  object-fit: contain;
+}
+
+.gif-result-preview p {
+  margin: 10px 0 0;
+  color: var(--gif-muted);
+  font-size: 12px;
+}
+
+.gif-guide {
+  border-top: 1px solid var(--gif-border);
+  background: #ffffff;
+  padding: 28px 24px;
+}
+
+.gif-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 18px;
+}
+
+.gif-guide-grid strong {
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.gif-guide-grid p {
+  margin: 6px 0 0;
+  color: var(--gif-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -664,5 +953,41 @@ onUnmounted(() => {
 :deep(.el-slider__runway) {
   margin-top: 8px;
   margin-bottom: 8px;
+}
+
+:deep(.el-input-number) {
+  width: 100%;
+}
+
+@media (max-width: 900px) {
+  .gif-controls {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .gif-workspace,
+  .gif-controls,
+  .gif-result-panel {
+    padding: 16px;
+  }
+
+  .gif-output-estimate,
+  .gif-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .gif-preview-panel {
+    min-height: 220px;
+  }
+
+  .gif-guide {
+    padding: 22px 16px;
+  }
+
+  .gif-result-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 </style>

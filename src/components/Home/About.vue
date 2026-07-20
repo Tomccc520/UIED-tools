@@ -9,19 +9,6 @@
  * @keywords 在线工具,图片处理,格式转换,开发工具,在线服务,免费工具
  */
 
-// 动态设置页面标题
-document.title = 'UIED-Tools - 关于我们'
-// 动态设置页面描述
-const metaDescription = document.querySelector('meta[name="description"]')
-if (metaDescription) {
-  metaDescription.setAttribute('content', 'UIED-Tools 是一款专注于图片处理的在线工具箱，提供图片压缩、格式转换、批量处理等功能，为设计师和开发者提供专业、高效的图片处理解决方案。')
-}
-// 动态设置页面关键词
-const metaKeywords = document.querySelector('meta[name="keywords"]')
-if (metaKeywords) {
-  metaKeywords.setAttribute('content', '在线工具,图片处理,格式转换,开发工具,在线服务,免费工具,UIED-Tools')
-}
-
 // 工具特点数据
 const features = [
   {

@@ -14,6 +14,14 @@
     <priority>0.8</priority>
   </url>
 
+  <!-- 关于我们 -->
+  <url>
+    <loc>https://www.uiedtool.com/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <lastmod>2026-07-17</lastmod>
+  </url>
+
   <!-- 图片处理工具 -->
   <url>
     <loc>https://www.uiedtool.com/tools/qrcode</loc>

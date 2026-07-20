@@ -1,6 +1,6 @@
 <!--
  * @file VideoCompress.vue
- * @description 在线视频压缩工具，支持在不改变分辨率的前提下压缩视频体积
+ * @description 在线视频压缩工具，支持服务端 FFmpeg H.264 与浏览器本地双引擎
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
@@ -19,12 +19,23 @@ import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import VideoToolNotice from '@/components/Tools/Video/Shared/VideoToolNotice.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
+import VideoUploadZone from '@/components/Tools/Video/Shared/VideoUploadZone.vue'
+import VideoWorkspaceIntro from '@/components/Tools/Video/Shared/VideoWorkspaceIntro.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 import { useToolConsume } from '@/composables/useToolConsume'
+import {
+  compressVideoWithServer,
+  getVideoCompressServerConfig,
+  type VideoCompressServerConfig
+} from '@/services/videoCompress'
+
+/**
+ * 压缩引擎类型
+ */
+type CompressionEngine = 'server' | 'browser'
 
 /**
  * 压缩模式类型
@@ -77,9 +88,12 @@ const videoUrl = ref('')
 const resultVideoUrl = ref('')
 const resultFileExt = ref('webm')
 const resultFileSizeMB = ref(0)
+const resultDownloadName = ref('')
+const serverResultCompressed = ref<boolean | null>(null)
+const serverElapsedMs = ref(0)
+const serverConfig = ref<VideoCompressServerConfig | null>(null)
 
 const isProcessing = ref(false)
-const isDragOver = ref(false)
 const progress = ref(0)
 const statusText = ref('')
 const etaText = ref('')
@@ -100,6 +114,7 @@ const resultMeta = reactive<VideoMeta>({
 })
 
 const settings = reactive({
+  engine: 'server' as CompressionEngine,
   mode: 'ratio' as CompressMode,
   compressionRatio: 35,
   targetSizeMB: 8,
@@ -112,22 +127,16 @@ const settings = reactive({
 
 const toolFeatures = [
   '支持多种格式：兼容 MP4、AVI、MOV、MKV、WMV、WebM 等常见视频格式。',
-  '智能压缩策略：在不降低分辨率的前提下，优先通过码率优化减小文件体积。',
-  '无需安装软件：直接在浏览器中处理，不依赖本地安装程序。',
+  '专业压缩策略：服务端统一输出 H.264 MP4、AAC 128K，并限制最大 1920 与最高 30fps。',
+  '可靠回退：服务端不可用时自动切换浏览器本地压缩，体积无明显下降时保留原视频。',
   '适配多场景：适用于社交媒体上传、视频存储优化、工作演示、邮件附件分享等场景。'
 ]
 
 const usageSteps = [
   '上传视频：选择或拖拽视频文件到工具页面。',
-  '设置压缩参数：可选择压缩比例、目标大小或自定义码率。',
+  '选择压缩方式：专业模式输出 H.264 MP4，本地模式可自定义比例、目标大小或码率。',
   '开始压缩：点击“开始压缩”按钮并等待处理完成。',
   '下载视频：压缩完成后可直接下载优化后的视频。'
-]
-
-const whyChoose = [
-  '免安装：无需下载软件，即开即用。',
-  '高效安全：所有任务在浏览器本地处理，保护用户隐私。',
-  '跨设备支持：兼容 Windows、Mac、iOS、Android 的现代浏览器。'
 ]
 
 const videoCompressExperienceTips = [
@@ -137,11 +146,11 @@ const videoCompressExperienceTips = [
   },
   {
     label: '失败兜底',
-    text: '浏览器内存不足时请减小源文件、降低帧率或提高压缩比例后再试。'
+    text: '服务端不可用时自动切换浏览器模式；本地内存不足时请降低帧率或提高压缩比例。'
   },
   {
     label: '会员价值',
-    text: '适合上传平台、社群分享和交付文件压缩，运行前显式扣分，会员免积分。'
+    text: '本次结果可直接用于平台上传、社群分享和文件交付；会员账号可按后台策略免积分使用。'
   }
 ]
 
@@ -156,11 +165,11 @@ const faqList: FaqItem[] = [
   },
   {
     question: '在线压缩视频是否安全？',
-    answer: '是的，处理在浏览器本地进行，不会上传到服务器。关闭页面后，本地生成的临时链接也会失效。'
+    answer: '专业模式会将视频临时上传到本站服务器完成 FFmpeg 转码，任务结束后立即清理临时文件；也可切换浏览器本地模式。'
   },
   {
     question: '是否有文件大小限制？',
-    answer: '理论上支持大文件，但浏览器内存和设备性能会影响体验。超大文件建议分段处理或提高压缩比例。'
+    answer: '当前单个视频最大 220MB。更大的视频建议先分段，避免上传超时或浏览器内存不足。'
   }
 ]
 
@@ -185,6 +194,7 @@ let activeVideoBitrateKbps = 0
 let activeAudioBitrateKbps = 0
 let activeKeepAudio = true
 let activeFrameRate = 24
+let serverAbortController: AbortController | null = null
 
 const sourceSizeMB = computed(() => {
   if (!videoFile.value) return 0
@@ -255,9 +265,9 @@ const validateVideoFile = (file: File) => {
     return false
   }
 
-  const maxSizeMB = 1024
+  const maxSizeMB = 220
   if (file.size > maxSizeMB * 1024 * 1024) {
-    ElMessage.warning(`当前版本建议单次处理不超过 ${maxSizeMB}MB`) 
+    ElMessage.warning(`视频大小不能超过 ${maxSizeMB}MB`)
     return false
   }
 
@@ -273,6 +283,9 @@ const clearResultUrl = () => {
     resultVideoUrl.value = ''
   }
   resultFileSizeMB.value = 0
+  resultDownloadName.value = ''
+  serverResultCompressed.value = null
+  serverElapsedMs.value = 0
 }
 
 /**
@@ -528,6 +541,8 @@ const finalizeOutputFromChunks = (isTimeoutFallback = false) => {
 
   resultVideoUrl.value = URL.createObjectURL(blob)
   resultFileSizeMB.value = blob.size / 1024 / 1024
+  resultDownloadName.value = `${videoFile.value?.name.replace(/\.[^/.]+$/, '') || 'video'}_compressed.${resultFileExt.value}`
+  serverResultCompressed.value = null
   progress.value = 100
   statusText.value = '压缩完成'
   etaText.value = '预计剩余时间：约 0 秒'
@@ -571,6 +586,11 @@ const scheduleFinalizeMonitor = () => {
  * 停止当前压缩任务
  */
 const stopCurrentProcessing = () => {
+  if (serverAbortController) {
+    serverAbortController.abort()
+    serverAbortController = null
+  }
+
   if (drawRafId !== null) {
     cancelAnimationFrame(drawRafId)
     drawRafId = null
@@ -676,7 +696,6 @@ const handleFileChange = (event: Event) => {
  * @param event 拖拽事件
  */
 const handleDrop = (event: DragEvent) => {
-  isDragOver.value = false
   const file = event.dataTransfer?.files?.[0]
   if (!file) return
   loadVideoFile(file)
@@ -1035,6 +1054,88 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
 }
 
 /**
+ * 函数说明：调用服务端 FFmpeg 执行标准 H.264 MP4 压缩，失败时允许回退浏览器引擎。
+ * @returns 是否已在服务端完成或被用户取消
+ */
+const runServerCompressProcess = async () => {
+  if (!videoFile.value) {
+    return false
+  }
+
+  const currentFile = videoFile.value
+  const config = await getVideoCompressServerConfig()
+  serverConfig.value = config
+  if (!config.available) {
+    ElMessage.warning('服务端 FFmpeg 暂不可用，已自动切换浏览器本地压缩')
+    return false
+  }
+
+  const controller = new AbortController()
+  serverAbortController = controller
+  isCancelRequested.value = false
+  isProcessing.value = true
+  progress.value = 2
+  processStartedAt.value = Date.now()
+  statusText.value = '正在上传视频到压缩队列...'
+  etaText.value = '上传完成后将自动进行 H.264 转码'
+  errorText.value = ''
+  clearResultUrl()
+
+  try {
+    const result = await compressVideoWithServer(currentFile, {
+      signal: controller.signal,
+      onUploadProgress: (uploadProgress) => {
+        progress.value = Math.max(progress.value, Math.min(45, Math.round(uploadProgress * 0.45)))
+        if (uploadProgress >= 100) {
+          statusText.value = '上传完成，正在排队并压缩视频...'
+          etaText.value = '服务端按 H.264 / CRF 28 / AAC 128K 处理'
+        } else {
+          statusText.value = `正在上传视频（${uploadProgress}%）...`
+        }
+      }
+    })
+
+    resultVideoUrl.value = URL.createObjectURL(result.blob)
+    resultFileSizeMB.value = result.outputSize / 1024 / 1024
+    resultDownloadName.value = result.fileName
+    resultFileExt.value = getFileExtension(result.fileName) || getFileExtension(currentFile.name) || 'mp4'
+    serverResultCompressed.value = result.compressed
+    serverElapsedMs.value = result.elapsedMs
+    progress.value = 100
+    statusText.value = result.compressed ? 'H.264 视频压缩完成' : '原视频体积更优，已保留原文件'
+    etaText.value = '预计剩余时间：约 0 秒'
+    isProcessing.value = false
+
+    if (result.compressed) {
+      ElMessage.success('视频已压缩为 H.264 MP4')
+    } else {
+      ElMessage.warning('压缩后体积没有明显下降，已自动保留原视频')
+    }
+    return true
+  } catch (error) {
+    if (controller.signal.aborted) {
+      isProcessing.value = false
+      progress.value = 0
+      etaText.value = ''
+      statusText.value = '已取消处理'
+      return true
+    }
+
+    console.warn('[VideoCompress] 服务端压缩失败，准备回退浏览器引擎', error)
+    isProcessing.value = false
+    progress.value = 0
+    etaText.value = ''
+    statusText.value = '服务端压缩失败，正在切换浏览器本地模式...'
+    ElMessage.warning('服务端压缩失败，已自动切换浏览器本地压缩')
+    return false
+  } finally {
+    if (serverAbortController === controller) {
+      serverAbortController = null
+    }
+  }
+}
+
+/**
  * 开始执行视频压缩
  */
 const compressVideo = async () => {
@@ -1055,6 +1156,13 @@ const compressVideo = async () => {
   })
   if (!canConsume) {
     return
+  }
+
+  if (settings.engine === 'server') {
+    const completedByServer = await runServerCompressProcess()
+    if (completedByServer) {
+      return
+    }
   }
 
   compatRetryCount = 0
@@ -1089,10 +1197,9 @@ const downloadResult = async () => {
     return
   }
 
-  const originalName = videoFile.value.name.replace(/\.[^/.]+$/, '')
   const link = document.createElement('a')
   link.href = resultVideoUrl.value
-  link.download = `${originalName}_compressed.${resultFileExt.value}`
+  link.download = resultDownloadName.value || `${videoFile.value.name.replace(/\.[^/.]+$/, '')}_compressed.${resultFileExt.value}`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -1130,6 +1237,22 @@ const resultComparisonMetrics = computed(() => {
       label: '时长',
       before: formatTime(sourceMeta.duration),
       after: resultMeta.duration ? formatTime(resultMeta.duration) : '-'
+    },
+    {
+      label: '输出编码',
+      before: '原始编码',
+      after: serverResultCompressed.value === true
+        ? 'H.264 + AAC'
+        : serverResultCompressed.value === false
+          ? '保持原编码'
+          : resultVideoUrl.value
+            ? `浏览器 ${resultFileExt.value.toUpperCase()}`
+            : '-'
+    },
+    {
+      label: '处理耗时',
+      before: '-',
+      after: serverElapsedMs.value > 0 ? `${(serverElapsedMs.value / 1000).toFixed(1)} 秒` : '-'
     }
   ]
 })
@@ -1167,56 +1290,35 @@ onBeforeRouteLeave((to, from, next) => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="video-compress-page min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4">
-        <div class="text-center mb-6">
-          <h2 class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
-            免费在线视频压缩工具
-          </h2>
-          <p class="text-gray-500 text-sm sm:text-base max-w-3xl mx-auto">
-            在线压缩 MP4、AVI、MOV、MKV 等视频格式，压缩视频大小、减小视频体积、提升上传速度，并尽量保持原始分辨率。
-          </p>
-        </div>
-        <VideoToolNotice class="mb-8" />
-        <MemberCoreToolTips
-          class="mb-8"
-          tool-key="video-compress"
-          title="视频压缩交付建议"
-          :items="videoCompressExperienceTips"
+      <section class="video-compress-workspace mb-4">
+        <VideoWorkspaceIntro
+          title="视频压缩"
+          description="自动输出兼容性更好的 H.264 MP4，压缩后可直接预览并下载。"
+          :specs="['最大 220MB', 'H.264 + AAC', '最高 30fps']"
+          :notices="['专业模式仅临时上传转码，完成后立即清理', '服务不可用时自动切换浏览器本地处理']"
         />
 
-        <div
-          v-if="!videoUrl"
-          class="border-2 border-dashed rounded-xl p-16 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
-          :class="[
-            isDragOver
-              ? 'border-indigo-500 bg-indigo-50 scale-[1.02]'
-              : 'border-gray-300 hover:border-indigo-400 hover:bg-indigo-50'
-          ]"
-          @click="triggerSelectVideo"
-          @dragover.prevent="isDragOver = true"
-          @dragleave.prevent="isDragOver = false"
-          @drop.prevent="handleDrop"
-        >
+        <template v-if="!videoUrl">
           <input ref="fileInput" type="file" class="hidden" accept="video/*,.mp4,.avi,.mov,.mkv,.wmv,.webm,.m4v" @change="handleFileChange">
-          <div class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
-            <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>
-          </div>
-          <h3 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition-colors">
-            点击或拖拽视频文件到此处
-          </h3>
-          <p class="text-gray-500">支持 MP4、AVI、MOV、MKV、WMV、WebM 等格式</p>
-        </div>
+          <VideoUploadZone
+            title="上传需要压缩的视频"
+            formats="支持 MP4、MOV、WebM、AVI、MKV、WMV"
+            @select="triggerSelectVideo"
+            @drop="handleDrop"
+          />
+        </template>
 
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div v-else class="video-compress-editor grid grid-cols-1 lg:grid-cols-12">
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-6">压缩参数</h3>
+            <div class="video-compress-controls sticky top-4">
+              <div class="video-compress-controls__head">
+                <h3>压缩设置</h3>
+                <button type="button" :disabled="isProcessing" @click="triggerSelectVideo">更换视频</button>
+              </div>
 
-              <div class="bg-white rounded-lg p-4 border border-gray-200 mb-6 space-y-3">
+              <div class="video-source-summary">
                 <div class="flex items-center justify-between text-sm">
                   <span class="text-gray-500">文件名</span>
                   <span class="text-gray-800 max-w-[170px] truncate text-right">{{ videoFile?.name }}</span>
@@ -1233,13 +1335,31 @@ onBeforeRouteLeave((to, from, next) => {
                   <span class="text-gray-500">时长</span>
                   <span class="font-medium text-gray-800">{{ formatTime(sourceMeta.duration) }}</span>
                 </div>
-                <button class="text-xs text-indigo-600 hover:text-indigo-800" @click="triggerSelectVideo">
-                  上传其他视频
-                </button>
                 <input ref="fileInput" type="file" class="hidden" accept="video/*,.mp4,.avi,.mov,.mkv,.wmv,.webm,.m4v" @change="handleFileChange">
               </div>
 
               <div class="space-y-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2">压缩方式</label>
+                  <el-radio-group v-model="settings.engine" class="w-full">
+                    <el-radio-button label="server">专业 H.264</el-radio-button>
+                    <el-radio-button label="browser">浏览器本地</el-radio-button>
+                  </el-radio-group>
+                </div>
+
+                <div v-if="settings.engine === 'server'" class="video-server-specs">
+                  <div class="video-server-specs__head">
+                    <span>专业输出参数</span>
+                    <span>串行处理</span>
+                  </div>
+                  <div class="video-server-specs__list">
+                    <span>H.264 MP4 · CRF 28</span>
+                    <span>最长边 1920 · 最高 30fps</span>
+                    <span>AAC 128K · Fast Start</span>
+                  </div>
+                </div>
+
+                <template v-if="settings.engine === 'browser'">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">压缩模式</label>
                   <el-radio-group v-model="settings.mode" class="w-full">
@@ -1306,6 +1426,7 @@ onBeforeRouteLeave((to, from, next) => {
                     <span class="font-semibold text-indigo-900">{{ estimatedOutputSizeMB.toFixed(2) }} MB</span>
                   </div>
                 </div>
+                </template>
 
                 <VideoProcessStatus
                   v-if="isProcessing"
@@ -1315,12 +1436,12 @@ onBeforeRouteLeave((to, from, next) => {
                   @cancel="cancelProcessing"
                 />
 
-                <div v-if="errorText" class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
+                <div v-if="errorText" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
                   {{ errorText }}
                 </div>
 
                 <button
-                  class="w-full py-3.5 px-4 bg-gradient-to-r from-sky-600 to-emerald-600 hover:from-sky-700 hover:to-emerald-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  class="video-compress-primary"
                   :disabled="isProcessing"
                   @click="compressVideo"
                 >
@@ -1328,19 +1449,12 @@ onBeforeRouteLeave((to, from, next) => {
                   <span v-else>压缩中...</span>
                 </button>
 
-                <button
-                  class="w-full py-3 px-4 bg-white border border-gray-300 hover:border-indigo-400 hover:text-indigo-700 text-gray-700 font-medium rounded-xl transition-all duration-200 flex items-center justify-center"
-                  :disabled="isProcessing"
-                  @click="triggerSelectVideo"
-                >
-                  上传其他视频
-                </button>
               </div>
             </div>
           </div>
 
           <div class="lg:col-span-8 space-y-6">
-            <div class="border border-gray-200 rounded-xl overflow-hidden bg-black flex items-center justify-center relative group">
+            <div class="video-preview-panel">
               <video
                 ref="previewVideoRef"
                 :src="videoUrl"
@@ -1350,11 +1464,17 @@ onBeforeRouteLeave((to, from, next) => {
               />
             </div>
 
-            <div v-if="resultVideoUrl" class="bg-white rounded-xl border border-green-200 p-6 animate-fade-in relative overflow-hidden">
-              <div class="absolute top-0 left-0 w-1 h-full bg-green-500" />
+            <div v-if="resultVideoUrl" class="video-result-panel animate-fade-in">
               <div class="flex flex-col gap-5">
                 <div class="flex items-center justify-between gap-3 flex-wrap">
-                  <h3 class="text-xl font-bold text-gray-800">压缩完成</h3>
+                  <div class="flex items-center gap-2">
+                    <h3 class="text-xl font-bold text-gray-800">压缩完成</h3>
+                    <span
+                      v-if="serverResultCompressed !== null"
+                      class="rounded px-2 py-1 text-xs font-medium"
+                      :class="serverResultCompressed ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
+                    >{{ serverResultCompressed ? 'H.264 MP4' : '已保留原视频' }}</span>
+                  </div>
                   <div class="flex items-center gap-2">
                     <button
                       class="inline-flex items-center px-4 py-2 border border-gray-300 hover:border-indigo-400 hover:text-indigo-700 text-gray-700 font-medium rounded-lg transition-colors"
@@ -1373,6 +1493,13 @@ onBeforeRouteLeave((to, from, next) => {
 
                 <VideoResultComparison :metrics="resultComparisonMetrics" :summary="getCompressionText()" />
 
+                <MemberCoreToolTips
+                  tool-key="video-compress"
+                  eyebrow="完成提醒"
+                  title="下载前请检查压缩结果"
+                  :items="videoCompressExperienceTips"
+                />
+
                 <div class="bg-black rounded-lg overflow-hidden flex items-center justify-center">
                   <video
                     ref="resultVideoRef"
@@ -1386,51 +1513,317 @@ onBeforeRouteLeave((to, from, next) => {
             </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div class="bg-white rounded-xl p-8 mb-4 space-y-7">
-        <section>
-          <h3 class="text-xl font-semibold text-gray-900 mb-3">什么是在线视频压缩工具？</h3>
-          <p class="text-gray-600 leading-7">
-            在线视频压缩工具是一款可在线压缩 MP4、AVI、MOV、MKV 等视频格式的工具，
-            可在不降低分辨率的前提下缩小视频文件大小。无需下载软件，即可快速压缩，
-            适用于社交媒体上传、视频存储优化、工作演示、文件共享等多种场景。
+      <section class="video-compress-guide mb-4">
+        <div class="video-guide-intro">
+          <h3>关于视频压缩</h3>
+          <p>
+            支持在线压缩 MP4、AVI、MOV、MKV 等常见视频。专业模式通过 FFmpeg 输出 H.264 MP4，
+            在最大 1920 范围内保持原始比例，适合平台上传、文件共享和存储优化。
           </p>
-        </section>
+        </div>
 
-        <section>
-          <h3 class="text-xl font-semibold text-gray-900 mb-3">在线视频压缩工具的特点</h3>
-          <ul class="list-disc pl-5 text-gray-600 space-y-2 leading-7">
-            <li v-for="item in toolFeatures" :key="item">{{ item }}</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3 class="text-xl font-semibold text-gray-900 mb-3">如何使用在线视频压缩工具？</h3>
-          <ol class="list-decimal pl-5 text-gray-600 space-y-2 leading-7">
-            <li v-for="step in usageSteps" :key="step">{{ step }}</li>
-          </ol>
-        </section>
-
-        <section>
-          <h3 class="text-xl font-semibold text-gray-900 mb-3">为什么选择我们的在线视频压缩工具？</h3>
-          <ul class="list-disc pl-5 text-gray-600 space-y-2 leading-7">
-            <li v-for="item in whyChoose" :key="item">{{ item }}</li>
-          </ul>
-        </section>
-
-        <section>
-          <h3 class="text-xl font-semibold text-gray-900 mb-3">视频压缩常见问答（FAQ）</h3>
-          <div class="space-y-4">
-            <article v-for="faq in faqList" :key="faq.question" class="rounded-lg border border-gray-200 p-4">
-              <h4 class="font-semibold text-gray-900 mb-1">{{ faq.question }}</h4>
-              <p class="text-gray-600 leading-7">{{ faq.answer }}</p>
-            </article>
+        <div class="video-guide-grid">
+          <div>
+            <h4>使用步骤</h4>
+            <ol>
+              <li v-for="step in usageSteps" :key="step">{{ step }}</li>
+            </ol>
           </div>
-        </section>
-      </div>
+          <div>
+            <h4>输出与兼容</h4>
+            <ul>
+              <li v-for="item in toolFeatures" :key="item">{{ item }}</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="video-guide-faq">
+          <h4>常见问题</h4>
+          <details v-for="faq in faqList" :key="faq.question">
+            <summary>{{ faq.question }}</summary>
+            <p>{{ faq.answer }}</p>
+          </details>
+        </div>
+      </section>
 
       <ToolsRecommend :currentPath="route.path" />
     </div>
   </div>
 </template>
+
+<style scoped>
+.video-compress-page {
+  --video-border: #e2e8f0;
+  --video-muted: #64748b;
+  --video-strong: #0f172a;
+  --video-primary: #2563eb;
+  color: var(--video-strong);
+}
+
+.video-compress-workspace {
+  border: 1px solid var(--video-border);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 24px;
+}
+
+.video-compress-editor {
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.video-compress-controls {
+  border: 1px solid var(--video-border);
+  border-radius: 8px;
+  background: #f8fafc;
+  padding: 20px;
+}
+
+.video-compress-controls__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.video-compress-controls__head h3 {
+  margin: 0;
+  color: var(--video-strong);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+.video-compress-controls__head button {
+  border: 0;
+  background: transparent;
+  color: var(--video-primary);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 0;
+}
+
+.video-compress-controls__head button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.video-source-summary {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+  border-top: 1px solid var(--video-border);
+  border-bottom: 1px solid var(--video-border);
+  padding: 14px 0;
+}
+
+.video-server-specs {
+  border-left: 3px solid #0ea5e9;
+  background: #f0f9ff;
+  padding: 12px 14px;
+}
+
+.video-server-specs__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #0c4a6e;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.video-server-specs__head span:last-child {
+  color: #0369a1;
+  font-weight: 500;
+}
+
+.video-server-specs__list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.video-compress-primary {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  border-radius: 6px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 650;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+
+.video-compress-primary {
+  border: 1px solid var(--video-primary);
+  background: var(--video-primary);
+  color: #ffffff;
+}
+
+.video-compress-primary:hover {
+  border-color: #1d4ed8;
+  background: #1d4ed8;
+}
+
+.video-compress-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.video-preview-panel {
+  display: flex;
+  min-height: 320px;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  background: #020617;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.video-result-panel {
+  border: 1px solid #bbf7d0;
+  border-left: 4px solid #22c55e;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 22px;
+  overflow: hidden;
+}
+
+.video-compress-guide {
+  border-top: 1px solid var(--video-border);
+  background: #ffffff;
+  padding: 28px 24px;
+}
+
+.video-guide-intro h3,
+.video-guide-grid h4,
+.video-guide-faq h4 {
+  margin: 0;
+  color: var(--video-strong);
+  letter-spacing: 0;
+}
+
+.video-guide-intro h3 {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.video-guide-intro p {
+  max-width: 900px;
+  margin: 8px 0 0;
+  color: var(--video-muted);
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+.video-guide-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 24px;
+  border-top: 1px solid var(--video-border);
+  border-bottom: 1px solid var(--video-border);
+}
+
+.video-guide-grid > div {
+  padding: 20px 22px 20px 0;
+}
+
+.video-guide-grid > div + div {
+  border-left: 1px solid var(--video-border);
+  padding-right: 0;
+  padding-left: 22px;
+}
+
+.video-guide-grid h4,
+.video-guide-faq h4 {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.video-guide-grid ol,
+.video-guide-grid ul {
+  display: grid;
+  gap: 8px;
+  margin: 12px 0 0;
+  padding-left: 20px;
+  color: var(--video-muted);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.video-guide-faq {
+  margin-top: 24px;
+}
+
+.video-guide-faq details {
+  border-bottom: 1px solid var(--video-border);
+  padding: 12px 0;
+}
+
+.video-guide-faq summary {
+  color: #334155;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.video-guide-faq details p {
+  margin: 8px 0 0;
+  color: var(--video-muted);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .video-compress-controls {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .video-compress-workspace {
+    padding: 16px;
+  }
+
+  .video-compress-controls,
+  .video-result-panel {
+    padding: 16px;
+  }
+
+  .video-preview-panel {
+    min-height: 220px;
+  }
+
+  .video-compress-guide {
+    padding: 22px 16px;
+  }
+
+  .video-guide-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .video-guide-grid > div,
+  .video-guide-grid > div + div {
+    border-left: 0;
+    padding: 18px 0;
+  }
+
+  .video-guide-grid > div + div {
+    border-top: 1px solid var(--video-border);
+  }
+}
+</style>

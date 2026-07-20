@@ -35,6 +35,17 @@ const redirectPath = computed(() => {
 })
 
 /**
+ * 函数说明：登录关闭时解析安全回跳地址，避免默认跳入个人中心形成循环。
+ */
+const loginDisabledRedirectPath = computed(() => {
+  const redirectValue = String(route.query.redirect || '').trim()
+  if (redirectValue.startsWith('/') && !redirectValue.startsWith('/user/')) {
+    return redirectValue
+  }
+  return '/'
+})
+
+/**
  * 函数说明：读取后台公共配置，决定第三方登录入口是否展示。
  */
 const loadSiteConfig = async () => {
@@ -82,6 +93,11 @@ const handleOpenAuth = (url: string) => {
 
 onMounted(async () => {
   await loadSiteConfig()
+  if (!siteConfig.value.loginEnabled) {
+    ElMessage.info('当前站点未开启登录，工具可直接免登录使用')
+    await router.replace(loginDisabledRedirectPath.value)
+    return
+  }
   if (isFrontendUserLoggedIn()) {
     await router.replace(redirectPath.value)
   }

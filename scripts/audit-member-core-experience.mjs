@@ -1,6 +1,6 @@
 /**
  * @file audit-member-core-experience.mjs
- * @description 审计 20 个会员核心工具前台体验配置，确保卖点展示、首屏说明和失败兜底不漏配
+ * @description 审计 20 个会员核心工具前台体验配置，确保运行扣分提示和结果提醒不漏配
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
@@ -253,24 +253,12 @@ MEMBER_CORE_TOOL_PRESETS.forEach((preset) => {
   })
 })
 
-if (!appText.includes('resolveMemberCoreToolExperience')) {
-  errors.push('App.vue 未接入 resolveMemberCoreToolExperience')
+if (!appText.includes('currentToolConsumeText')) {
+  errors.push('App.vue 未保留工具运行前积分提示')
 }
 
-if (!appText.includes('member-core-runtime-panel')) {
-  errors.push('App.vue 未渲染会员核心工具首屏体验面板')
-}
-
-if (!appText.includes('member-core-runtime-panel__policy')) {
-  errors.push('App.vue 未渲染会员核心工具运行扣分策略说明')
-}
-
-if (!appText.includes('currentMemberCoreExperience.sampleInput')) {
-  errors.push('App.vue 未渲染会员核心工具示例输入')
-}
-
-if (!appText.includes('currentMemberCoreExperience.deliverableExample')) {
-  errors.push('App.vue 未渲染会员核心工具交付样例')
+if (appText.includes('member-core-runtime-panel')) {
+  errors.push('App.vue 不应在工具首屏渲染大型会员核心卖点面板')
 }
 
 errors.push(...collectMemberCorePageErrors(routeMap))
