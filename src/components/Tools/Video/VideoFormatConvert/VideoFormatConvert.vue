@@ -91,7 +91,7 @@ const videoFormatExperienceTips = [
   },
   {
     label: '会员价值',
-    text: '适合不同平台上传前快速适配格式，运行前显式扣分，会员可免积分。'
+    text: '适合不同平台上传前快速适配格式。'
   }
 ]
 

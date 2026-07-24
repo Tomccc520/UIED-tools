@@ -73,20 +73,6 @@ const currentToolDisabledRemark = computed(() => {
   return String(toolRuntimeBannerState.value.remark || '').trim() || '后台已临时关闭该工具，恢复后即可继续使用。'
 })
 
-const currentToolConsumeText = computed(() => {
-  if (!isToolPage.value || isCurrentToolDisabled.value) {
-    return ''
-  }
-  const consumePoints = Math.max(0, Number(toolRuntimeBannerState.value.consumePoints || 0))
-  const memberFree = Boolean(toolRuntimeBannerState.value.memberFree)
-  if (consumePoints <= 0) {
-    return '当前工具无需消耗积分。'
-  }
-  return memberFree
-    ? `当前工具每次消耗 ${consumePoints} 积分（会员可免积分）。`
-    : `当前工具每次消耗 ${consumePoints} 积分。`
-})
-
 /**
  * 函数说明：标准化工具路由路径，统一去除 query/hash 与尾斜杠，便于和后台配置比对。
  */
@@ -256,14 +242,6 @@ useToolRankingTracker()
               </div>
             </div>
           </section>
-          <el-alert
-            v-else-if="currentToolConsumeText"
-            class="tool-runtime-alert tool-runtime-alert--info"
-            type="info"
-            :closable="false"
-            show-icon
-            :title="currentToolConsumeText"
-          />
           <!-- 路由视图，使用过渡动画 -->
           <router-view v-if="!isCurrentToolDisabled" v-slot="{ Component }">
             <transition name="animation" mode="out-in">
@@ -413,10 +391,6 @@ useToolRankingTracker()
 
 .tool-runtime-alert--warning {
   border-color: #f59e0b;
-}
-
-.tool-runtime-alert--info {
-  border-color: #60a5fa;
 }
 
 @media (max-width: 768px) {

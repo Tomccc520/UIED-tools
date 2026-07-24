@@ -15,6 +15,7 @@ const projectRoot = process.cwd()
 const experienceConfigFile = path.resolve(projectRoot, 'src/config/memberCoreTools.ts')
 const appFile = path.resolve(projectRoot, 'src/App.vue')
 const routerFile = path.resolve(projectRoot, 'src/router/router.ts')
+const globalConsumeGuardFile = path.resolve(projectRoot, 'src/composables/useGlobalToolConsumeGuard.ts')
 const memberCoreRouteComponentChecks = [
   { route: '/tools/photo/background', toolKey: 'photo-background', component: 'src/components/Tools/Photo/PhotoBackground.vue' },
   { route: '/tools/photo/transparent', toolKey: 'photo-transparent', component: 'src/components/Tools/Photo/PhotoTransparent.vue' },
@@ -253,8 +254,12 @@ MEMBER_CORE_TOOL_PRESETS.forEach((preset) => {
   })
 })
 
-if (!appText.includes('currentToolConsumeText')) {
-  errors.push('App.vue 未保留工具运行前积分提示')
+if (appText.includes('currentToolConsumeText') || appText.includes('tool-runtime-alert--info')) {
+  errors.push('App.vue 不应在工具首屏展示全宽积分提示')
+}
+
+if (!readTextFile(globalConsumeGuardFile).includes('showConsumeSuccessToast: true')) {
+  errors.push('全局工具扣分拦截未保留执行成功后的积分提示')
 }
 
 if (appText.includes('member-core-runtime-panel')) {

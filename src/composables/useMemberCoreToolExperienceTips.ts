@@ -46,7 +46,7 @@ export const useMemberCoreToolExperienceTips = (route: RouteLocationNormalizedLo
       },
       {
         label: '失败兜底',
-        text: `${experience.failureHint} 运行前会显式提示消耗 ${experience.consumePoints} 积分，会员可免积分使用。`
+        text: experience.failureHint
       }
     ]
   })

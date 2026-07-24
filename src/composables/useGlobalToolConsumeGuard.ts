@@ -346,7 +346,8 @@ export const useGlobalToolConsumeGuard = () => {
         action: resolveActionCode(actionText),
         routePath: route.fullPath,
         redirectPath: route.fullPath,
-        loginWarningText: '请先登录后再继续当前工具操作'
+        loginWarningText: '请先登录后再继续当前工具操作',
+        showConsumeSuccessToast: true
       })
       if (!allow) {
         return

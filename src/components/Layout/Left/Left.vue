@@ -1001,8 +1001,8 @@ onMounted(() => {
     </div>
 
     <!-- 菜单区域 -->
-    <div class="flex-1 pl-8 pr-8">
-      <el-menu class="w-[200px]" :class="{ 'is-ai-toolbox-menu': isAiToolboxRoute }" :default-active="defaultActive" :default-openeds="defaultOpeneds"
+    <div class="sidebar-menu-shell">
+      <el-menu class="w-full" :class="{ 'is-ai-toolbox-menu': isAiToolboxRoute }" :default-active="defaultActive" :default-openeds="defaultOpeneds"
         background-color="transparent" @open="handleOpen" @close="handleClose">
         <!-- 推荐工具（固定保留） -->
         <el-sub-menu index="recommend">
@@ -1215,6 +1215,13 @@ onMounted(() => {
   background-color: transparent !important;
 }
 
+/* 菜单容器统一左右留白，避免二级页固定宽度导致选中背景被裁切。 */
+.sidebar-menu-shell {
+  flex: 1;
+  min-width: 0;
+  padding: 0 12px 16px;
+}
+
 /* 图标基础样式 */
 .menu-icon {
   width: var(--menu-icon-size);
@@ -1237,7 +1244,7 @@ onMounted(() => {
 }
 
 .menu-text {
-  margin-left: 14px;
+  margin-left: 10px;
 }
 
 /* 子菜单样式 */
@@ -1262,7 +1269,7 @@ onMounted(() => {
   height: var(--menu-item-height) !important;
   line-height: var(--menu-item-height) !important;
   margin: var(--menu-item-margin);
-  padding: 0 20px !important;
+  padding: 0 12px !important;
   border-radius: var(--menu-border-radius);
   transition: var(--menu-transition);
   color: var(--menu-text-color);
@@ -1274,8 +1281,7 @@ onMounted(() => {
   height: var(--menu-item-height) !important;
   line-height: var(--menu-item-height) !important;
   margin: var(--menu-item-margin);
-  padding: 0 20px 0 40px !important;
-  /* 增加左侧缩进 */
+  padding: 0 12px 0 36px !important;
   border-radius: var(--menu-border-radius);
   transition: var(--menu-transition);
   color: var(--menu-text-color);
@@ -1285,7 +1291,7 @@ onMounted(() => {
 .menu-top-item {
   font-size: 0.95rem;
   font-weight: 500;
-  padding: 0 20px !important;
+  padding: 0 12px !important;
 }
 
 .menu-ai-toolbox-item {
@@ -1367,12 +1373,16 @@ onMounted(() => {
 .menu-icon + .menu-text,
 .menu-icon-wrap + .menu-text,
 .el-sub-menu :deep(.el-sub-menu__title) .menu-text {
-  margin-left: 14px !important;
+  margin-left: 10px !important;
 }
 
 .is-ai-toolbox-menu {
-  --menu-item-height: 36px;
-  --menu-item-margin: 2px 0;
+  --menu-item-height: 34px;
+  --menu-item-margin: 1px 0;
+  --submenu-padding: 4px 0;
+  --menu-border-radius: 6px;
+  --menu-icon-size: 16px;
+  --menu-hover-transform: none;
 }
 
 /* 悬停和激活状态 */
