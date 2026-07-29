@@ -24,6 +24,7 @@ TOOLS_PORT="${TOOLS_PORT:-}"
 ADMIN_PORT="${ADMIN_PORT:-}"
 GO_API_PORT="${GO_API_PORT:-}"
 MATTING_PORT="${MATTING_PORT:-}"
+MATTING_INTERNAL_TOKEN="${MATTING_INTERNAL_TOKEN:-uied-matting-local-development-token}"
 MYSQL_PORT="${MYSQL_PORT:-}"
 REDIS_PORT="${REDIS_PORT:-}"
 DB_NAME="${DB_NAME:-}"
@@ -312,6 +313,7 @@ configure_likeadmin_server_env() {
   set_env_key "${env_file}" "DATABASE_URL" "${db_url}"
   set_env_key "${env_file}" "REDIS_URL" "${redis_url}"
   set_env_key "${env_file}" "UPLOAD_DIRECTORY" "'/tmp/uploads/likeadmin-go/'"
+  set_env_key "${env_file}" "MATTING_INTERNAL_TOKEN" "'${MATTING_INTERNAL_TOKEN}'"
 }
 
 # 函数说明：写入后台管理端本地 API 地址，避免联调跨域配置混乱
@@ -818,6 +820,35 @@ apply_ai_provider_config_patch() {
 
   # 函数说明：补丁失败时不阻塞本地联调，避免影响前后端启动与页面验证。
   log_info "AI 模型默认配置补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
+}
+
+# 函数说明：将历史本地抠图模型配置迁移为外部 API Provider，避免前台继续提交旧模型 ID。
+apply_matting_api_provider_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/upgrade/20260726_matting_api_provider.sql"
+  local legacy_model_count="0"
+  local legacy_menu_count="0"
+  local provider_config_count="0"
+  local garbled_provider_config_count="0"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  legacy_model_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='matting_model_id' AND value LIKE 'iic/cv_unet_%';" 2>/dev/null || echo "0")"
+  legacy_menu_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_auth_menu WHERE menu_type='C' AND paths='ai_model' AND menu_name='AI抠图模型';" 2>/dev/null || echo "0")"
+  provider_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='matting_provider_configs';" 2>/dev/null || echo "0")"
+  garbled_provider_config_count="$(compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql -uroot -Nse "SELECT COUNT(*) FROM \`${DB_NAME}\`.la_system_config WHERE type='ai_model' AND name='matting_provider_configs' AND value LIKE '%?%';" 2>/dev/null || echo "0")"
+  if [[ "${legacy_model_count}" -lt 1 ]] && [[ "${legacy_menu_count}" -lt 1 ]] && [[ "${provider_config_count}" -ge 1 ]] && [[ "${garbled_provider_config_count}" -lt 1 ]]; then
+    return
+  fi
+
+  log_info "检测到历史本地抠图模型配置，自动迁移为外部抠图 API Provider..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "抠图 API Provider 配置迁移完成。"
+    return
+  fi
+
+  log_info "抠图 API Provider 迁移失败，已跳过并继续启动。请后续检查 ${patch_file}。"
 }
 
 # 函数说明：检测并修复 AI Provider 配置中的中文乱码，避免后台模型管理页出现 ????。
@@ -1622,7 +1653,7 @@ start_likeadmin_admin() {
 
 # 函数说明：启动 AI 抠图 Python 服务
 start_matting_service() {
-  local cmd="MATTING_HOST=0.0.0.0 MATTING_PORT=${MATTING_PORT} bash '${ROOT_DIR}/scripts/backend/run-matting-service.sh'"
+  local cmd="MATTING_HOST=0.0.0.0 MATTING_PORT=${MATTING_PORT} MATTING_CONFIG_ENDPOINT='http://127.0.0.1:${GO_API_PORT}/api/common/ai/matting/internal-config' MATTING_INTERNAL_TOKEN='${MATTING_INTERNAL_TOKEN}' bash '${ROOT_DIR}/scripts/backend/run-matting-service.sh'"
   start_background_process "matting-service" "${cmd}" "${ROOT_DIR}" "${MATTING_PORT}"
 }
 
@@ -1684,6 +1715,7 @@ main() {
   apply_ai_provider_config_patch
   repair_garbled_ai_provider_config
   apply_ai_model_menu_split_patch
+  apply_matting_api_provider_patch
   apply_channel_wx_dev_menu_patch
   apply_wx_oa_reply_menu_patch
   apply_official_site_layout_submenus_patch

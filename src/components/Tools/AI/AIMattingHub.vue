@@ -77,8 +77,8 @@
 
           <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div class="mb-3 flex items-center justify-between">
-              <h3 class="text-sm font-semibold text-slate-800">选择抠图模式</h3>
-              <span class="text-xs text-slate-500">可随时切换</span>
+              <h3 class="text-sm font-semibold text-slate-800">选择主体类型</h3>
+              <span class="text-xs text-slate-500">用于结果命名与处理提示</span>
             </div>
             <div class="space-y-3">
               <button
@@ -91,7 +91,7 @@
               >
                 <div class="flex items-center justify-between gap-3">
                   <span class="text-sm font-semibold text-slate-800">{{ mode.title }}</span>
-                  <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{{ mode.modelId }}</span>
+                  <span class="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] text-slate-500">{{ mode.badge }}</span>
                 </div>
                 <p class="mt-2 text-xs leading-6 text-slate-600">{{ mode.desc }}</p>
               </button>
@@ -178,7 +178,7 @@
       <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
         <router-link class="entry-card" to="/tools/ai/portrait-matting" target="_blank">
           <div class="entry-title">AI 人像抠图</div>
-          <p class="entry-desc">固定人物模型，适合证件照、头像、半身照，发丝边缘更稳定。</p>
+          <p class="entry-desc">面向证件照、头像和半身照场景，统一调用后台配置的抠图 API。</p>
         </router-link>
 
         <router-link class="entry-card" to="/tools/photo/background" target="_blank">
@@ -223,7 +223,7 @@ import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import { requestMattingImage, warmupMattingModelId } from '@/services/matting'
+import { requestMattingImage, warmupMattingProvider } from '@/services/matting'
 
 interface MattingModeOption {
   id: 'portrait' | 'universal'
@@ -231,7 +231,7 @@ interface MattingModeOption {
   shortTitle: string
   desc: string
   runtimeHint: string
-  modelId: 'iic/cv_unet_image-matting' | 'iic/cv_unet_universal-matting'
+  badge: string
 }
 
 interface MattingStep {
@@ -250,16 +250,16 @@ const modeOptions: MattingModeOption[] = [
     title: 'AI 抠物体（通用）',
     shortTitle: 'AI 通用抠图',
     desc: '支持商品、人物、动物、植物、汽车等主体，无需额外提示词。',
-    runtimeHint: '当前使用通用抠图模型，覆盖更广场景，适合复杂主体与多类素材。',
-    modelId: 'iic/cv_unet_universal-matting'
+    runtimeHint: '将通过后台配置的云端抠图 API 自动识别主体，复杂边缘建议使用清晰原图。',
+    badge: '通用主体'
   },
   {
     id: 'portrait',
     title: 'AI 人像抠图',
     shortTitle: 'AI 人像抠图',
     desc: '适合头像、证件照和人物半身图，发丝与肩部边缘更稳定。',
-    runtimeHint: '当前使用人物专用模型，适合证件照、人像设计与社媒头像场景。',
-    modelId: 'iic/cv_unet_image-matting'
+    runtimeHint: '将通过后台配置的云端抠图 API 处理人像，建议上传轮廓清晰、主体完整的照片。',
+    badge: '人物主体'
   }
 ]
 
@@ -504,9 +504,7 @@ const startMatting = async () => {
 
   isProcessing.value = true
   try {
-    const resultBlob = await requestMattingImage(selectedFile.value, {
-      modelId: activeMode.value.modelId
-    })
+    const resultBlob = await requestMattingImage(selectedFile.value)
 
     revokeObjectUrl(processedImageObjectUrl.value)
     processedImageObjectUrl.value = URL.createObjectURL(resultBlob)
@@ -546,7 +544,7 @@ watch(
 
 onMounted(() => {
   syncModeFromRouteQuery()
-  warmupMattingModelId()
+  warmupMattingProvider()
 })
 
 onBeforeUnmount(() => {

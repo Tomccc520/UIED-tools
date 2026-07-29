@@ -9,34 +9,50 @@
 
 from __future__ import annotations
 
+import io
 import os
-import tempfile
-from typing import Any, Optional
+import threading
+import time
+from typing import Any
+from urllib.parse import quote
 
-import numpy as np
+import httpx
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, Response
 from PIL import Image
-from starlette.background import BackgroundTask
 
-MODEL_ID = os.getenv("MATTING_MODEL_ID", "iic/cv_unet_universal-matting")
-MAX_UPLOAD_MB = int(os.getenv("MATTING_MAX_UPLOAD_MB", "12"))
+DEFAULT_PROVIDER = os.getenv("MATTING_PROVIDER", "auto").strip().lower()
+MAX_UPLOAD_MB = int(os.getenv("MATTING_MAX_UPLOAD_MB", "10"))
+REQUEST_TIMEOUT_SECONDS = float(os.getenv("MATTING_REQUEST_TIMEOUT_SECONDS", "120"))
+CONFIG_REQUEST_TIMEOUT_SECONDS = float(
+    os.getenv("MATTING_CONFIG_REQUEST_TIMEOUT_SECONDS", "5")
+)
+CONFIG_CACHE_TTL_SECONDS = float(os.getenv("MATTING_CONFIG_CACHE_TTL_SECONDS", "30"))
+MATTING_CONFIG_ENDPOINT = os.getenv("MATTING_CONFIG_ENDPOINT", "").strip()
+MATTING_INTERNAL_TOKEN = os.getenv("MATTING_INTERNAL_TOKEN", "").strip()
 ALLOWED_IMAGE_MIME = {"image/jpeg", "image/png", "image/webp"}
-SUPPORTED_MODEL_IDS = {
-    "iic/cv_unet_image-matting",
-    "iic/cv_unet_universal-matting",
-}
-MODEL_TASK_BY_ID = {
-    "iic/cv_unet_image-matting": "portrait_matting",
-    "iic/cv_unet_universal-matting": "universal_matting",
-}
-OUTPUT_KEY_IMAGE = "output_img"
-OUTPUT_KEY_MASK = "mask"
-OUTPUT_KEY_OUTPUT = "output"
-_matting_pipelines: dict[str, Any] = {}
+SUPPORTED_PROVIDERS = {"aliyun", "koukoutu"}
 
-app = FastAPI(title="UIED Matting Service", version="0.2.0")
+KOUKOUTU_API_URL = os.getenv(
+    "KOUKOUTU_API_URL", "https://sync.koukoutu.com/v1/create"
+).strip()
+KOUKOUTU_API_KEY = os.getenv("KOUKOUTU_API_KEY", "").strip()
+
+ALIYUN_ACCESS_KEY_ID = os.getenv("ALIYUN_ACCESS_KEY_ID", "").strip()
+ALIYUN_ACCESS_KEY_SECRET = os.getenv("ALIYUN_ACCESS_KEY_SECRET", "").strip()
+ALIYUN_IMAGESEG_ENDPOINT = os.getenv(
+    "ALIYUN_IMAGESEG_ENDPOINT", "imageseg.cn-shanghai.aliyuncs.com"
+).strip()
+
+_provider_config_cache: dict[str, Any] = {
+    "expiresAt": 0.0,
+    "value": None,
+    "error": "",
+}
+_provider_config_lock = threading.Lock()
+
+app = FastAPI(title="UIED Matting API Proxy", version="0.4.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -46,213 +62,408 @@ app.add_middleware(
 )
 
 
-def get_matting_pipeline():
-    """函数说明：初始化并缓存抠图模型管线，避免每次请求重复加载模型。"""
-    return get_matting_pipeline_by_model_id(MODEL_ID)
+def get_env_provider_config(provider: str) -> dict[str, Any]:
+    """函数说明：读取环境变量中的抠图配置，作为后台配置不可用时的部署兜底。"""
+    if provider == "koukoutu":
+        return {
+            "provider": "koukoutu",
+            "apiUrl": KOUKOUTU_API_URL,
+            "apiKey": KOUKOUTU_API_KEY,
+            "accessKeyId": "",
+            "accessKeySecret": "",
+            "endpoint": "",
+            "timeoutSeconds": REQUEST_TIMEOUT_SECONDS,
+        }
+    if provider == "aliyun":
+        return {
+            "provider": "aliyun",
+            "apiUrl": "",
+            "apiKey": "",
+            "accessKeyId": ALIYUN_ACCESS_KEY_ID,
+            "accessKeySecret": ALIYUN_ACCESS_KEY_SECRET,
+            "endpoint": ALIYUN_IMAGESEG_ENDPOINT,
+            "timeoutSeconds": REQUEST_TIMEOUT_SECONDS,
+        }
+    return {}
 
 
-def get_matting_pipeline_by_model_id(model_id: str):
-    """函数说明：按模型ID初始化并缓存抠图管线，支持后台动态切换模型。"""
-    global _matting_pipelines
-
-    if model_id not in SUPPORTED_MODEL_IDS:
-        raise RuntimeError(f"不支持的模型ID: {model_id}")
-
-    if model_id not in _matting_pipelines:
-        try:
-            from modelscope.pipelines import pipeline  # pylint: disable=import-outside-toplevel
-            from modelscope.utils.constant import Tasks  # pylint: disable=import-outside-toplevel
-        except ModuleNotFoundError as exc:
-            missing_name = exc.name or "未知依赖"
-            raise RuntimeError(
-                f"抠图服务缺少依赖：{missing_name}，请先执行 `pip install -r requirements.txt`"
-            ) from exc
-
-        try:
-            model_task = MODEL_TASK_BY_ID.get(model_id, "universal_matting")
-            task_value = getattr(Tasks, model_task, Tasks.universal_matting)
-            _matting_pipelines[model_id] = pipeline(task_value, model=model_id)
-        except Exception as exc:
-            raise RuntimeError(f"抠图模型初始化失败：{str(exc)}") from exc
-    return _matting_pipelines[model_id]
+def provider_is_configured(
+    provider: str,
+    config: dict[str, Any] | None = None,
+) -> bool:
+    """函数说明：判断指定抠图 API Provider 是否已经配置必要密钥。"""
+    current = config or get_env_provider_config(provider)
+    if provider == "koukoutu":
+        return bool(current.get("apiUrl") and current.get("apiKey"))
+    if provider == "aliyun":
+        return bool(
+            current.get("accessKeyId")
+            and current.get("accessKeySecret")
+            and current.get("endpoint")
+        )
+    return False
 
 
-def remove_file_safely(path: str) -> None:
-    """函数说明：安全删除临时文件，避免异常清理导致请求中断。"""
-    try:
-        if path and os.path.exists(path):
-            os.remove(path)
-    except OSError:
-        pass
-
-
-def read_upload_size(upload_file: UploadFile) -> int:
-    """函数说明：读取上传文件大小并在读取后恢复文件指针位置。"""
-    upload_file.file.seek(0, os.SEEK_END)
-    size_bytes = upload_file.file.tell()
-    upload_file.file.seek(0)
-    return size_bytes
-
-
-def save_upload_to_temp(upload_file: UploadFile) -> str:
-    """函数说明：将上传文件分块写入临时文件，避免一次性读取占用过大内存。"""
-    suffix = os.path.splitext(upload_file.filename or "")[-1] or ".png"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        while True:
-            chunk = upload_file.file.read(1024 * 1024)
-            if not chunk:
-                break
-            tmp.write(chunk)
-        return tmp.name
-
-
-def to_uint8_array(array_data: Any) -> np.ndarray:
-    """函数说明：将模型输出统一转换为 uint8 数组，兼容 float/uint16 等输入类型。"""
-    array = np.asarray(array_data)
-    if array.dtype == np.uint8:
-        return array
-
-    array = array.astype(np.float32)
-    max_value = float(np.max(array)) if array.size else 0.0
-    if max_value <= 1.0:
-        array = array * 255.0
-    return np.clip(array, 0, 255).astype(np.uint8)
-
-
-def image_from_any(image_data: Any) -> Optional[Image.Image]:
-    """函数说明：把模型返回的多种图像类型统一转换成 PIL.Image。"""
-    if image_data is None:
+def normalize_backend_provider_config(payload: Any) -> dict[str, Any] | None:
+    """函数说明：解析 likeadmin-go 统一响应并规范化为 8091 内部配置。"""
+    if not isinstance(payload, dict):
+        return None
+    data = payload.get("data", payload)
+    if not isinstance(data, dict):
         return None
 
-    if isinstance(image_data, Image.Image):
-        return image_data.copy()
-
-    if isinstance(image_data, str) and os.path.exists(image_data):
-        with Image.open(image_data) as image_obj:
-            return image_obj.copy()
-
-    if isinstance(image_data, np.ndarray):
-        array = to_uint8_array(image_data)
-        if array.ndim == 2:
-            return Image.fromarray(array, mode="L")
-
-        if array.ndim == 3 and array.shape[2] == 3:
-            # ModelScope 常见输出为 BGR，这里转换为 RGB
-            rgb_array = array[..., ::-1]
-            return Image.fromarray(rgb_array, mode="RGB")
-
-        if array.ndim == 3 and array.shape[2] == 4:
-            # ModelScope 常见输出为 BGRA，这里转换为 RGBA
-            rgba_array = array[..., [2, 1, 0, 3]]
-            return Image.fromarray(rgba_array, mode="RGBA")
-
-    return None
+    provider = str(data.get("provider", "")).strip().lower()
+    if provider not in SUPPORTED_PROVIDERS:
+        return None
+    return {
+        "provider": provider,
+        "apiUrl": str(data.get("apiUrl", "")).strip(),
+        "apiKey": str(data.get("apiKey", "")).strip(),
+        "accessKeyId": str(data.get("accessKeyId", "")).strip(),
+        "accessKeySecret": str(data.get("accessKeySecret", "")).strip(),
+        "endpoint": str(data.get("endpoint", "")).strip(),
+        "timeoutSeconds": max(
+            10.0,
+            float(data.get("timeoutSeconds") or REQUEST_TIMEOUT_SECONDS),
+        ),
+    }
 
 
-def normalize_alpha_mask(mask_image: Image.Image, target_size: tuple[int, int]) -> Image.Image:
-    """函数说明：标准化 alpha 蒙版尺寸与模式，确保可直接用于前景合成。"""
-    alpha = mask_image.convert("L")
-    if alpha.size != target_size:
-        alpha = alpha.resize(target_size, Image.Resampling.BILINEAR)
-    return alpha
+def load_backend_provider_config(force: bool = False) -> dict[str, Any] | None:
+    """函数说明：通过内部令牌读取后台当前抠图配置，并使用短缓存降低请求开销。"""
+    if not MATTING_CONFIG_ENDPOINT or not MATTING_INTERNAL_TOKEN:
+        return None
+
+    now = time.monotonic()
+    if not force and now < float(_provider_config_cache["expiresAt"]):
+        return _provider_config_cache["value"]
+
+    with _provider_config_lock:
+        now = time.monotonic()
+        if not force and now < float(_provider_config_cache["expiresAt"]):
+            return _provider_config_cache["value"]
+        try:
+            response = httpx.get(
+                MATTING_CONFIG_ENDPOINT,
+                headers={"X-Matting-Internal-Token": MATTING_INTERNAL_TOKEN},
+                timeout=CONFIG_REQUEST_TIMEOUT_SECONDS,
+            )
+            response.raise_for_status()
+            config = normalize_backend_provider_config(response.json())
+            if not config or not provider_is_configured(
+                str(config["provider"]),
+                config,
+            ):
+                raise RuntimeError("后台抠图 Provider 配置不完整")
+            _provider_config_cache.update(
+                {
+                    "expiresAt": now + CONFIG_CACHE_TTL_SECONDS,
+                    "value": config,
+                    "error": "",
+                }
+            )
+            return config
+        except (httpx.HTTPError, ValueError, RuntimeError) as exc:
+            _provider_config_cache.update(
+                {
+                    "expiresAt": now + min(CONFIG_CACHE_TTL_SECONDS, 10.0),
+                    "value": None,
+                    "error": str(exc),
+                }
+            )
+            return None
 
 
-def build_matting_result_image(result: dict[str, Any], input_rgba: Image.Image) -> Image.Image:
-    """函数说明：兼容不同模型输出结构，统一生成透明背景 RGBA 图像。"""
-    result_image = image_from_any(result.get(OUTPUT_KEY_IMAGE))
-    alpha_candidates = [
-        result.get(OUTPUT_KEY_MASK),
-        result.get("alpha"),
-        result.get(OUTPUT_KEY_OUTPUT),
-    ]
-    alpha_image = None
-    for candidate in alpha_candidates:
-        candidate_image = image_from_any(candidate)
-        if candidate_image is not None:
-            alpha_image = candidate_image
-            break
+def resolve_provider_config(requested_provider: str) -> dict[str, Any]:
+    """函数说明：优先采用后台选中的 Provider，后台不可用时再按环境变量选择。"""
+    backend_config = load_backend_provider_config()
+    if backend_config:
+        return backend_config
 
-    if result_image is not None and result_image.mode == "RGBA":
-        return result_image
+    provider = requested_provider.strip().lower()
+    if provider in SUPPORTED_PROVIDERS:
+        config = get_env_provider_config(provider)
+        if provider_is_configured(provider, config):
+            return config
 
-    if result_image is not None and result_image.mode == "RGB":
-        composed = result_image.copy()
-        if alpha_image is not None:
-            composed.putalpha(normalize_alpha_mask(alpha_image, composed.size))
-        else:
-            composed.putalpha(Image.new("L", composed.size, 255))
-        return composed
+    if DEFAULT_PROVIDER in SUPPORTED_PROVIDERS:
+        config = get_env_provider_config(DEFAULT_PROVIDER)
+        if provider_is_configured(DEFAULT_PROVIDER, config):
+            return config
 
-    if result_image is not None and result_image.mode == "L":
-        composed = input_rgba.copy()
-        composed.putalpha(normalize_alpha_mask(result_image, composed.size))
-        return composed
+    for candidate in ("koukoutu", "aliyun"):
+        config = get_env_provider_config(candidate)
+        if provider_is_configured(candidate, config):
+            return config
 
-    if alpha_image is not None:
-        composed = input_rgba.copy()
-        composed.putalpha(normalize_alpha_mask(alpha_image, composed.size))
-        return composed
+    raise HTTPException(
+        status_code=503,
+        detail="抠图 API 尚未配置，请在管理后台填写 Provider 密钥",
+    )
 
-    raise RuntimeError("模型未返回可用的抠图结果")
+
+def read_upload_bytes(upload_file: UploadFile) -> bytes:
+    """函数说明：读取上传图片并校验大小，避免向上游发送超限文件。"""
+    upload_file.file.seek(0)
+    content = upload_file.file.read()
+    upload_file.file.seek(0)
+    if len(content) > MAX_UPLOAD_MB * 1024 * 1024:
+        raise HTTPException(status_code=400, detail=f"图片过大，限制 {MAX_UPLOAD_MB}MB")
+    return content
+
+
+def find_result_url(payload: Any) -> str:
+    """函数说明：递归提取第三方响应中的结果图片 URL，兼容不同包装层级。"""
+    if isinstance(payload, str):
+        value = payload.strip()
+        return value if value.startswith(("http://", "https://")) else ""
+
+    if isinstance(payload, dict):
+        preferred_keys = (
+            "image_url",
+            "imageUrl",
+            "url",
+            "output_url",
+            "outputUrl",
+            "result_url",
+            "resultUrl",
+        )
+        for key in preferred_keys:
+            result_url = find_result_url(payload.get(key))
+            if result_url:
+                return result_url
+        for value in payload.values():
+            result_url = find_result_url(value)
+            if result_url:
+                return result_url
+
+    if isinstance(payload, list):
+        for item in payload:
+            result_url = find_result_url(item)
+            if result_url:
+                return result_url
+
+    return ""
+
+
+def download_result_image(result_url: str) -> tuple[bytes, str]:
+    """函数说明：下载第三方返回的临时结果图并统一返回二进制内容。"""
+    try:
+        with httpx.Client(
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            follow_redirects=True,
+        ) as client:
+            response = client.get(result_url)
+            response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise RuntimeError(f"结果图片下载失败: {str(exc)}") from exc
+
+    media_type = response.headers.get("content-type", "image/png").split(";")[0]
+    if not media_type.startswith("image/"):
+        raise RuntimeError("上游返回的结果不是有效图片")
+    return response.content, media_type
+
+
+def request_koukoutu(
+    image_bytes: bytes,
+    filename: str,
+    content_type: str,
+    provider_config: dict[str, Any],
+) -> tuple[bytes, str]:
+    """函数说明：调用抠抠图同步文件 API，并下载透明背景结果。"""
+    if not provider_is_configured("koukoutu", provider_config):
+        raise RuntimeError("抠抠图 API 未配置 KOUKOUTU_API_KEY")
+
+    try:
+        with httpx.Client(
+            timeout=float(provider_config["timeoutSeconds"]),
+            follow_redirects=True,
+        ) as client:
+            response = client.post(
+                str(provider_config["apiUrl"]),
+                headers={"X-API-Key": str(provider_config["apiKey"])},
+                data={
+                    "model_key": "background-removal",
+                    "output_format": "webp",
+                    "crop": "0",
+                    "border": "0",
+                    "stamp_crop": "0",
+                    "response": "url",
+                },
+                files={"image_file": (filename, image_bytes, content_type)},
+            )
+            response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        detail = exc.response.text.strip()[:300]
+        raise RuntimeError(
+            f"抠抠图 API 请求失败（HTTP {exc.response.status_code}）: {detail}"
+        ) from exc
+    except httpx.HTTPError as exc:
+        raise RuntimeError(f"抠抠图 API 连接失败: {str(exc)}") from exc
+
+    media_type = response.headers.get("content-type", "").split(";")[0]
+    if media_type.startswith("image/"):
+        return response.content, media_type
+
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise RuntimeError("抠抠图 API 返回格式异常") from exc
+
+    result_url = find_result_url(payload)
+    if not result_url:
+        message = payload.get("message") or payload.get("msg") or "未返回结果图片地址"
+        raise RuntimeError(f"抠抠图 API 处理失败: {message}")
+    return download_result_image(result_url)
+
+
+def request_aliyun(
+    image_bytes: bytes,
+    provider_config: dict[str, Any],
+) -> tuple[bytes, str]:
+    """函数说明：调用阿里云通用分割 API，并下载四通道透明 PNG。"""
+    if not provider_is_configured("aliyun", provider_config):
+        raise RuntimeError("阿里云抠图 API 未配置 AccessKey")
+    if len(image_bytes) > 3 * 1024 * 1024:
+        raise RuntimeError("阿里云通用分割单图限制 3MB，请压缩图片后重试")
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as input_image:
+            width, height = input_image.size
+    except Exception as exc:
+        raise RuntimeError("无法读取待抠图图片，请更换 JPG、PNG 或 WebP") from exc
+    if width <= 32 or height <= 32 or width > 1999 or height > 1999:
+        raise RuntimeError("阿里云通用分割要求图片边长大于 32 且不超过 1999 像素")
+
+    try:
+        from alibabacloud_imageseg20191230 import models as imageseg_models
+        from alibabacloud_imageseg20191230.client import Client as ImagesegClient
+        from alibabacloud_tea_openapi import models as open_api_models
+        from alibabacloud_tea_util import models as util_models
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("缺少阿里云图像分割 SDK，请重新安装 requirements.txt") from exc
+
+    config = open_api_models.Config(
+        access_key_id=str(provider_config["accessKeyId"]),
+        access_key_secret=str(provider_config["accessKeySecret"]),
+    )
+    config.endpoint = str(provider_config["endpoint"])
+    client = ImagesegClient(config)
+    request = imageseg_models.SegmentCommonImageAdvanceRequest(
+        image_urlobject=io.BytesIO(image_bytes),
+    )
+
+    try:
+        response = client.segment_common_image_advance(
+            request,
+            util_models.RuntimeOptions(
+                read_timeout=int(float(provider_config["timeoutSeconds"]) * 1000),
+                connect_timeout=10000,
+            ),
+        )
+        result_url = response.body.data.image_url
+    except Exception as exc:
+        raise RuntimeError(f"阿里云通用分割请求失败: {str(exc)}") from exc
+
+    if not result_url:
+        raise RuntimeError("阿里云通用分割未返回结果图片地址")
+    return download_result_image(result_url)
+
+
+def build_result_response(
+    image_bytes: bytes,
+    source_name: str,
+    provider: str,
+) -> Response:
+    """函数说明：构造统一的图片下载响应，并标记实际调用的 Provider。"""
+    base_name = os.path.splitext(source_name or "matting")[0]
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as result_image:
+            output = io.BytesIO()
+            result_image.convert("RGBA").save(output, format="PNG", optimize=True)
+            normalized_bytes = output.getvalue()
+    except Exception as exc:
+        raise RuntimeError("上游返回的结果图片无法转换为透明 PNG") from exc
+
+    encoded_filename = quote(f"{base_name}-matting.png")
+    return Response(
+        content=normalized_bytes,
+        media_type="image/png",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="matting.png"; '
+                f"filename*=UTF-8''{encoded_filename}"
+            ),
+            "X-Matting-Provider": provider,
+        },
+    )
 
 
 @app.get("/health")
-def health():
-    """函数说明：健康检查接口，用于部署探活与服务状态确认。"""
+def health() -> JSONResponse:
+    """函数说明：返回 API 代理健康状态及 Provider 配置状态，不暴露任何密钥。"""
+    backend_config = load_backend_provider_config()
+    if backend_config:
+        selected_provider = str(backend_config["provider"])
+        configured = {
+            provider: provider == selected_provider
+            for provider in sorted(SUPPORTED_PROVIDERS)
+        }
+        config_source = "backend"
+    else:
+        selected_provider = DEFAULT_PROVIDER
+        configured = {
+            provider: provider_is_configured(provider)
+            for provider in sorted(SUPPORTED_PROVIDERS)
+        }
+        config_source = "environment"
     return JSONResponse(
         {
             "ok": True,
-            "service": "matting-service",
-            "model": MODEL_ID,
-            "loaded": MODEL_ID in _matting_pipelines,
-            "loadedModels": list(_matting_pipelines.keys()),
-            "supportedModels": list(SUPPORTED_MODEL_IDS),
-            "modelTasks": MODEL_TASK_BY_ID,
+            "service": "matting-api-proxy",
+            "provider": selected_provider,
+            "supportedProviders": sorted(SUPPORTED_PROVIDERS),
+            "configuredProviders": configured,
+            "ready": any(configured.values()),
+            "configSource": config_source,
+            "backendConfigEnabled": bool(
+                MATTING_CONFIG_ENDPOINT and MATTING_INTERNAL_TOKEN
+            ),
+            "localModelEnabled": False,
             "maxUploadMB": MAX_UPLOAD_MB,
         }
     )
 
 
 @app.post("/matting")
-def matting(file: UploadFile = File(...), modelId: str = Form(default="")):
-    """函数说明：执行抠图推理，返回透明背景 PNG 文件。"""
+def matting(
+    file: UploadFile = File(...),
+    provider: str = Form(default=""),
+    modelId: str = Form(default=""),
+) -> Response:
+    """函数说明：接收图片并转发至选定的外部抠图 API，返回透明背景结果。"""
     if not file.content_type or file.content_type not in ALLOWED_IMAGE_MIME:
         raise HTTPException(status_code=400, detail="仅支持 JPG/PNG/WebP 图片上传")
 
-    selected_model_id = (modelId or MODEL_ID).strip()
-    if selected_model_id not in SUPPORTED_MODEL_IDS:
-        raise HTTPException(status_code=400, detail=f"不支持的模型ID: {selected_model_id}")
+    provider_config = resolve_provider_config(provider or modelId)
+    selected_provider = str(provider_config["provider"])
+    image_bytes = read_upload_bytes(file)
 
-    size_bytes = read_upload_size(file)
-    if size_bytes > MAX_UPLOAD_MB * 1024 * 1024:
-        raise HTTPException(status_code=400, detail=f"图片过大，限制 {MAX_UPLOAD_MB}MB")
-
-    input_path = ""
-    output_path = ""
     try:
-        input_path = save_upload_to_temp(file)
-        with Image.open(input_path) as input_image:
-            input_rgba = input_image.convert("RGBA")
-
-        matting_pipe = get_matting_pipeline_by_model_id(selected_model_id)
-        result = matting_pipe(input_path)
-        if not isinstance(result, dict):
-            raise RuntimeError("模型输出格式异常")
-
-        output_rgba = build_matting_result_image(result, input_rgba)
-        output_path = tempfile.NamedTemporaryFile(delete=False, suffix=".png").name
-        output_rgba.save(output_path, format="PNG", optimize=True)
-
-        output_name = f"{os.path.splitext(file.filename or 'matting')[0]}-matting.png"
-        return FileResponse(
-            path=output_path,
-            media_type="image/png",
-            filename=output_name,
-            background=BackgroundTask(remove_file_safely, output_path),
+        if selected_provider == "aliyun":
+            result_bytes, _media_type = request_aliyun(image_bytes, provider_config)
+        else:
+            result_bytes, _media_type = request_koukoutu(
+                image_bytes,
+                file.filename or "image.png",
+                file.content_type,
+                provider_config,
+            )
+        return build_result_response(
+            result_bytes,
+            file.filename or "matting",
+            selected_provider,
         )
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"抠图失败: {str(exc)}") from exc
-    finally:
-        remove_file_safely(input_path)
+        raise HTTPException(status_code=502, detail=f"抠图失败: {str(exc)}") from exc

@@ -13,6 +13,7 @@ VENV_DIR="${SERVICE_DIR}/.venv"
 HOST="${MATTING_HOST:-127.0.0.1}"
 PORT="${MATTING_PORT:-8091}"
 WORKERS="${MATTING_WORKERS:-1}"
+ENV_FILE="${SERVICE_DIR}/.env"
 
 # 函数说明：统一输出信息日志，便于新手排查运行步骤
 log_info() {
@@ -52,8 +53,14 @@ start_service() {
   cd "${SERVICE_DIR}"
   # shellcheck source=/dev/null
   source "${VENV_DIR}/bin/activate"
+  if [[ -f "${ENV_FILE}" ]]; then
+    # shellcheck source=/dev/null
+    set -a
+    source "${ENV_FILE}"
+    set +a
+  fi
 
-  log_info "正在启动 matting-service: ${HOST}:${PORT}, workers=${WORKERS}"
+  log_info "正在启动 matting API 代理: ${HOST}:${PORT}, workers=${WORKERS}"
   exec uvicorn app:app --host "${HOST}" --port "${PORT}" --workers "${WORKERS}"
 }
 
@@ -65,4 +72,3 @@ main() {
 }
 
 main "$@"
-

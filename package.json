@@ -11,6 +11,7 @@
     "dev:fullstack:status": "bash scripts/dev/status-fullstack.sh",
     "dev:upgrade:apply": "bash scripts/dev/apply-upgrade-patches.sh",
     "dev:delivery:check": "bash scripts/dev/check-delivery-readiness.sh",
+    "deploy:config:check": "bash scripts/dev/check-production-config.sh",
     "dev:business:smoke": "bash scripts/dev/check-business-smoke.sh",
     "check:license-runtime": "bash scripts/dev/check-license-runtime.sh",
     "sync:frontend-menus": "node scripts/dev/sync-frontend-tool-menus-to-backend.mjs",

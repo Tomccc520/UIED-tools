@@ -19,7 +19,7 @@ import {
  * @createDate 2025-01-09
  * @lastUpdate 2026-04-05 10:00
  * @version 3.0.2
- * @toolsCount 当前工具总数：332个
+ * @toolsCount 当前工具总数：334个
  */
 
 const activeId = ref('');
@@ -49,7 +49,7 @@ const changelogSplitTitle = ref('工具箱 3.0.0 版本分岔提醒');
 const changelogSplitDesc = ref('纯前端开源版在 3.0.0 后进入维护态；包含后台运营、会员与模型管理能力的版本为商业源码版。');
 const changelogSplitLink = ref('https://fsuied.com/');
 const changelogSplitLinkText = ref('购买源码与服务支持（fsuied.com）');
-const changelogStatsText = ref('当前工具总数：332个 | 最后更新：2026-03-30 14:50');
+const changelogStatsText = ref('当前工具总数：334个 | 最后更新：2026-07-29 23:31');
 const timelineEntries = ref<SiteChangelogTimelineItem[]>(
   getDefaultSitePublicConfig().changelogTimeline.map((item) => ({
     ...item,

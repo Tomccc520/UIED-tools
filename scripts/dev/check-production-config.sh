@@ -1,0 +1,236 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# @copyright Tomda (https://www.tomda.top)
+# @copyright UIED技术团队 (https://fsuied.com)
+# @author UIED技术团队
+# @createDate 2026-07-30
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+FRONTEND_ENV_FILE="${FRONTEND_ENV_FILE:-${ROOT_DIR}/.env.production}"
+ADMIN_ENV_FILE="${ADMIN_ENV_FILE:-${ROOT_DIR}/backend/likeadmin-go/admin/.env.production}"
+SERVER_ENV_FILE="${SERVER_ENV_FILE:-${ROOT_DIR}/backend/likeadmin-go/server/.env}"
+MATTING_ENV_FILE="${MATTING_ENV_FILE:-${ROOT_DIR}/backend/matting-service/.env}"
+
+PASS_COUNT=0
+WARN_COUNT=0
+FAIL_COUNT=0
+
+# 函数说明：记录通过项并累计数量。
+mark_pass() {
+  PASS_COUNT=$((PASS_COUNT + 1))
+  printf "\033[32m[PASS]\033[0m %s\n" "$1"
+}
+
+# 函数说明：记录警告项并累计数量。
+mark_warn() {
+  WARN_COUNT=$((WARN_COUNT + 1))
+  printf "\033[33m[WARN]\033[0m %s\n" "$1"
+}
+
+# 函数说明：记录失败项并累计数量。
+mark_fail() {
+  FAIL_COUNT=$((FAIL_COUNT + 1))
+  printf "\033[31m[FAIL]\033[0m %s\n" "$1"
+}
+
+# 函数说明：读取环境文件键值，兼容单引号、双引号及等号两侧空格。
+read_env_value() {
+  local file="$1"
+  local key="$2"
+  local line
+
+  line="$(grep -E "^[[:space:]]*${key}[[:space:]]*=" "${file}" | tail -n 1 || true)"
+  if [[ -z "${line}" ]]; then
+    printf ""
+    return
+  fi
+
+  line="${line#*=}"
+  line="$(printf "%s" "${line}" | sed -E "s/^[[:space:]]+|[[:space:]]+$//g; s/^['\\\"]//; s/['\\\"]$//")"
+  printf "%s" "${line}"
+}
+
+# 函数说明：检查生产环境文件是否存在。
+require_env_file() {
+  local label="$1"
+  local file="$2"
+
+  if [[ -f "${file}" ]]; then
+    mark_pass "${label}配置文件已存在"
+    return 0
+  fi
+
+  mark_fail "${label}配置文件不存在: ${file}"
+  return 1
+}
+
+# 函数说明：检查必填环境变量是否存在且不是示例占位值。
+require_env_value() {
+  local label="$1"
+  local file="$2"
+  local key="$3"
+  local value
+
+  value="$(read_env_value "${file}" "${key}")"
+  if [[ -z "${value}" ]]; then
+    mark_fail "${label}缺少 ${key}"
+    return
+  fi
+
+  if [[ "${value}" =~ example\.com|replace-with|your[-_]|changeme ]]; then
+    mark_fail "${label}仍使用 ${key} 示例占位值"
+    return
+  fi
+
+  mark_pass "${label}已配置 ${key}"
+}
+
+# 函数说明：禁止公开服务地址指向本机开发地址。
+reject_local_address() {
+  local label="$1"
+  local file="$2"
+  local key="$3"
+  local value
+
+  value="$(read_env_value "${file}" "${key}")"
+  if [[ -z "${value}" ]]; then
+    return
+  fi
+
+  if [[ "${value}" =~ 127\.0\.0\.1|localhost ]]; then
+    mark_fail "${label}的 ${key} 仍指向本机地址"
+    return
+  fi
+
+  mark_pass "${label}的 ${key} 未使用本机地址"
+}
+
+# 函数说明：检查前端环境文件中是否误放密钥，避免 VITE 变量进入浏览器产物。
+check_frontend_secret_exposure() {
+  local file="$1"
+  local exposed
+
+  exposed="$(
+    awk -F '=' '
+      /^[[:space:]]*VITE_[A-Z0-9_]*(KEY|SECRET|TOKEN)[A-Z0-9_]*[[:space:]]*=/ {
+        value = substr($0, index($0, "=") + 1)
+        gsub(/^[[:space:]'"'"'"]+|[[:space:]'"'"'"]+$/, "", value)
+        if (length(value) > 0) print $1
+      }
+    ' "${file}"
+  )"
+
+  if [[ -n "${exposed}" ]]; then
+    mark_fail "前台生产配置包含可能泄露到浏览器的 Key、Secret 或 Token"
+    return
+  fi
+
+  mark_pass "前台生产配置未发现公开密钥"
+}
+
+# 函数说明：检查抠图 Provider 是否至少配置一种，未配置时允许部署但明确提示功能不可用。
+check_matting_provider() {
+  local file="$1"
+  local koukoutu_key
+  local aliyun_id
+  local aliyun_secret
+
+  koukoutu_key="$(read_env_value "${file}" "KOUKOUTU_API_KEY")"
+  aliyun_id="$(read_env_value "${file}" "ALIYUN_ACCESS_KEY_ID")"
+  aliyun_secret="$(read_env_value "${file}" "ALIYUN_ACCESS_KEY_SECRET")"
+
+  if [[ -n "${koukoutu_key}" || ( -n "${aliyun_id}" && -n "${aliyun_secret}" ) ]]; then
+    mark_pass "抠图服务已配置可用 Provider"
+    return
+  fi
+
+  mark_warn "抠图 Provider 尚未配置，部署后抠图功能将提示服务未配置"
+}
+
+# 函数说明：检查两个服务使用相同内部令牌，避免抠图服务无法读取后台配置。
+check_matting_token_match() {
+  local server_token
+  local matting_token
+
+  server_token="$(read_env_value "${SERVER_ENV_FILE}" "MATTING_INTERNAL_TOKEN")"
+  matting_token="$(read_env_value "${MATTING_ENV_FILE}" "MATTING_INTERNAL_TOKEN")"
+
+  if [[ "${#server_token}" -lt 24 ]]; then
+    mark_fail "Go 后端 MATTING_INTERNAL_TOKEN 长度不足 24 位"
+    return
+  fi
+
+  if [[ "${server_token}" != "${matting_token}" ]]; then
+    mark_fail "Go 后端与抠图服务的 MATTING_INTERNAL_TOKEN 不一致"
+    return
+  fi
+
+  mark_pass "抠图内部令牌长度与一致性检查通过"
+}
+
+# 函数说明：执行前台、后台、服务端和抠图服务的生产配置检查。
+main() {
+  local frontend_ready=0
+  local admin_ready=0
+  local server_ready=0
+  local matting_ready=0
+
+  require_env_file "前台" "${FRONTEND_ENV_FILE}" && frontend_ready=1
+  require_env_file "后台管理端" "${ADMIN_ENV_FILE}" && admin_ready=1
+  require_env_file "Go 后端" "${SERVER_ENV_FILE}" && server_ready=1
+  require_env_file "抠图服务" "${MATTING_ENV_FILE}" && matting_ready=1
+
+  if [[ "${frontend_ready}" -eq 1 ]]; then
+    require_env_value "前台" "${FRONTEND_ENV_FILE}" "VITE_APP_URL"
+    reject_local_address "前台" "${FRONTEND_ENV_FILE}" "VITE_APP_URL"
+    reject_local_address "前台" "${FRONTEND_ENV_FILE}" "VITE_API_BASE_URL"
+    check_frontend_secret_exposure "${FRONTEND_ENV_FILE}"
+  fi
+
+  if [[ "${admin_ready}" -eq 1 ]]; then
+    reject_local_address "后台管理端" "${ADMIN_ENV_FILE}" "VITE_APP_BASE_URL"
+  fi
+
+  if [[ "${server_ready}" -eq 1 ]]; then
+    require_env_value "Go 后端" "${SERVER_ENV_FILE}" "PUBLIC_URL"
+    require_env_value "Go 后端" "${SERVER_ENV_FILE}" "DATABASE_URL"
+    require_env_value "Go 后端" "${SERVER_ENV_FILE}" "REDIS_URL"
+    require_env_value "Go 后端" "${SERVER_ENV_FILE}" "UPLOAD_DIRECTORY"
+    require_env_value "Go 后端" "${SERVER_ENV_FILE}" "MATTING_INTERNAL_TOKEN"
+    reject_local_address "Go 后端" "${SERVER_ENV_FILE}" "PUBLIC_URL"
+  fi
+
+  if [[ "${matting_ready}" -eq 1 ]]; then
+    require_env_value "抠图服务" "${MATTING_ENV_FILE}" "MATTING_CONFIG_ENDPOINT"
+    require_env_value "抠图服务" "${MATTING_ENV_FILE}" "MATTING_INTERNAL_TOKEN"
+    check_matting_provider "${MATTING_ENV_FILE}"
+  fi
+
+  if [[ "${server_ready}" -eq 1 && "${matting_ready}" -eq 1 ]]; then
+    check_matting_token_match
+  fi
+
+  cat <<EOF
+
+[SUMMARY]
+- 通过: ${PASS_COUNT}
+- 警告: ${WARN_COUNT}
+- 失败: ${FAIL_COUNT}
+EOF
+
+  if [[ "${FAIL_COUNT}" -gt 0 ]]; then
+    printf "\033[31m[RESULT]\033[0m 生产配置检查未通过，请完成 FAIL 项后再部署。\n"
+    return 1
+  fi
+
+  if [[ "${WARN_COUNT}" -gt 0 ]]; then
+    printf "\033[33m[RESULT]\033[0m 生产配置可部署，但 WARN 对应功能不会完整可用。\n"
+    return 0
+  fi
+
+  printf "\033[32m[RESULT]\033[0m 生产配置检查通过。\n"
+}
+
+main "$@"

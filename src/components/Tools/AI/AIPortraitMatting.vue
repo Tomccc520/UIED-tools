@@ -48,7 +48,7 @@
               </div>
               <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽照片到这里</div>
               <p class="text-xs text-gray-400 mb-1">支持 JPG、PNG、WebP 格式，文件大小不超过 10MB</p>
-              <p class="text-xs text-gray-400">本工具固定使用人物抠像模型，适合证件照、人像头像和半身照</p>
+              <p class="text-xs text-gray-400">适合证件照、人像头像和半身照，建议上传轮廓清晰的原图</p>
             </div>
           </div>
 
@@ -56,12 +56,12 @@
             <div class="mb-4 text-gray-700 font-medium">人像抠图设置</div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
               <div class="border border-gray-200 rounded-lg p-4 bg-white">
-                <div class="text-xs text-gray-400 mb-1">当前模型</div>
-                <div class="text-sm text-gray-700 font-medium">人物抠像模型</div>
+                <div class="text-xs text-gray-400 mb-1">处理方式</div>
+                <div class="text-sm text-gray-700 font-medium">云端 AI 抠图</div>
               </div>
               <div class="border border-gray-200 rounded-lg p-4 bg-white">
-                <div class="text-xs text-gray-400 mb-1">模型 ID</div>
-                <div class="text-sm text-gray-700 font-mono break-all">{{ portraitModelId }}</div>
+                <div class="text-xs text-gray-400 mb-1">服务配置</div>
+                <div class="text-sm text-gray-700 font-medium">后台统一管理</div>
               </div>
               <div class="border border-gray-200 rounded-lg p-4 bg-white">
                 <div class="text-xs text-gray-400 mb-1">输出格式</div>
@@ -100,9 +100,9 @@
           <div class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div class="border border-gray-100 rounded-lg p-6">
-                <h4 class="text-base font-medium text-gray-900 mb-3">固定人物抠像模型</h4>
+                <h4 class="text-base font-medium text-gray-900 mb-3">云端 API 处理</h4>
                 <p class="text-sm text-gray-600 leading-relaxed">
-                  本页固定调用人物模型，避免通用模型切换带来的不确定性，输出风格更稳定。
+                  页面通过后端代理调用抠图服务商，密钥不会暴露在浏览器中。
                 </p>
               </div>
               <div class="border border-gray-100 rounded-lg p-6">
@@ -144,17 +144,15 @@ import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { requestMattingImage } from '@/services/matting'
 
-const portraitModelId = 'iic/cv_unet_image-matting'
-
 const info = reactive({
   title: '免费AI人像抠图工具',
-  subtitle: '固定使用人物抠像模型，输出透明 PNG，适合头像和证件照等人像场景'
+  subtitle: '通过云端 AI 抠图输出透明 PNG，适合头像和证件照等人像场景'
 })
 
 const faq = [
   {
     q: '为什么这个工具单独做了人像模式？',
-    a: '为了保证人像抠图稳定性，本页面固定使用人物抠像模型，不受通用模型切换影响。'
+    a: '页面针对证件照、头像和半身照整理了更明确的人像处理流程，实际服务商由后台统一配置。'
   },
   {
     q: '支持哪些图片格式？',
@@ -241,7 +239,7 @@ const handleImageUpload = (file: File) => {
 }
 
 /**
- * 函数说明：调用 AI 抠图接口并固定使用人物抠像模型输出透明 PNG
+ * 函数说明：调用后台统一配置的 AI 抠图 API 并输出透明 PNG。
  */
 const processImage = async () => {
   if (!selectedFile.value) {
@@ -251,7 +249,7 @@ const processImage = async () => {
 
   isProcessing.value = true
   try {
-    const resultBlob = await requestMattingImage(selectedFile.value, { modelId: portraitModelId })
+    const resultBlob = await requestMattingImage(selectedFile.value)
     cleanupProcessedObjectUrl()
     const objectUrl = URL.createObjectURL(resultBlob)
     processedObjectUrl.value = objectUrl

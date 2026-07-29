@@ -145,12 +145,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
-import { requestMattingImage, warmupMattingModelId } from '@/services/matting'
+import { requestMattingImage } from '@/services/matting'
 import { useToolConsume } from '@/composables/useToolConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
@@ -402,9 +402,6 @@ onBeforeUnmount(() => {
   resetForegroundPng()
 })
 
-onMounted(() => {
-  warmupMattingModelId()
-})
 </script>
 
 <style scoped>

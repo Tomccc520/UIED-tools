@@ -324,7 +324,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   changelogSplitDesc: '纯前端开源版在 3.0.0 后进入维护态；包含后台运营、会员与模型管理能力的版本为商业源码版。',
   changelogSplitLink: 'https://fsuied.com/',
   changelogSplitLinkText: '购买源码与服务支持（fsuied.com）',
-  changelogStatsText: '当前工具总数：332个 | 最后更新：2026-03-23 10:30',
+  changelogStatsText: '当前工具总数：334个 | 最后更新：2026-07-29 23:31',
   changelogTimeline: (defaultChangelogTimeline as SiteChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)

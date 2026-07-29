@@ -2,99 +2,83 @@
 @copyright Tomda (https://www.tomda.top)
 @copyright UIED技术团队 (https://fsuied.com)
 @author UIED技术团队
-@createDate 2026-03-21
+@createDate 2026-07-26
 -->
 
-# AI 抠图（ModelScope）宝塔部署指南（新手版）
+# AI 抠图 API 代理宝塔部署指南
 
-适用场景：
+## 一、部署结构
 
-- 现有前端项目继续纯前端发布
-- 新增后端（likeadmin-go）管理会员/配额/支付
-- AI 抠图由独立 Python 服务处理
+- 前端站点：Nginx 静态文件
+- likeadmin-go：会员、积分和运营配置
+- matting-service：外部抠图 API 代理
+- 抠图服务商：阿里云或抠抠图
 
-使用模型：
+matting-service 不再运行本地模型，因此服务器不需要 Torch、TensorFlow、ModelScope 或 GPU。
 
-- `iic/cv_unet_universal-matting`
-- 模型地址：<https://modelscope.cn/models/iic/cv_unet_universal-matting/summary>
+## 二、准备 API 密钥
 
-## 一、先理解整体架构
+支持以下任一服务商：
 
-- 前端站点（Nginx 静态）  
-  `https://你的域名`
-- likeadmin-go 后台（Go 服务）  
-  `http://127.0.0.1:8080`（示例）
-- 抠图服务（Python + FastAPI）  
-  `http://127.0.0.1:8091`
-- 业务数据库（MySQL）  
-  建议库名统一：`uiedtool`
-- Nginx 反向代理  
-  - `/api/admin/*` -> likeadmin-go
-  - `/api/matting/*` -> matting-service
+- 阿里云视觉智能开放平台：开通分割抠图 `SegmentCommonImage`
+- 抠抠图：申请 `X-API-Key`
 
-## 二、为什么不建议“把模型手工上传到宝塔”
+密钥推荐在管理后台“AI 抠图 API”页面维护，不要写入前端环境变量或提交 Git。
 
-新手最稳方案是：
-
-- 在服务器上运行 Python 抠图服务
-- 第一次调用时由 `modelscope` 自动下载模型到本机缓存目录
-
-优点：
-
-- 不用你先处理模型格式和目录细节
-- 后续升级模型更简单
-
-## 三、服务器准备（宝塔）
-
-1. 宝塔安装 Python 3.10+（建议 3.10/3.11）
-2. 安装 `supervisor`（宝塔进程守护）
-3. 安装 Nginx
-4. 服务器需要能访问 ModelScope（首次下载模型）
-
-## 四、上传代码到服务器
-
-上传目录建议：
-
-```bash
-/www/wwwroot/uied-tools/backend/matting-service
-```
-
-把本地这些文件上传上去：
-
-- `backend/matting-service/app.py`
-- `backend/matting-service/requirements.txt`
-- `scripts/backend/run-matting-service.sh`
-
-## 五、初始化并启动抠图服务
-
-服务器执行：
+## 三、配置服务
 
 ```bash
 cd /www/wwwroot/uied-tools/backend/matting-service
-bash /www/wwwroot/uied-tools/scripts/backend/run-matting-service.sh
+cp .env.example .env
 ```
 
-默认端口：`8091`  
-健康检查：`http://127.0.0.1:8091/health`
+在 likeadmin-go 与 matting-service 中配置相同的内部令牌：
 
-## 六、用 Supervisor 托管（建议）
+```dotenv
+# likeadmin-go/server/.env
+MATTING_INTERNAL_TOKEN=替换为足够长的随机令牌
+```
 
-Supervisor 启动命令示例：
+```dotenv
+# backend/matting-service/.env
+MATTING_CONFIG_ENDPOINT=http://127.0.0.1:8003/api/common/ai/matting/internal-config
+MATTING_INTERNAL_TOKEN=与likeadmin-go相同的随机令牌
+```
+
+然后进入管理后台选择阿里云或抠抠图并填写对应 Key。环境变量密钥仅作为后台暂不可用时的兜底：
+
+```dotenv
+MATTING_PROVIDER=auto
+KOUKOUTU_API_KEY=
+ALIYUN_ACCESS_KEY_ID=
+ALIYUN_ACCESS_KEY_SECRET=
+```
+
+## 四、启动与守护
+
+```bash
+cd /www/wwwroot/uied-tools
+bash scripts/backend/run-matting-service.sh
+```
+
+Supervisor 启动命令：
 
 ```bash
 cd /www/wwwroot/uied-tools/backend/matting-service && \
 source .venv/bin/activate && \
-uvicorn app:app --host 127.0.0.1 --port 8091 --workers 1
+set -a && source .env && set +a && \
+uvicorn app:app --host 127.0.0.1 --port 8091 --workers 2
 ```
 
-说明：
+健康检查：
 
-- `workers=1` 是为了降低内存占用，新手先这样最稳
-- 后续压力上来再扩容
+```bash
+curl http://127.0.0.1:8091/health
+```
 
-## 七、Nginx 反向代理
+返回中的 `ready` 应为 `true`、`configSource` 应为 `backend`，`localModelEnabled` 固定为 `false`。
 
-在站点配置里增加：
+## 五、Nginx 反向代理
 
 ```nginx
 location /api/matting/ {
@@ -102,29 +86,26 @@ location /api/matting/ {
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_read_timeout 300;
+    proxy_read_timeout 180;
+    client_max_body_size 10m;
 }
 ```
 
-## 八、前端如何调用
+前端继续调用：
 
-前端统一调用：
+```text
+POST /api/matting/matting
+```
 
-- `POST /api/matting/matting`（上传图片字段名 `file`）
+因此切换服务商不需要修改前端页面或工具路由。
 
-不要在前端直接放模型，也不要让浏览器下载 220MB 权重。
+## 六、上线检查
 
-## 九、常见问题（新手高频）
-
-1. 首次请求很慢  
-原因：模型首次下载 + 初始化。正常现象。
-
-2. 内存不足  
-降低并发、限制上传大小（比如 12MB），必要时升级服务器。
-
-3. 超时  
-Nginx 的 `proxy_read_timeout` 要调大，建议 300 秒。
-
-4. 后续会员限制怎么做  
-放在 likeadmin-go：登录、次数、套餐、订单。  
-抠图服务只做推理，和业务逻辑解耦。
+1. `/health` 返回 `ready: true`
+2. `/health` 返回 `configSource: backend`
+3. 内部配置接口在缺少或错误令牌时返回 401
+4. 未配置密钥时接口返回明确的 503 提示
+5. 上传成功后返回透明背景图片
+6. 浏览器网络请求中不出现 AccessKey 或 API Key
+7. 阿里云图片控制在 3MB、最长边 1999 像素以内
+8. 失败请求不扣积分，成功后再完成业务计费确认

@@ -93,9 +93,9 @@
           <div class="space-y-6">
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div class="border border-gray-100 rounded-lg p-6">
-                <h4 class="text-base font-medium text-gray-900 mb-3">ModelScope 抠图模型</h4>
+                <h4 class="text-base font-medium text-gray-900 mb-3">云端 AI 抠图</h4>
                 <p class="text-sm text-gray-600 leading-relaxed">
-                  支持后台切换人物抠像与通用抠像模型，前端会自动读取当前配置并生效。
+                  通过后端安全调用已配置的抠图 API，浏览器不会接触服务商密钥。
                 </p>
               </div>
               <div class="border border-gray-100 rounded-lg p-6">
@@ -131,18 +131,18 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { onBeforeUnmount, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
-import { requestMattingImage, warmupMattingModelId } from '@/services/matting'
+import { requestMattingImage } from '@/services/matting'
 import { useToolConsume } from '@/composables/useToolConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const info = reactive({
   title: '证件照透明背景工具',
-  subtitle: '上传照片后调用 AI 抠图模型，输出透明 PNG 图片'
+  subtitle: '上传照片后调用云端 AI 抠图服务，输出透明 PNG 图片'
 })
 
 const documentTypes = [
@@ -326,9 +326,6 @@ onBeforeUnmount(() => {
   cleanupProcessedObjectUrl()
 })
 
-onMounted(() => {
-  warmupMattingModelId()
-})
 </script>
 
 <style scoped>

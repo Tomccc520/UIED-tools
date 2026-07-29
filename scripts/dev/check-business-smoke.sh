@@ -274,7 +274,8 @@ check_ai_model_roundtrip() {
 raw=json.load(sys.stdin)
 data=raw.get("data") or {}
 payload={
-  "modelId": data.get("currentModelId") or data.get("current",{}).get("modelId") or "modnet_photographic_portrait_matting",
+  "modelId": data.get("currentModelId") or data.get("current",{}).get("modelId") or "koukoutu",
+  "mattingProviders": data.get("mattingProviders") or [],
   "providers": data.get("providers") or [],
   "imageAbilities": data.get("imageAbilities") or []
 }
