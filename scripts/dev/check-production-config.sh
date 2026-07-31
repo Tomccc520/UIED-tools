@@ -66,6 +66,20 @@ require_env_file() {
   return 1
 }
 
+# 函数说明：检查可选服务环境文件，缺失时记录警告但不阻断主站部署。
+optional_env_file() {
+  local label="$1"
+  local file="$2"
+
+  if [[ -f "${file}" ]]; then
+    mark_pass "${label}配置文件已存在"
+    return 0
+  fi
+
+  mark_warn "${label}配置文件不存在，对应功能将不可用: ${file}"
+  return 1
+}
+
 # 函数说明：检查必填环境变量是否存在且不是示例占位值。
 require_env_value() {
   local label="$1"
@@ -79,12 +93,32 @@ require_env_value() {
     return
   fi
 
-  if [[ "${value}" =~ example\.com|replace-with|your[-_]|changeme ]]; then
+  if [[ "${value}" =~ example\.com|replace-with|your[-_]|changeme|local[-_]development|development-token ]]; then
     mark_fail "${label}仍使用 ${key} 示例占位值"
     return
   fi
 
   mark_pass "${label}已配置 ${key}"
+}
+
+# 函数说明：校验 Go 服务使用生产运行模式，确保 mock 支付等开发能力不会在线上开放。
+require_production_mode() {
+  local file="$1"
+  local mode
+
+  mode="$(read_env_value "${file}" "GIN_MODE")"
+  mode="$(printf "%s" "${mode}" | tr '[:upper:]' '[:lower:]')"
+  case "${mode}" in
+    release|prod|production)
+      mark_pass "Go 后端已启用生产运行模式: ${mode}"
+      ;;
+    '')
+      mark_fail "Go 后端缺少 GIN_MODE=release，mock 支付等开发能力可能被错误开放"
+      ;;
+    *)
+      mark_fail "Go 后端 GIN_MODE=${mode} 不是生产运行模式"
+      ;;
+  esac
 }
 
 # 函数说明：禁止公开服务地址指向本机开发地址。
@@ -130,7 +164,7 @@ check_frontend_secret_exposure() {
   mark_pass "前台生产配置未发现公开密钥"
 }
 
-# 函数说明：检查抠图 Provider 是否至少配置一种，未配置时允许部署但明确提示功能不可用。
+# 函数说明：检查抠图代理是否配置环境变量兜底 Provider，主配置仍以后台保存值为准。
 check_matting_provider() {
   local file="$1"
   local koukoutu_key
@@ -146,7 +180,7 @@ check_matting_provider() {
     return
   fi
 
-  mark_warn "抠图 Provider 尚未配置，部署后抠图功能将提示服务未配置"
+  mark_warn "抠图代理未配置环境变量兜底 Provider，请确认后台已保存阿里云或抠抠图 API 密钥"
 }
 
 # 函数说明：检查两个服务使用相同内部令牌，避免抠图服务无法读取后台配置。
@@ -180,7 +214,7 @@ main() {
   require_env_file "前台" "${FRONTEND_ENV_FILE}" && frontend_ready=1
   require_env_file "后台管理端" "${ADMIN_ENV_FILE}" && admin_ready=1
   require_env_file "Go 后端" "${SERVER_ENV_FILE}" && server_ready=1
-  require_env_file "抠图服务" "${MATTING_ENV_FILE}" && matting_ready=1
+  optional_env_file "抠图服务" "${MATTING_ENV_FILE}" && matting_ready=1
 
   if [[ "${frontend_ready}" -eq 1 ]]; then
     require_env_value "前台" "${FRONTEND_ENV_FILE}" "VITE_APP_URL"
@@ -194,11 +228,11 @@ main() {
   fi
 
   if [[ "${server_ready}" -eq 1 ]]; then
+    require_production_mode "${SERVER_ENV_FILE}"
     require_env_value "Go 后端" "${SERVER_ENV_FILE}" "PUBLIC_URL"
     require_env_value "Go 后端" "${SERVER_ENV_FILE}" "DATABASE_URL"
     require_env_value "Go 后端" "${SERVER_ENV_FILE}" "REDIS_URL"
     require_env_value "Go 后端" "${SERVER_ENV_FILE}" "UPLOAD_DIRECTORY"
-    require_env_value "Go 后端" "${SERVER_ENV_FILE}" "MATTING_INTERNAL_TOKEN"
     reject_local_address "Go 后端" "${SERVER_ENV_FILE}" "PUBLIC_URL"
   fi
 
@@ -209,6 +243,7 @@ main() {
   fi
 
   if [[ "${server_ready}" -eq 1 && "${matting_ready}" -eq 1 ]]; then
+    require_env_value "Go 后端" "${SERVER_ENV_FILE}" "MATTING_INTERNAL_TOKEN"
     check_matting_token_match
   fi
 

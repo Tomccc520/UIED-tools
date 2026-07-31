@@ -57,7 +57,7 @@ const pointsLogsLoading = ref(false)
 const buyingKey = ref('')
 const closingOrderSn = ref('')
 const goPayOrderSn = ref('')
-const selectedPayChannel = ref('mock')
+const selectedPayChannel = ref('')
 const manualPaymentChecking = ref(false)
 const paymentPolling = ref(false)
 const paymentPollingOrderSn = ref('')
@@ -131,19 +131,10 @@ const notifyOrderCheckStatus = (status: OrderCheckStatus) => {
 }
 
 /**
- * 函数说明：返回当前可用支付渠道列表，若后台未配置则回退到 mock 渠道。
+ * 函数说明：返回后台明确开放的支付渠道，不在前端自行回退测试支付。
  */
 const availablePaymentChannels = computed(() => {
-  if (commerceProducts.value.paymentChannels.length > 0) {
-    return commerceProducts.value.paymentChannels
-  }
-  return [{
-    code: 'mock',
-    name: '测试支付',
-    description: '开发环境即时到账',
-    payUrl: '',
-    configured: true
-  }]
+  return commerceProducts.value.paymentChannels.filter((item) => item.configured)
 })
 
 /**
@@ -578,7 +569,7 @@ const loadCommerceProducts = async () => {
     commerceProducts.value = await fetchFrontendUserCommerceProducts()
     const hasCurrent = availablePaymentChannels.value.some((item) => item.code === selectedPayChannel.value)
     if (!hasCurrent) {
-      selectedPayChannel.value = availablePaymentChannels.value[0]?.code || 'mock'
+      selectedPayChannel.value = availablePaymentChannels.value[0]?.code || ''
     }
   } catch (error) {
     showCenterMessage('error', resolveRuntimeErrorMessage(error, '套餐配置加载失败'))
@@ -1116,6 +1107,13 @@ onBeforeUnmount(() => {
 
             <div class="pay-channel-panel">
               <div class="pay-channel-title">支付渠道</div>
+              <el-alert
+                v-if="availablePaymentChannels.length === 0"
+                type="warning"
+                :closable="false"
+                show-icon
+                title="当前没有可用支付渠道，请联系管理员完成支付配置"
+              />
               <el-radio-group v-model="selectedPayChannel">
                 <el-radio-button
                   v-for="item in availablePaymentChannels"
@@ -1174,6 +1172,7 @@ onBeforeUnmount(() => {
                   <el-button
                     type="primary"
                     size="small"
+                    :disabled="availablePaymentChannels.length === 0"
                     :loading="buyingKey === `member_plan:${plan.code}`"
                     @click="handleBuyProduct('member_plan', plan.code)"
                   >
@@ -1198,6 +1197,7 @@ onBeforeUnmount(() => {
                   <el-button
                     type="primary"
                     size="small"
+                    :disabled="availablePaymentChannels.length === 0"
                     :loading="buyingKey === `points_pack:${pack.code}`"
                     @click="handleBuyProduct('points_pack', pack.code)"
                   >

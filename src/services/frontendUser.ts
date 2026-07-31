@@ -854,16 +854,20 @@ export const fetchFrontendUserCommerceProducts = async (): Promise<FrontendUserC
 }
 
 /**
- * 函数说明：提交一次套餐/积分包购买请求（当前后端为 mock 即时到账流程）。
+ * 函数说明：按后台开放的支付渠道提交套餐或积分包购买请求。
  */
 export const purchaseFrontendUserProduct = async (
   productType: 'member_plan' | 'points_pack',
   productCode: string,
-  payChannel = 'mock'
+  payChannel: string
 ): Promise<{ order: FrontendUserOrderItem; profile: FrontendUserProfile; payment: FrontendUserPaymentPayload | null } | null> => {
   const frontendToken = getFrontendUserToken()
   if (!frontendToken) {
     return null
+  }
+  const normalizedPayChannel = String(payChannel || '').trim().toLowerCase()
+  if (!normalizedPayChannel) {
+    throw new Error('当前没有可用支付渠道')
   }
 
   const data = await requestFrontendUserApi<{ order?: unknown; payment?: unknown }>(
@@ -873,7 +877,7 @@ export const purchaseFrontendUserProduct = async (
       body: JSON.stringify({
         productType,
         productCode: String(productCode || '').trim(),
-        payChannel: String(payChannel || '').trim() || 'mock'
+        payChannel: normalizedPayChannel
       })
     },
     frontendToken
@@ -892,7 +896,7 @@ export const purchaseFrontendUserProduct = async (
     currency: 'CNY',
     status: 0,
     statusText: '待支付',
-    payChannel: String(payChannel || 'mock').trim() || 'mock',
+    payChannel: normalizedPayChannel,
     tradeNo: '',
     callbackStatus: 0,
     callbackStatusText: '未回调',
@@ -921,7 +925,7 @@ export const purchaseFrontendUserProduct = async (
   }
 
   // mock 支付链路：创建待支付订单后，立即走一次回调，模拟三方支付完成。
-  if (currentOrder.orderSn && currentOrder.status === 0 && String(payChannel || '').trim().toLowerCase() === 'mock') {
+  if (currentOrder.orderSn && currentOrder.status === 0 && normalizedPayChannel === 'mock') {
     const callbackData = await requestFrontendUserApi<{ order?: unknown }>(
       FRONTEND_USER_PURCHASE_CALLBACK_ENDPOINT,
       {

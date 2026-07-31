@@ -57,37 +57,6 @@ const toolRankingPeriodLabel = computed(() => {
 })
 
 /**
- * 函数说明：构建页面顶部的榜单口径说明，统一展示当前榜单的核心规则。
- */
-const toolRankingHighlights = computed(() => {
-  return [
-    {
-      label: '排行口径',
-      value: '点击量'
-    },
-    {
-      label: '更新周期',
-      value: toolRankingPeriodLabel.value
-    },
-    {
-      label: '展示范围',
-      value: `前 ${toolRankingPageLimit.value} 名`
-    }
-  ]
-})
-
-/**
- * 函数说明：构建排行榜页规则提示，帮助用户快速理解榜单数据来源和使用场景。
- */
-const toolRankingRuleNotes = computed(() => {
-  return [
-    '真实点击自动累计',
-    '同周期内动态排序',
-    '冷启动时展示工具主数据推荐'
-  ]
-})
-
-/**
  * 函数说明：切换独立热榜页榜单周期，保持页面只围绕站内工具排行榜切换显示。
  */
 const handleToolRankingPeriodChange = (period: ToolRankingPeriod) => {
@@ -154,55 +123,48 @@ onMounted(() => {
     <section class="tool-ranking-page__hero">
       <div class="tool-ranking-page__hero-main">
         <div class="tool-ranking-page__hero-copy">
-          <p class="tool-ranking-page__eyebrow">站内热度 · {{ toolRankingPeriodLabel }}</p>
+          <p class="tool-ranking-page__eyebrow">
+            <span>RANKING 01</span>
+            <i></i>
+            {{ toolRankingPeriodLabel }}点击榜
+          </p>
           <h1 class="tool-ranking-page__title">{{ toolRankingPageTitle }}</h1>
           <p class="tool-ranking-page__desc">{{ toolRankingPageDescription }}</p>
-
-          <div class="tool-ranking-page__periods" aria-label="切换排行榜周期">
-            <button
-              v-for="item in toolRankingPeriodOptions"
-              :key="item.value"
-              type="button"
-              class="tool-ranking-page__period-btn"
-              :class="{ 'tool-ranking-page__period-btn--active': activeToolRankingPeriod === item.value }"
-              @click="handleToolRankingPeriodChange(item.value)"
-            >
-              {{ item.label }}
-            </button>
-          </div>
         </div>
 
         <div class="tool-ranking-page__hero-panel">
-          <div class="tool-ranking-page__hero-panel-title">当前榜单</div>
-          <div class="tool-ranking-page__hero-panel-value">Top {{ toolRankingPageLimit }}</div>
-          <div class="tool-ranking-page__hero-panel-desc">按点击热度排序，优先展示用户正在高频使用的工具。</div>
+          <span>TOP</span>
+          <strong>{{ String(toolRankingPageLimit).padStart(2, '0') }}</strong>
         </div>
       </div>
 
-      <div class="tool-ranking-page__meta">
-        <div v-for="item in toolRankingHighlights" :key="item.label" class="tool-ranking-page__meta-item">
-          <span class="tool-ranking-page__meta-label">{{ item.label }}</span>
-          <span class="tool-ranking-page__meta-value">{{ item.value }}</span>
+      <div class="tool-ranking-page__controls">
+        <div class="tool-ranking-page__periods" aria-label="切换排行榜周期">
+          <button
+            v-for="item in toolRankingPeriodOptions"
+            :key="item.value"
+            type="button"
+            class="tool-ranking-page__period-btn"
+            :class="{ 'tool-ranking-page__period-btn--active': activeToolRankingPeriod === item.value }"
+            @click="handleToolRankingPeriodChange(item.value)"
+          >
+            {{ item.label }}
+          </button>
         </div>
-      </div>
-      <div class="tool-ranking-page__rules">
-        <span
-          v-for="item in toolRankingRuleNotes"
-          :key="item"
-          class="tool-ranking-page__rule-item"
-        >
-          {{ item }}
-        </span>
+        <div class="tool-ranking-page__summary">
+          <span>排序口径 <strong>点击量</strong></span>
+          <span>更新周期 <strong>{{ toolRankingPeriodLabel }}</strong></span>
+        </div>
       </div>
     </section>
 
     <section class="tool-ranking-page__board-shell">
       <div class="tool-ranking-page__board-head">
         <div>
-          <div class="tool-ranking-page__board-title">榜单明细</div>
-          <div class="tool-ranking-page__board-note">前三名会优先放大展示，后续工具按热度继续排列。</div>
+          <div class="tool-ranking-page__board-title">本期排行</div>
+          <div class="tool-ranking-page__board-note">基于站内工具真实点击统计</div>
         </div>
-        <span class="tool-ranking-page__board-badge">{{ toolRankingPeriodLabel }} · 点击榜</span>
+        <span class="tool-ranking-page__board-badge">{{ toolRankingPeriodLabel }} / TOP {{ toolRankingPageLimit }}</span>
       </div>
 
       <div v-if="pageLoading" class="tool-ranking-page__status">
@@ -229,36 +191,28 @@ onMounted(() => {
 
 <style scoped>
 .tool-ranking-page {
+  --ranking-ink: #17191d;
+  --ranking-muted: #707784;
+  --ranking-line: #d9dde4;
+  --ranking-accent: #ff5b3d;
   width: 100%;
   max-width: 1120px;
   margin: 0 auto;
-  padding: 1rem 0 1.75rem;
-  color: #0f172a;
+  padding: 1.5rem 0 1.75rem;
+  color: var(--ranking-ink);
 }
 
 .tool-ranking-page__hero {
-  position: relative;
-  overflow: hidden;
-  margin-bottom: 0.75rem;
-  padding: 1.2rem;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: #ffffff;
-}
-
-.tool-ranking-page__hero::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  height: 4px;
-  background: linear-gradient(90deg, #2563eb 0%, #06b6d4 52%, #f59e0b 100%);
+  margin-bottom: 1.4rem;
+  padding: 0 0.25rem 1.1rem;
+  border-bottom: 1px solid var(--ranking-line);
 }
 
 .tool-ranking-page__hero-main {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 1rem;
-  align-items: flex-start;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 2rem;
+  align-items: center;
 }
 
 .tool-ranking-page__hero-copy {
@@ -266,57 +220,66 @@ onMounted(() => {
 }
 
 .tool-ranking-page__eyebrow {
-  margin: 0 0 0.35rem;
-  font-size: 0.78rem;
-  line-height: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.45rem;
+  font-size: 0.7rem;
+  line-height: 1.2rem;
   font-weight: 800;
-  color: #2563eb;
+  color: #666d78;
+}
+
+.tool-ranking-page__eyebrow span {
+  color: var(--ranking-accent);
+}
+
+.tool-ranking-page__eyebrow i {
+  width: 28px;
+  height: 1px;
+  background: #a8adb6;
 }
 
 .tool-ranking-page__title {
   margin: 0;
-  font-size: clamp(1.85rem, 4vw, 2.55rem);
-  line-height: 1.12;
+  font-size: 2.15rem;
+  line-height: 1.2;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ranking-ink);
   letter-spacing: 0;
 }
 
 .tool-ranking-page__desc {
   max-width: 720px;
-  margin: 0.55rem 0 0;
-  font-size: 0.92rem;
-  line-height: 1.7;
-  color: #475569;
+  margin: 0.45rem 0 0;
+  font-size: 0.86rem;
+  line-height: 1.6;
+  color: var(--ranking-muted);
 }
 
-.tool-ranking-page__meta {
+.tool-ranking-page__controls {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.2rem;
 }
 
 .tool-ranking-page__periods {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 1rem;
-  padding: 0.28rem;
-  width: fit-content;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 999px;
-  background: #f8fafc;
+  gap: 1.35rem;
+  min-width: 260px;
+  border-bottom: 1px solid var(--ranking-line);
 }
 
 .tool-ranking-page__period-btn {
+  position: relative;
   appearance: none;
   border: 0;
   background: transparent;
-  color: #334155;
-  border-radius: 999px;
-  padding: 0.48rem 0.86rem;
-  font-size: 0.8125rem;
+  color: #747b86;
+  padding: 0 0 0.65rem;
+  font-size: 0.8rem;
   line-height: 1;
   font-weight: 800;
   cursor: pointer;
@@ -324,88 +287,60 @@ onMounted(() => {
 }
 
 .tool-ranking-page__period-btn:hover {
-  color: #0f172a;
+  color: var(--ranking-ink);
 }
 
 .tool-ranking-page__period-btn--active {
-  background: #0f172a;
-  color: #ffffff;
+  color: var(--ranking-ink);
 }
 
-.tool-ranking-page__meta-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.52rem 0.76rem;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: #f8fafc;
-}
-
-.tool-ranking-page__meta-label {
-  font-size: 0.75rem;
-  color: #64748b;
-}
-
-.tool-ranking-page__meta-value {
-  font-size: 0.8125rem;
-  font-weight: 800;
-  color: #0f172a;
-}
-
-.tool-ranking-page__rules {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  margin-top: 0.65rem;
-}
-
-.tool-ranking-page__rule-item {
-  display: inline-flex;
-  align-items: center;
-  min-height: 28px;
-  padding: 0 0.62rem;
-  border-radius: 999px;
-  background: rgba(37, 99, 235, 0.08);
-  color: #1d4ed8;
-  font-size: 0.76rem;
-  font-weight: 700;
+.tool-ranking-page__period-btn--active::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  background: var(--ranking-accent);
 }
 
 .tool-ranking-page__hero-panel {
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  padding: 1rem;
-  background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+  min-width: 126px;
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  color: var(--ranking-ink);
 }
 
-.tool-ranking-page__hero-panel-title {
-  font-size: 0.78rem;
+.tool-ranking-page__hero-panel span {
+  font-size: 0.72rem;
   font-weight: 800;
-  color: #64748b;
+  color: var(--ranking-muted);
 }
 
-.tool-ranking-page__hero-panel-value {
-  margin-top: 0.45rem;
-  font-size: 2.25rem;
-  line-height: 1;
+.tool-ranking-page__hero-panel strong {
+  font-size: 4.2rem;
+  line-height: 0.9;
   font-weight: 900;
-  color: #0f172a;
+  font-variant-numeric: tabular-nums;
 }
 
-.tool-ranking-page__hero-panel-desc {
-  margin-top: 0.65rem;
-  font-size: 0.82rem;
-  line-height: 1.55;
-  color: #64748b;
+.tool-ranking-page__summary {
+  display: flex;
+  gap: 1rem;
+  color: var(--ranking-muted);
+  font-size: 0.72rem;
+}
+
+.tool-ranking-page__summary strong {
+  margin-left: 0.25rem;
+  color: var(--ranking-ink);
 }
 
 .tool-ranking-page__board-shell {
   min-height: 360px;
-  padding: 1rem;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  background: #ffffff;
+  padding: 0 0.25rem;
 }
 
 .tool-ranking-page__board-head {
@@ -413,30 +348,28 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding-bottom: 0.85rem;
+  padding-bottom: 0.9rem;
 }
 
 .tool-ranking-page__board-title {
   font-size: 1.05rem;
   line-height: 1.5rem;
   font-weight: 900;
-  color: #0f172a;
+  color: var(--ranking-ink);
 }
 
 .tool-ranking-page__board-note {
   margin-top: 0.18rem;
   font-size: 0.78rem;
-  color: #64748b;
+  color: var(--ranking-muted);
 }
 
 .tool-ranking-page__board-badge {
   flex-shrink: 0;
-  padding: 0.45rem 0.7rem;
-  border-radius: 999px;
-  background: #f8fafc;
-  color: #0f172a;
-  font-size: 0.78rem;
+  color: var(--ranking-muted);
+  font-size: 0.7rem;
   font-weight: 800;
+  letter-spacing: 0;
 }
 
 .tool-ranking-page__status {
@@ -444,7 +377,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   min-height: 360px;
-  color: #0f172a;
+  color: var(--ranking-ink);
   font-size: 0.95rem;
 }
 
@@ -454,40 +387,63 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .tool-ranking-page {
-    padding: 0.75rem 0 1rem;
+    padding: 0.9rem 0 1rem;
   }
 
-  .tool-ranking-page__hero,
-  .tool-ranking-page__board-shell {
-    padding: 0.9rem;
-    border-radius: 8px;
+  .tool-ranking-page__hero {
+    padding: 0 0.1rem 0.9rem;
   }
 
   .tool-ranking-page__hero-main {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.7rem;
   }
 
   .tool-ranking-page__board-head {
-    flex-direction: column;
-    align-items: flex-start;
+    align-items: flex-end;
   }
 
   .tool-ranking-page__title {
-    font-size: 1.5rem;
-    line-height: 2rem;
+    font-size: 1.55rem;
+    line-height: 1.9rem;
   }
 
   .tool-ranking-page__desc {
-    font-size: 0.875rem;
-    line-height: 1.5rem;
+    font-size: 0.78rem;
+    line-height: 1.4rem;
+  }
+
+  .tool-ranking-page__hero-panel {
+    min-width: auto;
+  }
+
+  .tool-ranking-page__hero-panel strong {
+    font-size: 2.5rem;
+  }
+
+  .tool-ranking-page__controls {
+    display: block;
+    margin-top: 0.9rem;
   }
 
   .tool-ranking-page__periods {
     width: 100%;
+    min-width: 0;
+    justify-content: space-between;
   }
 
   .tool-ranking-page__period-btn {
-    flex: 1;
+    padding-right: 0.2rem;
+    padding-left: 0.2rem;
+  }
+
+  .tool-ranking-page__summary {
+    margin-top: 0.65rem;
+    justify-content: space-between;
+  }
+
+  .tool-ranking-page__board-shell {
+    padding: 0 0.1rem;
   }
 
   .tool-ranking-page__board-shell,

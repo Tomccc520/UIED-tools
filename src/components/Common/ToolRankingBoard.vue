@@ -147,6 +147,9 @@ const resolveRankingMetaText = (item: ToolRankingListItem): string => {
     }
     return item.cateTitle || '工具热榜'
   }
+  if (props.flat) {
+    return item.cateTitle || '工具热榜'
+  }
   if (item.viewCount > 0) {
     return `${item.cateTitle || '工具热榜'} · 点击 ${item.viewCount}`
   }
@@ -308,86 +311,95 @@ watch(
 }
 
 .tool-ranking-board__list--with-podium {
-  margin-top: 0.9rem;
+  margin-top: 0;
 }
 
 .tool-ranking-board__podium {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr;
-  gap: 0.75rem;
+  gap: 0;
+  border-top: 1px solid #d9dde4;
+  border-bottom: 1px solid #d9dde4;
+  background: #f3f5f7;
 }
 
 .tool-ranking-board__podium-item {
   position: relative;
-  min-height: 148px;
+  min-height: 176px;
   overflow: hidden;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  padding: 1rem;
-  background: #ffffff;
+  border: 0;
+  border-right: 1px solid #d9dde4;
+  border-radius: 0;
+  padding: 1.15rem 1.2rem;
+  background: transparent;
   text-align: left;
   cursor: pointer;
-  transition: transform 0.2s ease, border-color 0.2s ease;
+  transition: background-color 0.2s ease;
+}
+
+.tool-ranking-board__podium-item:last-child {
+  border-right: 0;
 }
 
 .tool-ranking-board__podium-item::before {
   content: '';
   position: absolute;
-  inset: 0;
-  height: 4px;
-  background: #2563eb;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 3px;
+  background: #17191d;
 }
 
 .tool-ranking-board__podium-item:hover {
-  transform: translateY(-2px);
-  border-color: rgba(37, 99, 235, 0.25);
+  background: #ffffff;
 }
 
 .tool-ranking-board__podium-item--rank-1 {
-  background: linear-gradient(180deg, #ffffff 0%, #fff8e7 100%);
+  background: #fff9e9;
 }
 
 .tool-ranking-board__podium-item--rank-1::before {
-  background: #f59e0b;
+  background: #f2b624;
 }
 
 .tool-ranking-board__podium-item--rank-2::before {
-  background: #0ea5e9;
+  background: #3478e5;
 }
 
 .tool-ranking-board__podium-item--rank-3::before {
-  background: #10b981;
+  background: #35a46f;
 }
 
 .tool-ranking-board__podium-rank {
-  font-size: 0.76rem;
+  font-size: 0.7rem;
   line-height: 1.2;
-  font-weight: 700;
-  color: #475569;
+  font-weight: 800;
+  color: #6c737e;
 }
 
 .tool-ranking-board__podium-title {
-  margin-top: 0.55rem;
-  min-height: 2.8rem;
-  font-size: 1.08rem;
+  margin-top: 1.2rem;
+  min-height: 2.7rem;
+  font-size: 1.12rem;
   line-height: 1.35;
-  font-weight: 800;
-  color: #0f172a;
+  font-weight: 900;
+  color: #17191d;
 }
 
 .tool-ranking-board__podium-meta {
   margin-top: 0.45rem;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   line-height: 1.45;
-  color: #64748b;
+  color: #747b86;
 }
 
 .tool-ranking-board__podium-stat {
   margin-top: 0.65rem;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   line-height: 1.2;
-  font-weight: 700;
-  color: #1e293b;
+  font-weight: 800;
+  color: #17191d;
 }
 
 .tool-ranking-board__heat {
@@ -397,14 +409,14 @@ watch(
   margin-top: 0.75rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(15, 23, 42, 0.08);
+  background: rgba(23, 25, 29, 0.1);
 }
 
 .tool-ranking-board__heat span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
+  background: #3478e5;
 }
 
 .tool-ranking-board__item {
@@ -427,16 +439,17 @@ watch(
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item {
-  background: #ffffff;
-  border: 1px solid rgba(15, 23, 42, 0.08);
-  border-radius: 8px;
-  padding: 0.86rem 0.95rem;
+  min-height: 72px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #e0e3e8;
+  border-radius: 0;
+  padding: 0.9rem 0.25rem;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item:hover {
-  transform: translateY(-1px);
-  background: #ffffff;
-  border-color: rgba(37, 99, 235, 0.2);
+  transform: none;
+  background: #f6f7f8;
 }
 
 .tool-ranking-board__rank {
@@ -459,9 +472,12 @@ watch(
 }
 
 .tool-ranking-board--flat .tool-ranking-board__rank {
-  width: 2.4rem;
-  height: 2.4rem;
-  font-size: 1rem;
+  width: 2.6rem;
+  height: auto;
+  justify-content: flex-start;
+  background: transparent;
+  color: #787f8a;
+  font-size: 0.9rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }
 
@@ -471,23 +487,24 @@ watch(
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item-title {
-  font-size: 1rem;
+  font-size: 0.95rem;
   line-height: 1.5rem;
+  font-weight: 800;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item-meta {
   margin-top: 0.125rem;
-  font-size: 0.8125rem;
-  color: #64748b;
+  font-size: 0.76rem;
+  color: #747b86;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__stat {
   display: grid;
   min-width: 92px;
   gap: 0.38rem;
-  color: #0f172a;
-  font-size: 0.875rem;
-  font-weight: 600;
+  color: #17191d;
+  font-size: 0.78rem;
+  font-weight: 800;
 }
 
 .tool-ranking-board__stat-bar {
@@ -495,7 +512,7 @@ watch(
   height: 4px;
   max-width: 92px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #2563eb 0%, #06b6d4 100%);
+  background: #3478e5;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__empty {
@@ -583,6 +600,12 @@ watch(
 
   .tool-ranking-board__podium-item {
     min-height: auto;
+    border-right: 0;
+    border-bottom: 1px solid #d9dde4;
+  }
+
+  .tool-ranking-board__podium-item:last-child {
+    border-bottom: 0;
   }
 
   .tool-ranking-board__podium-title {
@@ -591,7 +614,7 @@ watch(
   }
 
   .tool-ranking-board--flat .tool-ranking-board__item {
-    align-items: flex-start;
+    align-items: center;
   }
 
   .tool-ranking-board--flat .tool-ranking-board__stat {

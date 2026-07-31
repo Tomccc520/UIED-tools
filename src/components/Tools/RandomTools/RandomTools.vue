@@ -40,14 +40,14 @@ const categories = ref<RandomToolCategory[]>([
 ])
 
 const coverPalettes: CoverPalette[] = [
-  { background: '#15171c', foreground: '#f8fafc', accent: '#ffcc33', muted: '#3a3d45' },
-  { background: '#123c36', foreground: '#f4fff9', accent: '#65d6ad', muted: '#28685d' },
-  { background: '#e8edf4', foreground: '#162033', accent: '#2f6fed', muted: '#c3ccda' },
-  { background: '#702f3d', foreground: '#fff8f4', accent: '#ffb199', muted: '#9b5260' },
-  { background: '#27324a', foreground: '#f7f8ff', accent: '#9bb5ff', muted: '#455474' },
-  { background: '#f3e9d2', foreground: '#252018', accent: '#d55332', muted: '#d8c7a6' },
-  { background: '#283b24', foreground: '#f6faef', accent: '#b6da74', muted: '#52694b' },
-  { background: '#312a3f', foreground: '#fff9ff', accent: '#e8a6d7', muted: '#5c4c70' }
+  { background: '#18191d', foreground: '#f7f4ec', accent: '#f4c84a', muted: '#35363d' },
+  { background: '#2656d8', foreground: '#ffffff', accent: '#ff6b52', muted: '#1d43aa' },
+  { background: '#dce7d6', foreground: '#18221a', accent: '#4b7d50', muted: '#b9cbb4' },
+  { background: '#f4f0e8', foreground: '#17213b', accent: '#3468e8', muted: '#d6d0c5' },
+  { background: '#7b2e46', foreground: '#fff7f3', accent: '#f3a3b8', muted: '#5d2235' },
+  { background: '#173c45', foreground: '#f1fcf8', accent: '#63d4b2', muted: '#285762' },
+  { background: '#b64b31', foreground: '#fff8ee', accent: '#ffd067', muted: '#8d3826' },
+  { background: '#d8d0ea', foreground: '#251d34', accent: '#6a4eb0', muted: '#b7acd1' }
 ]
 
 /**
@@ -143,42 +143,52 @@ const createToolCover = (tool: Tool, index: number): string => {
 
   context.strokeStyle = palette.muted
   context.lineWidth = 2
-  for (let x = 56; x < width; x += 74) {
+  for (let row = 0; row <= 4; row += 1) {
+    const y = 68 + row * 176
     context.beginPath()
-    context.moveTo(x, 0)
-    context.lineTo(x, height)
+    context.moveTo(54, y)
+    context.lineTo(width - 54, y)
     context.stroke()
   }
 
   context.fillStyle = palette.accent
-  context.fillRect(0, 0, 16, height)
-  context.fillRect(56, 68, 112, 8)
-  context.fillRect(width - 180, height - 76, 124, 8)
+  context.fillRect(0, 0, width, 18)
+  context.fillRect(54, 68, 118, 7)
+  context.fillRect(width - 176, height - 76, 122, 7)
 
-  context.fillStyle = palette.muted
-  context.fillRect(width - 172, 54, 116, 116)
+  context.strokeStyle = palette.accent
+  context.lineWidth = 4
+  context.strokeRect(width - 156, 66, 102, 102)
   context.fillStyle = palette.accent
-  context.fillRect(width - 146, 80, 64, 64)
+  context.fillRect(width - 130, 92, 50, 50)
 
   context.fillStyle = palette.foreground
-  context.font = '700 25px "PingFang SC", "Microsoft YaHei", sans-serif'
+  context.font = '700 24px "PingFang SC", "Microsoft YaHei", sans-serif'
   context.textBaseline = 'top'
-  context.fillText(`NO. ${String(index + 1).padStart(2, '0')}`, 56, 104)
+  context.fillText(`UIED / ${String(index + 1).padStart(2, '0')}`, 54, 106)
   context.fillStyle = palette.accent
-  context.font = '600 24px "PingFang SC", "Microsoft YaHei", sans-serif'
-  context.fillText(tool.cate || '效率工具', 56, 158)
+  context.font = '700 23px "PingFang SC", "Microsoft YaHei", sans-serif'
+  context.fillText(String(tool.cate || '效率工具').toUpperCase(), 54, 158)
+
+  context.save()
+  context.globalAlpha = 0.11
+  context.fillStyle = palette.foreground
+  context.font = '900 232px "Arial Black", sans-serif'
+  context.textAlign = 'right'
+  context.fillText(String(index + 1).padStart(2, '0'), width - 42, 228)
+  context.restore()
 
   context.fillStyle = palette.foreground
-  context.font = '800 58px "PingFang SC", "Microsoft YaHei", sans-serif'
+  context.font = '800 56px "PingFang SC", "Microsoft YaHei", sans-serif'
   splitCoverTitle(tool.title).forEach((line, lineIndex) => {
-    context.fillText(line, 56, 346 + lineIndex * 78)
+    context.fillText(line, 54, 382 + lineIndex * 76)
   })
 
   context.fillStyle = palette.foreground
-  context.globalAlpha = 0.72
-  context.font = '400 23px "PingFang SC", "Microsoft YaHei", sans-serif'
+  context.globalAlpha = 0.68
+  context.font = '500 22px "PingFang SC", "Microsoft YaHei", sans-serif'
   const description = String(tool.desc || '发现一个新的实用工具').replace(/\s+/g, ' ').slice(0, 34)
-  context.fillText(description, 56, height - 102)
+  context.fillText(description, 54, height - 112)
   context.globalAlpha = 1
   return canvas.toDataURL('image/png')
 }
@@ -251,9 +261,13 @@ onMounted(() => {
   <div class="random-tools-page">
     <header class="random-tools-page__header">
       <div class="random-tools-page__heading">
-        <p class="random-tools-page__eyebrow">DISCOVER / 随机发现</p>
-        <h1>换个方向，遇见新工具</h1>
-        <p>从现有工具库随机挑选一组，也许下一个正好解决你手头的问题。</p>
+        <p class="random-tools-page__eyebrow">
+          <span>DISCOVERY 01</span>
+          <i></i>
+          随机工具
+        </p>
+        <h1>今天，换一组工具看看</h1>
+        <p>从工具库中重新组合一组值得尝试的选择。</p>
       </div>
 
       <button
@@ -285,8 +299,11 @@ onMounted(() => {
 
     <section class="random-tools-page__stage" aria-label="随机工具画廊">
       <div class="random-tools-page__stage-topline">
-        <span>{{ loading ? '正在重新组合' : `本轮 ${randomTools.length} 个工具` }}</span>
-        <CursorArrowRaysIcon aria-hidden="true" />
+        <span>UIED TOOLS / RANDOM DECK</span>
+        <span class="random-tools-page__stage-count">
+          {{ loading ? 'LOADING' : String(randomTools.length).padStart(2, '0') }}
+          <CursorArrowRaysIcon aria-hidden="true" />
+        </span>
       </div>
 
       <div v-if="loading" class="random-tools-page__loading" role="status">
@@ -298,12 +315,12 @@ onMounted(() => {
         v-else-if="galleryItems.length"
         class="random-tools-page__gallery"
         :items="galleryItems"
-        :bend="2.4"
-        text-color="#ffffff"
-        :border-radius="0.035"
-        font="700 30px 'PingFang SC', 'Microsoft YaHei', sans-serif"
-        :scroll-speed="2"
-        :scroll-ease="0.055"
+        :bend="1.55"
+        text-color="#17191d"
+        :border-radius="0.028"
+        font="800 27px 'PingFang SC', 'Microsoft YaHei', sans-serif"
+        :scroll-speed="1.8"
+        :scroll-ease="0.06"
         @select="handleGallerySelect"
       />
 
@@ -316,19 +333,23 @@ onMounted(() => {
 
 <style scoped>
 .random-tools-page {
+  --random-ink: #17191d;
+  --random-muted: #747b87;
+  --random-line: #d9dde4;
+  --random-accent: #5b54e8;
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 2rem 0 1.5rem;
-  color: #15171c;
+  padding: 1.75rem 0 1.5rem;
+  color: var(--random-ink);
 }
 
 .random-tools-page__header {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 2rem;
-  padding: 0 0.25rem 1.5rem;
+  gap: 1.5rem;
+  padding: 0 0.25rem 1.25rem;
 }
 
 .random-tools-page__heading {
@@ -336,43 +357,55 @@ onMounted(() => {
 }
 
 .random-tools-page__eyebrow {
-  margin: 0 0 0.5rem;
-  color: #5b54e8;
-  font-size: 0.75rem;
-  line-height: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 0 0 0.45rem;
+  color: #636a76;
+  font-size: 0.69rem;
+  line-height: 1.2rem;
   font-weight: 800;
+}
+
+.random-tools-page__eyebrow span {
+  color: var(--random-accent);
+}
+
+.random-tools-page__eyebrow i {
+  width: 26px;
+  height: 1px;
+  background: #a9aeb8;
 }
 
 .random-tools-page__heading h1 {
   margin: 0;
-  color: #111318;
-  font-size: 2.25rem;
-  line-height: 1.2;
+  color: var(--random-ink);
+  font-size: 2rem;
+  line-height: 1.25;
   font-weight: 900;
   letter-spacing: 0;
 }
 
 .random-tools-page__heading > p:last-child {
-  max-width: 620px;
-  margin: 0.65rem 0 0;
-  color: #687080;
-  font-size: 0.92rem;
-  line-height: 1.7;
+  margin: 0.45rem 0 0;
+  color: var(--random-muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
 }
 
 .random-tools-page__refresh {
-  min-width: 116px;
-  height: 44px;
+  min-width: 110px;
+  height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
   flex-shrink: 0;
   border: 0;
-  border-radius: 6px;
-  background: #15171c;
+  border-radius: 5px;
+  background: var(--random-ink);
   color: #ffffff;
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   font-weight: 800;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.2s ease;
@@ -399,11 +432,12 @@ onMounted(() => {
 
 .random-tools-page__categories {
   display: flex;
-  gap: 0.35rem;
-  margin-bottom: 0.75rem;
-  padding: 0.25rem;
+  gap: 0;
+  margin-bottom: 0.65rem;
+  padding: 0 0.25rem;
   overflow-x: auto;
   scrollbar-width: none;
+  border-bottom: 1px solid var(--random-line);
 }
 
 .random-tools-page__categories::-webkit-scrollbar {
@@ -411,64 +445,85 @@ onMounted(() => {
 }
 
 .random-tools-page__category {
-  min-height: 34px;
-  padding: 0 0.8rem;
+  position: relative;
+  min-height: 40px;
+  padding: 0 0.9rem;
   flex-shrink: 0;
   border: 0;
-  border-radius: 6px;
   background: transparent;
-  color: #656d7c;
-  font-size: 0.78rem;
+  color: #727986;
+  font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
   transition: background-color 0.18s ease, color 0.18s ease;
 }
 
 .random-tools-page__category:hover {
-  background: #eceef3;
-  color: #15171c;
+  color: var(--random-ink);
 }
 
 .random-tools-page__category--active {
-  background: #e4e1ff;
-  color: #4038c8;
+  color: var(--random-ink);
+}
+
+.random-tools-page__category--active::after {
+  content: '';
+  position: absolute;
+  right: 0.9rem;
+  bottom: -1px;
+  left: 0.9rem;
+  height: 2px;
+  background: var(--random-accent);
 }
 
 .random-tools-page__stage {
   position: relative;
-  height: min(610px, calc(100vh - 270px));
-  min-height: 500px;
+  height: min(540px, calc(100vh - 250px));
+  min-height: 470px;
   overflow: hidden;
   border-radius: 8px;
-  background: #0c0e12;
+  border: 1px solid #d5dae2;
+  background-color: #e9edf2;
+  background-image:
+    linear-gradient(rgba(23, 25, 29, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 25, 29, 0.045) 1px, transparent 1px);
+  background-size: 56px 56px;
 }
 
 .random-tools-page__stage::before {
   content: '';
   position: absolute;
-  inset: 0 0 auto;
+  inset: 45px 0 auto;
   height: 1px;
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(23, 25, 29, 0.11);
   pointer-events: none;
   z-index: 2;
 }
 
 .random-tools-page__stage-topline {
   position: absolute;
-  top: 1rem;
-  right: 1.1rem;
-  left: 1.1rem;
+  top: 0;
+  right: 1rem;
+  left: 1rem;
+  height: 45px;
   z-index: 3;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: rgba(255, 255, 255, 0.58);
-  font-size: 0.72rem;
-  font-weight: 700;
+  color: #5e6570;
+  font-size: 0.65rem;
+  font-weight: 800;
   pointer-events: none;
 }
 
-.random-tools-page__stage-topline svg {
+.random-tools-page__stage-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--random-ink);
+}
+
+.random-tools-page__stage-count svg {
   width: 1.05rem;
   height: 1.05rem;
 }
@@ -476,6 +531,7 @@ onMounted(() => {
 .random-tools-page__gallery {
   width: 100%;
   height: 100%;
+  padding-top: 20px;
 }
 
 .random-tools-page__loading,
@@ -485,7 +541,7 @@ onMounted(() => {
   align-items: center;
   justify-content: center;
   gap: 0.65rem;
-  color: rgba(255, 255, 255, 0.72);
+  color: #626a76;
   font-size: 0.88rem;
 }
 
@@ -493,7 +549,7 @@ onMounted(() => {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #ffcc33;
+  background: var(--random-accent);
   animation: random-tools-pulse 0.9s ease-in-out infinite alternate;
 }
 
@@ -516,23 +572,23 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .random-tools-page {
-    padding: 1rem 0 0.75rem;
+    padding: 0.85rem 0 0.75rem;
   }
 
   .random-tools-page__header {
     align-items: flex-start;
     gap: 1rem;
-    padding: 0 0.1rem 1rem;
+    padding: 0 0.1rem 0.85rem;
   }
 
   .random-tools-page__heading h1 {
-    font-size: 1.7rem;
-    line-height: 2.1rem;
+    font-size: 1.5rem;
+    line-height: 1.9rem;
   }
 
   .random-tools-page__heading > p:last-child {
-    font-size: 0.82rem;
-    line-height: 1.5rem;
+    font-size: 0.78rem;
+    line-height: 1.35rem;
   }
 
   .random-tools-page__refresh {
@@ -547,14 +603,24 @@ onMounted(() => {
   }
 
   .random-tools-page__categories {
-    margin-right: -0.25rem;
-    margin-left: -0.25rem;
+    margin-right: -0.1rem;
+    margin-left: -0.1rem;
   }
 
   .random-tools-page__stage {
-    height: min(560px, calc(100vh - 245px));
-    min-height: 450px;
+    height: min(510px, calc(100vh - 220px));
+    min-height: 430px;
     border-radius: 6px;
+    background-size: 42px 42px;
+  }
+
+  .random-tools-page__stage-topline {
+    right: 0.8rem;
+    left: 0.8rem;
+  }
+
+  .random-tools-page__gallery {
+    padding-top: 14px;
   }
 }
 

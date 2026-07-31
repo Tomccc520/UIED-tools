@@ -100,17 +100,21 @@ const createTextTexture = (gl: GL, text: string, font: string, color: string) =>
   context.font = font
   const textWidth = Math.ceil(context.measureText(text).width)
   const textHeight = Math.ceil(resolveFontSize(font) * 1.25)
-  canvas.width = Math.max(64, textWidth + 32)
-  canvas.height = textHeight + 24
+  const logicalWidth = Math.max(64, textWidth + 32)
+  const logicalHeight = textHeight + 24
+  const pixelRatio = Math.min(2, Math.max(window.devicePixelRatio || 1, 1.5))
+  canvas.width = Math.ceil(logicalWidth * pixelRatio)
+  canvas.height = Math.ceil(logicalHeight * pixelRatio)
+  context.scale(pixelRatio, pixelRatio)
   context.font = font
   context.fillStyle = color
   context.textAlign = 'center'
   context.textBaseline = 'middle'
-  context.fillText(text, canvas.width / 2, canvas.height / 2)
+  context.fillText(text, logicalWidth / 2, logicalHeight / 2)
 
   const texture = new Texture(gl, { generateMipmaps: false })
   texture.image = canvas
-  return { texture, width: canvas.width, height: canvas.height }
+  return { texture, width: logicalWidth, height: logicalHeight }
 }
 
 class GalleryTitle {
@@ -194,7 +198,10 @@ class GalleryMedia {
     this.screen = options.screen
     this.viewport = options.viewport
 
-    const texture = new Texture(options.gl, { generateMipmaps: true })
+    const texture = new Texture(options.gl, {
+      generateMipmaps: true,
+      anisotropy: 8
+    })
     this.program = new Program(options.gl, {
       vertex: `
         precision highp float;
@@ -208,7 +215,8 @@ class GalleryMedia {
         void main() {
           vUv = uv;
           vec3 p = position;
-          p.z = sin(p.x * 4.0 + uTime) * (0.08 + abs(uSpeed) * 0.32);
+          float motion = smoothstep(0.002, 0.12, abs(uSpeed));
+          p.z = sin(p.x * 3.6 + uTime) * motion * 0.075;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
         }
       `,
@@ -363,7 +371,12 @@ class GalleryApp {
     this.originalItemCount = options.items.length
     this.onSelect = options.onSelect
     this.scroll = { current: 0, target: 0, last: 0 }
-    this.renderer = new Renderer({ alpha: true, antialias: true, dpr: Math.min(window.devicePixelRatio || 1, 2) })
+    const rendererPixelRatio = Math.min(2, Math.max(window.devicePixelRatio || 1, 1.5))
+    this.renderer = new Renderer({
+      alpha: true,
+      antialias: true,
+      dpr: rendererPixelRatio
+    })
     this.gl = this.renderer.gl
     this.gl.clearColor(0, 0, 0, 0)
     this.camera = new Camera(this.gl)
