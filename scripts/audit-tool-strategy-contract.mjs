@@ -19,6 +19,7 @@ import {
 const PROJECT_ROOT = process.cwd()
 const PORTS_ENV_PATH = path.resolve(PROJECT_ROOT, '.runtime/ports.env')
 const ROUTER_FILE = path.resolve(PROJECT_ROOT, 'src/router/router.ts')
+const STANDALONE_TOOLS_FILE = path.resolve(PROJECT_ROOT, 'src/config/standalone-tools.json')
 const DEFAULT_API_PORT = '8003'
 const TOOL_KEY_PATTERN = /^[a-z0-9_-]+$/
 
@@ -129,6 +130,23 @@ const parseToolRoutes = (routerText) => {
 }
 
 /**
+ * 函数说明：读取独立部署工具主路径，允许审计识别不经过 Vue Router 的同域子应用。
+ */
+const parseStandaloneToolPaths = (configText) => {
+  try {
+    const config = JSON.parse(configText)
+    const tools = Array.isArray(config?.tools) ? config.tools : []
+    return new Set(
+      tools
+        .map((tool) => normalizeToolRoutePath(tool?.basePath))
+        .filter((toolPath) => toolPath.startsWith('/tools/'))
+    )
+  } catch {
+    return new Set()
+  }
+}
+
+/**
  * 函数说明：读取公共配置接口，获取当前运行态的工具主数据与登录策略。
  */
 const loadSiteConfig = async (apiBaseUrl) => {
@@ -152,6 +170,7 @@ const printReport = (report) => {
   console.log(`二级分类: ${report.subCategoryCount}`)
   console.log(`工具总数: ${report.toolCount}`)
   console.log(`前端 /tools 路由数: ${report.toolRouteCount}`)
+  console.log(`独立部署工具路径数: ${report.standaloneToolPathCount}`)
   console.log(`显式 toolKey: ${report.explicitToolKeyCount}`)
   console.log(`策略规则数: ${report.ruleCount}`)
   console.log(`停用工具数: ${report.disabledToolCount}`)
@@ -185,6 +204,7 @@ const apiPort = process.env.GO_API_PORT || readEnvValue(PORTS_ENV_PATH, 'GO_API_
 const apiBaseUrl = `http://127.0.0.1:${apiPort}`
 const routerText = readTextFile(ROUTER_FILE)
 const routerMap = parseToolRoutes(routerText)
+const standaloneToolPathSet = parseStandaloneToolPaths(readTextFile(STANDALONE_TOOLS_FILE))
 const siteConfig = await loadSiteConfig(apiBaseUrl)
 const toolCategories = parseConfigArray(siteConfig.toolCategories).length
   ? parseConfigArray(siteConfig.toolCategories)
@@ -216,7 +236,7 @@ flatTools.forEach((entry) => {
     invalidToolKeyRows.push(`${title} -> ${resolvedToolKey}`)
   }
 
-  if (routePath.startsWith('/tools/') && !routerMap.has(routePath)) {
+  if (routePath.startsWith('/tools/') && !routerMap.has(routePath) && !standaloneToolPathSet.has(routePath)) {
     invalidToolRouteRows.push(`${title} -> ${routePath}`)
   }
 
@@ -291,6 +311,7 @@ printReport({
   toolCount: flatTools.length,
   explicitToolKeyCount,
   toolRouteCount,
+  standaloneToolPathCount: standaloneToolPathSet.size,
   ruleCount: loginToolConsumeRules.length,
   disabledToolCount,
   strategyFieldToolCount,

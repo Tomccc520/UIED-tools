@@ -47,6 +47,14 @@ const defaultChangelogTimeline = [
         ]
       },
       {
+        "title": "AI 简历同域集成",
+        "points": [
+          "AI 简历以独立 Next.js 应用接入 <strong><router-link to=\"/tools/ai-resume\" target=\"_blank\" class=\"hover:text-blue-600 transition-colors\">/tools/ai-resume</router-link></strong>，通过同域路径代理运行，不使用 iframe，也不混合主站依赖。",
+          "编辑器补齐专业模板、移动端全屏编辑、AI 内容对比/应用/撤销闭环，并保留独立构建和发布能力。",
+          "导出链路同时支持 PDF 与可编辑 Word，发布冒烟覆盖首页、编辑器、静态资源、AI API 和 DOCX 文件有效性。"
+        ]
+      },
+      {
         "title": "发布回归与稳定性",
         "points": [
           "新增前台移动端、20 个核心工具与后台 P0 页面 Playwright 可视冒烟，检查关键入口真实可见且可点击。",

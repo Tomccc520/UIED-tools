@@ -26,6 +26,7 @@
     "smoke:core-tools": "node scripts/smoke-core-tools.mjs",
     "smoke:core-tools:visual": "node scripts/smoke-core-tools-visual.mjs",
     "smoke:frontend-mobile:visual": "node scripts/smoke-frontend-mobile-visual.mjs",
+    "smoke:ai-resume-integration": "node scripts/smoke-ai-resume-integration.mjs",
     "preview": "vite preview",
     "test:unit": "vitest"
   },

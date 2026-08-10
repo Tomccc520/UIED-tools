@@ -11,6 +11,7 @@ import path from 'node:path'
 const ROOT_DIR = process.cwd()
 const ROUTER_FILE = path.join(ROOT_DIR, 'src/router/router.ts')
 const TOOLS_FILE = path.join(ROOT_DIR, 'src/components/Tools/tools.ts')
+const STANDALONE_TOOLS_FILE = path.join(ROOT_DIR, 'src/config/standalone-tools.json')
 
 /**
  * 读取文本文件内容
@@ -73,18 +74,25 @@ function printSection(title, items) {
 function main() {
   const routerContent = readTextFile(ROUTER_FILE)
   const toolsContent = readTextFile(TOOLS_FILE)
+  const standaloneToolPaths = new Set(
+    JSON.parse(readTextFile(STANDALONE_TOOLS_FILE)).tools.map((tool) => tool.basePath)
+  )
 
   const routePaths = extractValues(routerContent, /path:\s*'([^']+)'/g)
   const routeNames = extractValues(routerContent, /name:\s*'([^']+)'/g)
   const toolUrls = extractValues(toolsContent, /url:\s*'([^']+)'/g).filter(url => url.startsWith('/'))
-  const normalizedToolPaths = [...new Set(toolUrls.map(normalizeToolPath))]
+  const normalizedToolPaths = [
+    ...new Set([...toolUrls.map(normalizeToolPath), ...standaloneToolPaths])
+  ]
 
   const routePathDuplicates = collectDuplicates(routePaths).map(([value, count]) => `${count}x ${value}`)
   const routeNameDuplicates = collectDuplicates(routeNames).map(([value, count]) => `${count}x ${value}`)
   const toolUrlDuplicates = collectDuplicates(toolUrls).map(([value, count]) => `${count}x ${value}`)
 
   const routePathSet = new Set(routePaths)
-  const missingRouteTools = normalizedToolPaths.filter(toolPath => !routePathSet.has(toolPath))
+  const missingRouteTools = normalizedToolPaths.filter(
+    toolPath => !routePathSet.has(toolPath) && !standaloneToolPaths.has(toolPath)
+  )
 
   console.log('=== 工具与路由一致性检查 ===')
   printSection('重复路由 path', routePathDuplicates)

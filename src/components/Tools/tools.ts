@@ -1,4 +1,5 @@
 import type { Tool, ToolCategory, ToolsReqData } from '@/types/tools'
+import { AI_RESUME_STANDALONE_TOOL } from '@/config/standaloneTools'
 
 const toolsCategories: ToolCategory[] = [
     {
@@ -950,14 +951,24 @@ const toolsCategories: ToolCategory[] = [
           list: [
             {
               id: 501,
-              title: 'AI简历生成器',
+              title: 'AI简历工作台',
               logo: { type: 'svg', name: 'resume' },
-              desc: '使用AI技术，一键生成专业简历，支持多种模板和导出为PDF，让求职更加高效',
-              url: '/tools/ai/resume',
+              desc: '专业简历模板、AI生成与优化、实时预览，支持 PDF 和 Word 导出',
+              url: AI_RESUME_STANDALONE_TOOL.basePath,
               cate: 'AI文档工具',
-              releaseDate: '2024/7/18 00:00:00',
-              tags: ['免费', '新品'],
-              isNew: true
+              releaseDate: '2026/8/11 00:00:00',
+              tags: ['AI', '专业模板', 'PDF/Word'],
+              isNew: true,
+              toolKey: AI_RESUME_STANDALONE_TOOL.toolKey,
+              needLogin: true,
+              consumePoints: 1,
+              memberFree: true,
+              allowAnonymousPreview: true,
+              commercialTier: 'standard',
+              memberCore: false,
+              status: 1,
+              remark: '标准计费工具：登录后使用，会员免扣',
+              policyVersion: '2026-04-commercial-v1'
             }
           ]
         },

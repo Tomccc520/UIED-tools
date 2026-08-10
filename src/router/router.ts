@@ -3,6 +3,18 @@ import { RouteRecordRaw } from 'vue-router'
 // import webinfo_ip_batch from '../components/Tools/IPBatch/IPBatch.vue'
 // import webinfo_ip_gps from '../components/Tools/IPGPS/IPGps.vue'
 
+const standaloneRedirectComponent = { render: () => null }
+
+/**
+ * 函数说明：将旧版 Vue 工具地址整页替换为独立子应用地址，避免新旧产品并存。
+ */
+const redirectToStandaloneTool = (targetUrl: string): false => {
+  if (typeof window !== 'undefined') {
+    window.location.replace(targetUrl)
+  }
+  return false
+}
+
 /**
  * 函数说明：此处仅保留路由注册和少量行为型 meta，页面 SEO 统一由后台配置与运行时服务处理。
  */
@@ -1518,11 +1530,12 @@ export const constantRoute: RouteRecordRaw[] = [
     component: () => import('../components/Tools/Dev/KeyboardTest/KeyboardTest.vue'),
     name: 'keyboardTest',
   },
-  // AI简历生成器
+  // AI 简历旧地址兼容：正式入口已迁移到独立 Next.js 应用。
   {
     path: '/tools/ai/resume',
-    component: () => import('../components/Tools/AI/AIResume.vue'),
+    component: standaloneRedirectComponent,
     name: 'aiResume',
+    beforeEnter: () => redirectToStandaloneTool('/tools/ai-resume'),
   },
   {
     path: '/tools/radar',

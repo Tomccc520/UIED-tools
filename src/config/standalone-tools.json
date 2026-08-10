@@ -1,0 +1,9 @@
+{
+  "tools": [
+    {
+      "toolKey": "ai-resume",
+      "basePath": "/tools/ai-resume",
+      "defaultDevTarget": "http://127.0.0.1:3002"
+    }
+  ]
+}

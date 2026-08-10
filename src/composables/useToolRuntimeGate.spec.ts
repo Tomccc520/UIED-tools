@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveRuntimeToolKeyByUrl,
   isInternalToolRuntimeLink,
+  isStandaloneToolRuntimeLink,
   resolveToolRuntimeLinkKind
 } from './useToolRuntimeGate'
 
@@ -27,5 +28,12 @@ describe('useToolRuntimeGate 纯函数', () => {
     expect(resolveToolRuntimeLinkKind('https://fsuied.com')).toBe('external')
     expect(resolveToolRuntimeLinkKind('javascript:alert(1)')).toBe('unsafe')
     expect(resolveToolRuntimeLinkKind('/tools/ai/toolbox')).toBe('internal')
+  })
+
+  it('识别 AI 简历独立应用的首页和子路由', () => {
+    expect(isStandaloneToolRuntimeLink('/tools/ai-resume')).toBe(true)
+    expect(isStandaloneToolRuntimeLink('/tools/ai-resume/editor?template=professional')).toBe(true)
+    expect(isStandaloneToolRuntimeLink('/tools/ai-resume-old')).toBe(false)
+    expect(isStandaloneToolRuntimeLink('/tools/ai/resume')).toBe(false)
   })
 })

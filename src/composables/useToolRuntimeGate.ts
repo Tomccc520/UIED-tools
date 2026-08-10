@@ -18,6 +18,7 @@ import {
   type ToolConsumeOptions
 } from '@/composables/useToolConsume'
 import type { Tool } from '@/types/tools'
+import { isStandaloneToolPath } from '@/config/standaloneTools'
 
 export interface ToolRuntimeEntry {
   title?: string
@@ -86,6 +87,13 @@ export const resolveToolRuntimeLinkKind = (url: unknown): ToolRuntimeLinkKind =>
  */
 export const isExternalToolLink = (url: unknown): boolean => {
   return resolveToolRuntimeLinkKind(url) === 'external'
+}
+
+/**
+ * 函数说明：识别独立部署工具链接，通过整页导航进入对应子应用。
+ */
+export const isStandaloneToolRuntimeLink = (url: unknown): boolean => {
+  return isStandaloneToolPath(normalizeToolRuntimeUrl(url))
 }
 
 /**
@@ -284,6 +292,11 @@ export const useToolRuntimeGate = () => {
 
     if (options.target === 'blank') {
       window.open(`${window.location.origin}${targetUrl}`, '_blank', 'noopener,noreferrer')
+      return true
+    }
+
+    if (isStandaloneToolRuntimeLink(targetUrl)) {
+      window.location.assign(targetUrl)
       return true
     }
 
