@@ -47,6 +47,14 @@ npm run smoke:ai-resume-integration
 4. 执行 `nginx -t` 后平滑重载 Nginx。
 5. 应用后台升级补丁 `20260811_integrate_ai_resume_app.sql`，将工具主数据旧地址更新为新入口。
 
+部署前从主站仓执行生产配置检查，并显式传入 AI 简历生产环境文件：
+
+```bash
+AI_RESUME_ENV_FILE=/absolute/path/to/airesume/.env.production npm run deploy:config:check
+```
+
+检查脚本会确认 `NEXT_PUBLIC_APP_BASE_PATH=/tools/ai-resume`，同时校验主站仓内的 Nginx 反向代理片段，避免构建成功后出现 `_next` 或 API 路径 404。
+
 `proxy_pass http://127.0.0.1:3002;` 末尾不能带 `/`，否则 `_next` 与 `/api/ai` 会 404。
 
 ## 登录边界

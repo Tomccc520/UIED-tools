@@ -12,6 +12,8 @@ FRONTEND_ENV_FILE="${FRONTEND_ENV_FILE:-${ROOT_DIR}/.env.production}"
 ADMIN_ENV_FILE="${ADMIN_ENV_FILE:-${ROOT_DIR}/backend/likeadmin-go/admin/.env.production}"
 SERVER_ENV_FILE="${SERVER_ENV_FILE:-${ROOT_DIR}/backend/likeadmin-go/server/.env}"
 MATTING_ENV_FILE="${MATTING_ENV_FILE:-${ROOT_DIR}/backend/matting-service/.env}"
+AI_RESUME_ENV_FILE="${AI_RESUME_ENV_FILE:-}"
+AI_RESUME_NGINX_FILE="${AI_RESUME_NGINX_FILE:-${ROOT_DIR}/deploy/nginx/ai-resume.location.conf}"
 
 PASS_COUNT=0
 WARN_COUNT=0
@@ -204,7 +206,39 @@ check_matting_token_match() {
   mark_pass "抠图内部令牌长度与一致性检查通过"
 }
 
-# 函数说明：执行前台、后台、服务端和抠图服务的生产配置检查。
+# 函数说明：校验 AI 简历生产环境保持独立构建，并固定使用主站约定的同域 basePath。
+check_ai_resume_config() {
+  local base_path
+
+  if [[ ! -f "${AI_RESUME_NGINX_FILE}" ]]; then
+    mark_fail "AI 简历 Nginx 路由配置不存在: ${AI_RESUME_NGINX_FILE}"
+  elif grep -Fq "location ^~ /tools/ai-resume/" "${AI_RESUME_NGINX_FILE}" \
+    && grep -Fq "proxy_pass http://127.0.0.1:3002;" "${AI_RESUME_NGINX_FILE}"; then
+    mark_pass "AI 简历 Nginx 同域路径配置已存在"
+  else
+    mark_fail "AI 简历 Nginx 配置缺少 /tools/ai-resume/ 或 3002 反向代理"
+  fi
+
+  if [[ -z "${AI_RESUME_ENV_FILE}" ]]; then
+    mark_fail "未指定 AI_RESUME_ENV_FILE，无法确认 AI 简历生产 basePath"
+    return
+  fi
+
+  if [[ ! -f "${AI_RESUME_ENV_FILE}" ]]; then
+    mark_fail "AI 简历生产配置文件不存在: ${AI_RESUME_ENV_FILE}"
+    return
+  fi
+
+  base_path="$(read_env_value "${AI_RESUME_ENV_FILE}" "NEXT_PUBLIC_APP_BASE_PATH")"
+  if [[ "${base_path}" != "/tools/ai-resume" ]]; then
+    mark_fail "AI 简历 NEXT_PUBLIC_APP_BASE_PATH 必须为 /tools/ai-resume"
+    return
+  fi
+
+  mark_pass "AI 简历生产 basePath 配置正确"
+}
+
+# 函数说明：执行前台、后台、服务端、抠图服务和 AI 简历的生产配置检查。
 main() {
   local frontend_ready=0
   local admin_ready=0
@@ -246,6 +280,8 @@ main() {
     require_env_value "Go 后端" "${SERVER_ENV_FILE}" "MATTING_INTERNAL_TOKEN"
     check_matting_token_match
   fi
+
+  check_ai_resume_config
 
   cat <<EOF
 

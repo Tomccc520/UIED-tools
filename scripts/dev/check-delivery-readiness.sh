@@ -19,6 +19,7 @@ TOOLS_PORT="${TOOLS_PORT:-}"
 ADMIN_PORT="${ADMIN_PORT:-}"
 GO_API_PORT="${GO_API_PORT:-}"
 MATTING_PORT="${MATTING_PORT:-}"
+AI_RESUME_PORT="${AI_RESUME_PORT:-}"
 MYSQL_PORT="${MYSQL_PORT:-}"
 REDIS_PORT="${REDIS_PORT:-}"
 DB_NAME="${DB_NAME:-}"
@@ -84,6 +85,7 @@ load_runtime_settings() {
   ADMIN_PORT="${ADMIN_PORT:-$(read_env_value "${PORTS_ENV_FILE}" "ADMIN_PORT" "5180")}"
   GO_API_PORT="${GO_API_PORT:-$(read_env_value "${PORTS_ENV_FILE}" "GO_API_PORT" "8003")}"
   MATTING_PORT="${MATTING_PORT:-$(read_env_value "${PORTS_ENV_FILE}" "MATTING_PORT" "8091")}"
+  AI_RESUME_PORT="${AI_RESUME_PORT:-$(read_env_value "${PORTS_ENV_FILE}" "AI_RESUME_PORT" "3002")}"
   MYSQL_PORT="${MYSQL_PORT:-$(read_env_value "${PORTS_ENV_FILE}" "MYSQL_PORT" "33069")}"
   REDIS_PORT="${REDIS_PORT:-$(read_env_value "${PORTS_ENV_FILE}" "REDIS_PORT" "16379")}"
   DB_NAME="${DB_NAME:-$(read_env_value "${PORTS_ENV_FILE}" "DB_NAME" "uiedtool")}"
@@ -161,6 +163,27 @@ check_http_service() {
   mark_warn "${label} 暂不可访问: ${url}"
 }
 
+# 函数说明：检查抠图代理不仅能访问，而且至少有一个外部 Provider 已完成配置。
+check_matting_service() {
+  local url="$1"
+  local payload
+  local ready
+
+  payload="$(curl -fsS --max-time 8 "${url}" 2>/dev/null || true)"
+  if [[ -z "${payload}" ]]; then
+    mark_warn "抠图服务暂不可访问: ${url}"
+    return
+  fi
+
+  ready="$(printf '%s' "${payload}" | python3 -c 'import json, sys; data = json.load(sys.stdin); print("1" if data.get("ok") is True and data.get("ready") is True else "0")' 2>/dev/null || echo "0")"
+  if [[ "${ready}" == "1" ]]; then
+    mark_pass "抠图服务与 Provider 均已就绪: ${url}"
+    return
+  fi
+
+  mark_warn "抠图服务可访问但 Provider 未就绪，请在后台配置阿里云或抠抠图 API Key"
+}
+
 # 函数说明：检查数据库容器状态与关键数据表存在性，确认交付库结构已具备商业能力。
 check_database_readiness() {
   local mysql_container_id
@@ -218,7 +241,8 @@ check_service_endpoints() {
   check_http_service "工具前端" "http://127.0.0.1:${TOOLS_PORT}"
   check_http_service "后台前端" "http://127.0.0.1:${ADMIN_PORT}"
   check_http_service "后台配置接口" "http://127.0.0.1:${GO_API_PORT}/api/common/index/config"
-  check_http_service "抠图服务" "http://127.0.0.1:${MATTING_PORT}/health"
+  check_matting_service "http://127.0.0.1:${MATTING_PORT}/health"
+  check_http_service "AI 简历服务" "http://127.0.0.1:${AI_RESUME_PORT}/tools/ai-resume"
 }
 
 # 函数说明：输出本次商业交付自检摘要，并给出下一步建议。
@@ -229,7 +253,7 @@ print_summary() {
 - 通过: ${PASS_COUNT}
 - 警告: ${WARN_COUNT}
 - 失败: ${FAIL_COUNT}
-- 当前端口: tools=${TOOLS_PORT}, admin=${ADMIN_PORT}, api=${GO_API_PORT}, matting=${MATTING_PORT}, mysql=${MYSQL_PORT}, redis=${REDIS_PORT}
+- 当前端口: tools=${TOOLS_PORT}, admin=${ADMIN_PORT}, api=${GO_API_PORT}, matting=${MATTING_PORT}, resume=${AI_RESUME_PORT}, mysql=${MYSQL_PORT}, redis=${REDIS_PORT}
 EOF
 
   if [[ "${FAIL_COUNT}" -gt 0 ]]; then
