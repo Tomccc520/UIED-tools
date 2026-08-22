@@ -1,5 +1,5 @@
 import type { Tool, ToolCategory, ToolsReqData } from '@/types/tools'
-import { AI_RESUME_STANDALONE_TOOL } from '@/config/standaloneTools'
+import { AI_PERLER_TOOL_PATH, AI_RESUME_STANDALONE_TOOL } from '@/config/standaloneTools'
 
 const toolsCategories: ToolCategory[] = [
     {
@@ -855,6 +855,27 @@ const toolsCategories: ToolCategory[] = [
           id: 5,
           title: 'AI图像工具',
           list: [
+            {
+              id: 410,
+              title: '拼豆图纸生成器',
+              logo: { type: 'svg', name: 'aiQrcode' },
+              desc: '上传图片一键生成可编辑的拼豆图纸、色号统计和采购清单，支持下载和专心拼豆模式',
+              url: AI_PERLER_TOOL_PATH,
+              cate: 'AI图像工具',
+              releaseDate: '2026/8/20 00:00:00',
+              tags: ['免费', '拼豆', '图纸'],
+              isNew: true,
+              toolKey: 'ai-perler',
+              needLogin: false,
+              consumePoints: 0,
+              memberFree: true,
+              allowAnonymousPreview: true,
+              commercialTier: 'free',
+              memberCore: false,
+              status: 1,
+              remark: '免费工具：浏览器本地生成拼豆图纸和采购清单',
+              policyVersion: '2026-08-perler-v1'
+            },
             {
               id: 407,
               title: 'AI智能去水印',

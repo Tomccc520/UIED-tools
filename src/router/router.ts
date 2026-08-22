@@ -1538,6 +1538,27 @@ export const constantRoute: RouteRecordRaw[] = [
     beforeEnter: () => redirectToStandaloneTool('/tools/ai-resume'),
   },
   {
+    path: '/tools/ai-perler',
+    component: () => import('../components/Tools/AI/PerlerReactHost.vue'),
+    name: 'aiPerler',
+    meta: {
+      title: '拼豆图纸生成器',
+      description: '上传图片生成可编辑的拼豆图纸、色号统计和采购清单。'
+    }
+  },
+  {
+    path: '/tools/ai-perler/focus',
+    component: () => import('../components/Tools/AI/PerlerReactHost.vue'),
+    name: 'aiPerlerFocus',
+    props: {
+      mode: 'focus'
+    },
+    meta: {
+      title: '专心拼豆',
+      hideToolsRecommend: true
+    }
+  },
+  {
     path: '/tools/radar',
     component: () => import('../components/Tools/Chart/Radar/Radar.vue'),
     name: 'radar',

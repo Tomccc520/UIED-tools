@@ -120,8 +120,8 @@ export default defineConfig({
     ]
   },
   esbuild: {
-    jsxFactory: 'h',
-    jsxFragment: 'Fragment'
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment'
   },
   // 生产环境基础路径配置
   base: '/',
@@ -299,7 +299,6 @@ export default defineConfig({
         secure: false,
         ws: true
       },
-
       // 翻译接口代理配置
       '/api/translate': {
         target: 'https://suapi.net',

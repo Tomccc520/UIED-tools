@@ -15,6 +15,7 @@ export interface StandaloneToolConfig {
 
 export const standaloneTools = standaloneToolsConfig.tools as StandaloneToolConfig[]
 export const AI_RESUME_STANDALONE_TOOL = standaloneTools.find((tool) => tool.toolKey === 'ai-resume') as StandaloneToolConfig
+export const AI_PERLER_TOOL_PATH = '/tools/ai-perler'
 
 /**
  * 函数说明：判断目标路径是否属于独立部署工具，防止交给 Vue Router 处理。
