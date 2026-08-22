@@ -343,6 +343,41 @@ const verifyHomeMobileLayout = async (page, baseUrl) => {
 }
 
 /**
+ * 函数说明：检查 AI 工具箱在移动端保留可读字号、工具卡和单一页面滚动，避免全局字号缩小后难以操作。
+ */
+const verifyAiToolboxMobileLayout = async (page, baseUrl) => {
+  await page.goto(`${baseUrl}/tools/ai/toolbox`, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('.ai-home-container .tool-card', { state: 'visible', timeout: 15000 })
+
+  const metrics = await page.evaluate(() => {
+    const html = document.documentElement
+    const container = document.querySelector('.ai-home-container')
+    const firstCard = document.querySelector('.ai-home-container .tool-card')
+    const firstTitle = document.querySelector('.ai-home-container .tool-card__title')
+    const cardRect = firstCard?.getBoundingClientRect()
+    const cardStyle = firstCard ? window.getComputedStyle(firstCard) : null
+    const titleStyle = firstTitle ? window.getComputedStyle(firstTitle) : null
+    return {
+      scrollWidth: html.scrollWidth,
+      clientWidth: html.clientWidth,
+      containerScrollHeight: container?.scrollHeight || 0,
+      cardCount: document.querySelectorAll('.ai-home-container .tool-card').length,
+      cardWidth: Math.round(cardRect?.width || 0),
+      cardFontSize: cardStyle?.fontSize || '',
+      titleFontSize: titleStyle?.fontSize || ''
+    }
+  })
+
+  assertNoHorizontalOverflow(metrics, 'AI 工具箱移动端')
+  if (metrics.cardCount < 4 || metrics.cardWidth < 280) {
+    throw new Error(`AI 工具箱移动端卡片布局异常：${JSON.stringify(metrics)}`)
+  }
+  if (Number.parseFloat(metrics.titleFontSize) < 15) {
+    throw new Error(`AI 工具箱移动端标题字号过小：${metrics.titleFontSize}`)
+  }
+}
+
+/**
  * 函数说明：检查热榜移动端无阴影、无横向溢出，前三名展示在单列中。
  */
 const verifyHotRankingMobileLayout = async (page, baseUrl) => {
@@ -531,6 +566,7 @@ const main = async () => {
     })
 
     await verifyHomeMobileLayout(page, server.baseUrl)
+    await verifyAiToolboxMobileLayout(page, server.baseUrl)
     await verifyHotRankingMobileLayout(page, server.baseUrl)
     await verifyLoginDialogMobileLayout(page, server.baseUrl)
 
@@ -548,7 +584,7 @@ const main = async () => {
       throw new Error(`移动端可视冒烟不应触发扣费接口：${consumeRequests.join(', ')}`)
     }
 
-    console.log('✅ 前台移动端可视冒烟通过：首页两列、热榜无阴影、登录开关与弹窗布局正常。')
+    console.log('✅ 前台移动端可视冒烟通过：首页两列、AI 工具箱可读、热榜无阴影、登录开关与弹窗布局正常。')
   } finally {
     if (browser) {
       await browser.close()

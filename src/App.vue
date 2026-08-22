@@ -413,28 +413,4 @@ useToolRankingTracker()
 :root {
   font-size: 16px;
 }
-
-@media screen and (max-width: 1440px) {
-  :root {
-    font-size: 15px;
-  }
-}
-
-@media screen and (max-width: 1024px) {
-  :root {
-    font-size: 14px;
-  }
-}
-
-@media screen and (max-width: 768px) {
-  :root {
-    font-size: 13px;
-  }
-}
-
-@media screen and (max-width: 480px) {
-  :root {
-    font-size: 12px;
-  }
-}
 </style>
