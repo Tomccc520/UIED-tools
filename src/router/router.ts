@@ -1,4 +1,5 @@
 import { RouteRecordRaw } from 'vue-router'
+import { AI_RESUME_RELEASE_ENABLED } from '@/config/standaloneTools'
 // import webinfo_ip_analysis from '../components/Tools/IPAnalysis/IPAnalysis.vue'
 // import webinfo_ip_batch from '../components/Tools/IPBatch/IPBatch.vue'
 // import webinfo_ip_gps from '../components/Tools/IPGPS/IPGps.vue'
@@ -1535,7 +1536,16 @@ export const constantRoute: RouteRecordRaw[] = [
     path: '/tools/ai/resume',
     component: standaloneRedirectComponent,
     name: 'aiResume',
-    beforeEnter: () => redirectToStandaloneTool('/tools/ai-resume'),
+    beforeEnter: () => AI_RESUME_RELEASE_ENABLED
+      ? redirectToStandaloneTool('/tools/ai-resume')
+      : '/',
+  },
+  // AI 简历未开启时的同域路径兜底；开启后由 Vite/Nginx 在 Vue Router 前转发。
+  {
+    path: '/tools/ai-resume/:pathMatch(.*)*',
+    component: standaloneRedirectComponent,
+    name: 'aiResumeStandaloneFallback',
+    beforeEnter: () => '/',
   },
   {
     path: '/tools/ai-perler',

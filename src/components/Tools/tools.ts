@@ -1,5 +1,10 @@
 import type { Tool, ToolCategory, ToolsReqData } from '@/types/tools'
-import { AI_PERLER_TOOL_PATH, AI_RESUME_STANDALONE_TOOL } from '@/config/standaloneTools'
+import {
+  AI_PERLER_TOOL_PATH,
+  AI_RESUME_RELEASE_ENABLED,
+  AI_RESUME_STANDALONE_TOOL,
+  filterToolCategoriesForRelease
+} from '@/config/standaloneTools'
 
 const toolsCategories: ToolCategory[] = [
     {
@@ -3673,7 +3678,7 @@ const toolsCategories: ToolCategory[] = [
   ]
 
 export function getToolsCate(): ToolCategory[] {
-  return toolsCategories
+  return filterToolCategoriesForRelease(toolsCategories)
 }
 //工具list
 export function toolsList() {
@@ -3688,6 +3693,9 @@ export function toolsList() {
       if (Array.isArray(tool.list)) {
         processTools(tool.list)
       } else {
+        if (tool.toolKey === AI_RESUME_STANDALONE_TOOL.toolKey && !AI_RESUME_RELEASE_ENABLED) {
+          continue
+        }
         const toolUrl = tool.url || `id:${tool.id}`
         if (!seenToolUrls.has(toolUrl)) {
           seenToolUrls.add(toolUrl)

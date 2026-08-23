@@ -47,11 +47,11 @@ const defaultChangelogTimeline = [
         ]
       },
       {
-        "title": "AI 简历同域集成",
+        "title": "AI 简历开发预告",
         "points": [
-          "AI 简历以独立 Next.js 应用接入 <strong><router-link to=\"/tools/ai-resume\" target=\"_blank\" class=\"hover:text-blue-600 transition-colors\">/tools/ai-resume</router-link></strong>，通过同域路径代理运行，不使用 iframe，也不混合主站依赖。",
+          "AI 简历已完成主流程开发与主站适配，本期正式版本暂缓开放入口，后续完成静态化与 Go 接口迁移后上线。",
           "编辑器补齐专业模板、移动端全屏编辑、AI 内容对比/应用/撤销闭环，并保留独立构建和发布能力。",
-          "导出链路同时支持 PDF 与可编辑 Word，发布冒烟覆盖首页、编辑器、静态资源、AI API 和 DOCX 文件有效性。"
+          "现有代码与测试完整保留，不影响本期主站、管理后台及其他工具部署。"
         ]
       },
       {

@@ -17,6 +17,9 @@ const standaloneConfig = JSON.parse(
 )
 const resumeTool = standaloneConfig.tools.find((tool) => tool.toolKey === 'ai-resume')
 const smokeOrigin = String(process.env.UIED_RESUME_SMOKE_BASE_URL || 'http://127.0.0.1:5179').replace(/\/+$/, '')
+const resumeSmokeEnabled = String(
+  process.env.UIED_RESUME_SMOKE_REQUIRED || process.env.VITE_ENABLE_AI_RESUME || ''
+).trim() === '1' || String(process.env.VITE_ENABLE_AI_RESUME || '').trim().toLowerCase() === 'true'
 
 /**
  * 函数说明：在超时时间内请求集成地址，避免发布检查因服务无响应而卡住。
@@ -77,6 +80,11 @@ const checkPage = async (suffix, label) => {
  */
 const main = async () => {
   assert(resumeTool?.basePath === '/tools/ai-resume', '独立工具配置缺少 AI 简历 basePath')
+
+  if (!resumeSmokeEnabled) {
+    console.log('AI 简历本期未开启，已跳过独立 Next.js 集成冒烟。')
+    return
+  }
 
   const homeHtml = await checkPage('', '简历首页')
   await checkPage('/editor', '简历编辑器')

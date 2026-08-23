@@ -125,7 +125,7 @@ const timeTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const autoRefreshTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const learningConfig = ref<HomepageLearningFeedConfig>(getDefaultHomepageLearningConfig())
 
-const CACHE_KEY = 'hot_search_cache_v5'
+const CACHE_KEY = 'hot_search_cache_v6'
 const CACHE_EXPIRY = 10 * 60 * 1000
 const REFRESH_COOLDOWN = 30 * 1000
 
@@ -175,6 +175,13 @@ const hotSections = computed(() =>
 )
 
 /**
+ * 函数说明：判断热榜分组是否包含可展示数据，避免旧版空缓存阻断最新接口请求。
+ */
+const hasVisibleSections = (sections: Record<string, Article[]>): boolean => {
+  return Object.values(sections).some((items) => Array.isArray(items) && items.length > 0)
+}
+
+/**
  * 函数说明：读取热榜缓存，命中有效缓存时直接回填响应式列表，避免刷新阶段再次触发 DOM 竞争。
  */
 const getCache = (): HotSearchCacheData | null => {
@@ -195,6 +202,10 @@ const getCache = (): HotSearchCacheData | null => {
     }
     const cacheData = data as Partial<HotSearchCacheData>
     if (!cacheData.sections || typeof cacheData.sections !== 'object') {
+      localStorage.removeItem(CACHE_KEY)
+      return null
+    }
+    if (!hasVisibleSections(cacheData.sections)) {
       localStorage.removeItem(CACHE_KEY)
       return null
     }
@@ -302,7 +313,7 @@ const refreshList = async (forceRefresh = false) => {
     const nextData = normalizeHomepageSections(await getHomepageLearningFeed())
 
     applySectionArticles(nextData)
-    if (Object.values(nextData).some((items) => items.length > 0)) {
+    if (hasVisibleSections(nextData)) {
       setCache({
         sections: nextData,
         learningConfig: learningConfig.value

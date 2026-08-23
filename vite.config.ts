@@ -60,6 +60,7 @@ const backendProxyTarget = process.env.VITE_BACKEND_PROXY_TARGET || 'http://127.
 const resumeProxyTarget = process.env.VITE_RESUME_PROXY_TARGET
   || standaloneToolsConfig.tools.find((tool) => tool.toolKey === 'ai-resume')?.defaultDevTarget
   || 'http://127.0.0.1:3002'
+const enableResumeProxy = process.env.VITE_ENABLE_AI_RESUME === 'true'
 
 /**
  * 修复第三方样式中的历史拼写错误
@@ -292,13 +293,15 @@ export default defineConfig({
       'Cross-Origin-Embedder-Policy': 'require-corp',
     } : {},
     proxy: {
-      // AI 简历保持 Next.js 独立运行，开发环境原路径转发 basePath。
-      '/tools/ai-resume': {
-        target: resumeProxyTarget,
-        changeOrigin: true,
-        secure: false,
-        ws: true
-      },
+      // AI 简历保持 Next.js 独立运行，仅在显式开启时转发 basePath。
+      ...(enableResumeProxy ? {
+        '/tools/ai-resume': {
+          target: resumeProxyTarget,
+          changeOrigin: true,
+          secure: false,
+          ws: true
+        }
+      } : {}),
       // 翻译接口代理配置
       '/api/translate': {
         target: 'https://suapi.net',

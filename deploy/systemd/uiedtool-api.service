@@ -1,0 +1,24 @@
+# @copyright Tomda (https://www.tomda.top)
+# @copyright UIED技术团队 (https://fsuied.com)
+# @author UIED技术团队
+# @createDate 2026-08-22
+
+[Unit]
+Description=UIED Tools Go API
+After=network.target
+
+[Service]
+Type=simple
+User=www
+Group=www
+WorkingDirectory=/www/wwwroot/uiedtool.com/app/current/backend
+EnvironmentFile=/www/wwwroot/uiedtool.com/app/shared/.env
+ExecStart=/www/wwwroot/uiedtool.com/app/current/backend/uiedtool-api -c /www/wwwroot/uiedtool.com/app/shared/.env
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

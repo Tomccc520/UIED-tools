@@ -4,6 +4,7 @@ import { getWebInfo } from '../../api/webinfo'
 import { getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 import { findToolByUrl, flattenToolsFromCategories } from '@/services/toolCatalog'
+import { filterToolCategoriesForRelease } from '@/config/standaloneTools'
 
 interface ToolInfoQuery {
   id?: number
@@ -160,7 +161,7 @@ export const useToolsStore = defineStore('tools', {
         // 再尝试读取后台配置化工具分类，优先使用运营配置
         const siteConfig = await getSitePublicConfig({ forceRefresh: true })
         if (siteConfig.toolCategories.length > 0) {
-          this.cates = cloneToolCategories(siteConfig.toolCategories)
+          this.cates = cloneToolCategories(filterToolCategoriesForRelease(siteConfig.toolCategories))
         }
       } catch (error) {
         console.error('获取工具分类失败:', error)

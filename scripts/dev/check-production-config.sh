@@ -14,6 +14,7 @@ SERVER_ENV_FILE="${SERVER_ENV_FILE:-${ROOT_DIR}/backend/likeadmin-go/server/.env
 MATTING_ENV_FILE="${MATTING_ENV_FILE:-${ROOT_DIR}/backend/matting-service/.env}"
 AI_RESUME_ENV_FILE="${AI_RESUME_ENV_FILE:-}"
 AI_RESUME_NGINX_FILE="${AI_RESUME_NGINX_FILE:-${ROOT_DIR}/deploy/nginx/ai-resume.location.conf}"
+DEPLOY_AI_RESUME="${DEPLOY_AI_RESUME:-0}"
 
 PASS_COUNT=0
 WARN_COUNT=0
@@ -95,7 +96,7 @@ require_env_value() {
     return
   fi
 
-  if [[ "${value}" =~ example\.com|replace-with|your[-_]|changeme|local[-_]development|development-token ]]; then
+  if [[ "${value}" =~ example\.com|replace-with|your[-_]|change[-_]|changeme|local[-_]development|development-token ]]; then
     mark_fail "${label}仍使用 ${key} 示例占位值"
     return
   fi
@@ -281,7 +282,11 @@ main() {
     check_matting_token_match
   fi
 
-  check_ai_resume_config
+  if [[ "${DEPLOY_AI_RESUME}" == "1" ]]; then
+    check_ai_resume_config
+  else
+    mark_pass "AI 简历已按本期发布范围暂缓部署"
+  fi
 
   cat <<EOF
 
