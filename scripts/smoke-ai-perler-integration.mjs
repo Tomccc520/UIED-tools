@@ -24,6 +24,9 @@ const verifyMainSiteShell = async (page, path, options = {}) => {
     hasMainSidebar: Boolean(document.querySelector('.el-aside:first-child .el-scrollbar')),
     hasMainHeader: Boolean(document.querySelector('header')),
     hasMainFooter: Boolean(document.querySelector('footer[role="contentinfo"]')),
+    usesHomeSidebarMenu: Array.from(document.querySelectorAll('.el-aside:first-child .menu-text'))
+      .some((element) => element.textContent?.trim() === '设计工具'),
+    usesAiToolboxMenu: Boolean(document.querySelector('.el-aside:first-child .is-ai-toolbox-menu')),
     hasLegacyStandaloneShell: Boolean(document.querySelector('.uied-tool-shell')),
     hasIframe: Boolean(document.querySelector('iframe')),
     hasPerlerCanvas: Boolean(document.querySelector('.perler-react-host')),
@@ -34,6 +37,8 @@ const verifyMainSiteShell = async (page, path, options = {}) => {
   assert(pageState.hasMainSidebar, `${path} 未复用主站左侧菜单`)
   assert(pageState.hasMainHeader, `${path} 未复用主站头部`)
   assert(pageState.hasMainFooter, `${path} 未复用主站页脚`)
+  assert(pageState.usesHomeSidebarMenu, `${path} 未使用首页分类菜单模式`)
+  assert(!pageState.usesAiToolboxMenu, `${path} 被错误识别为 AI 工具箱二级路由`)
   assert(pageState.hasPerlerCanvas, `${path} 未挂载拼豆 React 画布`)
   assert(pageState.hasUploadEntry || options.allowRedirect, `${path} 未显示拼豆上传入口`)
   assert(!pageState.hasLegacyStandaloneShell, `${path} 不应保留独立拼豆壳层`)
@@ -97,6 +102,46 @@ const verifyFocusModeFlow = async (page) => {
 }
 
 /**
+ * 函数说明：验证 AI 工具箱侧栏使用与首页一致的一级分组和二级菜单间距，避免退回扁平一级列表。
+ */
+const verifyAiToolboxSidebarMode = async (page) => {
+  await page.goto(`${smokeOrigin}/tools/ai/toolbox`, { waitUntil: 'networkidle' })
+  await page.waitForSelector('.el-aside:first-child .ai-toolbox-navigation.is-opened', { timeout: 12_000 })
+
+  const sidebarState = await page.evaluate(() => {
+    const sidebar = document.querySelector('.el-aside:first-child')
+    const aiNavigation = sidebar?.querySelector('.ai-toolbox-navigation')
+    const firstAiMenuItem = aiNavigation?.querySelector('.el-menu-item')
+    const firstAiMenuItemStyle = firstAiMenuItem ? window.getComputedStyle(firstAiMenuItem) : null
+    const firstAiMenuItemRect = firstAiMenuItem?.getBoundingClientRect()
+    const menuTexts = Array.from(sidebar?.querySelectorAll('.menu-text') || [])
+      .map((element) => element.textContent?.trim())
+      .filter(Boolean)
+    return {
+      hasAiToolboxMode: Boolean(sidebar?.querySelector('.is-ai-toolbox-menu')),
+      keepsMainCategoryContext: ['设计工具', '图片处理', '办公工具'].every((title) => menuTexts.includes(title)),
+      keepsBottomNavigation: menuTexts.includes('更新记录') && menuTexts.includes('关于我们'),
+      recommendationOpened: Boolean(sidebar?.querySelector('.el-sub-menu:first-child.is-opened')),
+      aiNavigationOpened: Boolean(aiNavigation?.classList.contains('is-opened')),
+      aiMenuItemCount: aiNavigation?.querySelectorAll('.el-menu-item').length || 0,
+      firstAiMenuItemHeight: Math.round(firstAiMenuItemRect?.height || 0),
+      firstAiMenuItemPaddingLeft: Number.parseFloat(firstAiMenuItemStyle?.paddingLeft || '0'),
+      overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth
+    }
+  })
+
+  assert(sidebarState.hasAiToolboxMode, 'AI 工具箱页面未启用专用侧栏模式')
+  assert(sidebarState.keepsMainCategoryContext, 'AI 工具箱页面未保留首页完整分类菜单')
+  assert(sidebarState.keepsBottomNavigation, 'AI 工具箱页面未保留首页底部导航')
+  assert(!sidebarState.recommendationOpened, 'AI 工具箱页面不应默认展开推荐工具')
+  assert(sidebarState.aiNavigationOpened, 'AI 工具箱页面未默认展开 AI 二级菜单')
+  assert(sidebarState.aiMenuItemCount >= 4, 'AI 工具箱二级菜单内容不足')
+  assert(sidebarState.firstAiMenuItemHeight === 36, `AI 工具箱二级菜单行高异常：${sidebarState.firstAiMenuItemHeight}px`)
+  assert(sidebarState.firstAiMenuItemPaddingLeft >= 32, `AI 工具箱二级菜单缩进异常：${sidebarState.firstAiMenuItemPaddingLeft}px`)
+  assert(!sidebarState.overflow, 'AI 工具箱页面出现横向溢出')
+}
+
+/**
  * 函数说明：检查拼豆工具已作为主站 Vue 路由接入，覆盖桌面与移动端外壳及专心模式回退。
  */
 const main = async () => {
@@ -106,6 +151,7 @@ const main = async () => {
     await verifyMainSiteShell(desktopPage, '/tools/ai-perler')
     await verifyPixelationFlow(desktopPage)
     await verifyFocusModeFlow(desktopPage)
+    await verifyAiToolboxSidebarMode(desktopPage)
 
     const mobilePage = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true })
     await verifyMainSiteShell(mobilePage, '/tools/ai-perler')

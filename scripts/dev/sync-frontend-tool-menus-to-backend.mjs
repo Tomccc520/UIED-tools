@@ -10,7 +10,7 @@ import path from 'node:path'
 import process from 'node:process'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import ts from 'typescript'
+import { build as viteBuild } from 'vite'
 import {
   buildToolConsumeRulesFromCategories,
   countCommercialPolicyTools,
@@ -883,12 +883,13 @@ const logErrorAndExit = (message) => {
 }
 
 /**
- * 函数说明：解析命令行参数，支持是否强制覆盖已有配置。
+ * 函数说明：解析命令行参数，支持强制覆盖与仅同步工具主数据。
  */
 const parseArgs = () => {
   const args = new Set(process.argv.slice(2))
   return {
-    force: args.has('--force')
+    force: args.has('--force'),
+    catalogOnly: args.has('--catalog-only')
   }
 }
 
@@ -933,19 +934,37 @@ const loadRuntimeConfig = async () => {
 }
 
 /**
- * 函数说明：将前端 tools.ts 转译为可执行模块，并读取完整工具分类树。
+ * 函数说明：使用 Vite 打包 tools.ts 及其依赖，支持 @ 别名、JSON 与发布开关。
  */
 const loadFrontendToolCategories = async () => {
   await fs.mkdir(TMP_DIR, { recursive: true })
-  const sourceCode = await fs.readFile(TOOLS_SOURCE_FILE, 'utf8')
-  const transpiled = ts.transpileModule(sourceCode, {
-    compilerOptions: {
-      target: ts.ScriptTarget.ES2020,
-      module: ts.ModuleKind.ES2020
+  await viteBuild({
+    configFile: false,
+    root: ROOT_DIR,
+    logLevel: 'silent',
+    resolve: {
+      alias: {
+        '@': path.join(ROOT_DIR, 'src')
+      }
+    },
+    define: {
+      'import.meta.env.VITE_ENABLE_AI_RESUME': JSON.stringify(process.env.VITE_ENABLE_AI_RESUME || '')
+    },
+    build: {
+      target: 'es2020',
+      outDir: TMP_DIR,
+      emptyOutDir: false,
+      rollupOptions: {
+        input: TOOLS_SOURCE_FILE,
+        preserveEntrySignatures: 'strict',
+        output: {
+          format: 'es',
+          entryFileNames: path.basename(TEMP_TOOLS_MODULE_FILE),
+          inlineDynamicImports: true
+        }
+      }
     }
   })
-
-  await fs.writeFile(TEMP_TOOLS_MODULE_FILE, transpiled.outputText, 'utf8')
   const moduleUrl = `${pathToFileURL(TEMP_TOOLS_MODULE_FILE).href}?t=${Date.now()}`
   const toolsModule = await import(moduleUrl)
 
@@ -1331,23 +1350,32 @@ const ensureSystemConfigValueSupportsLargeJson = (runtimeConfig) => {
  * 函数说明：主流程，读取前端默认配置并同步到后台 website 配置。
  */
 const main = async () => {
-  const { force } = parseArgs()
+  const { force, catalogOnly } = parseArgs()
   const runtimeConfig = await loadRuntimeConfig()
   ensureSystemConfigValueSupportsLargeJson(runtimeConfig)
-  const payloads = await buildSyncPayloads()
+  const allPayloads = await buildSyncPayloads()
+  const payloads = catalogOnly
+    ? allPayloads.filter((payload) => payload.type !== 'login' && payload.name === 'toolsCategoryTree')
+    : allPayloads
 
   let sql = 'SET NAMES utf8mb4;\nSET @now_ts = UNIX_TIMESTAMP();\n'
   payloads.forEach((payload) => {
     sql += `${buildConfigUpsertSql(payload.name, payload.json, force, payload.repairGarbled, payload.type || 'website')}\n`
   })
 
-  logInfo(`准备同步 ${payloads.length} 项前端默认配置到后台（db=${runtimeConfig.dbName}，force=${force ? '1' : '0'}）...`)
+  logInfo(
+    `准备同步 ${payloads.length} 项前端默认配置到后台（db=${runtimeConfig.dbName}，force=${force ? '1' : '0'}，catalogOnly=${catalogOnly ? '1' : '0'}）...`
+  )
   const result = runMysqlSync(runtimeConfig, sql)
   if (result.status !== 0) {
     logErrorAndExit(result.stderr || result.stdout || '同步前端菜单配置失败')
   }
 
-  logInfo('前端默认菜单、头部、页脚与工具分类树已同步到后台 website 配置。')
+  logInfo(
+    catalogOnly
+      ? '前端发布工具分类树已同步到后台 website 配置，其它运营配置未修改。'
+      : '前端默认菜单、头部、页脚与工具分类树已同步到后台 website 配置。'
+  )
   payloads.forEach((payload) => {
     logInfo(`已处理配置项：${payload.name}`)
   })

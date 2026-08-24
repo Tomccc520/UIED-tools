@@ -195,11 +195,15 @@ const normalizeRoutePath = (rawPath: string): string => {
   return normalized.replace(/\/+$/, '')
 }
 
+const aiToolboxNamespacePath = '/tools/ai'
+
 /**
- * 函数说明：判断工具路由是否属于 AI 工具箱命名空间，避免依赖固定分类标题。
+ * 函数说明：判断工具路由是否属于 AI 工具箱命名空间，并严格校验路径段边界。
  */
 const isAiToolPath = (rawPath: string): boolean => {
-  return normalizeRoutePath(rawPath).startsWith('/tools/ai')
+  const normalizedPath = normalizeRoutePath(rawPath)
+  return normalizedPath === aiToolboxNamespacePath
+    || normalizedPath.startsWith(`${aiToolboxNamespacePath}/`)
 }
 
 const aiToolboxHomePath = '/tools/ai/toolbox'
@@ -238,7 +242,7 @@ const aiToolRouteSet = computed<Set<string>>(() => {
 const isAiToolboxHomeRoute = computed<boolean>(() => normalizeRoutePath(route.path) === normalizedAiToolboxHomePath)
 const isAiToolboxRoute = computed<boolean>(() => aiToolRouteSet.value.has(normalizeRoutePath(route.path)))
 const defaultOpeneds = computed<string[]>(() => {
-  return ['recommend']
+  return isAiToolboxRoute.value ? ['ai-toolbox-navigation'] : ['recommend']
 })
 
 // store实例
@@ -1002,8 +1006,16 @@ onMounted(() => {
 
     <!-- 菜单区域 -->
     <div class="sidebar-menu-shell">
-      <el-menu class="w-full" :class="{ 'is-ai-toolbox-menu': isAiToolboxRoute }" :default-active="defaultActive" :default-openeds="defaultOpeneds"
-        background-color="transparent" @open="handleOpen" @close="handleClose">
+      <el-menu
+        :key="isAiToolboxRoute ? 'ai-toolbox-menu' : 'default-sidebar-menu'"
+        class="w-full"
+        :class="{ 'is-ai-toolbox-menu': isAiToolboxRoute }"
+        :default-active="defaultActive"
+        :default-openeds="defaultOpeneds"
+        background-color="transparent"
+        @open="handleOpen"
+        @close="handleClose"
+      >
         <!-- 推荐工具（固定保留） -->
         <el-sub-menu index="recommend">
           <template #title>
@@ -1029,24 +1041,7 @@ onMounted(() => {
           </el-menu-item-group>
         </el-sub-menu>
 
-        <template v-if="isAiToolboxRoute">
-          <el-menu-item
-            v-for="(item, index) in displayAiToolboxSidebarMenuItems"
-            :key="`${item.name}-${item.link}-${index}`"
-            :class="['menu-top-item', 'menu-ai-toolbox-item', { 'menu-ai-toolbox-first': index === 0 }]"
-            :index="`ai-toolbox-menu-${index}`"
-            @click="handleAiToolboxSidebarItemClick(item)"
-          >
-            <div class="relative menu-icon-wrap">
-              <img class="menu-image-icon" :src="item.icon" :alt="`${item.name} 图标`" />
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="menu-text">{{ item.name }}</span>
-          </el-menu-item>
-        </template>
-
-        <template v-else>
-          <template v-if="hasSidebarMenuBlocks">
+        <template v-if="hasSidebarMenuBlocks && !isAiToolboxRoute">
             <template v-for="block in displaySidebarMenuBlocks" :key="`menu-block-${block.key}`">
               <el-sub-menu
                 v-if="block.type === 'dropdown' || block.type === 'category'"
@@ -1109,13 +1104,37 @@ onMounted(() => {
                 </el-menu-item>
               </template>
             </template>
-          </template>
+        </template>
 
-          <!-- 分类菜单（兼容旧配置） -->
-          <template v-else>
-            <template v-for="menu in displaySidebarCategoryMenus" :key="`category-${menu.key}`">
+        <!-- 分类菜单：AI 路由仅展开当前分类，其余结构与首页完全一致。 -->
+        <template v-else>
+          <template v-for="menu in displaySidebarCategoryMenus" :key="`category-${menu.key}`">
+              <el-sub-menu
+                v-if="isAiToolboxRoute && isAiToolboxCategoryMenu(menu)"
+                index="ai-toolbox-navigation"
+                class="ai-toolbox-navigation"
+              >
+                <template #title>
+                  <div class="relative menu-icon-wrap">
+                    <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
+                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                  </div>
+                  <span class="menu-text">{{ menu.title }}</span>
+                </template>
+                <el-menu-item-group>
+                  <el-menu-item
+                    v-for="(item, index) in displayAiToolboxSidebarMenuItems"
+                    :key="`${item.name}-${item.link}-${index}`"
+                    :index="`ai-toolbox-menu-${index}`"
+                    @click="handleAiToolboxSidebarItemClick(item)"
+                  >
+                    {{ item.name }}
+                  </el-menu-item>
+                </el-menu-item-group>
+              </el-sub-menu>
+
               <el-menu-item
-                v-if="menu.isDirectLink"
+                v-else-if="menu.isDirectLink"
                 class="menu-top-item"
                 :index="`category-link-${menu.key}`"
                 @click="handleCategoryMenuClick(menu)"
@@ -1146,35 +1165,35 @@ onMounted(() => {
                   </el-menu-item>
                 </el-menu-item-group>
               </el-sub-menu>
-            </template>
           </template>
-          <!-- 侧栏底部链接（后台可配置） -->
-          <el-menu-item
-            v-for="(item, index) in displaySidebarBottomLinks"
-            :key="`${item.name}-${item.link}-${index}`"
-            :index="`bottom-${index}`"
-            @click="handleBottomLinkItemClick(item)"
-          >
-            <div class="relative">
-              <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
-                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-                <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                  stroke-linejoin="round" />
-              </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
-            </div>
-            <span class="menu-text">{{ item.name }}</span>
-          </el-menu-item>
         </template>
+
+        <!-- 侧栏底部链接（后台可配置） -->
+        <el-menu-item
+          v-for="(item, index) in displaySidebarBottomLinks"
+          :key="`${item.name}-${item.link}-${index}`"
+          :index="`bottom-${index}`"
+          @click="handleBottomLinkItemClick(item)"
+        >
+          <div class="relative">
+            <svg class="menu-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M14 2H6C5.46957 2 4.96086 2.21071 4.58579 2.58579C4.21071 2.96086 4 3.46957 4 4V20C4 20.5304 4.21071 21.0391 4.58579 21.4142C4.96086 21.7893 5.46957 22 6 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V8L14 2Z"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M14 2V8H20" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+              <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                stroke-linejoin="round" />
+            </svg>
+            <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+          </div>
+          <span class="menu-text">{{ item.name }}</span>
+        </el-menu-item>
 
       </el-menu>
     </div>
@@ -1294,14 +1313,6 @@ onMounted(() => {
   padding: 0 12px !important;
 }
 
-.menu-ai-toolbox-item {
-  margin: 2px 0 !important;
-}
-
-.menu-ai-toolbox-first {
-  margin-top: 2px !important;
-}
-
 .menu-block-list-item {
   margin: 2px 0 !important;
 }
@@ -1374,15 +1385,6 @@ onMounted(() => {
 .menu-icon-wrap + .menu-text,
 .el-sub-menu :deep(.el-sub-menu__title) .menu-text {
   margin-left: 10px !important;
-}
-
-.is-ai-toolbox-menu {
-  --menu-item-height: 34px;
-  --menu-item-margin: 1px 0;
-  --submenu-padding: 4px 0;
-  --menu-border-radius: 6px;
-  --menu-icon-size: 16px;
-  --menu-hover-transform: none;
 }
 
 /* 悬停和激活状态 */
