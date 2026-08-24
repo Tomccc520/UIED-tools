@@ -7,7 +7,11 @@
 
 import { describe, expect, it } from 'vitest'
 import type { ToolCategory } from '@/types/tools'
-import { filterToolCategoriesForRelease, isAiResumeToolEntry } from './standaloneTools'
+import {
+  filterToolCategoriesForRelease,
+  isAiResumeToolEntry,
+  isReleaseHiddenToolEntry
+} from './standaloneTools'
 
 const categories: ToolCategory[] = [
   {
@@ -33,6 +37,14 @@ const categories: ToolCategory[] = [
             desc: '写作工具',
             url: '/tools/ai/article-generator',
             toolKey: 'ai-article-generator'
+          },
+          {
+            id: 3,
+            title: '品牌设计规范',
+            logo: { type: 'svg', name: 'brand' },
+            desc: '尚未完成的工具',
+            url: '/tools/design/brand-spec',
+            toolKey: 'design-brand-spec'
           }
         ]
       }
@@ -54,5 +66,12 @@ describe('独立工具发布过滤', () => {
 
     expect(tools).toHaveLength(1)
     expect(tools[0].toolKey).toBe('ai-article-generator')
+  })
+
+  it('无论独立工具开关如何都隐藏未达到交付标准的工具', () => {
+    expect(isReleaseHiddenToolEntry({ url: '/tools/design/brand-spec' })).toBe(true)
+    const tools = filterToolCategoriesForRelease(categories, true)[0].list[0].list
+
+    expect(tools.map((tool) => tool.toolKey)).toEqual(['ai-resume', 'ai-article-generator'])
   })
 })

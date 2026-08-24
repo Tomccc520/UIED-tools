@@ -189,6 +189,7 @@
 
 <script setup lang="ts">
 import { ref } from '@vue/runtime-core'
+import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import VueCropper from 'vue-cropperjs'
 import 'cropperjs/dist/cropper.css'
@@ -257,7 +258,7 @@ const handleDrop = (e: DragEvent) => {
 
 const handleFile = (file: File) => {
   if (!file.type.startsWith('image/')) {
-    alert('请只选择图片文件')
+    ElMessage.warning('请只选择图片文件')
     return
   }
   if (imageUrl.value.startsWith('blob:')) {

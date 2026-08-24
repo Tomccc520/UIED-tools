@@ -1141,8 +1141,8 @@ export const constantRoute: RouteRecordRaw[] = [
   },
   {
     path: '/tools/design/brand-spec',
-    component: () => import('../components/Tools/Design/BrandSpec.vue'),
     name: 'brandSpec',
+    redirect: '/tools/design/logo-spec',
   },
   /* 未开发功能-设计合同生成器
   {

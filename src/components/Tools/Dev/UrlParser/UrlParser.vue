@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 
@@ -62,10 +63,17 @@ watch(inputUrl, parseUrl)
 // Initial parse
 parseUrl()
 
-const copyText = (text: string) => {
-  navigator.clipboard.writeText(text)
-    .then(() => alert('已复制到剪贴板'))
-    .catch(err => console.error('复制失败:', err))
+/**
+ * 函数说明：复制 URL 解析字段并给出非阻塞反馈。
+ */
+const copyText = async (text: string) => {
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('已复制到剪贴板')
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 </script>
 

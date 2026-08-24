@@ -23,6 +23,8 @@
     "audit:tool-strategy": "node scripts/audit-tool-strategy-contract.mjs",
     "audit:tool-consume": "node scripts/audit-tool-consume-coverage.mjs",
     "audit:member-core-experience": "node scripts/audit-member-core-experience.mjs",
+    "audit:tool-result-actions": "node scripts/audit-tool-result-actions.mjs",
+    "audit:tool-ui-feedback": "node scripts/audit-tool-ui-feedback.mjs",
     "audit:tool-runtime-gate": "node scripts/audit-tool-runtime-gate.mjs",
     "smoke:core-tools": "node scripts/smoke-core-tools.mjs",
     "smoke:core-tools:visual": "node scripts/smoke-core-tools-visual.mjs",

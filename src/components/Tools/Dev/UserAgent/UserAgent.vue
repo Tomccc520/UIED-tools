@@ -10,71 +10,32 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
+import { parseUserAgent, type UserAgentInfo } from '@/utils/userAgent'
 
 const route = useRoute()
 
 const uaString = ref('')
-const parsedInfo = ref<any>({})
-
-const parseUA = (ua: string) => {
-  // 简单的 UA 解析逻辑，实际项目中可以使用 ua-parser-js 库
-  const result = {
-    browser: { name: 'Unknown', version: '' },
-    os: { name: 'Unknown', version: '' },
-    device: { type: 'Desktop', vendor: '', model: '' },
-    engine: { name: '', version: '' }
-  }
-
-  // Browser
-  if (ua.match(/Chrome\/([\d.]+)/)) {
-    result.browser.name = 'Chrome'
-    result.browser.version = RegExp.$1
-  } else if (ua.match(/Firefox\/([\d.]+)/)) {
-    result.browser.name = 'Firefox'
-    result.browser.version = RegExp.$1
-  } else if (ua.match(/Safari\/([\d.]+)/) && !ua.match(/Chrome/)) {
-    result.browser.name = 'Safari'
-    result.browser.version = RegExp.$1
-  } else if (ua.match(/Edge\/([\d.]+)/)) {
-    result.browser.name = 'Edge'
-    result.browser.version = RegExp.$1
-  }
-
-  // OS
-  if (ua.match(/Mac OS X ([\d_]+)/)) {
-    result.os.name = 'macOS'
-    result.os.version = RegExp.$1.replace(/_/g, '.')
-  } else if (ua.match(/Windows NT ([\d.]+)/)) {
-    result.os.name = 'Windows'
-    result.os.version = RegExp.$1
-  } else if (ua.match(/Android ([\d.]+)/)) {
-    result.os.name = 'Android'
-    result.os.version = RegExp.$1
-    result.device.type = 'Mobile'
-  } else if (ua.match(/iPhone OS ([\d_]+)/)) {
-    result.os.name = 'iOS'
-    result.os.version = RegExp.$1.replace(/_/g, '.')
-    result.device.type = 'Mobile'
-    result.device.vendor = 'Apple'
-    result.device.model = 'iPhone'
-  } else if (ua.match(/Linux/)) {
-    result.os.name = 'Linux'
-  }
-
-  return result
-}
+const parsedInfo = ref<UserAgentInfo>(parseUserAgent(''))
 
 onMounted(() => {
   uaString.value = navigator.userAgent
-  parsedInfo.value = parseUA(uaString.value)
+  parsedInfo.value = parseUserAgent(uaString.value)
 })
 
-const copyUA = () => {
-  navigator.clipboard.writeText(uaString.value)
-    .then(() => alert('已复制到剪贴板'))
-    .catch(err => console.error('复制失败:', err))
+/**
+ * 函数说明：复制当前 User Agent，并给出明确的成功或失败反馈。
+ */
+const copyUA = async () => {
+  try {
+    await navigator.clipboard.writeText(uaString.value)
+    ElMessage.success('User Agent 已复制')
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 </script>
 

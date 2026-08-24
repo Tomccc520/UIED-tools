@@ -7,6 +7,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import ts from 'typescript'
 
 const ROOT_DIR = process.cwd()
 const ROUTER_FILE = path.join(ROOT_DIR, 'src/router/router.ts')
@@ -22,11 +23,36 @@ function readTextFile(filePath) {
 }
 
 /**
- * 提取匹配项
- * 通过正则捕获组收集目标字段，返回字符串数组
+ * 提取字符串属性
+ * 通过 TypeScript 语法树收集目标字段，避免把注释块中的历史配置计入结果
  */
-function extractValues(content, regex) {
-  return [...content.matchAll(regex)].map(match => match[1])
+function extractStringPropertyValues(content, fileName, propertyName) {
+  const sourceFile = ts.createSourceFile(
+    fileName,
+    content,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS
+  )
+  const values = []
+
+  /**
+   * 函数说明：遍历 TypeScript 语法树并收集指定字符串属性，自动忽略注释块中的历史配置。
+   */
+  const visit = (node) => {
+    if (ts.isPropertyAssignment(node)) {
+      const name = ts.isIdentifier(node.name) || ts.isStringLiteral(node.name)
+        ? node.name.text
+        : ''
+      if (name === propertyName && ts.isStringLiteralLike(node.initializer)) {
+        values.push(node.initializer.text)
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+
+  visit(sourceFile)
+  return values
 }
 
 /**
@@ -78,9 +104,10 @@ function main() {
     JSON.parse(readTextFile(STANDALONE_TOOLS_FILE)).tools.map((tool) => tool.basePath)
   )
 
-  const routePaths = extractValues(routerContent, /path:\s*'([^']+)'/g)
-  const routeNames = extractValues(routerContent, /name:\s*'([^']+)'/g)
-  const toolUrls = extractValues(toolsContent, /url:\s*'([^']+)'/g).filter(url => url.startsWith('/'))
+  const routePaths = extractStringPropertyValues(routerContent, ROUTER_FILE, 'path')
+  const routeNames = extractStringPropertyValues(routerContent, ROUTER_FILE, 'name')
+  const toolUrls = extractStringPropertyValues(toolsContent, TOOLS_FILE, 'url')
+    .filter(url => url.startsWith('/'))
   const normalizedToolPaths = [
     ...new Set([...toolUrls.map(normalizeToolPath), ...standaloneToolPaths])
   ]

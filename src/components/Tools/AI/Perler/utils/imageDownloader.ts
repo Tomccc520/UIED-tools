@@ -1,3 +1,11 @@
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-08-24
+ */
+
+import { showToolFeedback } from '@/utils/toolFeedback';
 import { GridDownloadOptions } from '../types/downloadTypes';
 import { MappedPixel, PaletteColor } from './pixelation';
 import { getDisplayColorKey, getColorKeyByHex, ColorSystem } from './colorSystemUtils';
@@ -58,7 +66,7 @@ export function exportCsvData({
 }): void {
   if (!mappedPixelData || !gridDimensions) {
     console.error("导出失败: 映射数据或尺寸无效。");
-    alert("无法导出CSV，数据未生成或无效。");
+    showToolFeedback('无法导出 CSV，数据未生成或无效。', 'warning');
     return;
   }
 
@@ -220,12 +228,12 @@ export async function downloadImage({
 }): Promise<void> {
   if (!mappedPixelData || !gridDimensions || gridDimensions.N === 0 || gridDimensions.M === 0 || activeBeadPalette.length === 0) {
     console.error("下载失败: 映射数据或尺寸无效。");
-    alert("无法下载图纸，数据未生成或无效。");
+    showToolFeedback('无法下载图纸，数据未生成或无效。', 'warning');
     return;
   }
   if (!colorCounts) {
     console.error("下载失败: 色号统计数据无效。");
-    alert("无法下载图纸，色号统计数据未生成或无效。");
+    showToolFeedback('无法下载图纸，色号统计数据未生成或无效。', 'warning');
     return;
   }
 
@@ -330,7 +338,7 @@ export async function downloadImage({
     const context = downloadCanvas.getContext('2d');
     if (!context) {
       console.error("下载失败: 无法创建临时 Canvas Context。");
-      alert("无法下载图纸。");
+      showToolFeedback('无法下载图纸。', 'error');
       return;
     }
 
@@ -835,7 +843,7 @@ export async function downloadImage({
       }
     } catch (e) {
       console.error("下载图纸失败:", e);
-      alert("无法生成图纸下载链接。");
+      showToolFeedback('无法生成图纸下载链接。', 'error');
     }
   };
 

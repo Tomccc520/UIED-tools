@@ -176,6 +176,7 @@
  * @createDate 2025-12-13
  */
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -216,7 +217,7 @@ const handleDrop = (e: DragEvent) => {
 
 const processFile = (file: File) => {
   if (!file.type.startsWith('image/')) {
-    alert('请上传图片文件')
+    ElMessage.warning('请上传图片文件')
     return
   }
 

@@ -10,35 +10,6 @@
 <template>
   <div class="min-h-screen">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- 开发提示 -->
-      <div class="bg-blue-50 border-l-4 border-blue-400 p-4 mb-8">
-        <div class="flex">
-          <div class="flex-shrink-0">
-            <svg class="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-              fill="currentColor">
-              <path fill-rule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clip-rule="evenodd" />
-            </svg>
-          </div>
-          <div class="ml-3">
-            <h3 class="text-sm font-medium text-blue-800">功能开发中</h3>
-            <div class="mt-2 text-sm text-blue-700">
-              <p>Logo设计规范生成器正在开发中，即将为您提供以下功能：</p>
-              <ul class="list-disc list-inside mt-2 space-y-1">
-                <li>Logo文件上传与预览</li>
-                <li>品牌基础信息设置</li>
-                <li>Logo颜色规范定义</li>
-                <li>尺寸与安全区域设置</li>
-                <li>使用场景与规范说明</li>
-                <li>一键生成PDF规范文档</li>
-              </ul>
-              <p class="mt-2">我们正在努力完善这些功能，敬请期待！</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- 标题区域优化 -->
       <div class="text-center mb-12">
         <h2 class="text-3xl font-bold mb-4 text-gray-900">免费 Logo设计规范生成器</h2>
@@ -310,6 +281,7 @@
 import { ref, reactive, watch } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import { useHead } from '@vueuse/head'
+import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
@@ -419,12 +391,12 @@ const validateAndProcessFile = (file: File) => {
   const allowedTypes = ['image/jpeg', 'image/png', 'image/svg+xml']
 
   if (!allowedTypes.includes(file.type)) {
-    alert('请上传PNG、JPG或SVG格式的文件')
+    ElMessage.warning('请上传 PNG、JPG 或 SVG 格式的文件')
     return
   }
 
   if (file.size > maxSize) {
-    alert('文件大小不超过10MB')
+    ElMessage.warning('文件大小不能超过 10MB')
     return
   }
 
@@ -472,6 +444,10 @@ const rgbToCmyk = (r: number, g: number, b: number) => {
   let m = 1 - (g / 255)
   let y = 1 - (b / 255)
   let k = Math.min(c, m, y)
+
+  if (k >= 1) {
+    return { c: 0, m: 0, y: 0, k: 100 }
+  }
 
   c = (c - k) / (1 - k)
   m = (m - k) / (1 - k)
@@ -528,7 +504,7 @@ const showPreview = ref(false)
 
 const generateSpec = async () => {
   if (!logoFile.value || !brandName.value) {
-    alert('请上传Logo并填写品牌名称')
+    ElMessage.warning('请上传 Logo 并填写品牌名称')
     return
   }
   showPreview.value = true
@@ -543,7 +519,7 @@ const downloadSpec = async () => {
 
     const element = document.querySelector('.preview-content') as HTMLElement
     if (!element) {
-      alert('预览内容不存在')
+      ElMessage.error('预览内容不存在，请重新生成')
       return
     }
 
@@ -564,11 +540,23 @@ const downloadSpec = async () => {
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
 
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    let position = 0
+    let heightLeft = pdfHeight
+
+    pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight)
+    heightLeft -= pageHeight
+    while (heightLeft > 0) {
+      position = heightLeft - pdfHeight
+      pdf.addPage()
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, pdfHeight)
+      heightLeft -= pageHeight
+    }
     pdf.save(`${brandName.value}_logo规范.pdf`)
+    ElMessage.success('Logo 规范 PDF 已下载')
   } catch (error) {
     console.error('生成PDF时出错:', error)
-    alert('生成PDF时出错，请重试')
+    ElMessage.error('生成 PDF 时出错，请重试')
   }
 }
 

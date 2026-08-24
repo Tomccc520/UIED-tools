@@ -237,6 +237,7 @@
 import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { downloadMarkdownResult } from '@/utils/markdownResult'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import WritingGuide from './WritingGuide.vue'
@@ -643,8 +644,11 @@ onBeforeUnmount(async () => {
  * @param text Markdown文本
  * @param html HTML内容
  */
-const save = (text: string, html: string) => {
-  console.log('save', text, html)
+const save = (text: string, _html: string) => {
+  const downloaded = downloadMarkdownResult(text)
+  downloaded
+    ? ElMessage.success('已下载 Markdown 文件')
+    : ElMessage.warning('暂无可保存的内容')
 }
 </script>
 

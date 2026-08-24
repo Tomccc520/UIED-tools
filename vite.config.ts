@@ -163,7 +163,9 @@ export default defineConfig({
     terserOptions: {
       compress: {
         drop_console: false,
-        drop_debugger: true
+        drop_debugger: true,
+        // 生产包移除调试输出，保留 console.warn / console.error 供线上排障。
+        pure_funcs: ['console.log', 'console.debug']
       },
       // 添加更多配置以避免变量访问问题
       mangle: {

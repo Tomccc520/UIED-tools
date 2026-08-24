@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useRef, ChangeEvent, DragEvent, useEffect, useMemo, useCallback } from 'react';
+import { showToolFeedback } from '@/utils/toolFeedback';
 
 // 导入像素化工具和类型
 import {
@@ -464,7 +465,7 @@ export default function Home() {
         setExcludedColorKeys(new Set()); // ++ 重置排除列表 ++
         processFile(file);
       } else {
-        alert(`不支持的文件类型: ${file.type || '未知'}。请选择 JPG、PNG 格式的图片文件，或 CSV 数据文件。\n文件名: ${file.name}`);
+        showToolFeedback(`不支持的文件类型：${file.type || '未知'}。请选择 JPG、PNG 或 CSV 文件。文件名：${file.name}`, 'warning');
         console.warn(`Unsupported file type: ${file.type}, file name: ${file.name}`);
       }
     }
@@ -498,13 +499,13 @@ export default function Home() {
           setExcludedColorKeys(new Set()); // ++ 重置排除列表 ++
           processFile(file);
         } else {
-          alert(`不支持的文件类型: ${file.type || '未知'}。请拖放 JPG、PNG 格式的图片文件，或 CSV 数据文件。\n文件名: ${file.name}`);
+          showToolFeedback(`不支持的文件类型：${file.type || '未知'}。请拖放 JPG、PNG 或 CSV 文件。文件名：${file.name}`, 'warning');
           console.warn(`Unsupported file type: ${file.type}, file name: ${file.name}`);
         }
       }
     } catch (error) {
       console.error("处理拖拽文件时发生错误:", error);
-      alert("处理文件时发生错误，请重试。");
+      showToolFeedback('处理文件时发生错误，请重试。', 'error');
     }
   };
 
@@ -604,11 +605,11 @@ export default function Home() {
           setGranularity(gridDimensions.N);
           setGranularityInput(gridDimensions.N.toString());
 
-          alert(`成功导入CSV文件！图纸尺寸：${gridDimensions.N}x${gridDimensions.M}，共使用${Object.keys(colorCountsMap).length}种颜色。`);
+          showToolFeedback(`CSV 导入成功：图纸尺寸 ${gridDimensions.N}x${gridDimensions.M}，共使用 ${Object.keys(colorCountsMap).length} 种颜色。`, 'success');
         })
         .catch(error => {
           console.error('CSV导入失败:', error);
-          alert(`CSV导入失败：${error.message}`);
+          showToolFeedback(`CSV 导入失败：${error.message}`, 'error');
         });
     } else {
       // 处理图片文件 - 先打开裁剪弹窗
@@ -622,7 +623,7 @@ export default function Home() {
       };
       reader.onerror = () => {
           console.error("文件读取失败");
-          alert("无法读取文件。");
+          showToolFeedback('无法读取文件。', 'error');
           setInitialGridColorKeys(new Set()); // ++ 重置初始键 ++
       }
       reader.readAsDataURL(file);
@@ -772,7 +773,7 @@ export default function Home() {
 
     if (currentPalette.length === 0) {
         console.error("Cannot pixelate: The selected color palette is empty (likely due to exclusions).");
-        alert("错误：当前可用颜色板为空（可能所有颜色都被排除了），无法处理图像。请尝试恢复部分颜色。");
+        showToolFeedback('当前可用颜色板为空，无法处理图像，请恢复部分颜色。', 'warning');
         // Clear previous results visually
         pixelatedCtx.clearRect(0, 0, pixelatedCanvas.width, pixelatedCanvas.height);
         setMappedPixelData(null);
@@ -791,7 +792,7 @@ export default function Home() {
 
     img.onerror = (error: Event | string) => {
       console.error("Image loading failed:", error);
-      alert("无法加载图片。");
+      showToolFeedback('无法加载图片。', 'error');
       setOriginalImageSrc(null);
       setMappedPixelData(null);
       setGridDimensions(null);
@@ -1067,7 +1068,7 @@ export default function Home() {
             // --- 确保初始颜色键已记录 ---
             if (initialGridColorKeys.size === 0) {
                 console.error("Cannot exclude color: Initial grid color keys not yet calculated.");
-                alert("无法排除颜色，初始颜色数据尚未准备好，请稍候。");
+                showToolFeedback('初始颜色数据尚未准备好，请稍候再排除颜色。', 'warning');
                 return;
             }
             console.log("Initial Grid Hex Keys:", Array.from(initialGridColorKeys));
@@ -1099,7 +1100,7 @@ export default function Home() {
             // 5. *** 关键检查 ***：如果在考虑所有排除项后，没有*初始*颜色可供映射，则阻止此次排除
             if (remapTargetPalette.length === 0) {
                 console.warn(`Cannot exclude color '${hexKey}'. No other valid colors from the initial grid remain after considering all current exclusions.`);
-                alert(`无法排除颜色 ${hexKey}，因为图中最初存在的其他可用颜色也已被排除。请先恢复部分其他颜色。`);
+                showToolFeedback(`无法排除颜色 ${hexKey}，请先恢复部分其他颜色。`, 'warning');
                 console.log("---------");
                 return; // 停止排除过程
             }
@@ -1110,7 +1111,7 @@ export default function Home() {
             // 检查排除颜色的数据是否存在
              if (!excludedColorData || !mappedPixelData || !gridDimensions) {
                  console.error("Cannot exclude color: Missing data for remapping.");
-                 alert("无法排除颜色，缺少必要数据。");
+                 showToolFeedback('缺少必要数据，暂时无法排除颜色。', 'warning');
                 console.log("---------");
                  return;
              }
@@ -1190,7 +1191,7 @@ export default function Home() {
   // 一键去背景：识别边缘主色并洪水填充去除
   const handleAutoRemoveBackground = () => {
     if (!mappedPixelData || !gridDimensions) {
-      alert('请先生成图纸后再使用一键去背景。');
+      showToolFeedback('请先生成图纸后再使用一键去背景。', 'warning');
       return;
     }
 
@@ -1213,7 +1214,7 @@ export default function Home() {
     }
 
     if (borderCounts.size === 0) {
-      alert('边缘没有可识别的背景颜色。');
+      showToolFeedback('边缘没有可识别的背景颜色。', 'warning');
       return;
     }
 
@@ -1250,7 +1251,7 @@ export default function Home() {
     }
 
     if (stack.length === 0) {
-      alert('未找到可去除的背景区域。');
+      showToolFeedback('未找到可去除的背景区域。', 'warning');
       return;
     }
 
@@ -1577,7 +1578,7 @@ export default function Home() {
       .map(([hexValue]) => hexValue);
 
     if (selectedHexValues.length === 0) {
-      alert("当前没有选中的颜色，无法导出。");
+      showToolFeedback('当前没有选中的颜色，无法导出。', 'warning');
       return;
     }
 
@@ -1635,11 +1636,11 @@ export default function Home() {
 
         if (invalidHexValues.length > 0) {
           console.warn("导入时发现无效的hex值:", invalidHexValues);
-          alert(`导入完成，但以下颜色无效已被忽略：\n${invalidHexValues.join(', ')}`);
+          showToolFeedback(`导入完成，以下无效颜色已忽略：${invalidHexValues.join(', ')}`, 'warning');
         }
 
         if (validHexValues.length === 0) {
-          alert("导入的文件中不包含任何有效的颜色。");
+          showToolFeedback('导入文件中不包含有效颜色。', 'error');
           return;
         }
 
@@ -1650,11 +1651,11 @@ export default function Home() {
         const newSelections = presetToSelections(allHexValues, validHexValues);
         setCustomPaletteSelections(newSelections);
         setIsCustomPalette(true); // 标记为自定义
-        alert(`成功导入 ${validHexValues.length} 个颜色！`);
+        showToolFeedback(`成功导入 ${validHexValues.length} 个颜色。`, 'success');
 
       } catch (error) {
         console.error("导入色板配置失败:", error);
-        alert(`导入失败: ${error instanceof Error ? error.message : '未知错误'}`);
+        showToolFeedback(`导入失败：${error instanceof Error ? error.message : '未知错误'}`, 'error');
       } finally {
         // 重置文件输入，以便可以再次导入相同的文件
         if (event.target) {
@@ -1663,7 +1664,7 @@ export default function Home() {
       }
     };
     reader.onerror = () => {
-      alert("读取文件失败。");
+      showToolFeedback('读取文件失败。', 'error');
        // 重置文件输入
       if (event.target) {
         event.target.value = '';

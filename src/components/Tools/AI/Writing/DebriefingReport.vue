@@ -224,6 +224,7 @@
 import { ref, reactive, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { downloadMarkdownResult } from '@/utils/markdownResult'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import WritingGuide from './WritingGuide.vue'
 import { generateAIWriting } from '@/services/ai'
@@ -479,8 +480,11 @@ onBeforeUnmount(() => {
   resetResultStreamState()
 })
 
-const save = (text: string, html: string) => {
-  console.log('save', text, html)
+const save = (text: string, _html: string) => {
+  const downloaded = downloadMarkdownResult(text)
+  downloaded
+    ? ElMessage.success('已下载 Markdown 文件')
+    : ElMessage.warning('暂无可保存的内容')
 }
 </script>
 

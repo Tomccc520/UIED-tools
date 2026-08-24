@@ -10,6 +10,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 
@@ -46,10 +47,17 @@ const setSimple = (type: string, val: string) => {
   }
 }
 
-const copyCron = () => {
-  navigator.clipboard.writeText(cronExpression.value)
-    .then(() => alert('已复制到剪贴板'))
-    .catch(err => console.error('复制失败:', err))
+/**
+ * 函数说明：复制 Cron 表达式并给出非阻塞反馈。
+ */
+const copyCron = async () => {
+  try {
+    await navigator.clipboard.writeText(cronExpression.value)
+    ElMessage.success('Cron 表达式已复制')
+  } catch (error) {
+    console.error('复制失败:', error)
+    ElMessage.error('复制失败，请检查浏览器剪贴板权限')
+  }
 }
 
 const presets = [

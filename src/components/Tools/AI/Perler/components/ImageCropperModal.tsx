@@ -1,6 +1,14 @@
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-08-24
+ */
+
 import React, { useRef, useState, useCallback } from 'react';
 import Cropper from 'react-cropper';
 import 'cropperjs/dist/cropper.css';
+import { showToolFeedback } from '@/utils/toolFeedback';
 
 interface ImageCropperModalProps {
   imageSrc: string;
@@ -51,7 +59,7 @@ export default function ImageCropperModal({
       onConfirm(croppedImageSrc);
     } catch (error) {
       console.error('裁剪图片失败:', error);
-      alert('裁剪图片失败，请重试');
+      showToolFeedback('裁剪图片失败，请重试。', 'error');
     } finally {
       setIsProcessing(false);
     }

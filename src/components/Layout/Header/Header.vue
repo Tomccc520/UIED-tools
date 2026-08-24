@@ -662,10 +662,10 @@ const addToBookmark = () => {
     } else if ('external' in window && 'AddFavorite' in (window as any).external) { // IE
       (window as any).external.AddFavorite(window.location.href, title);
     } else { // Chrome, Safari, Opera, etc.
-      alert('请按 ' + (navigator.userAgent.toLowerCase().indexOf('mac') != -1 ? 'Command/Cmd' : 'CTRL') + ' + D 将本页添加到书签。');
+      ElMessage.info('请按 ' + (navigator.userAgent.toLowerCase().indexOf('mac') != -1 ? 'Command/Cmd' : 'CTRL') + ' + D 将本页添加到书签。');
     }
   } catch (e) {
-    alert('您的浏览器不支持此操作，请手动添加书签。');
+    ElMessage.warning('您的浏览器不支持此操作，请手动添加书签。');
   }
 }
 
