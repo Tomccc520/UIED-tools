@@ -1,0 +1,199 @@
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-03-26
+ */
+
+:root {
+    --uied-pro-page-max-width: 1480px;
+    --uied-pro-page-gap: 16px;
+    --uied-pro-card-radius: 12px;
+    --uied-pro-card-border: 1px solid var(--color-border-2, #e5e6eb);
+}
+
+.pro-page-shell {
+    width: 100%;
+    max-width: var(--uied-pro-page-max-width);
+    margin: 0 auto;
+}
+
+.pro-panel-card {
+    border-radius: var(--uied-pro-card-radius);
+    border: var(--uied-pro-card-border);
+    background: #fff;
+}
+
+.pro-page-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.pro-page-title {
+    margin: 0;
+    font-size: 20px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: var(--color-text-1, #1d2129);
+}
+
+.pro-page-subtitle {
+    margin: 4px 0 0;
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--color-text-3, #86909c);
+}
+
+.pro-section-stack {
+    display: grid;
+    gap: var(--uied-pro-page-gap);
+}
+
+.pro-card-muted {
+    background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+}
+
+/*
+ * 函数说明：P0/P1 后台页面视觉治理，统一收口到 Arco Pro 的卡片表单和 Search Table 形态。
+ */
+.channel-page,
+.admin-page,
+.menu-page,
+.role-page,
+.dept-page,
+.post-page,
+.cache-page,
+.journal-page,
+.website-tools-catalog,
+.website-frontend-layout,
+.setting-ai-model,
+.material-index,
+.material-icons-page,
+.consumer-order-page {
+    width: 100%;
+    max-width: var(--uied-pro-page-max-width);
+    margin: 0 auto;
+}
+
+.channel-metrics,
+.admin-metrics,
+.menu-metrics,
+.role-metrics,
+.dept-metrics,
+.post-metrics,
+.cache-metrics,
+.journal-metrics,
+.stats-grid,
+.catalog-overview-grid,
+.footer-summary-grid,
+.linkage-summary-grid {
+    max-height: 88px;
+    overflow: hidden;
+}
+
+.channel-card--notice,
+.channel-config-side,
+.menu-editor-layout__side,
+.layout-inline-guide,
+.layout-basic-workflow,
+.repair-context-block,
+.delivery-workspace-checklist {
+    max-height: 120px;
+    overflow: auto;
+}
+
+.admin-filter-strip,
+.menu-filter-strip,
+.role-filter-strip,
+.dept-filter-strip,
+.post-filter-strip,
+.journal-filter-strip,
+.page-entry-grid,
+.catalog-stat-row,
+.material-workspace,
+.icons-workspace,
+.delivery-workspace {
+    max-height: 160px;
+    overflow: auto;
+}
+
+.channel-page .arco-card,
+.admin-page .arco-card,
+.menu-page .arco-card,
+.role-page .arco-card,
+.dept-page .arco-card,
+.post-page .arco-card,
+.cache-page .arco-card,
+.journal-page .arco-card,
+.website-tools-catalog .arco-card,
+.website-frontend-layout .arco-card,
+.setting-ai-model .arco-card,
+.material-index .arco-card,
+.material-icons-page .arco-card,
+.consumer-order-page .arco-card {
+    border-radius: 4px !important;
+    box-shadow: none !important;
+}
+
+.channel-page .channel-config-layout,
+.channel-page .menu-editor-layout {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
+.admin-page .general-card,
+.menu-page .general-card,
+.role-page .general-card,
+.dept-page .general-card,
+.post-page .general-card,
+.cache-page .general-card,
+.journal-page .general-card,
+.website-tools-catalog .general-card,
+.website-frontend-layout .general-card {
+    min-height: calc(100vh - 144px);
+}
+
+.setting-ai-model .page-card,
+.material-index .material-main-card,
+.material-icons-page .material-icons-card,
+.consumer-order-page .pro-card {
+    border: var(--uied-pro-card-border) !important;
+}
+
+/* 移动端不保留统计/说明卡的内部滚动，避免页面、卡片和表格三层滚动叠加。 */
+@media (max-width: 920px) {
+    .channel-metrics,
+    .admin-metrics,
+    .menu-metrics,
+    .role-metrics,
+    .dept-metrics,
+    .post-metrics,
+    .cache-metrics,
+    .journal-metrics,
+    .stats-grid,
+    .catalog-overview-grid,
+    .footer-summary-grid,
+    .linkage-summary-grid,
+    .channel-card--notice,
+    .channel-config-side,
+    .menu-editor-layout__side,
+    .layout-inline-guide,
+    .layout-basic-workflow,
+    .repair-context-block,
+    .delivery-workspace-checklist,
+    .admin-filter-strip,
+    .menu-filter-strip,
+    .role-filter-strip,
+    .dept-filter-strip,
+    .post-filter-strip,
+    .journal-filter-strip,
+    .page-entry-grid,
+    .catalog-stat-row,
+    .material-workspace,
+    .icons-workspace,
+    .delivery-workspace {
+        max-height: none;
+        overflow: visible;
+    }
+}

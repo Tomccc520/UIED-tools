@@ -131,6 +131,8 @@ create_runtime_archive() {
 assemble_production_resources() {
   cp "${BACKEND_DIR}/sql/install.sql" "${PRODUCTION_DIR}/"
   cp "${BACKEND_DIR}/sql/patches/20260823_fix_site_brand.sql" "${PRODUCTION_DIR}/"
+  cp "${BACKEND_DIR}/sql/patches/20260825_enable_self_use_mode.sql" "${PRODUCTION_DIR}/"
+  cp "${BACKEND_DIR}/sql/patches/20260825_open_source_changelog.sql" "${PRODUCTION_DIR}/"
   cp "${ROOT_DIR}/deploy/env/uiedtool-api.env.example" "${PRODUCTION_DIR}/"
   cp "${ROOT_DIR}/deploy/nginx/uiedtool.com.fullstack.locations.conf" "${PRODUCTION_DIR}/"
   cp "${ROOT_DIR}/deploy/systemd/uiedtool-api.service" "${PRODUCTION_DIR}/"
@@ -146,6 +148,8 @@ create_baota_bundle() {
   cp "${RUNTIME_ARCHIVE_PATH}" "${BAOTA_BUNDLE_DIR}/"
   cp "${RUNTIME_ARCHIVE_PATH}.sha256" "${BAOTA_BUNDLE_DIR}/"
   cp "${PRODUCTION_DIR}/20260823_fix_site_brand.sql" "${BAOTA_BUNDLE_DIR}/"
+  cp "${PRODUCTION_DIR}/20260825_enable_self_use_mode.sql" "${BAOTA_BUNDLE_DIR}/"
+  cp "${PRODUCTION_DIR}/20260825_open_source_changelog.sql" "${BAOTA_BUNDLE_DIR}/"
   cp "${PRODUCTION_DIR}/deploy-update.sh" "${BAOTA_BUNDLE_DIR}/"
   chmod 755 "${BAOTA_BUNDLE_DIR}/deploy-update.sh"
   clean_macos_metadata "${BAOTA_BUNDLE_DIR}"

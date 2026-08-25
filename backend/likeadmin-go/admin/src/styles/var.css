@@ -1,0 +1,49 @@
+:root {
+    --ui-font-family: theme(fontFamily.sans);
+    --ui-font-weight-primary: 400;
+    --ui-menu-item-height: 46px;
+    --ui-menu-sub-item-height: var(--ui-menu-item-height);
+    --ui-menu-icon-width: 18px;
+    --aside-width: 200px;
+    --navbar-height: 60px;
+    --color-white: #ffffff;
+    --table-header-bg-color: #f8f8f8;
+    --ui-font-size-extra-large: 18px;
+    --ui-menu-base-level-padding: 16px;
+    --ui-menu-level-padding: 26px;
+    --ui-font-size-large: 16px;
+    --ui-font-size-medium: 15px;
+    --ui-font-size-base: 14px;
+    --ui-font-size-small: 13px;
+    --ui-font-size-extra-small: 12px;
+
+    --ui-bg-color: var(--color-white);
+    --ui-bg-color-page: #f6f6f6;
+    --ui-bg-color-overlay: #ffffff;
+    --ui-text-color-primary: #333333;
+    --ui-text-color-regular: #666666;
+    --ui-text-color-secondary: #999999;
+    --ui-text-color-placeholder: #a8abb2;
+    --ui-text-color-disabled: #c0c4cc;
+    --ui-border-color: #dcdfe6;
+    --ui-border-color-light: #e4e7ed;
+    --ui-border-color-lighter: #ebeef5;
+    --ui-border-color-extra-light: #f2f2f2;
+    --ui-border-color-dark: #d4d7de;
+    --ui-border-color-darker: #cdd0d6;
+    --ui-fill-color: #f0f2f5;
+    --ui-fill-color-light: #f8f8f8;
+    --ui-fill-color-lighter: #fafafa;
+    --ui-fill-color-extra-light: #fafcff;
+    --ui-fill-color-dark: #ebedf0;
+    --ui-fill-color-darker: #e6e8eb;
+    --ui-fill-color-blank: #ffffff;
+    --ui-mask-color: rgba(255, 255, 255, 0.9);
+    --ui-mask-color-extra-light: rgba(255, 255, 255, 0.3);
+    --ui-box-shadow: 0px 12px 32px 4px rgba(0, 0, 0, 0.04), 0px 8px 20px rgba(0, 0, 0, 0.08);
+    --ui-box-shadow-light: 0px 0px 12px rgba(0, 0, 0, 0.12);
+    --ui-box-shadow-lighter: 0px 0px 6px rgba(0, 0, 0, 0.12);
+    --ui-box-shadow-dark: 0px 16px 48px 16px rgba(0, 0, 0, 0.08), 0px 12px 32px rgba(0, 0, 0, 0.12),
+        0px 8px 16px -8px rgba(0, 0, 0, 0.16);
+
+}

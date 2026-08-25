@@ -1,0 +1,23 @@
+body {
+    @apply text-base min-w-[375px];
+    overflow-x: hidden;
+    overflow-y: auto;
+    color: var(--color-text-1, #1d2129);
+    background: var(--color-fill-2, #f5f6fa);
+}
+.form-tips {
+    @apply text-xs leading-6 mt-1;
+    color: var(--color-text-3, #86909c);
+}
+
+.clearfix:after {
+    content: '';
+    display: block;
+    clear: both;
+    visibility: hidden;
+}
+
+/* NProgress */
+#nprogress .bar {
+    @apply bg-primary #{!important};
+}

@@ -78,6 +78,9 @@ const TOOL_RANKING_TRACK_ENDPOINT = '/api/common/tool-ranking/track'
 const TOOL_RANKING_API_TIMEOUT_MS = 8000
 const TOOL_RANKING_VIEW_DEDUPE_TTL_MS = 10 * 60 * 1000
 const TOOL_RANKING_VIEW_DEDUPE_STORAGE_KEY = 'uiedtool.tool-ranking.view-dedupe'
+const TOOL_RANKING_ROUTE_ALIASES: Record<string, string> = {
+  '/tools/ai-perler/focus': '/tools/ai-perler'
+}
 
 /**
  * 函数说明：构建统一的工具排行榜接口错误对象，便于组件侧统一处理失败提示。
@@ -103,6 +106,14 @@ const normalizeToolRankingRoutePath = (value: unknown): string => {
     return '/'
   }
   return normalizedPath.replace(/\/+$/g, '')
+}
+
+/**
+ * 函数说明：将工具内部子路由归并到对应的主工具路由，避免专注模式等页面单独污染榜单。
+ */
+const resolveCanonicalToolRankingRoutePath = (value: unknown): string => {
+  const normalizedPath = normalizeToolRankingRoutePath(value)
+  return TOOL_RANKING_ROUTE_ALIASES[normalizedPath] || normalizedPath
 }
 
 /**
@@ -282,32 +293,23 @@ const shouldSkipToolRankingViewTrack = (toolKey: string, routePath: string): boo
 }
 
 /**
- * 函数说明：根据当前工具路由解析前端兜底元信息，优先复用后台工具主数据。
+ * 函数说明：根据当前工具路由解析标准元信息，只上报后台工具主数据中存在的工具。
  */
 export const resolveToolRankingMetaByRoute = async (routePath: string): Promise<ToolRankingResolvedMeta | null> => {
-  const normalizedRoutePath = normalizeToolRankingRoutePath(routePath)
+  const normalizedRoutePath = resolveCanonicalToolRankingRoutePath(routePath)
   if (!normalizedRoutePath.startsWith('/tools/')) {
     return null
   }
-  try {
-    const siteConfig = await getSitePublicConfig()
-    const matchedTool = findToolByUrl(siteConfig.toolCategories, normalizedRoutePath)
-    if (matchedTool) {
-      return {
-        toolKey: normalizeToolRankingKey(matchedTool.toolKey) || deriveToolRankingKeyByPath(normalizedRoutePath),
-        toolTitle: String(matchedTool.title || '').trim(),
-        toolUrl: normalizedRoutePath,
-        cateTitle: String(matchedTool.cate || '').trim()
-      }
-    }
-  } catch {
-    // 函数说明：站点配置读取失败时静默回退为路径推导，不阻断工具页使用。
+  const siteConfig = await getSitePublicConfig()
+  const matchedTool = findToolByUrl(siteConfig.toolCategories, normalizedRoutePath)
+  if (!matchedTool) {
+    return null
   }
   return {
-    toolKey: deriveToolRankingKeyByPath(normalizedRoutePath),
-    toolTitle: '',
+    toolKey: normalizeToolRankingKey(matchedTool.toolKey) || deriveToolRankingKeyByPath(normalizedRoutePath),
+    toolTitle: String(matchedTool.title || '').trim(),
     toolUrl: normalizedRoutePath,
-    cateTitle: ''
+    cateTitle: String(matchedTool.cate || '').trim()
   }
 }
 
@@ -358,12 +360,12 @@ export const trackToolVisitByRoute = async (routePath: string, source = 'route-v
   if (!resolvedMeta || !resolvedMeta.toolKey) {
     return
   }
-  if (shouldSkipToolRankingViewTrack(resolvedMeta.toolKey, routePath)) {
+  if (shouldSkipToolRankingViewTrack(resolvedMeta.toolKey, resolvedMeta.toolUrl)) {
     return
   }
   await trackToolRankingEvent({
     toolKey: resolvedMeta.toolKey,
-    routePath,
+    routePath: resolvedMeta.toolUrl,
     eventType: 'view',
     toolTitle: resolvedMeta.toolTitle,
     toolUrl: resolvedMeta.toolUrl,

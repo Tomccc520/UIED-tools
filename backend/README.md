@@ -1,46 +1,20 @@
-# 后台接入说明（likeadmin-go）
+# UIED Tools 全栈后台
 
-本目录用于承载 `likeadmin-go` 后台基座与后续会员/配额/支付能力。
+`backend/likeadmin-go` 是 UIED Tools 3.0.1 开放源码的一部分，包含 Go API、Arco Pro 管理端、安装 SQL 和增量补丁。
 
-## 当前状态
+## 项目架构
 
-- 已完成前端源码备份：`/Users/tangxiaoda/Desktop/网站备份/tools-web-master 2/tools-web/backups/frontend-src-20260321-185054.tar.gz`
-- 已拉取后台基座：`/Users/tangxiaoda/Desktop/网站备份/tools-web-master 2/tools-web/backend/likeadmin-go`
-- 已初始化抠图微服务骨架：`/Users/tangxiaoda/Desktop/网站备份/tools-web-master 2/tools-web/backend/matting-service`
-
-## 推荐架构（与你当前纯前端项目兼容）
-
-- 前端站点：当前 `tools-web`（继续独立发布）
-- 后台系统：`likeadmin-go`（菜单/权限/会员/订单/配置）
-- AI 推理服务：独立 Python 服务（抠图模型推理）
-- 对外网关：Nginx（按路径转发）
+- 主站：仓库根目录的 Vue 3 应用
+- 管理端：`backend/likeadmin-go/admin`
+- Go API：`backend/likeadmin-go/server`
+- 数据库：`backend/likeadmin-go/sql`
+- 对外网关：Nginx 按 `/`、`/admin/`、`/api/` 分流
+- AI 简历：独立构建，可按需启用
+- 抠图：通过 Go API 安全代理第三方服务，不再携带本地大模型
 
 ## 首次启动（本地）
 
-1. 启动基础依赖（MySQL + Redis）
-
-```bash
-cd /Users/tangxiaoda/Desktop/网站备份/tools-web-master\ 2/tools-web/backend
-docker compose up -d
-```
-
-2. 初始化 likeadmin-go
-
-```bash
-cd /Users/tangxiaoda/Desktop/网站备份/tools-web-master\ 2/tools-web
-bash scripts/backend/bootstrap-likeadmin-go.sh
-```
-
-3. 导入 SQL（根据 likeadmin-go/sql 目录选择）
-
-4. 启动服务端
-
-```bash
-cd /Users/tangxiaoda/Desktop/网站备份/tools-web-master\ 2/tools-web/backend/likeadmin-go/server
-go run main.go
-```
-
-## 一键全栈启动（推荐）
+## 一键全栈启动
 
 在项目根目录执行：
 
@@ -54,7 +28,6 @@ npm run dev:fullstack:start
 - 初始化 `uiedtool` 数据库（首次）
 - 启动 likeadmin-go 服务端
 - 启动 likeadmin-go 后台前端
-- 启动抠图 Python 服务
 - 启动 tools-web 前端
 
 说明：
@@ -68,13 +41,10 @@ npm run dev:fullstack:start
 - `npm run dev:fullstack:stop`
 - `npm run dev:fullstack:stop:all`
 
-## 大版本注意事项
+## 部署
 
-- 前端与后台先分仓思路推进，避免一次性混改。
-- 先打通登录/菜单/配置中心，再挂会员与配额，不要直接改业务工具逻辑。
-- 抠图能力建议走独立推理服务，后台只做鉴权、计费、配额和审计日志。
+- 宝塔部署文档：`docs/uiedtool-3.0.1-baota-deploy.md`
+- 生产打包：`npm run release:fullstack`
+- 生产包统一输出到：`output/production/uiedtool-3.0.1/`
 
-## 新手部署指引
-
-- 宝塔部署文档：`/Users/tangxiaoda/Desktop/网站备份/tools-web-master 2/tools-web/docs/ai-matting-baota-deploy.md`
-- 一键启动脚本：`/Users/tangxiaoda/Desktop/网站备份/tools-web-master 2/tools-web/scripts/backend/run-matting-service.sh`
+部署前必须修改数据库密码、Redis 配置和第三方 API 密钥，不要提交真实 `.env`。

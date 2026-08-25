@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, nextTick, computed, type ComponentPublicInstance } from 'vue';
+import { InfoFilled } from '@element-plus/icons-vue';
 import {
   getDefaultSitePublicConfig,
   getSitePublicConfig,
@@ -17,8 +18,8 @@ import {
  *
  * @author Tomda
  * @createDate 2025-01-09
- * @lastUpdate 2026-04-05 10:00
- * @version 3.0.2
+ * @lastUpdate 2026-08-25 14:17
+ * @version 3.0.1
  * @toolsCount 当前工具总数：334个
  */
 
@@ -38,18 +39,18 @@ const defaultHeaderLinks: SiteLinkItem[] = [
 ];
 const headerLinks = ref<SiteLinkItem[]>(defaultHeaderLinks);
 const defaultMetaLinks: SiteLinkItem[] = [
-  { name: 'GitHub（开源版）', link: 'https://github.com/Tomccc520/UIED-tools' },
-  { name: 'Gitee（闭源版）', link: 'https://gitee.com/tomdac/tool' },
+  { name: 'GitHub 源码仓库', link: 'https://github.com/Tomccc520/UIED-tools' },
+  { name: '提交问题', link: 'https://github.com/Tomccc520/UIED-tools/issues' },
   { name: 'CSDN 博客', link: 'https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343' },
   { name: 'UIED技术团队', link: 'https://fsuied.com/' }
 ];
-const changelogIntroText = ref('由 Tomda 开发（AI协助）并记录 UIED-Tools 的开发历程和功能更新。公众号：Tomda');
+const changelogIntroText = ref('UIED-Tools 现已开放主站、Go API 与管理后台源码，持续以免费工具、内容与社区共建获取长期流量。');
 const changelogMetaLinks = ref<SiteLinkItem[]>(defaultMetaLinks);
-const changelogSplitTitle = ref('工具箱 3.0.0 版本分岔提醒');
-const changelogSplitDesc = ref('纯前端开源版在 3.0.0 后进入维护态；包含后台运营、会员与模型管理能力的版本为商业源码版。');
-const changelogSplitLink = ref('https://fsuied.com/');
-const changelogSplitLinkText = ref('购买源码与服务支持（fsuied.com）');
-const changelogStatsText = ref('当前工具总数：334个 | 最后更新：2026-07-29 23:31');
+const changelogSplitTitle = ref('3.0.1 全栈开源说明');
+const changelogSplitDesc = ref('本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。商业授权默认关闭，项目优先服务免费使用、SEO 内容和社区贡献。');
+const changelogSplitLink = ref('https://github.com/Tomccc520/UIED-tools');
+const changelogSplitLinkText = ref('查看完整源码与部署说明');
+const changelogStatsText = ref('当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-25 14:17');
 const timelineEntries = ref<SiteChangelogTimelineItem[]>(
   getDefaultSitePublicConfig().changelogTimeline.map((item) => ({
     ...item,
@@ -114,7 +115,7 @@ const tocItems = computed(() =>
 );
 
 /**
- * 函数说明：读取后台公共配置并更新更新记录页顶部说明、资料入口、版本分岔提示和正文时间线。
+ * 函数说明：读取后台公共配置并更新更新记录页顶部说明、资料入口、开源说明和正文时间线。
  */
 const loadSiteConfig = async () => {
   const siteConfig = await getSitePublicConfig({ forceRefresh: true });
@@ -506,23 +507,23 @@ onUnmounted(() => {
 }
 
 .version-split-alert {
-  border: 1px solid #fecd6f;
-  background: #fff8e6;
-  border-radius: 12px;
+  border: 1px solid #b7d8c3;
+  background: #f2faf5;
+  border-radius: 8px;
   padding: 14px 16px;
 }
 
 .split-alert-title {
   font-size: 14px;
   font-weight: 700;
-  color: #92400e;
+  color: #17633a;
 }
 
 .split-alert-desc {
   margin-top: 6px;
   font-size: 13px;
   line-height: 1.6;
-  color: #78350f;
+  color: #315b45;
 }
 
 .split-alert-link {

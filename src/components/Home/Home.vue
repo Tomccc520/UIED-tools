@@ -161,11 +161,14 @@ const getCardStyle = computed(() => {
 })
 
 /**
- * 函数说明：根据路由参数滚动到首页对应锚点，未指定时默认定位热门工具区
+ * 函数说明：仅在路由明确指定 value 锚点时滚动，普通访问首页保持页面顶部。
  */
 const scrollToRouteAnchor = async () => {
   const queryValue = route.query?.value
-  const anchorId = typeof queryValue === 'string' && queryValue.trim() ? queryValue.trim() : 'recommend-hot'
+  const anchorId = typeof queryValue === 'string' ? queryValue.trim() : ''
+  if (!anchorId) {
+    return
+  }
   await nextTick()
   document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }

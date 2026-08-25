@@ -1,0 +1,118 @@
+package main
+
+import (
+	"github.com/gin-gonic/gin"
+	adminRouters "likeadmin/admin/routers"
+	admin "likeadmin/admin/service"
+	"likeadmin/config"
+	"likeadmin/core"
+	"likeadmin/core/response"
+	genRouters "likeadmin/generator/routers"
+	gen "likeadmin/generator/service"
+	"likeadmin/middleware"
+	"log"
+	"net/http"
+	"strconv"
+	"time"
+)
+
+// initDI 初始化DI
+func initDI() {
+	regFunctions := admin.InitFunctions
+	regFunctions = append(regFunctions, gen.InitFunctions...)
+	regFunctions = append(regFunctions, core.GetDB)
+	for i := 0; i < len(regFunctions); i++ {
+		if err := core.ProvideForDI(regFunctions[i]); err != nil {
+			log.Fatalln(err)
+		}
+	}
+}
+
+// initRouter 初始化router
+func initRouter() *gin.Engine {
+	// 初始化gin
+	gin.SetMode(config.Config.GinMode)
+	router := gin.New()
+	// 设置静态路径
+	router.Static(config.Config.PublicPrefix, config.Config.UploadDirectory)
+	router.Static(config.Config.StaticPath, config.Config.StaticDirectory)
+	// 设置中间件
+	router.Use(gin.Logger(), middleware.Cors(), middleware.ErrorRecover())
+	// 演示模式
+	if config.Config.DisallowModify {
+		router.Use(middleware.ShowMode())
+	}
+	// 注册服务状态入口，便于浏览器访问根地址和监控系统检查服务健康状态
+	router.GET("/", apiRoot)
+	router.GET("/health", apiHealth)
+	router.GET("/api/health", apiHealth)
+	// 特殊异常处理
+	router.NoMethod(response.NoMethod)
+	router.NoRoute(response.NoRoute)
+	// 注册路由
+	group := router.Group("/api")
+	//core.RegisterGroup(group, routers.CommonGroup, middleware.TokenAuth())
+	//core.RegisterGroup(group, routers.MonitorGroup, middleware.TokenAuth())
+	//core.RegisterGroup(group, routers.SettingGroup, middleware.TokenAuth())
+	//core.RegisterGroup(group, routers.SystemGroup, middleware.TokenAuth())
+
+	routers := adminRouters.InitRouters[:]
+	routers = append(routers, genRouters.InitRouters...)
+	for i := 0; i < len(routers); i++ {
+		core.RegisterGroup(group, routers[i])
+	}
+	return router
+}
+
+// buildApiStatusData 函数说明：构建 API 服务公开状态数据，避免根地址缺少路由时被误判为服务未启动。
+func buildApiStatusData() gin.H {
+	return gin.H{
+		"service":   "UIED Tools API",
+		"status":    "ok",
+		"version":   config.Config.Version,
+		"apiPrefix": "/api",
+	}
+}
+
+// apiRoot 函数说明：返回 API 根地址状态，供浏览器直接确认后端服务是否在线。
+func apiRoot(c *gin.Context) {
+	response.OkWithData(c, buildApiStatusData())
+}
+
+// apiHealth 函数说明：返回标准健康检查结果，供本地脚本和部署监控复用。
+func apiHealth(c *gin.Context) {
+	response.OkWithData(c, buildApiStatusData())
+}
+
+// initServer 初始化server
+func initServer(router *gin.Engine) *http.Server {
+	return &http.Server{
+		Addr:              ":" + strconv.Itoa(config.Config.ServerPort),
+		Handler:           router,
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       10 * time.Minute,
+		WriteTimeout:      10 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    1 << 20,
+	}
+}
+
+func main() {
+	// 刷新日志缓冲
+	defer core.Logger.Sync()
+	// 程序结束前关闭数据库连接
+	if core.GetDB() != nil {
+		db, _ := core.GetDB().DB()
+		defer db.Close()
+	}
+	// 初始化DI
+	initDI()
+	// 启动后台常驻任务
+	admin.StartBackgroundWorkers(core.GetDB())
+	// 初始化router
+	router := initRouter()
+	// 初始化server
+	s := initServer(router)
+	// 运行服务
+	log.Fatalln(s.ListenAndServe().Error())
+}

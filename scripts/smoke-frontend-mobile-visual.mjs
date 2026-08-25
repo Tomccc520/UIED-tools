@@ -319,6 +319,7 @@ const verifyHomeMobileLayout = async (page, baseUrl) => {
     return {
       scrollWidth: html.scrollWidth,
       clientWidth: html.clientWidth,
+      scrollTop: Math.round(window.scrollY),
       gridTemplateColumns: gridStyle?.gridTemplateColumns || '',
       gridGap: gridStyle?.gap || '',
       cards
@@ -326,6 +327,9 @@ const verifyHomeMobileLayout = async (page, baseUrl) => {
   })
 
   assertNoHorizontalOverflow(metrics, '首页移动端')
+  if (metrics.scrollTop > 4) {
+    throw new Error(`普通访问首页应停留顶部，当前 scrollY=${metrics.scrollTop}`)
+  }
   const columns = metrics.gridTemplateColumns.split(/\s+/).filter(Boolean)
   if (columns.length !== 2) {
     throw new Error(`首页移动端工具卡应为两列，当前 gridTemplateColumns=${metrics.gridTemplateColumns}`)

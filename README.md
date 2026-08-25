@@ -1,8 +1,12 @@
-# UIED Tools - 免费在线工具集合与AI学习平台
+# UIED Tools 3.0.1 - 全栈开源在线工具平台
 
-> 最近更新：新增AI学习平台、资讯热榜及多个设计开发工具
+> Vue 3 主站 + Go API + Arco Pro 管理后台，面向免费工具、内容运营、SEO 和社区共建。
 
-这是一个功能丰富的免费在线工具集合网站，专注于为设计师、开发者和 AI 爱好者提供一站式解决方案。项目不仅集成了 AI 工具、设计工具、开发工具，还提供了丰富的 AI 学习资源和资讯。
+UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具平台。3.0.1 起，主站、Go API、管理后台、数据库脚本和部署工具统一开放源码，不再区分“纯前端开源版”和“后台商业版”。
+
+项目当前以工具流量和内容增长为优先：核心工具免费使用，商业授权默认关闭；会员、订单和支付模块作为可选能力保留，不影响自用部署。
+
+**源码仓库：** [https://github.com/Tomccc520/UIED-tools](https://github.com/Tomccc520/UIED-tools)
 
 **在线资源矩阵：**
 - **在线工具站**：[UIED免费在线工具集](https://uiedtool.com/)
@@ -16,42 +20,49 @@
 ## 更新日志
 <a href="https://uiedtool.com/changelog" target="_blank">查看完整更新日志</a>
 
+### 3.0.1 新增后台
+
+- **Go API**：基于 Gin 与 likeadmin-go，提供站点配置、菜单权限、工具策略、用户、日志和系统能力。
+- **Arco Pro 管理端**：管理头部、侧栏、页脚、SEO、更新记录、工具主数据、AI Provider 等运营配置。
+- **同域部署**：主站 `/`、管理端 `/admin/`、接口 `/api/`，支持 Nginx 与宝塔部署。
+- **配置闭环**：关键保存操作包含服务端校验、保存回读和明确的成功/失败提示。
+- **自用模式**：默认关闭强制授权并隐藏授权菜单，保留后续扩展空间。
+
 ### 项目亮点
 
 - **AI 赋能**：集成 AI 对话、AI 绘画、AI 资讯等前沿工具，助你拥抱 AIGC 时代。
 - **设计师友好**：提供色彩提取、渐变生成、对比度检测、玻璃拟态等专属设计工具。
 - **丰富多样**：提供超过 227+ 种常用工具，覆盖设计、开发、文本处理、图片处理等多个领域。
 - **简洁易用**：采用直观的 UI 设计，让用户快速找到并使用所需工具。
-- **完全免费**：所有工具完全免费使用，无需注册和付费。
-- **持续更新**：定期添加新工具，不断优化已有功能。
-- **开源共享**：项目代码完全开源，欢迎社区贡献和改进
+- **免费优先**：登录可由后台关闭，关闭后现有工具可免登录使用。
+- **持续更新**：优先打磨高价值工具、结果质量、移动端和失败兜底。
+- **全栈开源**：主站、API、管理端、SQL 与部署脚本均在同一仓库，欢迎提交 Issue 和 PR。
 - **中文优化**：专为中文用户设计，提供本地化的使用体验
 
-UIED Tools 基于 Vue3、TypeScript 和 Element Plus 开发，支持响应式布局，能够在桌面端和移动端提供良好的使用体验。
+UIED Tools 主站基于 Vue 3、TypeScript 和 Element Plus，管理端基于 Vue 3 与 Arco Design，服务端使用 Go、Gin、MySQL 和 Redis。
 
 ## 快速开始
 
 ### 环境要求
-- Node.js 版本: >= 16.0.0
-- npm 版本: >= 8.0.0
+- Node.js 版本：推荐 20 LTS
+- npm 版本：推荐 10+
+- Go 版本：推荐 1.20+
+- MySQL 5.7+/8.0 与 Redis 6+
+- Docker（可选，本地基础依赖与生产容器部署使用）
 
 ### 安装步骤
 
-#### 方法一：从源码安装（推荐开发者使用）
+#### 方法一：启动完整开发环境（推荐）
 
 1. 克隆仓库到本地
 ```bash
-# 从Gitee克隆
-git clone https://gitee.com/tomdac/uied-tools.git
-
-# 或从GitHub克隆
 git clone https://github.com/Tomccc520/UIED-tools.git
 
 # 进入项目目录
 cd uied-tools
 ```
 
-2. 安装依赖
+2. 安装主站依赖
 ```bash
 # 使用npm安装（推荐）
 npm install
@@ -63,39 +74,50 @@ yarn install
 pnpm install
 ```
 
-3. 启动开发服务器
+3. 一键启动主站、Go API、管理端、MySQL 与 Redis
 ```bash
-# 开发模式启动
-npm run dev
+npm run dev:fullstack:start
 
-# 指定端口启动
-npm run dev -- --port 3000
+# 查看服务地址与健康状态
+npm run dev:fullstack:status
+
+# 停止应用；加 stop:all 可同时停止基础依赖
+npm run dev:fullstack:stop
 ```
 
-4. 构建生产版本
+4. 仅开发主站时
 ```bash
-# 标准构建
+npm run dev
+```
+
+5. 构建与检查
+```bash
+npm run build:check
+
+# 管理端
+cd backend/likeadmin-go/admin
+npm install
 npm run build
 
-# 包含SEO优化的构建（推荐生产环境使用）
-npm run build:pro
-
-# 预览构建结果
-npm run preview
+# Go API
+cd ../server
+go test ./...
+go build .
 ```
 
-#### 方法二：使用Docker部署（推荐运维人员使用）
+#### 方法二：生产部署
+
+完整生产部署包含主站静态资源、管理端静态资源、Go API、MySQL 与 Redis。宝塔环境请参考：
+
+- [`docs/uiedtool-3.0.1-baota-deploy.md`](docs/uiedtool-3.0.1-baota-deploy.md)
+- [`scripts/release/package-fullstack.sh`](scripts/release/package-fullstack.sh)
 
 ```bash
-# 拉取镜像
-docker pull docker0796/tools-web:latest
-
-# 运行容器
-docker run -d --name tools-web --restart unless-stopped -p 8080:80 docker0796/tools-web:latest
-
-# 访问服务
-# 浏览器打开 http://localhost:8080
+npm run build:check
+npm run release:fullstack
 ```
+
+正式发布文件会统一生成到 `output/production/uiedtool-3.0.1/`。不要把示例数据库密码或第三方 API 密钥直接用于生产环境。
 
 ## 项目结构说明
 
@@ -127,11 +149,15 @@ uied-tools/
 │   ├── utils/              # 工具函数
 │   └── App.vue             # 根组件
 ├── public/                 # 公共资源目录
+├── backend/
+│   └── likeadmin-go/
+│       ├── admin/          # Arco Pro 管理端
+│       ├── server/         # Go API
+│       └── sql/            # 安装 SQL 与增量补丁
 ├── docs/                   # 文档目录
 ├── scripts/                # 脚本目录
-├── dist/                   # 构建输出目录
-├── .env.development        # 开发环境配置
-├── .env.production         # 生产环境配置
+├── deploy/                 # Nginx、systemd 与生产环境示例
+├── output/                 # 本地发布输出（不提交）
 ├── vite.config.ts          # Vite配置
 ├── tailwind.config.js      # Tailwind CSS配置
 ├── tsconfig.json           # TypeScript配置
@@ -429,7 +455,7 @@ npm install --force
 ### 贡献流程
 
 1. **Fork 仓库**
-   - 访问 [GitHub仓库](https://github.com/Tomccc520/UIED-tools) 或 [Gitee仓库](https://gitee.com/tomdac/uied-tools)
+   - 访问 [GitHub 仓库](https://github.com/Tomccc520/UIED-tools)
    - 点击右上角"Fork"按钮创建个人分支
 
 2. **克隆到本地**
@@ -489,9 +515,9 @@ npm install --force
 
 ### 开发者社区
 
-- **交流渠道**：加入我们的[讨论区](https://github.com/Tomccc520/UIED-tools/discussions)
-- **问题跟踪**：使用[Issues](https://github.com/Tomccc520/UIED-tools/issues)报告问题
-- **路线图**：查看[Projects](https://github.com/Tomccc520/UIED-tools/projects)了解开发计划
+- **问题跟踪**：使用 [Issues](https://github.com/Tomccc520/UIED-tools/issues) 报告问题
+- **功能贡献**：通过 [Pull Requests](https://github.com/Tomccc520/UIED-tools/pulls) 提交改进
+- **在线体验**：访问 [uiedtool.com](https://uiedtool.com/) 验证当前正式版本
 
 ### 行为准则
 
@@ -505,24 +531,8 @@ npm install --force
 
 ## 许可证
 
-MIT License
+UIED Tools 主体代码采用 [MIT License](LICENSE)。
 
-Copyright (c) 2025 UIED Team
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+- Go 管理后台基于 likeadmin-go 二次开发，并保留其 MIT 许可文件。
+- 拼豆工具基于 Apache-2.0 项目二次开发，并在对应源码目录保留原始许可文件。
+- 其他第三方依赖继续遵循各自许可证；商标、站点内容和第三方 API 不因代码开源自动获得授权。

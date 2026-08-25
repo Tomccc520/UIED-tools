@@ -51,12 +51,10 @@ check_requirements() {
   done
 }
 
-# 函数说明：从现有 DATABASE_URL 解析数据库连接并执行当前版本增量脚本。
-apply_database_patch() {
-  local patch_file="${SCRIPT_DIR}/20260823_fix_site_brand.sql"
+# 函数说明：从现有 DATABASE_URL 解析数据库连接并按文件名顺序执行当前版本增量脚本。
+apply_database_patches() {
+  local patch_file
   local database_url credentials host_port db_user db_password db_host db_port db_name
-
-  [[ -f "${patch_file}" ]] || return 0
 
   database_url="$(sed -n 's/^DATABASE_URL=//p' "${APP_ROOT}/shared/.env" | head -n 1)"
   database_url="${database_url#\'}"
@@ -78,11 +76,15 @@ apply_database_patch() {
   db_name="${database_url#*)/}"
   db_name="${db_name%%\?*}"
 
-  MYSQL_PWD="${db_password}" mysql \
-    -u "${db_user}" \
-    -h "${db_host}" \
-    -P "${db_port}" \
-    "${db_name}" < "${patch_file}"
+  while IFS= read -r patch_file; do
+    [[ -n "${patch_file}" ]] || continue
+    printf '执行数据库补丁: %s\n' "$(basename "${patch_file}")"
+    MYSQL_PWD="${db_password}" mysql \
+      -u "${db_user}" \
+      -h "${db_host}" \
+      -P "${db_port}" \
+      "${db_name}" < "${patch_file}"
+  done < <(find "${SCRIPT_DIR}" -maxdepth 1 -type f -name '*.sql' | sort)
 }
 
 # 函数说明：按固定配置重建 UIED-Tools API 容器，不会操作其他 Docker 项目。
@@ -138,6 +140,16 @@ wait_for_health() {
   return 1
 }
 
+# 函数说明：输出正式环境当前管理端资源和 API 二进制指纹，便于确认新版本确实完成切换。
+print_release_fingerprint() {
+  local admin_asset api_sha
+
+  admin_asset="$(grep -o 'assets/index\.[a-f0-9]*\.js' "${PUBLIC_DIR}/admin/index.html" | head -n 1 || true)"
+  api_sha="$(sha256sum "${APP_ROOT}/current/backend/uiedtool-api" | awk '{print $1}')"
+  printf '管理端资源: %s\n' "${admin_asset:-未识别}"
+  printf 'API 二进制 SHA256: %s\n' "${api_sha}"
+}
+
 # 函数说明：当新 API 启动失败时恢复上一版本链接和静态文件。
 rollback_release() {
   local previous_release="$1"
@@ -185,7 +197,7 @@ main() {
   chmod 755 "${release_dir}/backend/uiedtool-api"
 
   log_step '执行增量配置修复'
-  apply_database_patch
+  apply_database_patches
 
   log_step '发布主站和管理端'
   ln -sfn "${release_dir}" "${APP_ROOT}/current"
@@ -211,6 +223,8 @@ main() {
 
   log_step '部署完成'
   curl -fsS http://127.0.0.1:8003/health
+  printf '\n'
+  print_release_fingerprint
   printf '\n当前版本: %s\n' "$(readlink -f "${APP_ROOT}/current")"
   printf '备份目录: %s\n' "${backup_dir}"
   printf '验收地址: https://uiedtool.com/  https://uiedtool.com/admin/\n'
