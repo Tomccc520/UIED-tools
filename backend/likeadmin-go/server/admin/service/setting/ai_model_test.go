@@ -7,6 +7,7 @@
 package setting
 
 import (
+	"strings"
 	"testing"
 
 	"likeadmin/admin/schemas/req"
@@ -60,5 +61,36 @@ func TestNormalizeProviderReqsKeepsFetchedModels(t *testing.T) {
 	options := service.getProviderModelOptions(providers[0])
 	if len(options) != 1 || options[0].Value != defaultSiliconFlowModel {
 		t.Fatalf("Provider 响应未优先使用已获取模型: %#v", options)
+	}
+}
+
+// TestProviderModelAllowed 函数说明：验证前台只能调用默认模型或后台已获取的模型，拒绝任意模型 ID。
+func TestProviderModelAllowed(t *testing.T) {
+	service := settingAiModelService{}
+	provider := aiProviderConfig{
+		Provider:     "siliconflow",
+		DefaultModel: defaultSiliconFlowModel,
+		Models: []aiProviderModelOption{
+			{Label: "Qwen3", Value: "Qwen/Qwen3-8B", MaxTokens: 8000},
+		},
+	}
+	if !service.isProviderModelAllowed(provider, defaultSiliconFlowModel) {
+		t.Fatal("默认模型应允许调用")
+	}
+	if !service.isProviderModelAllowed(provider, "Qwen/Qwen3-8B") {
+		t.Fatal("后台模型列表中的模型应允许调用")
+	}
+	if service.isProviderModelAllowed(provider, "untrusted/expensive-model") {
+		t.Fatal("后台未允许的模型不应调用")
+	}
+}
+
+// TestAiProviderPromptSizeLimit 函数说明：验证 AI 消息总长度超过限制时会被拒绝。
+func TestAiProviderPromptSizeLimit(t *testing.T) {
+	if !isAiProviderPromptSizeAllowed([]req.CommonAiProviderChatMessageReq{{Role: "user", Content: "正常内容"}}) {
+		t.Fatal("正常消息应通过长度校验")
+	}
+	if isAiProviderPromptSizeAllowed([]req.CommonAiProviderChatMessageReq{{Role: "user", Content: strings.Repeat("x", maxAiProviderPromptBytes+1)}}) {
+		t.Fatal("超长消息应被拒绝")
 	}
 }

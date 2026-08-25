@@ -137,6 +137,7 @@
                                     <a-form-item label="API Key">
                                         <a-input-password
                                             v-model="currentMattingProviderForm.apiKey"
+                                            autocomplete="off"
                                             placeholder="请输入抠抠图 X-API-Key"
                                             allow-clear
                                         />
@@ -148,6 +149,7 @@
                                     <a-form-item label="AccessKey ID">
                                         <a-input-password
                                             v-model="currentMattingProviderForm.accessKeyId"
+                                            autocomplete="off"
                                             placeholder="请输入阿里云 AccessKey ID"
                                             allow-clear
                                         />
@@ -157,6 +159,7 @@
                                     <a-form-item label="AccessKey Secret">
                                         <a-input-password
                                             v-model="currentMattingProviderForm.accessKeySecret"
+                                            autocomplete="off"
                                             placeholder="请输入阿里云 AccessKey Secret"
                                             allow-clear
                                         />
@@ -298,6 +301,7 @@
                                     <div class="provider-key-row">
                                         <a-input-password
                                             v-model="currentProviderForm.apiKey"
+                                            autocomplete="off"
                                             placeholder="请输入 API Key，模型获取与前端调用均由后端代理"
                                             allow-clear
                                         />
@@ -471,6 +475,7 @@
                                 <a-form-item label="API Key">
                                     <a-input-password
                                         v-model="currentAbilityForm.apiKey"
+                                        autocomplete="off"
                                         placeholder="如上游需要鉴权，可在这里填写 API Key"
                                         allow-clear
                                     />

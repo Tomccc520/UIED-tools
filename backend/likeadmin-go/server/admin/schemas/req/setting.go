@@ -271,23 +271,23 @@ type CommonAiImageAbilityCurrentReq struct {
 
 // CommonAiProviderChatMessageReq AI 对话消息参数
 type CommonAiProviderChatMessageReq struct {
-	Role    string `form:"role" json:"role" binding:"required"`       // 角色
-	Content string `form:"content" json:"content" binding:"required"` // 内容
+	Role    string `form:"role" json:"role" binding:"required,oneof=system user assistant"` // 角色
+	Content string `form:"content" json:"content" binding:"required,max=30000"`             // 内容
 }
 
 // CommonAiProviderChatReq 前台 AI Provider 代理对话参数
 type CommonAiProviderChatReq struct {
-	Scene            string                           `form:"scene" json:"scene"`                                     // 业务场景，当前默认 chat
-	Model            string                           `form:"model" json:"model"`                                     // 模型ID，未传时走后台默认模型
-	Messages         []CommonAiProviderChatMessageReq `form:"messages" json:"messages" binding:"required,min=1"`      // 对话消息列表
-	Temperature      *float64                         `form:"temperature" json:"temperature"`                         // 温度
-	MaxTokens        *int                             `form:"max_tokens" json:"max_tokens"`                           // 最大输出 token
-	Stream           *bool                            `form:"stream" json:"stream"`                                   // 是否流式返回
-	PresencePenalty  *float64                         `form:"presence_penalty" json:"presence_penalty"`               // 存在惩罚
-	FrequencyPenalty *float64                         `form:"frequency_penalty" json:"frequency_penalty"`             // 频率惩罚
-	TopP             *float64                         `form:"top_p" json:"top_p"`                                     // Top P
-	ExtraOptions     map[string]interface{}           `form:"extra_options" json:"extra_options"`                     // 扩展参数
-	OverrideApiKey   string                           `form:"overrideApiKey" json:"overrideApiKey" binding:"max=500"` // 手动覆盖 API Key（仅本次请求生效）
+	Scene            string                           `form:"scene" json:"scene" binding:"omitempty,max=40"`                               // 业务场景，当前默认 chat
+	Model            string                           `form:"model" json:"model" binding:"omitempty,max=255"`                              // 模型ID，未传时走后台默认模型
+	Messages         []CommonAiProviderChatMessageReq `form:"messages" json:"messages" binding:"required,min=1,max=32,dive"`               // 对话消息列表
+	Temperature      *float64                         `form:"temperature" json:"temperature" binding:"omitempty,gte=0,lte=2"`              // 温度
+	MaxTokens        *int                             `form:"max_tokens" json:"max_tokens" binding:"omitempty,gte=1,lte=8000"`             // 最大输出 token
+	Stream           *bool                            `form:"stream" json:"stream"`                                                        // 是否流式返回
+	PresencePenalty  *float64                         `form:"presence_penalty" json:"presence_penalty" binding:"omitempty,gte=-2,lte=2"`   // 存在惩罚
+	FrequencyPenalty *float64                         `form:"frequency_penalty" json:"frequency_penalty" binding:"omitempty,gte=-2,lte=2"` // 频率惩罚
+	TopP             *float64                         `form:"top_p" json:"top_p" binding:"omitempty,gte=0,lte=1"`                          // Top P
+	ExtraOptions     map[string]interface{}           `form:"extra_options" json:"extra_options" binding:"omitempty,max=20"`               // 扩展参数
+	OverrideApiKey   string                           `form:"overrideApiKey" json:"overrideApiKey" binding:"max=500"`                      // 手动覆盖 API Key（仅本次请求生效）
 }
 
 // SettingStorageDetailReq 存储详情参数

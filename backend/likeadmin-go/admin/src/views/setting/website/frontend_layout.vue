@@ -5036,7 +5036,7 @@ const collectSidebarMenuBlockWarnings = (blocks: ToolsSidebarMenuBlockEditor[]):
  * 函数说明：执行前端布局配置体检，输出必填校验与重复项风险提示
  */
 const runLayoutHealthCheck = () => {
-    if (!syncLayoutFormToJson()) {
+    if (!validateLayoutForm()) {
         return
     }
 
@@ -5196,9 +5196,9 @@ const resetToolsCategoryTreeEditor = () => {
 }
 
 /**
- * 函数说明：将可视化表单同步为后端接口需要的 JSON 字符串
+ * 函数说明：校验前端布局表单，不修改当前编辑内容和未保存状态。
  */
-const syncLayoutFormToJson = (): boolean => {
+const validateLayoutForm = (): boolean => {
     if (!formData.toolsChangelogIntroText.trim()) {
         activeTab.value = 'pageOps'
         feedback.msgError('更新记录页顶部说明不能为空')
@@ -5257,6 +5257,17 @@ const syncLayoutFormToJson = (): boolean => {
             feedback.msgError('更新记录页版本提示按钮文案不能为空')
             return false
         }
+    }
+
+    return true
+}
+
+/**
+ * 函数说明：校验通过后将可视化表单同步为后端接口需要的 JSON 字符串。
+ */
+const syncLayoutFormToJson = (): boolean => {
+    if (!validateLayoutForm()) {
+        return false
     }
 
     formData.toolsChangelogIntroText = formData.toolsChangelogIntroText.trim()

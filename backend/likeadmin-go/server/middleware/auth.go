@@ -31,10 +31,27 @@ var licenseBypassAuths = map[string]struct{}{
 	"setting:license:verify": {},
 }
 
+var permissionCompatibleAuths = map[string][]string{
+	"setting:ai:provider:models": {"setting:ai:provider:detail"},
+}
+
 // shouldSkipLicenseCheck 函数说明：判断当前接口是否跳过授权拦截（保证登录后可进入授权管理页完成激活）。
 func shouldSkipLicenseCheck(auths string) bool {
 	_, ok := licenseBypassAuths[auths]
 	return ok
+}
+
+// hasCompatiblePermission 函数说明：兼容已上线页面新增的只读子能力，避免旧角色缓存尚未刷新时误报无权限。
+func hasCompatiblePermission(menuPerms []string, auths string) bool {
+	if util.ToolsUtil.Contains(menuPerms, auths) {
+		return true
+	}
+	for _, compatibleAuth := range permissionCompatibleAuths[auths] {
+		if util.ToolsUtil.Contains(menuPerms, compatibleAuth) {
+			return true
+		}
+	}
+	return false
 }
 
 // TokenAuth Token认证中间件
@@ -182,7 +199,7 @@ func TokenAuth() gin.HandlerFunc {
 
 		// 验证是否有权限操作
 		menus := util.RedisUtil.HGet(config.AdminConfig.BackstageRolesKey, roleId)
-		if !(menus != "" && util.ToolsUtil.Contains(strings.Split(menus, ","), auths)) {
+		if !(menus != "" && hasCompatiblePermission(strings.Split(menus, ","), auths)) {
 			response.Fail(c, response.NoPermission)
 			c.Abort()
 			return

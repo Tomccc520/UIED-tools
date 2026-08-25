@@ -30,6 +30,22 @@ type indexService struct {
 	db *gorm.DB
 }
 
+type consoleAggregateMetrics struct {
+	TotalUsers  int64   `gorm:"column:total_users"`
+	TodayUsers  int64   `gorm:"column:today_users"`
+	TotalOrder  int64   `gorm:"column:total_order"`
+	TodayOrder  int64   `gorm:"column:today_order"`
+	TotalSales  float64 `gorm:"column:total_sales"`
+	TodaySales  float64 `gorm:"column:today_sales"`
+	TotalVisits int64   `gorm:"column:total_visits"`
+	TodayVisits int64   `gorm:"column:today_visits"`
+}
+
+type consoleVisitorMetric struct {
+	StatDate  string `gorm:"column:stat_date"`
+	ViewCount int64  `gorm:"column:view_count"`
+}
+
 /**
  * 函数说明：解析网站配置中的 JSON 数组字符串，异常时返回空数组避免影响主流程
  */
@@ -360,33 +376,80 @@ func (iSrv indexService) Console() (res map[string]interface{}, e error) {
 			"website": "https://uiedtool.com",
 		},
 	}
-	// 今日数据
-	today := map[string]interface{}{
-		"time":        "2022-08-11 15:08:29",
-		"todayVisits": 10,  // 访问量(人)
-		"totalVisits": 100, // 总访问量
-		"todaySales":  30,  // 销售额(元)
-		"totalSales":  65,  // 总销售额
-		"todayOrder":  12,  // 订单量(笔)
-		"totalOrder":  255, // 总订单量
-		"todayUsers":  120, // 新增用户
-		"totalUsers":  360, // 总访用户
-	}
-	// 访客图表
 	now := time.Now()
-	var date []string
-	for i := 14; i >= 0; i-- {
-		date = append(date, now.AddDate(0, 0, -i).Format(core.DateFormat))
-	}
-	visitor := map[string]interface{}{
-		"date": date,
-		"list": []int{12, 13, 11, 5, 8, 22, 14, 9, 456, 62, 78, 12, 18, 22, 46},
+	today, visitor, err := iSrv.loadConsoleBusinessMetrics(now)
+	if e = response.CheckErr(err, "Console business metrics err"); e != nil {
+		return
 	}
 	return map[string]interface{}{
 		"version": version,
 		"today":   today,
 		"visitor": visitor,
 	}, nil
+}
+
+// loadConsoleBusinessMetrics 函数说明：从用户、订单和热榜日统计表读取工作台真实运营数据。
+func (iSrv indexService) loadConsoleBusinessMetrics(now time.Time) (today map[string]interface{}, visitor map[string]interface{}, e error) {
+	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	var metrics consoleAggregateMetrics
+	if err := iSrv.db.Raw(`
+		SELECT
+			(SELECT COUNT(*) FROM la_user WHERE is_delete = 0) AS total_users,
+			(SELECT COUNT(*) FROM la_user WHERE is_delete = 0 AND create_time >= ?) AS today_users,
+			(SELECT COUNT(*) FROM la_user_purchase_order WHERE delete_time = 0) AS total_order,
+			(SELECT COUNT(*) FROM la_user_purchase_order WHERE delete_time = 0 AND create_time >= ?) AS today_order,
+			(SELECT COALESCE(SUM(amount), 0) FROM la_user_purchase_order WHERE delete_time = 0 AND status = 1) AS total_sales,
+			(SELECT COALESCE(SUM(amount), 0) FROM la_user_purchase_order WHERE delete_time = 0 AND status = 1 AND paid_time >= ?) AS today_sales,
+			(SELECT COALESCE(SUM(view_count), 0) FROM la_tool_ranking_daily) AS total_visits,
+			(SELECT COALESCE(SUM(view_count), 0) FROM la_tool_ranking_daily WHERE stat_date = ?) AS today_visits
+	`, dayStart.Unix(), dayStart.Unix(), dayStart.Unix(), dayStart.Format(core.DateFormat)).Scan(&metrics).Error; err != nil {
+		return nil, nil, err
+	}
+
+	startDate := dayStart.AddDate(0, 0, -14)
+	visitorRows := make([]consoleVisitorMetric, 0, 15)
+	if err := iSrv.db.Table("la_tool_ranking_daily").
+		Select("DATE_FORMAT(stat_date, '%Y-%m-%d') AS stat_date, COALESCE(SUM(view_count), 0) AS view_count").
+		Where("stat_date >= ? AND stat_date <= ?", startDate.Format(core.DateFormat), dayStart.Format(core.DateFormat)).
+		Group("stat_date").
+		Order("stat_date ASC").
+		Scan(&visitorRows).Error; err != nil {
+		return nil, nil, err
+	}
+
+	dates, visits := buildConsoleVisitorSeries(dayStart, visitorRows)
+	today = map[string]interface{}{
+		"time":        now.Format("2006-01-02 15:04:05"),
+		"todayVisits": metrics.TodayVisits,
+		"totalVisits": metrics.TotalVisits,
+		"todaySales":  metrics.TodaySales,
+		"totalSales":  metrics.TotalSales,
+		"todayOrder":  metrics.TodayOrder,
+		"totalOrder":  metrics.TotalOrder,
+		"todayUsers":  metrics.TodayUsers,
+		"totalUsers":  metrics.TotalUsers,
+	}
+	visitor = map[string]interface{}{
+		"date": dates,
+		"list": visits,
+	}
+	return today, visitor, nil
+}
+
+// buildConsoleVisitorSeries 函数说明：将数据库稀疏日统计补齐为连续十五天访问趋势。
+func buildConsoleVisitorSeries(dayStart time.Time, rows []consoleVisitorMetric) ([]string, []int64) {
+	valueByDate := make(map[string]int64, len(rows))
+	for _, row := range rows {
+		valueByDate[strings.TrimSpace(row.StatDate)] = row.ViewCount
+	}
+	dates := make([]string, 0, 15)
+	visits := make([]int64, 0, 15)
+	for offset := 14; offset >= 0; offset-- {
+		date := dayStart.AddDate(0, 0, -offset).Format(core.DateFormat)
+		dates = append(dates, date)
+		visits = append(visits, valueByDate[date])
+	}
+	return dates, visits
 }
 
 // Config 公共配置

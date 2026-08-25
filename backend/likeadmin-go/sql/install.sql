@@ -886,6 +886,7 @@ INSERT INTO `la_system_auth_menu` VALUES (557, 0, 'M', 'AI模型管理', 'system
 INSERT INTO `la_system_auth_menu` VALUES (558, 557, 'C', 'AI抠图 API', '', 0, 'setting:ai:model:detail', 'ai_model', 'setting/website/ai_model', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (559, 558, 'A', '保存配置', '', 0, 'setting:ai:model:save', '', '', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (565, 557, 'C', 'AI Provider 管理', '', 1, 'setting:ai:provider:detail', 'ai_provider', 'setting/website/ai_model', '', '', 0, 1, 0, 1711000000, 1711000000);
+INSERT INTO `la_system_auth_menu` VALUES (591, 565, 'A', '获取模型', '', 0, 'setting:ai:provider:models', '', '', '/ai_model_manage/ai_provider', '', 0, 1, 0, 1787673600, 1787673600);
 INSERT INTO `la_system_auth_menu` VALUES (566, 557, 'C', 'AI工具能力代理', '', 2, 'setting:ai:ability:detail', 'ai_ability', 'setting/website/ai_model', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (560, 0, 'M', '官网设置', 'system-icon-Home', 42, 'setting:website:official:manage', 'official_site', '', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (561, 560, 'C', '热门工具', '', 80, 'setting:website:hottools:detail', 'hot_tools', 'setting/website/hot_tools', '', '', 0, 1, 0, 1711000000, 1711000000);

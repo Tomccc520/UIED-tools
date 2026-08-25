@@ -27,6 +27,7 @@ const (
 	defaultAiImageTimeoutSeconds = 90
 	defaultMattingTimeoutSeconds = 120
 	defaultSiliconFlowModel      = "deepseek-ai/DeepSeek-V3.2"
+	maxAiProviderPromptBytes     = 60 * 1024
 )
 
 var deprecatedSiliconFlowModels = map[string]string{
@@ -418,6 +419,14 @@ func (aSrv settingAiModelService) BuildChatProxyPayload(chatReq req.CommonAiProv
 		e = response.AssertArgumentError.Make("当前 AI Provider 未配置默认模型")
 		return
 	}
+	if !aSrv.isProviderModelAllowed(*current, model) {
+		e = response.AssertArgumentError.Make("请求模型不在后台允许列表中，请刷新页面后重新选择")
+		return
+	}
+	if !isAiProviderPromptSizeAllowed(chatReq.Messages) {
+		e = response.AssertArgumentError.Make("AI 请求内容过长，请精简后重试")
+		return
+	}
 
 	apiKey := strings.TrimSpace(chatReq.OverrideApiKey)
 	if apiKey == "" {
@@ -468,6 +477,35 @@ func (aSrv settingAiModelService) BuildChatProxyPayload(chatReq req.CommonAiProv
 		RequestBody: requestBody,
 		Stream:      stream,
 	}, nil
+}
+
+// isProviderModelAllowed 函数说明：限制前台只能调用后台默认模型或当前 Provider 已配置的模型列表。
+func (aSrv settingAiModelService) isProviderModelAllowed(provider aiProviderConfig, model string) bool {
+	target := strings.TrimSpace(model)
+	if target == "" {
+		return false
+	}
+	if strings.EqualFold(target, strings.TrimSpace(provider.DefaultModel)) {
+		return true
+	}
+	for _, option := range aSrv.getProviderModelOptions(provider) {
+		if strings.EqualFold(target, strings.TrimSpace(option.Value)) {
+			return true
+		}
+	}
+	return false
+}
+
+// isAiProviderPromptSizeAllowed 函数说明：限制单次请求的消息总字节数，避免超长提示词消耗异常资源。
+func isAiProviderPromptSizeAllowed(messages []req.CommonAiProviderChatMessageReq) bool {
+	totalBytes := 0
+	for _, message := range messages {
+		totalBytes += len(message.Role) + len(message.Content)
+		if totalBytes > maxAiProviderPromptBytes {
+			return false
+		}
+	}
+	return totalBytes > 0
 }
 
 // CurrentImageAbility 函数说明：返回当前图片 AI 能力的可用状态，供前端图片工具页读取能力开关与文案。

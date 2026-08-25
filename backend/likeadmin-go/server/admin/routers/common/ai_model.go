@@ -2,7 +2,9 @@ package common
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"io"
 	"net/http"
 	"strings"
@@ -20,6 +22,14 @@ import (
 )
 
 var AiModelPublicGroup = core.Group("/common", newAiModelPublicHandler, regAiModelPublic, middleware.TokenAuth())
+
+const (
+	aiProviderChatBodyLimit     = 128 << 10
+	aiProviderChatMinuteLimit   = 12
+	aiProviderChatHourLimit     = 120
+	aiProviderChatDayLimit      = 300
+	aiProviderChatRateKeyPrefix = "ai:provider:chat:rate:"
+)
 
 // newAiModelPublicHandler 函数说明：初始化前台可读的 AI 模型与 Provider 接口处理器
 func newAiModelPublicHandler(srv setting.ISettingAiModelService) *aiModelPublicHandler {
@@ -95,8 +105,13 @@ func (ah aiModelPublicHandler) currentImageAbility(c *gin.Context) {
 
 // proxyChat 函数说明：统一代理前端 AI 对话/写作请求到后台配置的 Provider，避免前台暴露真实 API Key
 func (ah aiModelPublicHandler) proxyChat(c *gin.Context) {
+	if !allowAiProviderChatRequest(c) {
+		return
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, aiProviderChatBodyLimit)
 	var chatReq req.CommonAiProviderChatReq
-	if response.IsFailWithResp(c, util.VerifyUtil.VerifyJSON(c, &chatReq)) {
+	if err := util.VerifyUtil.VerifyJSON(c, &chatReq); err != nil {
+		response.FailWithMsg(c, response.ParamsValidError, "AI 请求参数不合法，请检查消息内容与生成参数")
 		return
 	}
 
@@ -161,6 +176,37 @@ func (ah aiModelPublicHandler) proxyChat(c *gin.Context) {
 	if flusher, ok := c.Writer.(http.Flusher); ok {
 		flusher.Flush()
 	}
+}
+
+// allowAiProviderChatRequest 函数说明：按客户端 IP 执行分钟、小时和每日三层限流，保护后台公共 API Key。
+func allowAiProviderChatRequest(c *gin.Context) bool {
+	clientHash := sha256.Sum256([]byte(strings.TrimSpace(c.ClientIP())))
+	identity := hex.EncodeToString(clientHash[:8])
+	now := time.Now()
+	windows := []struct {
+		name    string
+		bucket  string
+		expires int
+		limit   int64
+		label   string
+	}{
+		{name: "minute", bucket: now.Format("200601021504"), expires: 60, limit: aiProviderChatMinuteLimit, label: "每分钟"},
+		{name: "hour", bucket: now.Format("2006010215"), expires: 3600, limit: aiProviderChatHourLimit, label: "每小时"},
+		{name: "day", bucket: now.Format("20060102"), expires: 86400, limit: aiProviderChatDayLimit, label: "每天"},
+	}
+	for _, window := range windows {
+		key := aiProviderChatRateKeyPrefix + identity + ":" + window.name + ":" + window.bucket
+		count := util.RedisUtil.IncrWithExpire(key, window.expires)
+		if count < 0 {
+			response.FailWithMsg(c, response.SystemError, "AI 服务风控暂不可用，请稍后重试")
+			return false
+		}
+		if count > window.limit {
+			response.FailWithMsg(c, response.AssertArgumentError, "AI 请求过于频繁，已超过"+window.label+"使用上限，请稍后重试")
+			return false
+		}
+	}
+	return true
 }
 
 // proxyImageAbility 函数说明：统一代理图片 AI 能力请求到后台配置的上游地址，支持 GET 查询与 POST 上传两种模式。
