@@ -324,7 +324,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   changelogSplitDesc: '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。',
   changelogSplitLink: 'https://github.com/Tomccc520/UIED-tools',
   changelogSplitLinkText: '查看完整源码与部署说明',
-  changelogStatsText: '当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-25 14:17',
+  changelogStatsText: '当前版本：3.0.1 全栈开源版 | 当前工具总数：333个 | 最后更新：2026-08-25 14:17',
   changelogTimeline: (defaultChangelogTimeline as SiteChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)
@@ -505,16 +505,48 @@ const normalizeQuickToolItems = (input: unknown): SiteQuickToolItem[] => {
 }
 
 /**
- * 函数说明：清洗更新记录页时间线功能块，统一标题与要点格式。
+ * 函数说明：生成更新记录文本去重键，忽略 HTML 标签、空白差异与大小写。
+ */
+const normalizeChangelogTextKey = (input: unknown): string => {
+  return String(input || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
+
+/**
+ * 函数说明：兼容迁移更新记录旧统计文案，将已确认的工具总数统一修正为 333 个。
+ */
+const normalizeChangelogStatsText = (input: unknown): string => {
+  const text = String(input || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).trim()
+  return (text || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).replace(/当前工具总数：334个/g, '当前工具总数：333个')
+}
+
+/**
+ * 函数说明：清洗历史功能标题中误混入的 HTML 结构，仅保留首个标签之前的可读标题。
+ */
+const normalizeChangelogFeatureTitle = (input: unknown): string => {
+  const rawTitle = String(input || '').trim()
+  const htmlTagIndex = rawTitle.search(/<[^>]*>/)
+  return (htmlTagIndex >= 0 ? rawTitle.slice(0, htmlTagIndex) : rawTitle).trim()
+}
+
+/**
+ * 函数说明：清洗并合并更新记录功能块，同名功能块合并且重复描述只保留一次。
  */
 const normalizeChangelogFeatureItems = (input: unknown): SiteChangelogFeatureItem[] => {
-  return normalizeArrayInput(input)
+  const featureMap = new Map<string, SiteChangelogFeatureItem>()
+  const globalPointKeySet = new Set<string>()
+
+  normalizeArrayInput(input)
     .map((feature) => {
       if (!feature || typeof feature !== 'object') {
         return null
       }
       const record = feature as Record<string, unknown>
-      const title = String(record.title || '').trim()
+      const title = normalizeChangelogFeatureTitle(record.title)
       const points = normalizeArrayInput(record.points)
         .map((point) => String(point || '').trim())
         .filter(Boolean)
@@ -524,12 +556,34 @@ const normalizeChangelogFeatureItems = (input: unknown): SiteChangelogFeatureIte
       return { title, points }
     })
     .filter((feature): feature is SiteChangelogFeatureItem => Boolean(feature))
+    .forEach((feature) => {
+      const featureKey = normalizeChangelogTextKey(feature.title)
+      const existingFeature = featureMap.get(featureKey)
+      if (!existingFeature) {
+        featureMap.set(featureKey, {
+          title: feature.title,
+          points: []
+        })
+      }
+
+      const targetFeature = featureMap.get(featureKey)!
+      feature.points.forEach((point) => {
+        const pointKey = normalizeChangelogTextKey(point)
+        if (!pointKey || globalPointKeySet.has(pointKey)) {
+          return
+        }
+        globalPointKeySet.add(pointKey)
+        targetFeature.points.push(point)
+      })
+    })
+
+  return Array.from(featureMap.values()).filter((feature) => feature.points.length > 0)
 }
 
 /**
- * 函数说明：清洗更新记录页时间线配置，兼容后台 JSON 与默认数据兜底。
+ * 函数说明：清洗更新记录页时间线配置，合并重复版本、功能块与描述，并兼容后台 JSON 与默认数据兜底。
  */
-const normalizeChangelogTimeline = (input: unknown): SiteChangelogTimelineItem[] => {
+export const normalizeChangelogTimeline = (input: unknown): SiteChangelogTimelineItem[] => {
   const parsed = normalizeArrayInput(input)
     .map((item, index) => {
       if (!item || typeof item !== 'object') {
@@ -565,7 +619,20 @@ const normalizeChangelogTimeline = (input: unknown): SiteChangelogTimelineItem[]
     .filter((item): item is SiteChangelogTimelineItem => Boolean(item))
 
   if (parsed.length > 0) {
-    return parsed
+    const versionMap = new Map<string, SiteChangelogTimelineItem>()
+    parsed.forEach((item) => {
+      const versionKey = normalizeChangelogTextKey(item.version)
+      const existingItem = versionMap.get(versionKey)
+      if (!existingItem) {
+        versionMap.set(versionKey, {
+          ...item,
+          features: normalizeChangelogFeatureItems(item.features)
+        })
+        return
+      }
+      existingItem.features = normalizeChangelogFeatureItems([...existingItem.features, ...item.features])
+    })
+    return Array.from(versionMap.values())
   }
   return DEFAULT_SITE_PUBLIC_CONFIG.changelogTimeline.map((item) => ({
     ...item,
@@ -575,6 +642,14 @@ const normalizeChangelogTimeline = (input: unknown): SiteChangelogTimelineItem[]
     }))
   }))
 }
+
+/**
+ * 函数说明：复制默认公共配置并归一化更新时间线，避免默认数据中的重复版本进入页面。
+ */
+const cloneDefaultSitePublicConfig = (): SitePublicConfig => ({
+  ...DEFAULT_SITE_PUBLIC_CONFIG,
+  changelogTimeline: normalizeChangelogTimeline(DEFAULT_SITE_PUBLIC_CONFIG.changelogTimeline)
+})
 
 /**
  * 函数说明：清洗热门工具列表配置，支持 title/name 与 link/url 字段兼容
@@ -1126,9 +1201,7 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
     changelogSplitLinkText:
       String(record.toolsChangelogSplitLinkText || DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitLinkText).trim() ||
       DEFAULT_SITE_PUBLIC_CONFIG.changelogSplitLinkText,
-    changelogStatsText:
-      String(record.toolsChangelogStatsText || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).trim() ||
-      DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText,
+    changelogStatsText: normalizeChangelogStatsText(record.toolsChangelogStatsText),
     changelogTimeline: normalizeChangelogTimeline(record.toolsChangelogTimeline),
     aiChatHeaderLinks: normalizeLinkItems(record.toolsAiChatHeaderLinks),
     aiCommonHeaderLinks: normalizeLinkItems(record.toolsAiCommonHeaderLinks),
@@ -1196,10 +1269,10 @@ export const getSitePublicConfig = async (options: SiteConfigOptions = {}): Prom
       return data
     } catch {
       siteConfigCacheState = {
-        data: DEFAULT_SITE_PUBLIC_CONFIG,
+        data: cloneDefaultSitePublicConfig(),
         expiresAt: Date.now() + 30 * 1000
       }
-      return DEFAULT_SITE_PUBLIC_CONFIG
+      return cloneDefaultSitePublicConfig()
     } finally {
       siteConfigPromise = null
     }
@@ -1218,4 +1291,4 @@ export const warmupSitePublicConfig = async (): Promise<void> => {
 /**
  * 函数说明：返回默认站点配置，供组件初始化占位使用
  */
-export const getDefaultSitePublicConfig = (): SitePublicConfig => ({ ...DEFAULT_SITE_PUBLIC_CONFIG })
+export const getDefaultSitePublicConfig = (): SitePublicConfig => cloneDefaultSitePublicConfig()

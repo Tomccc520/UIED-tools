@@ -2222,7 +2222,7 @@ const defaultChangelogSplitDesc =
     '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。'
 const defaultChangelogSplitLink = 'https://github.com/Tomccc520/UIED-tools'
 const defaultChangelogSplitLinkText = '查看完整源码与部署说明'
-const defaultChangelogStatsText = '当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-25 14:17'
+const defaultChangelogStatsText = '当前版本：3.0.1 全栈开源版 | 当前工具总数：333个 | 最后更新：2026-08-25 14:17'
 const defaultChangelogTimeline = (defaultChangelogTimelineSource as ToolsChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)
@@ -2440,7 +2440,60 @@ const cloneChangelogTimeline = (items: ToolsChangelogTimelineItem[]): ToolsChang
 }
 
 /**
- * 函数说明：清洗更新记录时间线结构，统一版本、时间、徽标与要点字段。
+ * 函数说明：生成更新记录文本去重键，忽略 HTML 标签、空白差异与大小写。
+ */
+const normalizeChangelogTextKey = (input: unknown): string => {
+    return String(input || '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;|&#160;/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase()
+}
+
+/**
+ * 函数说明：清洗历史功能标题中误混入的 HTML 结构，仅保留首个标签之前的可读标题。
+ */
+const normalizeChangelogFeatureTitle = (input: unknown): string => {
+    const rawTitle = String(input || '').trim()
+    const htmlTagIndex = rawTitle.search(/<[^>]*>/)
+    return (htmlTagIndex >= 0 ? rawTitle.slice(0, htmlTagIndex) : rawTitle).trim()
+}
+
+/**
+ * 函数说明：合并同名功能块，并在同一版本范围内移除重复功能描述。
+ */
+const mergeChangelogFeatureItems = (features: ToolsChangelogFeatureItem[]): ToolsChangelogFeatureItem[] => {
+    const featureMap = new Map<string, ToolsChangelogFeatureItem>()
+    const pointKeySet = new Set<string>()
+
+    features.forEach((feature) => {
+        const title = normalizeChangelogFeatureTitle(feature.title)
+        const featureKey = normalizeChangelogTextKey(title)
+        if (!featureKey) {
+            return
+        }
+        if (!featureMap.has(featureKey)) {
+            featureMap.set(featureKey, { title, points: [] })
+        }
+        const targetFeature = featureMap.get(featureKey)!
+        const featurePoints = Array.isArray(feature.points) ? feature.points : []
+        featurePoints.forEach((point) => {
+            const normalizedPoint = String(point || '').trim()
+            const pointKey = normalizeChangelogTextKey(normalizedPoint)
+            if (!pointKey || pointKeySet.has(pointKey)) {
+                return
+            }
+            pointKeySet.add(pointKey)
+            targetFeature.points.push(normalizedPoint)
+        })
+    })
+
+    return Array.from(featureMap.values()).filter((feature) => feature.points.length > 0)
+}
+
+/**
+ * 函数说明：清洗更新记录时间线结构，统一字段并合并重复版本、功能块与描述。
  */
 const normalizeChangelogTimeline = (input: unknown): ToolsChangelogTimelineItem[] => {
     if (!Array.isArray(input)) {
@@ -2464,27 +2517,29 @@ const normalizeChangelogTimeline = (input: unknown): ToolsChangelogTimelineItem[
                     .replace(/[^\w-]+/g, '-')
                     .replace(/^-+|-+$/g, '')
                     .toLowerCase()}`
-            const features = Array.isArray(record.features)
-                ? record.features
-                      .map((feature) => {
-                          if (!feature || typeof feature !== 'object') {
-                              return null
-                          }
-                          const featureRecord = feature as Record<string, unknown>
-                          const featureTitle = String(featureRecord.title || '').trim()
-                          const points = Array.isArray(featureRecord.points)
-                              ? featureRecord.points.map((point) => String(point || '').trim()).filter(Boolean)
-                              : []
-                          if (!featureTitle || points.length === 0) {
-                              return null
-                          }
-                          return {
-                              title: featureTitle,
-                              points,
-                          }
-                      })
-                      .filter((feature): feature is ToolsChangelogFeatureItem => Boolean(feature))
-                : []
+            const features = mergeChangelogFeatureItems(
+                Array.isArray(record.features)
+                    ? record.features
+                          .map((feature) => {
+                              if (!feature || typeof feature !== 'object') {
+                                  return null
+                              }
+                              const featureRecord = feature as Record<string, unknown>
+                              const featureTitle = normalizeChangelogFeatureTitle(featureRecord.title)
+                              const points = Array.isArray(featureRecord.points)
+                                  ? featureRecord.points.map((point) => String(point || '').trim()).filter(Boolean)
+                                  : []
+                              if (!featureTitle || points.length === 0) {
+                                  return null
+                              }
+                              return {
+                                  title: featureTitle,
+                                  points,
+                              }
+                          })
+                          .filter((feature): feature is ToolsChangelogFeatureItem => Boolean(feature))
+                    : []
+            )
 
             if (!version || !date || !title || features.length === 0) {
                 return null
@@ -2500,6 +2555,19 @@ const normalizeChangelogTimeline = (input: unknown): ToolsChangelogTimelineItem[
             }
         })
         .filter((item): item is ToolsChangelogTimelineItem => Boolean(item))
+        .reduce<ToolsChangelogTimelineItem[]>((items, item) => {
+            const versionKey = normalizeChangelogTextKey(item.version)
+            const existingItem = items.find((candidate) => normalizeChangelogTextKey(candidate.version) === versionKey)
+            if (!existingItem) {
+                items.push(item)
+                return items
+            }
+            existingItem.features = mergeChangelogFeatureItems([
+                ...existingItem.features,
+                ...item.features,
+            ])
+            return items
+        }, [])
 }
 
 /**
@@ -4702,7 +4770,9 @@ const cleanupLayoutDraft = () => {
     formData.toolsChangelogSplitDesc = formData.toolsChangelogSplitDesc.trim()
     formData.toolsChangelogSplitLink = formData.toolsChangelogSplitLink.trim()
     formData.toolsChangelogSplitLinkText = formData.toolsChangelogSplitLinkText.trim()
-    formData.toolsChangelogStatsText = formData.toolsChangelogStatsText.trim()
+    formData.toolsChangelogStatsText = formData.toolsChangelogStatsText
+        .trim()
+        .replace(/当前工具总数：334个/g, '当前工具总数：333个')
 
     layoutForm.bannerSlides = sanitizeBannerSlides(layoutForm.bannerSlides)
     layoutForm.footerSupportLinks = sanitizeLinkItems(layoutForm.footerSupportLinks)
@@ -4908,6 +4978,7 @@ const applyImportedFrontendLayoutData = (source: Record<string, unknown>) => {
         formData.toolsChangelogSplitLinkText
     )
     formData.toolsChangelogStatsText = readString('toolsChangelogStatsText', formData.toolsChangelogStatsText)
+        .replace(/当前工具总数：334个/g, '当前工具总数：333个')
 
     writeArrayToJsonField('bannerSlides', 'toolsBannerSlides', 'toolsBannerSlides')
     writeArrayToJsonField('changelogHeaderLinks', 'toolsChangelogHeaderLinks', 'toolsChangelogHeaderLinks')
@@ -5331,7 +5402,9 @@ const syncLayoutFormToJson = (): boolean => {
     }
 
     formData.toolsChangelogIntroText = formData.toolsChangelogIntroText.trim()
-    formData.toolsChangelogStatsText = formData.toolsChangelogStatsText.trim()
+    formData.toolsChangelogStatsText = formData.toolsChangelogStatsText
+        .trim()
+        .replace(/当前工具总数：334个/g, '当前工具总数：333个')
     formData.toolsChangelogTimeline = JSON.stringify(changelogTimelineItems.value, null, 2)
     if (!simpleMode.value) {
         formData.toolsChangelogSplitTitle = formData.toolsChangelogSplitTitle.trim()

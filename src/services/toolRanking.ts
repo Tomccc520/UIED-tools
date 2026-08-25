@@ -9,7 +9,7 @@
 
 import { findToolByUrl } from '@/services/toolCatalog'
 import { getSitePublicConfig } from '@/services/siteConfig'
-import type { Tool } from '@/types/tools'
+import type { Tool, ToolCategory } from '@/types/tools'
 
 export type ToolRankingEventType = 'view' | 'start' | 'success' | 'download'
 export type ToolRankingPeriod = 'day' | 'week' | 'month' | 'all'
@@ -236,6 +236,53 @@ const normalizeToolRankingListResult = (input: unknown): ToolRankingListResult =
 }
 
 /**
+ * 函数说明：使用当前工具主数据校准历史榜单，过滤已下线的导航入口并覆盖旧标题、分类和运行状态。
+ */
+const reconcileToolRankingListItems = (
+  rankingItems: ToolRankingListItem[],
+  toolCategories: ToolCategory[]
+): ToolRankingListItem[] => {
+  const hasCatalogTools = toolCategories.some((category) => {
+    return Array.isArray(category.list) && category.list.some((subCategory) => {
+      return Array.isArray(subCategory.list) && subCategory.list.length > 0
+    })
+  })
+  if (!hasCatalogTools) {
+    return rankingItems
+  }
+
+  const seenToolKeys = new Set<string>()
+
+  return rankingItems.reduce<ToolRankingListItem[]>((result, rankingItem) => {
+    const matchedTool = findToolByUrl(toolCategories, rankingItem.toolUrl)
+    if (!matchedTool) {
+      return result
+    }
+
+    const canonicalUrl = String(matchedTool.url || rankingItem.toolUrl).trim()
+    const canonicalToolKey = normalizeToolRankingKey(matchedTool.toolKey)
+      || deriveToolRankingKeyByPath(canonicalUrl)
+    const uniqueKey = `${canonicalToolKey}@@${canonicalUrl}`
+    if (seenToolKeys.has(uniqueKey)) {
+      return result
+    }
+    seenToolKeys.add(uniqueKey)
+
+    result.push({
+      ...rankingItem,
+      rank: result.length + 1,
+      toolKey: canonicalToolKey,
+      toolTitle: String(matchedTool.title || rankingItem.toolTitle).trim(),
+      toolUrl: canonicalUrl,
+      cateTitle: String(matchedTool.cate || rankingItem.cateTitle).trim(),
+      status: Number(matchedTool.status ?? rankingItem.status) === 0 ? 0 : 1,
+      remark: String(matchedTool.remark || rankingItem.remark).trim()
+    })
+    return result
+  }, [])
+}
+
+/**
  * 函数说明：读取 sessionStorage 中的访问去重缓存，异常时自动回退为空对象。
  */
 const getToolRankingViewDedupeMap = (): Record<string, number> => {
@@ -331,7 +378,16 @@ export const getToolRankingList = async (options: ToolRankingListOptions = {}): 
     ? `${TOOL_RANKING_LIST_ENDPOINT}?${searchParams.toString()}`
     : TOOL_RANKING_LIST_ENDPOINT
   const data = await requestToolRankingApi<unknown>(endpoint, { method: 'GET' })
-  return normalizeToolRankingListResult(data)
+  const normalizedResult = normalizeToolRankingListResult(data)
+  try {
+    const siteConfig = await getSitePublicConfig()
+    return {
+      ...normalizedResult,
+      list: reconcileToolRankingListItems(normalizedResult.list, siteConfig.toolCategories || [])
+    }
+  } catch {
+    return normalizedResult
+  }
 }
 
 /**

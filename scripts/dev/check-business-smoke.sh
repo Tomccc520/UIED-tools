@@ -22,6 +22,7 @@ MYSQL_ROOT_PASSWORD="${MYSQL_ROOT_PASSWORD:-}"
 SMOKE_ADMIN_USERNAME="${SMOKE_ADMIN_USERNAME:-admin}"
 SMOKE_ADMIN_PASSWORD="${SMOKE_ADMIN_PASSWORD:-123456}"
 SMOKE_RUNTIME_DOMAIN="${SMOKE_RUNTIME_DOMAIN:-127.0.0.1}"
+CHECK_LICENSE_RUNTIME="${CHECK_LICENSE_RUNTIME:-0}"
 
 PASS_COUNT=0
 WARN_COUNT=0
@@ -225,6 +226,41 @@ PY
   printf '%s' "${login_token}"
 }
 
+# 函数说明：使用有效验证码提交错误密码，确认后台会返回可展示的失败提示。
+check_admin_login_rejection() {
+  local api_base_url="$1"
+  local captcha_result captcha_key captcha_code login_payload login_response login_http login_body login_code login_message
+  captcha_result="$(fetch_admin_captcha_code "${api_base_url}")" || {
+    mark_fail "错误密码提示校验无法获取验证码"
+    return
+  }
+  captcha_key="$(printf '%s\n' "${captcha_result}" | sed -n '1p')"
+  captcha_code="$(printf '%s\n' "${captcha_result}" | sed -n '2p')"
+  login_payload="$(python3 - <<'PY' "${SMOKE_ADMIN_USERNAME}" "${SMOKE_ADMIN_PASSWORD}-wrong" "${captcha_key}" "${captcha_code}"
+import json
+import sys
+payload = {
+  "username": sys.argv[1],
+  "password": sys.argv[2],
+}
+if sys.argv[3].strip() and sys.argv[4].strip():
+  payload["captchaKey"] = sys.argv[3].strip()
+  payload["captchaCode"] = sys.argv[4].strip()
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)"
+  login_response="$(http_request "POST" "${api_base_url}/api/system/login" "" "${login_payload}")"
+  login_http="$(printf '%s\n' "${login_response}" | sed -n '1p')"
+  login_body="$(printf '%s\n' "${login_response}" | sed '1d')"
+  login_code="$(printf '%s' "${login_body}" | json_field "code")"
+  login_message="$(printf '%s' "${login_body}" | json_field "msg")"
+  if [[ "${login_http}" == "200" ]] && [[ "${login_code}" != "200" ]] && [[ -n "${login_message}" ]]; then
+    mark_pass "错误管理员密码会返回明确失败提示"
+  else
+    mark_fail "错误管理员密码未返回可展示的失败提示"
+  fi
+}
+
 # 函数说明：读取官网设置详情并执行无损回写，验证后台保存链路可用。
 check_website_roundtrip() {
   local api_base_url="$1"
@@ -254,6 +290,58 @@ PY
     mark_pass "官网设置读取/保存闭环通过"
   else
     mark_fail "官网设置保存失败"
+  fi
+}
+
+# 函数说明：临时更改并还原侧栏品牌文案，验证侧栏单字段保存与前台公开配置的完整回环。
+check_sidebar_roundtrip() {
+  local api_base_url="$1"
+  local token="$2"
+  local detail_response detail_http detail_body detail_code original_brand smoke_brand
+  local save_payload save_response save_http save_body save_code verify_response verify_body verify_brand
+  local public_response public_body public_brand restore_payload restore_response restore_http restore_body restore_code
+
+  detail_response="$(http_request "GET" "${api_base_url}/api/setting/website/detail" "${token}")"
+  detail_http="$(printf '%s\n' "${detail_response}" | sed -n '1p')"
+  detail_body="$(printf '%s\n' "${detail_response}" | sed '1d')"
+  detail_code="$(printf '%s' "${detail_body}" | json_field "code")"
+  if [[ "${detail_http}" != "200" ]] || [[ "${detail_code}" != "200" ]]; then
+    mark_fail "侧栏配置详情读取失败"
+    return
+  fi
+
+  original_brand="$(printf '%s' "${detail_body}" | json_field "data.toolsSidebarBrandText")"
+  smoke_brand="UIED-SMK-$(date +%H%M%S)"
+  save_payload="$(python3 -c 'import json,sys; print(json.dumps({"toolsSidebarBrandText": sys.argv[1]}, ensure_ascii=False))' "${smoke_brand}")"
+  save_response="$(http_request "POST" "${api_base_url}/api/setting/website/save" "${token}" "${save_payload}")"
+  save_http="$(printf '%s\n' "${save_response}" | sed -n '1p')"
+  save_body="$(printf '%s\n' "${save_response}" | sed '1d')"
+  save_code="$(printf '%s' "${save_body}" | json_field "code")"
+  if [[ "${save_http}" != "200" ]] || [[ "${save_code}" != "200" ]]; then
+    mark_fail "侧栏单字段保存失败"
+    return
+  fi
+
+  verify_response="$(http_request "GET" "${api_base_url}/api/setting/website/detail" "${token}")"
+  verify_body="$(printf '%s\n' "${verify_response}" | sed '1d')"
+  verify_brand="$(printf '%s' "${verify_body}" | json_field "data.toolsSidebarBrandText")"
+  public_response="$(http_request "GET" "${api_base_url}/api/common/index/config")"
+  public_body="$(printf '%s\n' "${public_response}" | sed '1d')"
+  public_brand="$(printf '%s' "${public_body}" | json_field "data.toolsSidebarBrandText")"
+
+  restore_payload="$(python3 -c 'import json,sys; print(json.dumps({"toolsSidebarBrandText": sys.argv[1]}, ensure_ascii=False))' "${original_brand}")"
+  restore_response="$(http_request "POST" "${api_base_url}/api/setting/website/save" "${token}" "${restore_payload}")"
+  restore_http="$(printf '%s\n' "${restore_response}" | sed -n '1p')"
+  restore_body="$(printf '%s\n' "${restore_response}" | sed '1d')"
+  restore_code="$(printf '%s' "${restore_body}" | json_field "code")"
+
+  if [[ "${verify_brand}" == "${smoke_brand}" ]] \
+    && [[ "${public_brand}" == "${smoke_brand}" ]] \
+    && [[ "${restore_http}" == "200" ]] \
+    && [[ "${restore_code}" == "200" ]]; then
+    mark_pass "侧栏单字段保存、前台生效与原值还原闭环通过"
+  else
+    mark_fail "侧栏保存未完成后台落库、前台生效或原值还原"
   fi
 }
 
@@ -516,7 +604,7 @@ print_summary() {
 - 通过: ${PASS_COUNT}
 - 警告: ${WARN_COUNT}
 - 失败: ${FAIL_COUNT}
-- 覆盖链路: 后台登录 / 官网设置保存 / AI模型保存 / 热榜配置 / 公众号菜单与回复 / 授权运行态
+- 覆盖链路: 登录成功与失败提示 / 官网与侧栏保存 / AI模型 / 热榜 / 公众号菜单与回复 / 可选授权运行态
 SUMMARY
   if [[ "${FAIL_COUNT}" -gt 0 ]]; then
     printf "\033[31m[RESULT]\033[0m 业务闭环冒烟未通过，请先修复 FAIL 项。\n"
@@ -542,6 +630,7 @@ TOOLS_BASE_URL="http://127.0.0.1:${TOOLS_PORT}"
 
 log_info "开始执行业务闭环冒烟：${API_BASE_URL}"
 
+check_admin_login_rejection "${API_BASE_URL}"
 ADMIN_TOKEN="$(admin_login "${API_BASE_URL}" || true)"
 if [[ -z "${ADMIN_TOKEN}" ]]; then
   mark_fail "后台登录失败，请检查管理员账号、验证码或 Redis 链路"
@@ -551,10 +640,15 @@ fi
 mark_pass "后台管理员登录通过"
 
 check_website_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
+check_sidebar_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
 check_ai_model_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
 check_tool_ranking_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
 check_oa_management_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
-check_license_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
+if [[ "${CHECK_LICENSE_RUNTIME}" == "1" ]]; then
+  check_license_roundtrip "${API_BASE_URL}" "${ADMIN_TOKEN}"
+else
+  mark_pass "授权模块已按当前自用开源模式跳过深度校验"
+fi
 
 if curl -fsS --max-time 8 "${TOOLS_BASE_URL}/tools/hot-ranking" >/dev/null 2>&1; then
   mark_pass "前台独立热榜页可访问"

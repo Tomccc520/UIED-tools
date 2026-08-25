@@ -26,7 +26,19 @@ const (
 	defaultAiImageMethod         = "POST"
 	defaultAiImageTimeoutSeconds = 90
 	defaultMattingTimeoutSeconds = 120
+	defaultSiliconFlowModel      = "deepseek-ai/DeepSeek-V3.2"
 )
+
+var deprecatedSiliconFlowModels = map[string]string{
+	"deepseek-ai/DeepSeek-R1-Distill-Llama-70B": defaultSiliconFlowModel,
+	"deepseek-ai/DeepSeek-R1-Distill-Llama-8B":  defaultSiliconFlowModel,
+	"deepseek-ai/DeepSeek-R1-Distill-Qwen-32B":  defaultSiliconFlowModel,
+	"deepseek-ai/DeepSeek-R1-Distill-Qwen-14B":  defaultSiliconFlowModel,
+	"deepseek-ai/DeepSeek-R1-Distill-Qwen-7B":   defaultSiliconFlowModel,
+	"deepseek-ai/DeepSeek-V3":                   defaultSiliconFlowModel,
+	"Qwen/Qwen2.5-72B-Instruct":                 "Qwen/Qwen3-32B",
+	"THUDM/glm-4-9b-chat":                       "Qwen/Qwen3-8B",
+}
 
 var supportedMattingProviders = []resp.SettingAiModelOptionResp{
 	{
@@ -69,7 +81,7 @@ var defaultAiProviderConfigs = []aiProviderConfig{
 		Enabled:      true,
 		IsDefault:    true,
 		BaseURL:      "https://api.siliconflow.cn/v1",
-		DefaultModel: "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+		DefaultModel: defaultSiliconFlowModel,
 	},
 	{
 		Provider:     "deepseek",
@@ -391,6 +403,7 @@ func (aSrv settingAiModelService) BuildChatProxyPayload(chatReq req.CommonAiProv
 	if model == "" {
 		model = current.DefaultModel
 	}
+	model = aSrv.normalizeTextProviderModel(current.Provider, model)
 	if model == "" {
 		e = response.AssertArgumentError.Make("当前 AI Provider 未配置默认模型")
 		return
@@ -760,8 +773,20 @@ func (aSrv settingAiModelService) mergeSingleProvider(defaultItem aiProviderConf
 	if merged.DefaultModel == "" {
 		merged.DefaultModel = defaultItem.DefaultModel
 	}
+	merged.DefaultModel = aSrv.normalizeTextProviderModel(merged.Provider, merged.DefaultModel)
 
 	return merged
+}
+
+// normalizeTextProviderModel 函数说明：将已下线的 Provider 模型 ID 迁移为当前可用模型，避免历史配置导致前台工具中断。
+func (aSrv settingAiModelService) normalizeTextProviderModel(provider string, model string) string {
+	normalizedModel := strings.TrimSpace(model)
+	if strings.EqualFold(strings.TrimSpace(provider), "siliconflow") {
+		if replacement, ok := deprecatedSiliconFlowModels[normalizedModel]; ok {
+			return replacement
+		}
+	}
+	return normalizedModel
 }
 
 // mergeImageAbilityConfigsWithDefaults 函数说明：将数据库中的图片 AI 能力配置合并到默认模板，确保新增能力字段完整。
@@ -1161,16 +1186,12 @@ func (aSrv settingAiModelService) getProviderModelOptions(item aiProviderConfig)
 	switch item.Provider {
 	case "siliconflow":
 		return []resp.SettingAiProviderModelOptionResp{
-			{Label: "DeepSeek R1", Value: "deepseek-ai/DeepSeek-R1", Desc: "满血版", MaxTokens: 8000},
-			{Label: "Pro DeepSeek R1", Value: "Pro/deepseek-ai/DeepSeek-R1", Desc: "专业版", MaxTokens: 8000},
-			{Label: "DeepSeek R1 70B", Value: "deepseek-ai/DeepSeek-R1-Distill-Llama-70B", Desc: "高质量大模型", MaxTokens: 16000},
-			{Label: "DeepSeek R1 32B", Value: "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B", Desc: "均衡模型", MaxTokens: 16000},
-			{Label: "DeepSeek R1 14B", Value: "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B", Desc: "日常通用", MaxTokens: 16000},
-			{Label: "DeepSeek R1 8B", Value: "deepseek-ai/DeepSeek-R1-Distill-Llama-8B", Desc: "轻量高效", MaxTokens: 16000},
-			{Label: "DeepSeek R1 7B", Value: "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B", Desc: "推荐默认", MaxTokens: 16000},
-			{Label: "DeepSeek V3", Value: "deepseek-ai/DeepSeek-V3", Desc: "通用写作与搜索", MaxTokens: 8000},
-			{Label: "Qwen 2.5 72B", Value: "Qwen/Qwen2.5-72B-Instruct", Desc: "通义千问高性能模型", MaxTokens: 8000},
-			{Label: "GLM 4 9B", Value: "THUDM/glm-4-9b-chat", Desc: "轻量通用模型", MaxTokens: 8000},
+			{Label: "DeepSeek V3.2", Value: defaultSiliconFlowModel, Desc: "推荐默认，通用写作与对话", MaxTokens: 8000},
+			{Label: "Pro DeepSeek V3.2", Value: "Pro/deepseek-ai/DeepSeek-V3.2", Desc: "高性能版", MaxTokens: 8000},
+			{Label: "DeepSeek R1", Value: "deepseek-ai/DeepSeek-R1", Desc: "深度推理", MaxTokens: 8000},
+			{Label: "Qwen3 32B", Value: "Qwen/Qwen3-32B", Desc: "通义千问均衡模型", MaxTokens: 16000},
+			{Label: "Qwen3 14B", Value: "Qwen/Qwen3-14B", Desc: "通用中型模型", MaxTokens: 16000},
+			{Label: "Qwen3 8B", Value: "Qwen/Qwen3-8B", Desc: "轻量高效", MaxTokens: 16000},
 		}
 	case "deepseek":
 		return []resp.SettingAiProviderModelOptionResp{

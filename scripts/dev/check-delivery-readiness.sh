@@ -20,6 +20,7 @@ ADMIN_PORT="${ADMIN_PORT:-}"
 GO_API_PORT="${GO_API_PORT:-}"
 MATTING_PORT="${MATTING_PORT:-}"
 AI_RESUME_PORT="${AI_RESUME_PORT:-}"
+DEPLOY_AI_RESUME="${DEPLOY_AI_RESUME:-0}"
 MYSQL_PORT="${MYSQL_PORT:-}"
 REDIS_PORT="${REDIS_PORT:-}"
 DB_NAME="${DB_NAME:-}"
@@ -152,6 +153,20 @@ check_runtime_dependencies() {
   require_command lsof
 }
 
+# 函数说明：兼容 macOS 与 Linux 计算 SQL 文件 SHA1，避免交付自检绑定单一系统命令。
+calculate_file_sha1() {
+  local file="$1"
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 1 "${file}" | awk '{print $1}'
+    return
+  fi
+  if command -v sha1sum >/dev/null 2>&1; then
+    sha1sum "${file}" | awk '{print $1}'
+    return
+  fi
+  return 1
+}
+
 # 函数说明：检查端口监听与 HTTP 探活，确认前后台核心服务是否真实可访问。
 check_http_service() {
   local label="$1"
@@ -194,6 +209,10 @@ check_database_readiness() {
   local upgrade_log_count
   local total_patch_files
   local applied_patch_count
+  local exact_patch_count
+  local patch_manifest_file
+  local applied_manifest_file
+  local patch_sha1
 
   mysql_container_id="$(compose_cmd ps -q mysql 2>/dev/null || true)"
   redis_container_id="$(compose_cmd ps -q redis 2>/dev/null || true)"
@@ -228,10 +247,35 @@ check_database_readiness() {
   total_patch_files="$(find "${LIKEADMIN_DIR}/sql/upgrade" "${LIKEADMIN_DIR}/sql/patches" -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')"
   if [[ "${upgrade_log_count:-0}" -ge 1 ]]; then
     applied_patch_count="$(mysql_query "SELECT COUNT(*) FROM \`${DB_NAME}\`.\`la_system_upgrade_log\` WHERE status='success';")"
-    if [[ "${applied_patch_count:-0}" -ge "${total_patch_files:-0}" ]]; then
-      mark_pass "升级补丁日志完整（${applied_patch_count}/${total_patch_files}）"
+    patch_manifest_file="$(mktemp)"
+    applied_manifest_file="$(mktemp)"
+
+    while IFS= read -r patch_file; do
+      local patch_type="patch"
+      if [[ "${patch_file}" == "${LIKEADMIN_DIR}/sql/upgrade/"* ]]; then
+        patch_type="upgrade"
+      fi
+      patch_sha1="$(calculate_file_sha1 "${patch_file}" || true)"
+      if [[ -z "${patch_sha1}" ]]; then
+        rm -f "${patch_manifest_file}" "${applied_manifest_file}"
+        mark_warn "缺少 shasum/sha1sum，跳过升级补丁精确校验"
+        return
+      fi
+      printf "%s:%s\t%s\n" \
+        "${patch_type}" \
+        "${patch_file#${LIKEADMIN_DIR}/}" \
+        "${patch_sha1}" >> "${patch_manifest_file}"
+    done < <(find "${LIKEADMIN_DIR}/sql/upgrade" "${LIKEADMIN_DIR}/sql/patches" -maxdepth 1 -type f -name '*.sql' | sort)
+
+    mysql_query "SELECT patch_key, sha1 FROM \`${DB_NAME}\`.\`la_system_upgrade_log\` WHERE status='success' ORDER BY patch_key;" \
+      | sort > "${applied_manifest_file}"
+    exact_patch_count="$({ grep -Fxf "${applied_manifest_file}" "${patch_manifest_file}" || true; } | wc -l | tr -d ' ')"
+    rm -f "${patch_manifest_file}" "${applied_manifest_file}"
+
+    if [[ "${exact_patch_count:-0}" -ge "${total_patch_files:-0}" ]]; then
+      mark_pass "升级补丁日志与当前 SQL 完全一致（${exact_patch_count}/${total_patch_files}）"
     else
-      mark_warn "升级补丁日志未覆盖全部 SQL（${applied_patch_count:-0}/${total_patch_files:-0}），建议执行 npm run dev:upgrade:apply"
+      mark_warn "升级补丁日志未覆盖当前 SQL 或校验值已变更（精确匹配 ${exact_patch_count:-0}/${total_patch_files:-0}，成功日志 ${applied_patch_count:-0}），建议执行 npm run dev:upgrade:apply"
     fi
   fi
 }
@@ -242,7 +286,11 @@ check_service_endpoints() {
   check_http_service "后台前端" "http://127.0.0.1:${ADMIN_PORT}"
   check_http_service "后台配置接口" "http://127.0.0.1:${GO_API_PORT}/api/common/index/config"
   check_matting_service "http://127.0.0.1:${MATTING_PORT}/health"
-  check_http_service "AI 简历服务" "http://127.0.0.1:${AI_RESUME_PORT}/tools/ai-resume"
+  if [[ "${DEPLOY_AI_RESUME}" == "1" ]]; then
+    check_http_service "AI 简历服务" "http://127.0.0.1:${AI_RESUME_PORT}/tools/ai-resume"
+  else
+    mark_pass "AI 简历已按本期发布范围暂缓部署"
+  fi
 }
 
 # 函数说明：输出本次商业交付自检摘要，并给出下一步建议。

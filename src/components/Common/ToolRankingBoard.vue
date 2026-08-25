@@ -61,11 +61,27 @@ const toRankingRuntimeEntry = (item: ToolRankingListItem): ToolRuntimeEntry => {
 }
 
 /**
- * 函数说明：构建当前页面可展示的榜单数据，真实榜单非空时仅展示真实榜单，接口无结果时才回退到兜底工具列表。
+ * 函数说明：生成榜单项去重键，避免实时榜单与兜底推荐重复展示同一个工具。
+ */
+const resolveRankingUniqueKey = (item: ToolRankingListItem): string => {
+  return String(item.toolKey || item.toolUrl || '').trim().toLowerCase()
+}
+
+/**
+ * 函数说明：构建当前页面可展示的榜单数据，优先保留真实榜单并用去重后的推荐工具补足配置数量。
  */
 const displayRankingList = computed<ToolRankingListItem[]>(() => {
   const fallbackRankingItems = buildFallbackToolRankingItems(props.fallbackTools)
-  const displayItems = rankingList.value.length > 0 ? rankingList.value : fallbackRankingItems
+  const seenKeys = new Set(rankingList.value.map(resolveRankingUniqueKey))
+  const supplementalItems = fallbackRankingItems.filter((item) => {
+    const uniqueKey = resolveRankingUniqueKey(item)
+    if (!uniqueKey || seenKeys.has(uniqueKey)) {
+      return false
+    }
+    seenKeys.add(uniqueKey)
+    return true
+  })
+  const displayItems = [...rankingList.value, ...supplementalItems]
 
   return displayItems.slice(0, normalizedLimit.value).map((item, index) => ({
     ...item,

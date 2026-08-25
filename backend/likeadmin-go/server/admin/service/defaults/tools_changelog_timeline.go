@@ -23,5 +23,5 @@ func GetToolsChangelogTimelineItems() []map[string]interface{} {
 	if err := json.Unmarshal([]byte(toolsChangelogTimelineJSON), &items); err != nil {
 		return []map[string]interface{}{}
 	}
-	return items
+	return NormalizeToolsChangelogTimelineItems(items)
 }

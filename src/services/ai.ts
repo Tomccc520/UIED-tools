@@ -16,8 +16,8 @@ const SEARCH_LOCAL_MATCH_LIMIT = 24
 const SEARCH_SUGGESTION_LIMIT = 5
 
 export const AI_DEFAULT_MODELS = {
-  SEARCH: 'deepseek-ai/DeepSeek-V3',
-  SUGGESTION: 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B'
+  SEARCH: 'deepseek-ai/DeepSeek-V3.2',
+  SUGGESTION: 'deepseek-ai/DeepSeek-V3.2'
 } as const
 
 // AI搜索接口

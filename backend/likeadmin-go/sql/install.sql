@@ -993,4 +993,7 @@ INSERT INTO `la_system_auth_menu` VALUES (746, 711, 'A', '保存设置', '', 0, 
 -- INSERT INTO `la_system_auth_menu` VALUES (773, 752, 'A', '删除', '', 0, 'channel:oaReplyDefault:del', '', '', '', '', 1, 1, 0, 1664517778, 1664517778);
 -- INSERT INTO `la_system_auth_menu` VALUES (774, 610, 'A', '导入数据表列表', '', 0, 'gen:db', '', '', '', '', 1, 1, 0, 1665646316, 1665646316);
 -- INSERT INTO `la_system_auth_menu` VALUES (775, 703, 'C', '文章添加/编辑', '', 0, 'article:add/edit', 'lists/edit', 'article/lists/edit', '/article/lists', '', 0, 0, 0, 1668677477, 1668677477);
+UPDATE `la_system_config`
+SET `value` = REPLACE(`value`, 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B', 'deepseek-ai/DeepSeek-V3.2')
+WHERE `type` = 'ai_model' AND `name` = 'ai_provider_configs';
 COMMIT;

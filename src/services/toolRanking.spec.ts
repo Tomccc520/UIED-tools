@@ -17,7 +17,7 @@ vi.mock('./siteConfig', () => ({
   getSitePublicConfig: mocks.getSitePublicConfig
 }))
 
-import { resolveToolRankingMetaByRoute } from './toolRanking'
+import { getToolRankingList, resolveToolRankingMetaByRoute } from './toolRanking'
 
 const toolCategories = [
   {
@@ -46,6 +46,7 @@ const toolCategories = [
 
 describe('toolRanking', () => {
   beforeEach(() => {
+    vi.restoreAllMocks()
     mocks.getSitePublicConfig.mockResolvedValue({ toolCategories })
   })
 
@@ -60,5 +61,74 @@ describe('toolRanking', () => {
 
   it('不上报工具主数据之外的导航页', async () => {
     await expect(resolveToolRankingMetaByRoute('/tools/ai/toolbox')).resolves.toBeNull()
+  })
+
+  it('使用工具主数据修正旧榜单标题并过滤导航页', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      code: 200,
+      msg: '成功',
+      data: {
+        period: 'week',
+        sortBy: 'view',
+        limit: 12,
+        list: [
+          {
+            rank: 1,
+            toolKey: 'ai-perler',
+            toolTitle: 'ai-perler',
+            toolUrl: '/tools/ai-perler',
+            cateTitle: '',
+            viewCount: 20
+          },
+          {
+            rank: 2,
+            toolKey: 'ai-toolbox',
+            toolTitle: 'ai-toolbox',
+            toolUrl: '/tools/ai/toolbox',
+            cateTitle: '',
+            viewCount: 10
+          }
+        ]
+      }
+    }), { status: 200 }))
+
+    await expect(getToolRankingList({ period: 'week', limit: 12 })).resolves.toMatchObject({
+      list: [
+        {
+          rank: 1,
+          toolKey: 'ai-perler',
+          toolTitle: '拼豆图纸生成器',
+          toolUrl: '/tools/ai-perler',
+          cateTitle: 'AI图像工具',
+          viewCount: 20
+        }
+      ]
+    })
+  })
+
+  it('工具目录尚未加载时保留接口榜单，避免冷启动空白', async () => {
+    mocks.getSitePublicConfig.mockResolvedValue({ toolCategories: [] })
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+      code: 200,
+      data: {
+        period: 'week',
+        sortBy: 'view',
+        limit: 1,
+        list: [
+          {
+            rank: 1,
+            toolKey: 'ai-perler',
+            toolTitle: '拼豆图纸生成器',
+            toolUrl: '/tools/ai-perler',
+            cateTitle: 'AI图像工具',
+            viewCount: 20
+          }
+        ]
+      }
+    }), { status: 200 }))
+
+    const result = await getToolRankingList({ period: 'week', limit: 1 })
+    expect(result.list).toHaveLength(1)
+    expect(result.list[0]?.toolTitle).toBe('拼豆图纸生成器')
   })
 })

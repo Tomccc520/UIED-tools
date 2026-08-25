@@ -306,7 +306,8 @@ ${form.harvest ? `核心收获：${form.harvest}` : ''}
     ElMessage.success('生成完成')
   } catch (error) {
     forceFlushPendingResultChunk()
-    ElMessage.error('生成失败，请稍后重试')
+    const message = error instanceof Error ? error.message.replace(/^\s*生成失败:\s*/, '') : '请稍后重试'
+    ElMessage.error(`生成失败：${message}`)
   } finally {
     isGenerating.value = false
     resetResultStreamState()
@@ -342,7 +343,8 @@ const handleAiAssist = async (type: string) => {
     forceFlushPendingResultChunk()
   } catch (error) {
     forceFlushPendingResultChunk()
-    ElMessage.error('AI助手处理失败，请重试')
+    const message = error instanceof Error ? error.message.replace(/^\s*生成失败:\s*/, '') : '请重试'
+    ElMessage.error(`AI助手处理失败：${message}`)
     resultText.value = originalText
   } finally {
     isGenerating.value = false
