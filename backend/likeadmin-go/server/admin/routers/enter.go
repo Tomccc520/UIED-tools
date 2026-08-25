@@ -6,6 +6,7 @@ import (
 	"likeadmin/admin/routers/consumer"
 	"likeadmin/admin/routers/legacy"
 	"likeadmin/admin/routers/monitor"
+	"likeadmin/admin/routers/operation"
 	"likeadmin/admin/routers/setting"
 	"likeadmin/admin/routers/system"
 	"likeadmin/core"
@@ -32,6 +33,8 @@ var InitRouters = []*core.GroupBase{
 	consumer.UserGroup,
 	// monitor
 	monitor.MonitorGroup,
+	// operation
+	operation.AdvertisingGroup,
 	// setting
 	setting.AiModelGroup,
 	setting.CopyrightGroup,

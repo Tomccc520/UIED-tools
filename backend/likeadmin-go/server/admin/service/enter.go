@@ -4,6 +4,7 @@ import (
 	"likeadmin/admin/service/channel"
 	"likeadmin/admin/service/common"
 	"likeadmin/admin/service/consumer"
+	"likeadmin/admin/service/operation"
 	"likeadmin/admin/service/setting"
 	"likeadmin/admin/service/system"
 
@@ -26,6 +27,8 @@ var InitFunctions = []interface{}{
 	// consumer
 	consumer.NewOrderService,
 	consumer.NewUserService,
+	// operation
+	operation.NewOperationAdvertisingService,
 	// setting
 	setting.NewSettingAiModelService,
 	setting.NewSettingCopyrightService,

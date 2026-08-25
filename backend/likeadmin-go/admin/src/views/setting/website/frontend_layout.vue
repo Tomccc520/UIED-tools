@@ -9,7 +9,7 @@
 <template>
     <div class="website-frontend-layout pro-page-shell">
         <a-page-header class="layout-page-header" title="官网设置 · 前端布局">
-            <template #subtitle> 集中维护首页 Banner、每日学习和更新记录。 </template>
+            <template #subtitle> 集中维护每日学习和更新记录；首页广告已迁移到独立的“运营管理 → 广告管理”。 </template>
             <template #extra>
                 <div class="layout-page-actions">
                     <div class="layout-status-tags">
@@ -114,83 +114,6 @@
 
                         <section class="layout-config-zone">
                             <a-tabs v-model:active-key="activeTab" class="layout-tabs" lazy-load>
-                                <a-tab-pane
-                                    v-if="isModuleTabEnabled('banner')"
-                                    key="banner"
-                                    title="顶部Banner（首页横幅）"
-                                >
-                                    <a-card class="panel-card">
-                                        <template #title>
-                                            <div class="panel-header-actions">
-                                                <span>轮播内容配置</span>
-                                                <a-button
-                                                    data-admin-smoke="frontend-layout-banner-add"
-                                                    type="text"
-                                                    @click="addBannerSlide"
-                                                    >新增轮播</a-button
-                                                >
-                                            </div>
-                                        </template>
-                                        <div class="panel-description">
-                                            用于首页顶部广告横幅。建议每条文案 8-24 字，链接支持内链/外链/锚点。
-                                        </div>
-                                        <div class="row-list-empty" v-if="layoutForm.bannerSlides.length === 0">
-                                            Banner 轮播还没开始配置，先补 3 条基础投放内容，首页首屏就能先跑起来。
-                                        </div>
-                                        <a-collapse
-                                            v-model:active-key="bannerSectionCollapseKeys"
-                                            class="banner-collapse"
-                                            :bordered="false"
-                                        >
-                                            <a-collapse-item
-                                                v-for="(item, index) in layoutForm.bannerSlides"
-                                                :key="String(index)"
-                                            >
-                                                <template #header>
-                                                    <div class="banner-summary">
-                                                        <a-tag bordered>{{ item.badge || '未设置角标' }}</a-tag>
-                                                        <strong>{{ item.text || '未填写轮播文案' }}</strong>
-                                                        <span>{{ item.link || '未设置链接' }}</span>
-                                                    </div>
-                                                </template>
-                                                <div class="banner-edit-grid">
-                                                    <a-input v-model="item.badge" placeholder="角标，如：推荐" />
-                                                    <a-input
-                                                        v-model="item.text"
-                                                        placeholder="文案，如：免费AI编程工具"
-                                                    />
-                                                    <a-input
-                                                        v-model="item.link"
-                                                        placeholder="跳转链接，支持 /、# 或 http(s)"
-                                                    />
-                                                    <a-input
-                                                        v-model="item.gradient"
-                                                        placeholder="背景渐变，如：linear-gradient(to right,#6366f1,#e0e7ff,#edf2ff,#8b5cf6)"
-                                                    />
-                                                    <div class="row-actions">
-                                                        <a-button
-                                                            type="text"
-                                                            @click="moveLinkItem(layoutForm.bannerSlides, index, -1)"
-                                                            >上移</a-button
-                                                        >
-                                                        <a-button
-                                                            type="text"
-                                                            @click="moveLinkItem(layoutForm.bannerSlides, index, 1)"
-                                                            >下移</a-button
-                                                        >
-                                                        <a-button
-                                                            type="text"
-                                                            status="danger"
-                                                            @click="removeBannerSlide(index)"
-                                                            >删除</a-button
-                                                        >
-                                                    </div>
-                                                </div>
-                                            </a-collapse-item>
-                                        </a-collapse>
-                                    </a-card>
-                                </a-tab-pane>
-
                                 <a-tab-pane
                                     v-if="isModuleTabEnabled('homepageLearning')"
                                     key="homepageLearning"
@@ -2639,7 +2562,6 @@ const defaultToolsCategoryTreeJson = '[]'
 
 const FRONTEND_LAYOUT_ACTIVE_TAB_KEY = 'uied_frontend_layout_active_tab'
 const layoutModuleOrder = [
-    'banner',
     'homepageLearning',
     'sidebar',
     'toolsCatalog',
@@ -2660,12 +2582,12 @@ const initialActiveTab = (() => {
         storedTab === 'footer' ||
         storedTab === 'aiToolbox'
     ) {
-        return 'banner'
+        return 'homepageLearning'
     }
     if ((layoutModuleOrder as readonly string[]).includes(storedTab)) {
         return storedTab as LayoutModuleKey
     }
-    return 'banner'
+    return 'homepageLearning'
 })()
 const activeTab = ref<LayoutModuleKey>(initialActiveTab)
 const appStore = useAppStore()
@@ -2730,7 +2652,7 @@ const officialSiteEntryCards = [
         path: '/official_site/seo',
     },
 ] as const
-const basicModeTabs: LayoutModuleKey[] = ['banner', 'homepageLearning', 'pageOps']
+const basicModeTabs: LayoutModuleKey[] = ['homepageLearning', 'pageOps']
 const layoutModuleLabelMap: Record<string, string> = {
     banner: '顶部Banner',
     homepageLearning: '每日学习',
@@ -2769,7 +2691,7 @@ const isLayoutModuleKey = (moduleKey: string): moduleKey is LayoutModuleKey => {
 }
 
 /**
- * 函数说明：判断当前页面允许显示的模块，前端布局页保留 Banner、每日学习与更新记录运营。
+ * 函数说明：判断当前页面允许显示的模块，广告迁移后前端布局页只保留每日学习与更新记录运营。
  */
 const isModuleTabVisible = (moduleKey: LayoutModuleKey): boolean => {
     return basicModeTabs.includes(moduleKey)
@@ -2965,7 +2887,6 @@ const buildLayoutSnapshot = (): string => {
             toolsHomepageLearningLimit: formData.toolsHomepageLearningLimit,
         },
         layout: {
-            bannerSlides: layoutForm.bannerSlides,
             changelogHeaderLinks: layoutForm.changelogHeaderLinks,
             changelogMetaLinks: layoutForm.changelogMetaLinks,
         },
@@ -3106,19 +3027,6 @@ const countInvalidLinkItems = (items: ToolsLinkItem[]): number => {
 }
 
 /**
- * 函数说明：统计 Banner 配置中缺失核心字段的项数
- */
-const countInvalidBannerSlides = (items: ToolsBannerSlideItem[]): number => {
-    return items.reduce((count, item) => {
-        const badge = String(item.badge || '').trim()
-        const text = String(item.text || '').trim()
-        const link = String(item.link || '').trim()
-        const gradient = String(item.gradient || '').trim()
-        return count + (badge && text && link && gradient ? 0 : 1)
-    }, 0)
-}
-
-/**
  * 函数说明：统计侧边栏分类菜单中缺失 key、标题或分类标题的项数
  */
 const countInvalidSidebarCategoryMenus = (items: ToolsSidebarCategoryMenuItem[]): number => {
@@ -3231,9 +3139,6 @@ const isValidHomepageLearningCategoryIds = (value: string): boolean => {
  * 函数说明：计算指定模块当前已配置项数量，用于概览卡展示
  */
 const getModuleConfiguredCount = (moduleKey: string): number => {
-    if (moduleKey === 'banner') {
-        return layoutForm.bannerSlides.length
-    }
     if (moduleKey === 'homepageLearning') {
         return countFilledTextValues([
             formData.toolsHomepageLearningTitle,
@@ -3297,9 +3202,6 @@ const getModuleConfiguredCount = (moduleKey: string): number => {
  * 函数说明：计算指定模块的待完善项数量，供运营定位配置缺口
  */
 const getModuleMissingCount = (moduleKey: string): number => {
-    if (moduleKey === 'banner') {
-        return (layoutForm.bannerSlides.length === 0 ? 1 : 0) + countInvalidBannerSlides(layoutForm.bannerSlides)
-    }
     if (moduleKey === 'homepageLearning') {
         if (!homepageLearningEnabled.value) {
             return 0
@@ -3402,21 +3304,6 @@ const getModuleMissingCount = (moduleKey: string): number => {
  */
 const collectModuleMissingTips = (moduleKey: LayoutModuleKey): string[] => {
     const tips: string[] = []
-
-    if (moduleKey === 'banner') {
-        if (layoutForm.bannerSlides.length === 0) {
-            tips.push('请先新增至少 1 条 Banner 轮播。')
-        }
-        layoutForm.bannerSlides.forEach((item, index) => {
-            if (
-                !String(item.badge || '').trim() ||
-                !String(item.text || '').trim() ||
-                !String(item.link || '').trim()
-            ) {
-                tips.push(`第 ${index + 1} 条 Banner 缺少角标/文案/链接。`)
-            }
-        })
-    }
 
     if (moduleKey === 'homepageLearning' && homepageLearningEnabled.value) {
         if (!String(formData.toolsHomepageLearningTitle || '').trim()) {
@@ -3609,34 +3496,24 @@ const totalMissingCount = computed<number>(() => {
 })
 
 /**
- * 函数说明：生成前端布局总览页动作摘要，帮助运营先判断当前应优先维护 Banner 还是更新记录运营。
+ * 函数说明：生成前端布局总览页动作摘要，广告迁移后聚焦每日学习与更新记录运营。
  */
 const frontendLayoutActionSummary = computed(() => {
     if (totalMissingCount.value > 0) {
-        return `当前总览页还有 ${totalMissingCount.value} 项待完善，建议先修 Banner 的投放内容，再确认每日学习 RSS 筛选，最后处理更新记录。`
+        return `当前总览页还有 ${totalMissingCount.value} 项待完善，建议先确认每日学习 RSS 筛选，再处理更新记录。`
     }
-    return '当前 Banner、每日学习与更新记录配置已基本完整，建议保存后到首页做一次数据回归。'
+    return '当前每日学习与更新记录配置已基本完整；广告内容请前往“运营管理 → 广告管理”维护。'
 })
 
 /**
- * 函数说明：生成前端布局总览页重点检查项，统一展示 Banner、更新时间线和资料链接的完整度。
+ * 函数说明：生成前端布局总览页重点检查项，统一展示每日学习、更新时间线和资料链接的完整度。
  */
 const frontendLayoutFocusItems = computed(() => {
-    const bannerMissingCount = getModuleMissingCount('banner')
     const learningMissingCount = getModuleMissingCount('homepageLearning')
     const pageOpsMissingCount = getModuleMissingCount('pageOps')
     const changelogLinkCount = layoutForm.changelogHeaderLinks.length + layoutForm.changelogMetaLinks.length
 
     return [
-        {
-            label: 'Banner 投放',
-            value: layoutForm.bannerSlides.length > 0 ? `${layoutForm.bannerSlides.length} 条` : '待补充',
-            desc:
-                bannerMissingCount > 0
-                    ? 'Banner 仍有空文案、空链接或空背景配置，建议先完成首页首屏投放。'
-                    : 'Banner 轮播内容和核心字段已完整，可直接做前台回归。',
-            className: bannerMissingCount > 0 ? 'is-warning' : 'is-ok',
-        },
         {
             label: '每日学习',
             value: homepageLearningEnabled.value
@@ -3914,9 +3791,7 @@ const restoreActiveModuleDefaults = async () => {
     } catch {
         return
     }
-    if (activeTab.value === 'banner') {
-        resetBannerModuleToDefault()
-    } else if (activeTab.value === 'homepageLearning') {
+    if (activeTab.value === 'homepageLearning') {
         resetHomepageLearningModuleToDefault()
     } else if (activeTab.value === 'sidebar') {
         resetSidebarModuleToDefault()
@@ -4614,7 +4489,6 @@ const calcLayoutItemCount = (): number => {
         0
     )
     return (
-        layoutForm.bannerSlides.length +
         layoutForm.footerSupportLinks.length +
         layoutForm.footerRecordLinks.length +
         layoutForm.headerLinks.length +
@@ -4774,7 +4648,6 @@ const cleanupLayoutDraft = () => {
         .trim()
         .replace(/当前工具总数：334个/g, '当前工具总数：333个')
 
-    layoutForm.bannerSlides = sanitizeBannerSlides(layoutForm.bannerSlides)
     layoutForm.footerSupportLinks = sanitizeLinkItems(layoutForm.footerSupportLinks)
     layoutForm.footerRecordLinks = sanitizeLinkItems(layoutForm.footerRecordLinks)
     layoutForm.headerLinks = sanitizeLinkItems(layoutForm.headerLinks)
@@ -4888,7 +4761,6 @@ const buildLayoutExportPayload = () => {
             toolsHomepageLearningCategorySlug: formData.toolsHomepageLearningCategorySlug,
             toolsHomepageLearningCategoryIds: formData.toolsHomepageLearningCategoryIds,
             toolsHomepageLearningLimit: formData.toolsHomepageLearningLimit,
-            bannerSlides: layoutForm.bannerSlides.map((item) => ({ ...item })),
             changelogHeaderLinks: cloneLinkItems(layoutForm.changelogHeaderLinks),
             changelogMetaLinks: cloneLinkItems(layoutForm.changelogMetaLinks),
             changelogTimeline: cloneChangelogTimeline(changelogTimelineItems.value),
@@ -4980,7 +4852,6 @@ const applyImportedFrontendLayoutData = (source: Record<string, unknown>) => {
     formData.toolsChangelogStatsText = readString('toolsChangelogStatsText', formData.toolsChangelogStatsText)
         .replace(/当前工具总数：334个/g, '当前工具总数：333个')
 
-    writeArrayToJsonField('bannerSlides', 'toolsBannerSlides', 'toolsBannerSlides')
     writeArrayToJsonField('changelogHeaderLinks', 'toolsChangelogHeaderLinks', 'toolsChangelogHeaderLinks')
     writeArrayToJsonField('changelogMetaLinks', 'toolsChangelogMetaLinks', 'toolsChangelogMetaLinks')
     writeArrayToJsonField('changelogTimeline', 'toolsChangelogTimeline', 'toolsChangelogTimeline')
@@ -5170,15 +5041,6 @@ const runLayoutHealthCheck = () => {
     }
 
     const warningMessages: string[] = []
-    warningMessages.push(
-        ...collectDuplicateLinkWarnings(
-            layoutForm.bannerSlides.map((item) => ({
-                name: item.text,
-                link: item.link,
-            })),
-            '顶部Banner'
-        )
-    )
     if (!simpleMode.value) {
         warningMessages.push(...collectDuplicateLinkWarnings(layoutForm.changelogHeaderLinks, '更新记录页顶部链接'))
         warningMessages.push(...collectDuplicateLinkWarnings(layoutForm.changelogMetaLinks, '更新记录页资料链接'))
@@ -5337,10 +5199,6 @@ const resetToolsCategoryTreeEditor = () => {
  * 函数说明：将可视化表单同步为后端接口需要的 JSON 字符串
  */
 const syncLayoutFormToJson = (): boolean => {
-    if (!validateBannerSlides(layoutForm.bannerSlides)) {
-        activeTab.value = 'banner'
-        return false
-    }
     if (!formData.toolsChangelogIntroText.trim()) {
         activeTab.value = 'pageOps'
         feedback.msgError('更新记录页顶部说明不能为空')
@@ -5413,7 +5271,6 @@ const syncLayoutFormToJson = (): boolean => {
         formData.toolsChangelogSplitLinkText = formData.toolsChangelogSplitLinkText.trim()
     }
 
-    formData.toolsBannerSlides = JSON.stringify(layoutForm.bannerSlides)
     formData.toolsChangelogHeaderLinks = JSON.stringify(layoutForm.changelogHeaderLinks)
     formData.toolsChangelogMetaLinks = JSON.stringify(layoutForm.changelogMetaLinks)
     return true
@@ -5787,7 +5644,6 @@ const validateHomepageLearningForm = (): boolean => {
  */
 const buildFrontendLayoutPayload = (): Record<string, string> => {
     const payload: Record<string, string> = {
-        toolsBannerSlides: formData.toolsBannerSlides,
         toolsHomepageLearningEnabled: formData.toolsHomepageLearningEnabled,
         toolsHomepageLearningTitle: formData.toolsHomepageLearningTitle,
         toolsHomepageLearningRssUrl: formData.toolsHomepageLearningRssUrl,

@@ -911,6 +911,9 @@ INSERT INTO `la_system_auth_menu` VALUES (582, 580, 'A', '读取概览', '', 1, 
 INSERT INTO `la_system_auth_menu` VALUES (583, 560, 'C', '榜单配置', '', 70, 'setting:website:toolranking:config:detail', 'tool_ranking_config', 'setting/website/tool_ranking_config', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (584, 583, 'A', '读取配置', '', 0, 'setting:tool-ranking:config:detail', '', '', '/official_site/tool_ranking_config', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (585, 583, 'A', '保存配置', '', 1, 'setting:tool-ranking:config:save', '', '', '/official_site/tool_ranking_config', '', 0, 1, 0, 1711000000, 1711000000);
+INSERT INTO `la_system_auth_menu` VALUES (588, 0, 'M', '运营管理', 'system-icon-Dashboard', 44, 'operation:manage', 'operation', '', '', '', 0, 1, 0, 1787587200, 1787587200);
+INSERT INTO `la_system_auth_menu` VALUES (589, 588, 'C', '广告管理', '', 100, 'operation:advertising:detail', 'advertising', 'operation/advertising/index', '', '', 0, 1, 0, 1787587200, 1787587200);
+INSERT INTO `la_system_auth_menu` VALUES (590, 589, 'A', '保存广告', '', 0, 'operation:advertising:save', '', '', '/operation/advertising', '', 0, 1, 0, 1787587200, 1787587200);
 INSERT INTO `la_system_auth_menu` VALUES (600, 0, 'M', '开发工具', 'system-icon-Pen', 0, '', 'dev_tools', '', '', '', 0, 1, 0, 1660027606, 1664335701);
 INSERT INTO `la_system_auth_menu` VALUES (610, 600, 'C', '代码生成器', 'system-icon-File', 0, 'gen:list', 'code', 'dev_tools/code/index', '', '', 0, 1, 0, 1660028954, 1660532510);
 INSERT INTO `la_system_auth_menu` VALUES (611, 610, 'A', '导入数据表', '', 0, 'gen:importTable', '', '', '', '', 0, 1, 0, 1660532389, 1660532389);
