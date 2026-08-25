@@ -47,3 +47,10 @@ backend/data/
 backend/matting-service/.venv/
 .playwright-cli/
 backend/matting-service/__pycache__/
+
+# Codex/Superpowers 本地工作产物
+/.superpowers/
+/docs/superpowers/
+
+# Playwright 截图与其他本地输出产物
+/output/
