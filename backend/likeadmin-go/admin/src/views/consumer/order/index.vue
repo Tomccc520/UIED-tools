@@ -28,7 +28,7 @@
 
         <a-space direction="vertical" fill :size="16">
             <a-card
-                v-if="licenseRepairContext.isActive"
+                v-if="isLicenseFeatureVisible && licenseRepairContext.isActive"
                 class="!border-none pro-card"
                 :bordered="false"
             >
@@ -96,7 +96,7 @@
                         <div class="linkage-summary-card__value">
                             {{ linkageSummary.sourceOrderCount }}
                         </div>
-                        <div class="linkage-summary-card__desc">当前参与授权联动的订单总数</div>
+                        <div class="linkage-summary-card__desc">当前参与源码交付的订单总数</div>
                     </button>
                     <button
                         class="linkage-summary-card linkage-summary-card--danger"
@@ -107,9 +107,10 @@
                         <div class="linkage-summary-card__value">
                             {{ linkageSummary.abnormalCount }}
                         </div>
-                        <div class="linkage-summary-card__desc">授权、域名或下载链路存在问题</div>
+                        <div class="linkage-summary-card__desc">交付资料、域名或下载链路存在问题</div>
                     </button>
                     <button
+                        v-if="isLicenseFeatureVisible"
                         class="linkage-summary-card"
                         type="button"
                         @click="handleQuickFilterDelivery('license_inactive')"
@@ -123,6 +124,7 @@
                         </div>
                     </button>
                     <button
+                        v-if="isLicenseFeatureVisible"
                         class="linkage-summary-card"
                         type="button"
                         @click="handleQuickFilterDelivery('domain_mismatch')"
@@ -155,7 +157,7 @@
                         <div class="linkage-summary-card__value">
                             {{ linkageSummary.deliveryIncompleteCount }}
                         </div>
-                        <div class="linkage-summary-card__desc">域名、授权码或下载入口仍缺字段</div>
+                        <div class="linkage-summary-card__desc">域名、交付凭据或下载入口仍缺字段</div>
                     </button>
                 </div>
             </a-card>
@@ -218,8 +220,8 @@
                             <a-option value="">全部联动</a-option>
                             <a-option value="abnormal">异常待处理</a-option>
                             <a-option value="pending_delivery">待交付</a-option>
-                            <a-option value="license_inactive">授权未激活</a-option>
-                            <a-option value="domain_mismatch">域名不匹配</a-option>
+                            <a-option v-if="isLicenseFeatureVisible" value="license_inactive">授权未激活</a-option>
+                            <a-option v-if="isLicenseFeatureVisible" value="domain_mismatch">域名不匹配</a-option>
                             <a-option value="download_invalid">下载异常</a-option>
                             <a-option value="delivery_incomplete">资料不完整</a-option>
                             <a-option value="expired">已失效</a-option>
@@ -308,7 +310,7 @@
                     <template #deliveryInfo="{ record }">
                         <div class="delivery-info">
                             <div>域名：{{ record.licenseBoundDomain || '-' }}</div>
-                            <div>授权码：{{ record.licenseKeyMasked || '-' }}</div>
+                            <div v-if="isLicenseFeatureVisible">授权码：{{ record.licenseKeyMasked || '-' }}</div>
                             <div>
                                 下载：
                                 <a
@@ -335,7 +337,7 @@
                                 <a-tag :color="resolveDeliveryCheckColor(record)" bordered>
                                     {{ resolveDeliveryCheckText(record) }}
                                 </a-tag>
-                                <span class="delivery-check-block__meta-text"
+                                <span v-if="isLicenseFeatureVisible" class="delivery-check-block__meta-text"
                                     >系统授权：{{ record.systemLicenseStatusText || '-' }}</span
                                 >
                             </div>
@@ -389,7 +391,7 @@
                                 交付
                             </a-button>
                             <a-button
-                                v-if="record.isSourceDeliveryOrder"
+                                v-if="isLicenseFeatureVisible && record.isSourceDeliveryOrder"
                                 v-perms="['setting:license:detail']"
                                 type="text"
                                 @click="handleGoLicense(record)"
@@ -492,7 +494,9 @@
                         }}
                     </div>
                     <div class="delivery-workspace__desc">
-                        先补齐域名、授权码和下载入口，再根据系统授权状态判断是否需要跳到授权管理页继续修复。
+                        {{ isLicenseFeatureVisible
+                            ? '先补齐域名、授权码和下载入口，再根据系统授权状态判断是否需要跳到授权管理页继续修复。'
+                            : '先补齐域名、交付凭据和下载入口，再检查资料与下载链路是否完整。' }}
                     </div>
                     <div class="delivery-workspace__meta">
                         <div class="delivery-workspace__meta-item">
@@ -503,11 +507,11 @@
                             <span>交付校验</span>
                             <strong>{{ deliveryModal.deliveryCheckText }}</strong>
                         </div>
-                        <div class="delivery-workspace__meta-item">
+                        <div v-if="isLicenseFeatureVisible" class="delivery-workspace__meta-item">
                             <span>系统授权</span>
                             <strong>{{ deliveryModal.systemLicenseStatusText || '-' }}</strong>
                         </div>
-                        <div class="delivery-workspace__meta-item">
+                        <div v-if="isLicenseFeatureVisible" class="delivery-workspace__meta-item">
                             <span>系统域名</span>
                             <strong>{{ deliveryModal.systemLicenseBoundDomain || '-' }}</strong>
                         </div>
@@ -520,14 +524,14 @@
                     </div>
                     <a-space direction="vertical" fill>
                         <a-button
-                            v-if="deliveryModal.id > 0"
+                            v-if="isLicenseFeatureVisible && deliveryModal.id > 0"
                             type="primary"
                             @click="handleGoLicenseFromDelivery"
                         >
                             去授权管理继续修复
                         </a-button>
                         <a-button
-                            v-if="deliveryModal.systemLicenseBoundDomain"
+                            v-if="isLicenseFeatureVisible && deliveryModal.systemLicenseBoundDomain"
                             @click="handleApplySystemDomainToDelivery"
                         >
                             使用系统授权域名
@@ -576,7 +580,7 @@
                         placeholder="如：uiedtool.com"
                     />
                 </a-form-item>
-                <a-form-item label="授权码">
+                <a-form-item v-if="isLicenseFeatureVisible" label="授权码">
                     <a-input
                         v-model="deliveryModal.licenseKey"
                         allow-clear
@@ -644,6 +648,7 @@ import {
     saveOrderDelivery
 } from '@/api/consumer'
 import { usePaging } from '@/hooks/usePaging'
+import { getRoutePath } from '@/router'
 import feedback from '@/utils/feedback'
 
 const queryParams = reactive({
@@ -662,6 +667,7 @@ const deliverySubmitting = ref(false)
 const exporting = ref(false)
 const route = useRoute()
 const router = useRouter()
+const isLicenseFeatureVisible = computed(() => Boolean(getRoutePath('setting:license:detail')))
 const rowActionLoadingMap = reactive<Record<string, boolean>>({})
 const linkageSummary = ref({
     sourceOrderCount: 0,
@@ -739,6 +745,15 @@ const isRowActionLoading = (orderSn: string, action: string) => {
  * 函数说明：汇总交付弹窗顶部的动作建议，让运营先知道当前这单优先修什么。
  */
 const deliveryModalActionSummary = computed(() => {
+    if (!isLicenseFeatureVisible.value) {
+        if (deliveryModal.deliveryCheckStatus === 'download_invalid') {
+            return '当前订单的下载链路异常，建议先检测并替换下载链接，再决定是否交付。'
+        }
+        if (deliveryModal.deliveryCheckStatus === 'delivery_incomplete') {
+            return '当前订单资料还不完整，优先补齐域名、交付凭据和下载入口。'
+        }
+        return '请复核交付资料与下载链路，确认完整后再保存。'
+    }
     if (deliveryModal.deliveryCheckStatus === 'license_inactive') {
         return '当前订单的主要问题是授权未激活，建议先跳到授权管理页完成校验。'
     }
@@ -764,7 +779,7 @@ const deliveryModalChecklist = computed(() => {
     const hasDomain = Boolean(String(deliveryModal.licenseBoundDomain || '').trim())
     const hasLicenseKey = Boolean(String(deliveryModal.licenseKey || '').trim())
     const hasDownloadUrl = Boolean(String(deliveryModal.downloadUrl || '').trim())
-    return [
+    const checklist = [
         {
             label: '域名资料',
             value: hasDomain ? '已填写' : '待补充',
@@ -773,14 +788,14 @@ const deliveryModalChecklist = computed(() => {
                 : '源码交付通常需要绑定客户最终使用域名。',
             className: hasDomain ? 'is-ok' : 'is-warning'
         },
-        {
+        ...(isLicenseFeatureVisible.value ? [{
             label: '授权码资料',
             value: hasLicenseKey ? '已填写' : '待补充',
             desc: hasLicenseKey
                 ? '订单已记录授权码，可用于客户交付。'
                 : '授权码为空时，客户无法直接完成授权激活。',
             className: hasLicenseKey ? 'is-ok' : 'is-warning'
-        },
+        }] : []),
         {
             label: '下载链路',
             value:
@@ -801,7 +816,7 @@ const deliveryModalChecklist = computed(() => {
                     ? ''
                     : 'is-danger'
         },
-        {
+        ...(isLicenseFeatureVisible.value ? [{
             label: '系统授权',
             value: deliveryModal.systemLicenseStatusText || '未记录',
             desc: deliveryModal.systemLicenseBoundDomain
@@ -812,8 +827,9 @@ const deliveryModalChecklist = computed(() => {
                 deliveryModal.deliveryCheckStatus === 'domain_mismatch'
                     ? 'is-danger'
                     : ''
-        }
+        }] : [])
     ]
+    return checklist
 })
 
 /**
@@ -1316,8 +1332,13 @@ const handleApplySystemDomainToDelivery = () => {
  * 函数说明：从订单页跳转到授权管理页，并带上当前订单上下文用于快速修复授权。
  */
 const handleGoLicense = async (record: Record<string, any>) => {
+    const licensePath = getRoutePath('setting:license:detail')
+    if (!licensePath) {
+        feedback.msgWarning('授权功能当前未启用')
+        return
+    }
     await router.push({
-        path: '/official_site/license',
+        path: licensePath,
         query: {
             from: 'order-delivery',
             orderSn: String(record.orderSn || '').trim(),
@@ -1334,11 +1355,12 @@ const handleGoLicense = async (record: Record<string, any>) => {
  * 函数说明：从订单页返回授权页，并保留当前修单上下文，避免运营在两个页面来回切换时丢失目标订单。
  */
 const handleGoBackToLicense = async () => {
-    if (!licenseRepairContext.value.isActive) {
+    const licensePath = getRoutePath('setting:license:detail')
+    if (!licensePath || !licenseRepairContext.value.isActive) {
         return
     }
     await router.push({
-        path: '/official_site/license',
+        path: licensePath,
         query: {
             from: 'order-delivery',
             orderSn: licenseRepairContext.value.orderSn,
@@ -1354,8 +1376,13 @@ const handleGoBackToLicense = async () => {
  * 函数说明：在交付弹窗内直接跳转到授权管理页，保留当前订单修复上下文。
  */
 const handleGoLicenseFromDelivery = async () => {
+    const licensePath = getRoutePath('setting:license:detail')
+    if (!licensePath) {
+        feedback.msgWarning('授权功能当前未启用')
+        return
+    }
     await router.push({
-        path: '/official_site/license',
+        path: licensePath,
         query: {
             from: 'order-delivery',
             orderSn: String(deliveryModal.orderSn || '').trim(),

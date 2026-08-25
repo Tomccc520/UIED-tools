@@ -211,7 +211,7 @@ INSERT INTO la_system_auth_menu (
 )
 SELECT
   @official_site_menu_id, 'C', '授权管理', 'IconLock', 18, 'setting:license:detail', 'license', 'setting/website/license', '', '',
-  0, 1, 0, @now_ts, @now_ts
+  0, 0, 1, @now_ts, @now_ts
 WHERE @official_site_menu_id IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM la_system_auth_menu

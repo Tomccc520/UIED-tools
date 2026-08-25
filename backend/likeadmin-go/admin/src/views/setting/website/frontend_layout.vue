@@ -2219,7 +2219,7 @@ const defaultChangelogMetaLinks: ToolsLinkItem[] = [
 ]
 const defaultChangelogSplitTitle = '3.0.1 全栈开源说明'
 const defaultChangelogSplitDesc =
-    '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。商业授权默认关闭，项目优先服务免费使用、SEO 内容和社区贡献。'
+    '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。'
 const defaultChangelogSplitLink = 'https://github.com/Tomccc520/UIED-tools'
 const defaultChangelogSplitLinkText = '查看完整源码与部署说明'
 const defaultChangelogStatsText = '当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-25 14:17'

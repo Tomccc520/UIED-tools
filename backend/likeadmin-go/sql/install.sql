@@ -902,7 +902,7 @@ INSERT INTO `la_system_auth_menu` VALUES (569, 560, 'C', '工具主数据', '', 
 INSERT INTO `la_system_auth_menu` VALUES (570, 569, 'A', '保存配置', '', 0, 'setting:website:catalog:save', '', '', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (567, 560, 'C', 'SEO设置', '', 50, 'setting:website:seo:detail', 'seo', 'setting/website/seo', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (568, 567, 'A', '保存配置', '', 0, 'setting:website:seo:save', '', '', '', '', 0, 1, 0, 1711000000, 1711000000);
-INSERT INTO `la_system_auth_menu` VALUES (577, 560, 'C', '授权管理', 'IconLock', 10, 'setting:license:detail', 'license', 'setting/website/license', '', '', 0, 0, 0, 1711000000, 1711000000);
+INSERT INTO `la_system_auth_menu` VALUES (577, 560, 'C', '授权管理', 'IconLock', 10, 'setting:license:detail', 'license', 'setting/website/license', '', '', 0, 0, 1, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (578, 577, 'A', '授权保存', '', 0, 'setting:license:save', 'save', '', '/official_site/license', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (579, 577, 'A', '授权校验', '', 1, 'setting:license:verify', 'verify', '', '/official_site/license', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (580, 560, 'C', '热榜管理', '', 60, 'setting:website:toolranking:detail', 'tool_ranking_manage', 'setting/website/tool_ranking_manage', '', '', 0, 1, 0, 1711000000, 1711000000);

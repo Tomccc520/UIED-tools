@@ -556,7 +556,7 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 	}
 	toolsChangelogSplitDesc := strings.TrimSpace(website["toolsChangelogSplitDesc"])
 	if toolsChangelogSplitDesc == "" {
-		toolsChangelogSplitDesc = "本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。商业授权默认关闭，项目优先服务免费使用、SEO 内容和社区贡献。"
+		toolsChangelogSplitDesc = "本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。"
 	}
 	toolsChangelogSplitLink := strings.TrimSpace(website["toolsChangelogSplitLink"])
 	if toolsChangelogSplitLink == "" {

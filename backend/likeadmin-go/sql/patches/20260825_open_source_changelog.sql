@@ -33,11 +33,14 @@ WHERE `type` = 'website'
   AND `value` = '工具箱 3.0.0 版本分岔提醒';
 
 UPDATE `la_system_config`
-SET `value` = '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。商业授权默认关闭，项目优先服务免费使用、SEO 内容和社区贡献。',
+SET `value` = '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。',
     `update_time` = @now_ts
 WHERE `type` = 'website'
   AND `name` = 'toolsChangelogSplitDesc'
-  AND `value` LIKE '%后台运营、会员与模型管理能力的版本为商业源码版%';
+  AND (
+    `value` LIKE '%后台运营、会员与模型管理能力的版本为商业源码版%'
+    OR `value` = '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。商业授权默认关闭，项目优先服务免费使用、SEO 内容和社区贡献。'
+  );
 
 UPDATE `la_system_config`
 SET `value` = 'https://github.com/Tomccc520/UIED-tools',
@@ -93,7 +96,12 @@ SET `value` = REPLACE(`value`, '登录功能支持后台开启或关闭；关闭
 WHERE `type` = 'website' AND `name` = 'toolsChangelogTimeline';
 
 UPDATE `la_system_config`
-SET `value` = REPLACE(`value`, '订单状态统一为待支付、已支付和已关闭，后台支持订单筛选、补单、关闭与导出。', '取消纯前端开源版与后台商业版的分岔策略，商业授权默认关闭，当前重点转向免费工具、SEO 内容与社区流量。'),
+SET `value` = REPLACE(`value`, '订单状态统一为待支付、已支付和已关闭，后台支持订单筛选、补单、关闭与导出。', '取消纯前端开源版与后台商业版的分岔策略，当前重点转向免费工具、SEO 内容与社区流量。'),
+    `update_time` = @now_ts
+WHERE `type` = 'website' AND `name` = 'toolsChangelogTimeline';
+
+UPDATE `la_system_config`
+SET `value` = REPLACE(`value`, '取消纯前端开源版与后台商业版的分岔策略，商业授权默认关闭，当前重点转向免费工具、SEO 内容与社区流量。', '取消纯前端开源版与后台商业版的分岔策略，当前重点转向免费工具、SEO 内容与社区流量。'),
     `update_time` = @now_ts
 WHERE `type` = 'website' AND `name` = 'toolsChangelogTimeline';
 
@@ -173,7 +181,12 @@ SET `value` = REPLACE(`value`, '编辑器补齐专业模板、移动端全屏编
 WHERE `type` = 'website' AND `name` = 'toolsChangelogTimeline';
 
 UPDATE `la_system_config`
-SET `value` = REPLACE(`value`, '现有代码与测试完整保留，不影响本期主站、管理后台及其他工具部署。', '自用模式默认隐藏授权入口并关闭强制授权校验；会员、订单和支付模块保留为可选能力，不影响免费工具运行。'),
+SET `value` = REPLACE(`value`, '现有代码与测试完整保留，不影响本期主站、管理后台及其他工具部署。', '自用模式默认隐藏非必要商业化入口；会员、订单和支付模块保留为可选能力，不影响免费工具运行。'),
+    `update_time` = @now_ts
+WHERE `type` = 'website' AND `name` = 'toolsChangelogTimeline';
+
+UPDATE `la_system_config`
+SET `value` = REPLACE(`value`, '自用模式默认隐藏授权入口并关闭强制授权校验；会员、订单和支付模块保留为可选能力，不影响免费工具运行。', '自用模式默认隐藏非必要商业化入口；会员、订单和支付模块保留为可选能力，不影响免费工具运行。'),
     `update_time` = @now_ts
 WHERE `type` = 'website' AND `name` = 'toolsChangelogTimeline';
 

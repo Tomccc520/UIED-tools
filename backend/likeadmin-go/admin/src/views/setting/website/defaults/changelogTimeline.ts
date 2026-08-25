@@ -19,7 +19,7 @@ const defaultChangelogTimeline = [
                 points: [
                     'Vue 3 主站、Go API、Arco Pro 管理后台、数据库脚本和部署工具统一在 <a href="https://github.com/Tomccc520/UIED-tools" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:text-blue-700">GitHub</a> 开放源码。',
                     '项目继续采用 MIT 许可，允许学习、修改、部署和二次开发；第三方组件保留各自许可证与版权声明。',
-                    '取消纯前端开源版与后台商业版的分岔策略，商业授权默认关闭，当前重点转向免费工具、SEO 内容与社区流量。'
+                    '取消纯前端开源版与后台商业版的分岔策略，当前重点转向免费工具、SEO 内容与社区流量。'
                 ]
             },
             {
@@ -51,7 +51,7 @@ const defaultChangelogTimeline = [
                 points: [
                     'Workbench、权限、组织、日志、缓存、渠道、工具主数据和前端布局等 P0 页面统一操作区与信息层级。',
                     '工具主数据补齐同步高频工具、策略同步、一键体检、缺失策略提示和前端预览。',
-                    '自用模式默认隐藏授权入口并关闭强制授权校验；会员、订单和支付模块保留为可选能力，不影响免费工具运行。'
+                    '自用模式默认隐藏非必要商业化入口；会员、订单和支付模块保留为可选能力，不影响免费工具运行。'
                 ]
             },
             {

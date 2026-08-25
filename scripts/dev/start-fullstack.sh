@@ -796,6 +796,24 @@ apply_license_product_code_alignment_patch() {
   log_info "授权产品编码对齐补丁执行失败，已跳过本次补丁并继续启动。请后续检查 ${patch_file}。"
 }
 
+# 函数说明：应用自用开源模式，默认隐藏并禁用授权管理路由，保留授权代码供后续恢复。
+apply_self_use_mode_patch() {
+  local patch_file="${LIKEADMIN_DIR}/sql/patches/20260825_enable_self_use_mode.sql"
+
+  if [[ ! -f "${patch_file}" ]]; then
+    return
+  fi
+
+  log_info "应用自用开源模式，隐藏授权管理入口..."
+  if compose_cmd exec -T -e MYSQL_PWD="${MYSQL_ROOT_PASSWORD}" mysql mysql --default-character-set=utf8mb4 -uroot "${DB_NAME}" < "${patch_file}"; then
+    log_info "授权管理入口已隐藏。"
+    return
+  fi
+
+  # 函数说明：自用模式补丁失败时不阻塞全栈启动，避免影响其他工具和后台配置联调。
+  log_info "自用模式补丁执行失败，已跳过并继续启动。请检查 ${patch_file}。"
+}
+
 # 函数说明：检测并补齐 AI Provider 与图片 AI 能力默认配置，确保文本类/图片类 AI 工具都能直接联动。
 apply_ai_provider_config_patch() {
   local patch_file="${LIKEADMIN_DIR}/sql/patches/20260405_add_ai_provider_configs.sql"
@@ -1712,6 +1730,7 @@ main() {
   apply_role_permission_baseline_patch
   apply_license_module_patch
   apply_license_product_code_alignment_patch
+  apply_self_use_mode_patch
   apply_ai_provider_config_patch
   repair_garbled_ai_provider_config
   apply_ai_model_menu_split_patch
