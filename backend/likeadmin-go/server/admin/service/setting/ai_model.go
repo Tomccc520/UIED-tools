@@ -185,14 +185,23 @@ var defaultAiImageAbilityConfigs = []aiImageAbilityConfig{
 }
 
 type aiProviderConfig struct {
-	Provider     string `json:"provider"`
-	Label        string `json:"label"`
-	Description  string `json:"description"`
-	Enabled      bool   `json:"enabled"`
-	IsDefault    bool   `json:"isDefault"`
-	BaseURL      string `json:"baseUrl"`
-	ApiKey       string `json:"apiKey"`
-	DefaultModel string `json:"defaultModel"`
+	Provider     string                  `json:"provider"`
+	Label        string                  `json:"label"`
+	Description  string                  `json:"description"`
+	Enabled      bool                    `json:"enabled"`
+	IsDefault    bool                    `json:"isDefault"`
+	BaseURL      string                  `json:"baseUrl"`
+	ApiKey       string                  `json:"apiKey"`
+	DefaultModel string                  `json:"defaultModel"`
+	Models       []aiProviderModelOption `json:"models,omitempty"`
+}
+
+// aiProviderModelOption Provider 模型列表持久化结构。
+type aiProviderModelOption struct {
+	Label     string `json:"label"`
+	Value     string `json:"value"`
+	Desc      string `json:"desc"`
+	MaxTokens int    `json:"maxTokens"`
 }
 
 type aiMattingProviderConfig struct {
@@ -247,6 +256,7 @@ type ISettingAiModelService interface {
 	BuildChatProxyPayload(chatReq req.CommonAiProviderChatReq) (res AiProviderProxyPayload, e error)
 	CurrentImageAbility(ability string) (res resp.SettingAiImageAbilityCurrentResp, e error)
 	BuildImageAbilityProxyPayload(ability string) (res AiImageAbilityProxyPayload, e error)
+	FetchProviderModels(fetchReq req.SettingAiProviderModelsReq) (res resp.SettingAiProviderModelsResp, e error)
 	Save(saveReq req.SettingAiModelSaveReq) (e error)
 }
 
@@ -759,6 +769,7 @@ func (aSrv settingAiModelService) mergeSingleProvider(defaultItem aiProviderConf
 		BaseURL:      strings.TrimSpace(rawItem.BaseURL),
 		ApiKey:       strings.TrimSpace(rawItem.ApiKey),
 		DefaultModel: strings.TrimSpace(rawItem.DefaultModel),
+		Models:       aSrv.normalizeProviderModelOptions(rawItem.Models),
 	}
 
 	if merged.Label == "" {
@@ -870,6 +881,7 @@ func (aSrv settingAiModelService) normalizeProviderReqs(raw []req.SettingAiProvi
 			BaseURL:      strings.TrimSpace(item.BaseURL),
 			ApiKey:       strings.TrimSpace(item.ApiKey),
 			DefaultModel: strings.TrimSpace(item.DefaultModel),
+			Models:       aSrv.normalizeProviderModelReqs(item.Models),
 		})
 	}
 	return aSrv.mergeProviderConfigsWithDefaults(providers)
@@ -930,11 +942,58 @@ func (aSrv settingAiModelService) normalizeSingleProvider(item aiProviderConfig)
 	item.BaseURL = strings.TrimSpace(item.BaseURL)
 	item.ApiKey = strings.TrimSpace(item.ApiKey)
 	item.DefaultModel = strings.TrimSpace(item.DefaultModel)
+	item.Models = aSrv.normalizeProviderModelOptions(item.Models)
 
 	if item.Label == "" {
 		item.Label = item.Provider
 	}
 	return item
+}
+
+// normalizeProviderModelReqs 函数说明：清洗管理端提交的模型列表并去除重复模型 ID。
+func (aSrv settingAiModelService) normalizeProviderModelReqs(items []req.SettingAiProviderModelOptionReq) []aiProviderModelOption {
+	models := make([]aiProviderModelOption, 0, len(items))
+	for _, item := range items {
+		models = append(models, aiProviderModelOption{
+			Label:     item.Label,
+			Value:     item.Value,
+			Desc:      item.Desc,
+			MaxTokens: item.MaxTokens,
+		})
+	}
+	return aSrv.normalizeProviderModelOptions(models)
+}
+
+// normalizeProviderModelOptions 函数说明：规范化 Provider 模型选项并按模型 ID 去重。
+func (aSrv settingAiModelService) normalizeProviderModelOptions(items []aiProviderModelOption) []aiProviderModelOption {
+	models := make([]aiProviderModelOption, 0, len(items))
+	seen := make(map[string]struct{}, len(items))
+	for _, item := range items {
+		value := strings.TrimSpace(item.Value)
+		if value == "" {
+			continue
+		}
+		key := strings.ToLower(value)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		label := strings.TrimSpace(item.Label)
+		if label == "" {
+			label = value
+		}
+		maxTokens := item.MaxTokens
+		if maxTokens <= 0 {
+			maxTokens = defaultAiProviderMaxTokens
+		}
+		models = append(models, aiProviderModelOption{
+			Label:     label,
+			Value:     value,
+			Desc:      strings.TrimSpace(item.Desc),
+			MaxTokens: maxTokens,
+		})
+	}
+	return models
 }
 
 // normalizeSingleMattingProvider 函数说明：清理抠图 Provider 字段并补齐基础超时。
@@ -1183,6 +1242,18 @@ func (aSrv settingAiModelService) toImageAbilityRespList(items []aiImageAbilityC
 
 // getProviderModelOptions 函数说明：返回 Provider 对应的推荐模型列表，未知 Provider 回退为“后台默认模型”
 func (aSrv settingAiModelService) getProviderModelOptions(item aiProviderConfig) []resp.SettingAiProviderModelOptionResp {
+	if len(item.Models) > 0 {
+		models := make([]resp.SettingAiProviderModelOptionResp, 0, len(item.Models))
+		for _, model := range aSrv.normalizeProviderModelOptions(item.Models) {
+			models = append(models, resp.SettingAiProviderModelOptionResp{
+				Label:     model.Label,
+				Value:     model.Value,
+				Desc:      model.Desc,
+				MaxTokens: model.MaxTokens,
+			})
+		}
+		return models
+	}
 	switch item.Provider {
 	case "siliconflow":
 		return []resp.SettingAiProviderModelOptionResp{

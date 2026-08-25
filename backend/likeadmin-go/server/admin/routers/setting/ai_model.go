@@ -22,6 +22,7 @@ func regAiModel(rg *gin.RouterGroup, group *core.GroupBase) error {
 	return group.Reg(func(handle *aiModelHandler) {
 		rg.GET("/ai/model/detail", handle.detail)
 		rg.POST("/ai/model/save", handle.save)
+		rg.POST("/ai/provider/models", handle.providerModels)
 	})
 }
 
@@ -42,4 +43,14 @@ func (ah aiModelHandler) save(c *gin.Context) {
 		return
 	}
 	response.CheckAndResp(c, ah.srv.Save(saveReq))
+}
+
+// providerModels 函数说明：使用管理端填写的 Base URL 与 API Key 从上游获取模型列表。
+func (ah aiModelHandler) providerModels(c *gin.Context) {
+	var fetchReq req.SettingAiProviderModelsReq
+	if response.IsFailWithResp(c, util.VerifyUtil.VerifyJSON(c, &fetchReq)) {
+		return
+	}
+	res, err := ah.srv.FetchProviderModels(fetchReq)
+	response.CheckAndRespWithData(c, res, err)
 }

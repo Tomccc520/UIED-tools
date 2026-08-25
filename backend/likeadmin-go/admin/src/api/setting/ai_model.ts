@@ -63,6 +63,12 @@ export interface AiProviderCurrent {
     models: AiProviderModelOption[]
 }
 
+export interface AiProviderModelsResult {
+    provider: string
+    total: number
+    models: AiProviderModelOption[]
+}
+
 export interface AiImageAbilityConfig {
     ability: string
     label: string
@@ -102,4 +108,11 @@ export function saveAiModel(params: {
     imageAbilities: AiImageAbilityConfig[]
 }) {
     return request.post({ url: '/setting/ai/model/save', params })
+}
+
+/**
+ * 函数说明：通过服务端使用 Provider Base URL 与 API Key 获取当前账号可用模型。
+ */
+export function fetchAiProviderModels(params: { provider: string; baseUrl: string; apiKey: string }) {
+    return request.post<AiProviderModelsResult>({ url: '/setting/ai/provider/models', params })
 }

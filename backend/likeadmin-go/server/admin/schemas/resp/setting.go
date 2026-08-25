@@ -86,6 +86,13 @@ type SettingAiProviderModelOptionResp struct {
 	MaxTokens int    `json:"maxTokens"` // 建议最大输出 token
 }
 
+// SettingAiProviderModelsResp Provider 上游模型列表响应。
+type SettingAiProviderModelsResp struct {
+	Provider string                             `json:"provider"` // Provider 标识
+	Total    int                                `json:"total"`    // 获取到的模型数量
+	Models   []SettingAiProviderModelOptionResp `json:"models"`   // 上游返回的模型选项
+}
+
 // SettingAiProviderConfigResp AI Provider 配置详情
 type SettingAiProviderConfigResp struct {
 	Provider     string                             `json:"provider"`     // Provider 标识

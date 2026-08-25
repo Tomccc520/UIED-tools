@@ -220,14 +220,30 @@ type SettingAiMattingProviderConfigReq struct {
 
 // SettingAiProviderConfigReq AI Provider 配置参数
 type SettingAiProviderConfigReq struct {
-	Provider     string `form:"provider" json:"provider" binding:"required"`        // Provider 标识
-	Label        string `form:"label" json:"label" binding:"required,max=60"`       // Provider 名称
-	Description  string `form:"description" json:"description" binding:"max=255"`   // Provider 描述
-	Enabled      bool   `form:"enabled" json:"enabled"`                             // 是否启用
-	IsDefault    bool   `form:"isDefault" json:"isDefault"`                         // 是否默认 Provider
-	BaseURL      string `form:"baseUrl" json:"baseUrl" binding:"max=255"`           // Provider 基础地址
-	ApiKey       string `form:"apiKey" json:"apiKey" binding:"max=500"`             // Provider API Key
-	DefaultModel string `form:"defaultModel" json:"defaultModel" binding:"max=255"` // 默认模型
+	Provider     string                            `form:"provider" json:"provider" binding:"required"`        // Provider 标识
+	Label        string                            `form:"label" json:"label" binding:"required,max=60"`       // Provider 名称
+	Description  string                            `form:"description" json:"description" binding:"max=255"`   // Provider 描述
+	Enabled      bool                              `form:"enabled" json:"enabled"`                             // 是否启用
+	IsDefault    bool                              `form:"isDefault" json:"isDefault"`                         // 是否默认 Provider
+	BaseURL      string                            `form:"baseUrl" json:"baseUrl" binding:"max=255"`           // Provider 基础地址
+	ApiKey       string                            `form:"apiKey" json:"apiKey" binding:"max=500"`             // Provider API Key
+	DefaultModel string                            `form:"defaultModel" json:"defaultModel" binding:"max=255"` // 默认模型
+	Models       []SettingAiProviderModelOptionReq `form:"models" json:"models" binding:"max=1000,dive"`       // 通过 Provider API 获取的模型列表
+}
+
+// SettingAiProviderModelOptionReq AI Provider 模型选项保存参数。
+type SettingAiProviderModelOptionReq struct {
+	Label     string `form:"label" json:"label" binding:"required,max=255"`          // 模型展示名称
+	Value     string `form:"value" json:"value" binding:"required,max=255"`          // 模型 ID
+	Desc      string `form:"desc" json:"desc" binding:"max=255"`                     // 模型说明
+	MaxTokens int    `form:"maxTokens" json:"maxTokens" binding:"gte=0,lte=1048576"` // 建议最大输出 token
+}
+
+// SettingAiProviderModelsReq 从 Provider 上游接口获取模型列表的参数。
+type SettingAiProviderModelsReq struct {
+	Provider string `form:"provider" json:"provider" binding:"required,max=80"` // Provider 标识
+	BaseURL  string `form:"baseUrl" json:"baseUrl" binding:"max=255"`           // Provider 基础地址，为空时读取已保存配置
+	ApiKey   string `form:"apiKey" json:"apiKey" binding:"max=500"`             // Provider API Key，为空时读取已保存配置
 }
 
 // SettingAiImageAbilityConfigReq 图片 AI 能力配置参数

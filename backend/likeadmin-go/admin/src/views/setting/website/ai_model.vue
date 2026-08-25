@@ -269,10 +269,20 @@
                             </a-col>
                             <a-col :xs="24" :lg="12">
                                 <a-form-item label="默认模型">
-                                    <a-input
+                                    <a-select
                                         v-model="currentProviderForm.defaultModel"
-                                        placeholder="请输入默认模型 ID"
-                                    />
+                                        allow-search
+                                        allow-create
+                                        placeholder="获取模型后选择，或输入自定义模型 ID"
+                                    >
+                                        <a-option
+                                            v-for="model in currentProviderForm.models || []"
+                                            :key="model.value"
+                                            :value="model.value"
+                                        >
+                                            {{ model.label || model.value }}
+                                        </a-option>
+                                    </a-select>
                                 </a-form-item>
                             </a-col>
                             <a-col :xs="24">
@@ -285,11 +295,27 @@
                             </a-col>
                             <a-col :xs="24">
                                 <a-form-item label="API Key">
-                                    <a-input-password
-                                        v-model="currentProviderForm.apiKey"
-                                        placeholder="请输入 API Key，保存后仅后端代理使用"
-                                        allow-clear
-                                    />
+                                    <div class="provider-key-row">
+                                        <a-input-password
+                                            v-model="currentProviderForm.apiKey"
+                                            placeholder="请输入 API Key，模型获取与前端调用均由后端代理"
+                                            allow-clear
+                                        />
+                                        <a-button
+                                            type="primary"
+                                            :loading="fetchingProviderKey === currentProviderForm.provider"
+                                            :disabled="
+                                                !currentProviderForm.baseUrl?.trim() ||
+                                                !currentProviderForm.apiKey?.trim()
+                                            "
+                                            @click="handleFetchProviderModels"
+                                        >
+                                            获取模型
+                                        </a-button>
+                                    </div>
+                                    <div class="field-help">
+                                        Key 只提交给本站 Go 服务端，由服务端请求 Provider 的 /models 接口，不会直接暴露给官网前端。
+                                    </div>
                                 </a-form-item>
                             </a-col>
                             <a-col :xs="24">
@@ -305,20 +331,30 @@
                     </a-form>
 
                     <div class="model-tip-block">
-                        <div class="model-tip-title">推荐模型</div>
+                        <div class="model-tip-header">
+                            <div class="model-tip-title">当前模型库</div>
+                            <a-tag v-if="currentProviderForm.models?.length" color="green" bordered>
+                                已获取 {{ currentProviderForm.models.length }} 个
+                            </a-tag>
+                        </div>
                         <div v-if="currentProviderForm.models?.length" class="model-tags">
                             <a-tag
-                                v-for="model in currentProviderForm.models"
+                                v-for="model in displayedProviderModels"
                                 :key="`${currentProviderForm.provider}-${model.value}`"
                                 color="arcoblue"
                                 bordered
+                                class="model-tag-select"
+                                @click="currentProviderForm.defaultModel = model.value"
                             >
                                 {{ model.label }}
+                            </a-tag>
+                            <a-tag v-if="currentProviderForm.models.length > displayedProviderModels.length" bordered>
+                                另有 {{ currentProviderForm.models.length - displayedProviderModels.length }} 个，请在默认模型中搜索
                             </a-tag>
                         </div>
                         <a-empty
                             v-else
-                            description="当前 Provider 暂无预设模型，使用上面的默认模型字段即可。"
+                            description="填写 Base URL 和 API Key 后点击“获取模型”。"
                         />
                     </div>
                 </a-card>
@@ -470,6 +506,7 @@
 
 <script lang="ts" setup name="settingAiModel">
 import {
+    fetchAiProviderModels,
     getAiModelDetail,
     saveAiModel,
     type AiModelOption,
@@ -531,6 +568,7 @@ const operationCollapseKeys = ref<(string | number)[]>([
 const baselineSnapshot = ref('')
 const selectedProviderKey = ref('')
 const selectedAbilityKey = ref('')
+const fetchingProviderKey = ref('')
 const { isSubmitting, lastSavedAt, runSubmit } = useOperateSubmit('AI 模型配置已保存')
 
 const sectionNavItems: AiModelNavItem[] = [
@@ -719,6 +757,13 @@ const currentProviderForm = computed(() => {
 })
 
 /**
+ * 函数说明：限制模型标签首屏数量，大模型库通过默认模型搜索框完成选择。
+ */
+const displayedProviderModels = computed(() => {
+    return (currentProviderForm.value?.models || []).slice(0, 12)
+})
+
+/**
  * 函数说明：根据当前下拉选中的工具能力返回可编辑对象，避免后台同时渲染全部能力卡片。
  */
 const currentAbilityForm = computed(() => {
@@ -819,7 +864,8 @@ const buildSnapshot = () => {
             isDefault: item.isDefault,
             baseUrl: item.baseUrl,
             apiKey: item.apiKey,
-            defaultModel: item.defaultModel
+            defaultModel: item.defaultModel,
+            models: item.models
         })),
         imageAbilities: formData.imageAbilities.map((item) => ({
             ability: item.ability,
@@ -964,7 +1010,44 @@ const setCurrentProviderAsDefault = () => {
         return
     }
     setDefaultProvider(currentIndex)
-}/**
+}
+
+/**
+ * 函数说明：通过后端代理请求当前 Provider 模型接口，并将真实模型列表写入待保存配置。
+ */
+const handleFetchProviderModels = async () => {
+    const provider = currentProviderForm.value
+    if (!provider) {
+        feedback.msgError('请先选择 Provider')
+        return
+    }
+    if (!provider.baseUrl?.trim()) {
+        feedback.msgError('请先填写 Provider Base URL')
+        return
+    }
+    if (!provider.apiKey?.trim()) {
+        feedback.msgError('请先填写 Provider API Key')
+        return
+    }
+
+    fetchingProviderKey.value = provider.provider
+    try {
+        const data = await fetchAiProviderModels({
+            provider: provider.provider,
+            baseUrl: provider.baseUrl.trim(),
+            apiKey: provider.apiKey.trim()
+        })
+        provider.models = Array.isArray(data.models) ? data.models : []
+        if (!provider.defaultModel?.trim() && provider.models.length > 0) {
+            provider.defaultModel = provider.models[0].value
+        }
+        feedback.msgSuccess(`已获取 ${provider.models.length} 个可用模型，请选择默认模型后保存`)
+    } finally {
+        fetchingProviderKey.value = ''
+    }
+}
+
+/**
  * 函数说明：读取后端 AI 模型详情并回填表单。
  */
 const getData = async () => {
@@ -1439,6 +1522,20 @@ onBeforeUnmount(() => {
         flex-wrap: wrap;
     }
 
+    .provider-key-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .field-help {
+        margin-top: 7px;
+        color: var(--color-text-3);
+        font-size: 12px;
+        line-height: 1.65;
+    }
+
     .provider-card__desc {
         margin-bottom: 14px;
         font-size: 13px;
@@ -1453,16 +1550,27 @@ onBeforeUnmount(() => {
     }
 
     .model-tip-title {
-        margin-bottom: 10px;
         font-size: 12px;
         font-weight: 600;
         color: var(--color-text-2);
+    }
+
+    .model-tip-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
     }
 
     .model-tags {
         display: flex;
         gap: 8px;
         flex-wrap: wrap;
+    }
+
+    .model-tag-select {
+        cursor: pointer;
     }
 }
 
@@ -1493,6 +1601,10 @@ onBeforeUnmount(() => {
         .provider-card__title {
             flex-direction: column;
             align-items: stretch;
+        }
+
+        .provider-key-row {
+            grid-template-columns: 1fr;
         }
     }
 }
