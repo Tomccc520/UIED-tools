@@ -18,7 +18,7 @@
             </div>
             <div class="logo-copy">
                 <div class="logo-text">{{ brandTitle }}</div>
-                <div class="logo-sub-text">商业运营后台</div>
+                <div class="logo-sub-text">开源运营后台</div>
             </div>
         </div>
 
@@ -53,7 +53,7 @@
                         {{ brandTitle }}
                     </a>
                     <span class="login-footer__divider">·</span>
-                    <span class="login-footer__text">商业运营后台</span>
+                    <span class="login-footer__text">开源运营后台</span>
                 </div>
             </div>
         </div>
@@ -124,9 +124,9 @@ const bannerSlides = computed(() => [
         image: bannerImage
     },
     {
-        kicker: '商业交付',
-        slogan: '支付、授权、订单与交付闭环',
-        subSlogan: '围绕用户、订单、授权和交付状态建立后台工作台，支撑商业售卖与售后处理。',
+        kicker: '开放能力',
+        slogan: '用户、订单与运营能力按需启用',
+        subSlogan: '围绕用户、订单和运营状态建立后台工作台，支持开源部署与按需扩展。',
         image: bannerImage
     }
 ])

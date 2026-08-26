@@ -45,8 +45,8 @@
                                     <strong>Provider / 模型 / 工具能力</strong>
                                 </div>
                                 <div class="preview-card__item">
-                                    <span>商业交付</span>
-                                    <strong>会员 / 订单 / 支付 / 授权</strong>
+                                    <span>可选能力</span>
+                                    <strong>会员 / 订单 / 支付</strong>
                                 </div>
                             </div>
                         </div>
@@ -55,7 +55,7 @@
             </a-carousel>
             <div class="banner-foot">
                 <div class="banner-foot-title">{{ brandTitle }}</div>
-                <div class="banner-foot-desc">官网配置、AI模型与商业交付在同一后台内收口。</div>
+                <div class="banner-foot-desc">官网配置、AI 模型与运营能力在同一后台内收口。</div>
             </div>
         </div>
     </div>

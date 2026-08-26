@@ -136,7 +136,7 @@ const captchaImage = ref('')
 const isCaptchaLoading = ref(false)
 const helpLinks = [
     { title: '更新记录', url: 'https://uiedtool.com/changelog' },
-    { title: '商业版咨询', url: 'https://fsuied.com' }
+    { title: 'GitHub 源码', url: 'https://github.com/Tomccc520/UIED-tools' }
 ]
 
 const formData = reactive({

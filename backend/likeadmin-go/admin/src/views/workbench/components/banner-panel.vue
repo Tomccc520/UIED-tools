@@ -14,7 +14,7 @@
                     {{ periodGreeting }}，{{ adminName }}
                 </a-typography-title>
                 <a-typography-paragraph class="banner-desc">
-                    先处理官网设置、工具主数据、AI 模型与商业交付链路，这四组是当前后台最核心的运营主线。
+                    先处理官网设置、工具主数据、AI 模型与内容运营链路，这四组是当前后台最核心的运营主线。
                 </a-typography-paragraph>
             </div>
             <a-tag color="arcoblue" bordered>v{{ versionText }}</a-tag>

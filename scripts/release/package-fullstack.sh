@@ -22,6 +22,16 @@ BAOTA_BUNDLE_DIR="${STAGING_DIR}/${BAOTA_BUNDLE_NAME}"
 BAOTA_BUNDLE_PATH="${PRODUCTION_DIR}/${BAOTA_BUNDLE_NAME}.tar.gz"
 BACKEND_DIR="${ROOT_DIR}/backend/likeadmin-go"
 SERVER_DIR="${BACKEND_DIR}/server"
+RELEASE_PATCH_FILES=(
+  "20260823_fix_site_brand.sql"
+  "20260825_enable_self_use_mode.sql"
+  "20260825_fix_changelog_tools_count.sql"
+  "20260825_open_source_changelog.sql"
+  "20260825_refresh_siliconflow_models.sql"
+  "20260825_add_operation_advertising_menu.sql"
+  "20260826_add_ai_provider_models_permission.sql"
+  "20260826_restore_uied_tools_brand.sql"
+)
 
 # 函数说明：确认发布所需的前端和管理端产物已经完成生产构建。
 require_build_artifacts() {
@@ -127,15 +137,20 @@ create_runtime_archive() {
   cat "${RUNTIME_ARCHIVE_PATH}.sha256"
 }
 
+# 函数说明：按统一发布清单复制存量数据库增量补丁，避免正式目录与宝塔包出现补丁遗漏。
+copy_release_database_patches() {
+  local target_dir="$1"
+  local patch_name
+
+  for patch_name in "${RELEASE_PATCH_FILES[@]}"; do
+    cp "${BACKEND_DIR}/sql/patches/${patch_name}" "${target_dir}/"
+  done
+}
+
 # 函数说明：将运行包和部署配置收口到同一版本目录，避免本地发布文件分散。
 assemble_production_resources() {
   cp "${BACKEND_DIR}/sql/install.sql" "${PRODUCTION_DIR}/"
-  cp "${BACKEND_DIR}/sql/patches/20260823_fix_site_brand.sql" "${PRODUCTION_DIR}/"
-  cp "${BACKEND_DIR}/sql/patches/20260825_enable_self_use_mode.sql" "${PRODUCTION_DIR}/"
-  cp "${BACKEND_DIR}/sql/patches/20260825_fix_changelog_tools_count.sql" "${PRODUCTION_DIR}/"
-  cp "${BACKEND_DIR}/sql/patches/20260825_open_source_changelog.sql" "${PRODUCTION_DIR}/"
-  cp "${BACKEND_DIR}/sql/patches/20260825_refresh_siliconflow_models.sql" "${PRODUCTION_DIR}/"
-  cp "${BACKEND_DIR}/sql/patches/20260825_add_operation_advertising_menu.sql" "${PRODUCTION_DIR}/"
+  copy_release_database_patches "${PRODUCTION_DIR}"
   cp "${ROOT_DIR}/deploy/env/uiedtool-api.env.example" "${PRODUCTION_DIR}/"
   cp "${ROOT_DIR}/deploy/nginx/uiedtool.com.fullstack.locations.conf" "${PRODUCTION_DIR}/"
   cp "${ROOT_DIR}/deploy/systemd/uiedtool-api.service" "${PRODUCTION_DIR}/"
@@ -150,12 +165,7 @@ create_baota_bundle() {
   mkdir -p "${BAOTA_BUNDLE_DIR}"
   cp "${RUNTIME_ARCHIVE_PATH}" "${BAOTA_BUNDLE_DIR}/"
   cp "${RUNTIME_ARCHIVE_PATH}.sha256" "${BAOTA_BUNDLE_DIR}/"
-  cp "${PRODUCTION_DIR}/20260823_fix_site_brand.sql" "${BAOTA_BUNDLE_DIR}/"
-  cp "${PRODUCTION_DIR}/20260825_enable_self_use_mode.sql" "${BAOTA_BUNDLE_DIR}/"
-  cp "${PRODUCTION_DIR}/20260825_fix_changelog_tools_count.sql" "${BAOTA_BUNDLE_DIR}/"
-  cp "${PRODUCTION_DIR}/20260825_open_source_changelog.sql" "${BAOTA_BUNDLE_DIR}/"
-  cp "${PRODUCTION_DIR}/20260825_refresh_siliconflow_models.sql" "${BAOTA_BUNDLE_DIR}/"
-  cp "${PRODUCTION_DIR}/20260825_add_operation_advertising_menu.sql" "${BAOTA_BUNDLE_DIR}/"
+  copy_release_database_patches "${BAOTA_BUNDLE_DIR}"
   cp "${PRODUCTION_DIR}/deploy-update.sh" "${BAOTA_BUNDLE_DIR}/"
   chmod 755 "${BAOTA_BUNDLE_DIR}/deploy-update.sh"
   clean_macos_metadata "${BAOTA_BUNDLE_DIR}"

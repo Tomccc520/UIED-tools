@@ -276,6 +276,10 @@ check_website_roundtrip() {
   fi
   current_name="$(printf '%s' "${detail_body}" | json_field "data.name")"
   current_slogan="$(printf '%s' "${detail_body}" | json_field "data.toolsSiteSlogan")"
+  if [[ "${current_name}" != "UIED-Tools" ]]; then
+    mark_fail "官网品牌名称异常，当前值为: ${current_name:-空}"
+    return
+  fi
   save_payload="$(python3 - <<'PY' "${current_name}" "${current_slogan}"
 import json
 import sys
@@ -311,6 +315,10 @@ check_sidebar_roundtrip() {
   fi
 
   original_brand="$(printf '%s' "${detail_body}" | json_field "data.toolsSidebarBrandText")"
+  if [[ "${original_brand}" != "UIED-Tools" ]]; then
+    mark_fail "侧栏品牌名称异常，当前值为: ${original_brand:-空}"
+    return
+  fi
   smoke_brand="UIED-SMK-$(date +%H%M%S)"
   save_payload="$(python3 -c 'import json,sys; print(json.dumps({"toolsSidebarBrandText": sys.argv[1]}, ensure_ascii=False))' "${smoke_brand}")"
   save_response="$(http_request "POST" "${api_base_url}/api/setting/website/save" "${token}" "${save_payload}")"
