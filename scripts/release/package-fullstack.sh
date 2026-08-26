@@ -29,8 +29,8 @@ RELEASE_PATCH_FILES=(
   "20260825_fix_changelog_tools_count.sql"
   "20260825_open_source_changelog.sql"
   "20260825_refresh_siliconflow_models.sql"
-  "20260826_add_operation_advertising_menu_compatible.sql"
-  "20260826_add_ai_provider_models_permission.sql"
+  "20260826_add_operation_advertising_menu_mysql56.sql"
+  "20260826_add_ai_provider_models_permission_compatible.sql"
   "20260826_restore_uied_tools_brand.sql"
 )
 
