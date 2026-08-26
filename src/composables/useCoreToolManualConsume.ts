@@ -15,6 +15,7 @@ import {
   resolveFrontendUserPointsConsume,
   type FrontendUserPointsConsumeResolveResult
 } from '@/services/frontendUser'
+import { getSitePublicConfig } from '@/services/siteConfig'
 
 export interface CoreToolManualConsumeOptions {
   toolKey: string
@@ -39,6 +40,18 @@ const CORE_TOOL_RUN_SETTLEMENT_STORAGE_KEY = 'uiedtool:pending-core-tool-run-set
 const CORE_TOOL_RUN_SETTLEMENT_MAX_AGE_MS = 24 * 60 * 60 * 1000
 let coreToolSettlementListenersBound = false
 let pendingSettlementFlushPromise: Promise<void> | null = null
+
+/**
+ * 函数说明：读取前台登录总开关；关闭登录时积分体系整体停用，配置读取失败则保守保留结算。
+ */
+const isFrontendPointSettlementEnabled = async (): Promise<boolean> => {
+  try {
+    const siteConfig = await getSitePublicConfig()
+    return Boolean(siteConfig.loginEnabled)
+  } catch {
+    return true
+  }
+}
 
 /**
  * 函数说明：读取本地待结算运行，过滤超时或格式异常数据。
@@ -124,6 +137,10 @@ const isCoreToolRunSettlementResolved = (
 export const flushPendingCoreToolRunSettlements = async (): Promise<void> => {
   if (pendingSettlementFlushPromise) return pendingSettlementFlushPromise
   pendingSettlementFlushPromise = (async () => {
+    if (!await isFrontendPointSettlementEnabled()) {
+      writePendingCoreToolRunSettlements([])
+      return
+    }
     const currentUserUid = String(getFrontendUserProfile()?.uid || '').trim()
     if (!currentUserUid) return
     for (const item of readPendingCoreToolRunSettlements()) {
@@ -214,6 +231,10 @@ export const useCoreToolManualConsume = () => {
     const normalizedRequestId = String(requestId || '').trim()
     if (!normalizedRequestId) {
       return false
+    }
+    if (!await isFrontendPointSettlementEnabled()) {
+      removePendingCoreToolRunSettlement(normalizedRequestId)
+      return true
     }
     queuePendingCoreToolRunSettlement(normalizedRequestId, outcome, reason)
     const retryDelays = [0, 250, 700]

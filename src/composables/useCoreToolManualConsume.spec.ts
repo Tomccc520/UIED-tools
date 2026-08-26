@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   ensureToolConsume: vi.fn(),
+  getSitePublicConfig: vi.fn(),
   resolveFrontendUserPointsConsume: vi.fn(),
   warning: vi.fn()
 }))
@@ -27,6 +28,10 @@ vi.mock('@/services/frontendUser', () => ({
   FRONTEND_USER_AUTH_EVENT: 'uiedtool:frontend-user-auth-changed',
   getFrontendUserProfile: () => ({ uid: 1001 }),
   resolveFrontendUserPointsConsume: mocks.resolveFrontendUserPointsConsume
+}))
+
+vi.mock('@/services/siteConfig', () => ({
+  getSitePublicConfig: mocks.getSitePublicConfig
 }))
 
 import {
@@ -51,6 +56,8 @@ describe('useCoreToolManualConsume', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mocks.ensureToolConsume.mockReset()
+    mocks.getSitePublicConfig.mockReset()
+    mocks.getSitePublicConfig.mockResolvedValue({ loginEnabled: true })
     mocks.resolveFrontendUserPointsConsume.mockReset()
     mocks.warning.mockReset()
     vi.useRealTimers()
@@ -74,6 +81,16 @@ describe('useCoreToolManualConsume', () => {
     const { resolveCoreToolRun } = useCoreToolManualConsume()
 
     await expect(resolveCoreToolRun('request_00000003', 'success')).resolves.toBe(true)
+    expect(window.localStorage.getItem(SETTLEMENT_STORAGE_KEY)).toBeNull()
+  })
+
+  it('前台登录关闭时跳过积分结算且不显示退款同步警告', async () => {
+    mocks.getSitePublicConfig.mockResolvedValue({ loginEnabled: false })
+    const { resolveCoreToolRun } = useCoreToolManualConsume()
+
+    await expect(resolveCoreToolRun('request_00000005', 'failed', '生成失败')).resolves.toBe(true)
+    expect(mocks.resolveFrontendUserPointsConsume).not.toHaveBeenCalled()
+    expect(mocks.warning).not.toHaveBeenCalled()
     expect(window.localStorage.getItem(SETTLEMENT_STORAGE_KEY)).toBeNull()
   })
 
