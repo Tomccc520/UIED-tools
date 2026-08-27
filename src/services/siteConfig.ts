@@ -1244,6 +1244,17 @@ const fetchSitePublicConfig = async (endpoint: string, timeoutMs: number): Promi
 }
 
 /**
+ * 函数说明：严格读取站点公共配置，接口异常时直接抛错，供登录、积分等安全门禁按失败关闭策略使用。
+ */
+export const getRequiredSitePublicConfig = async (
+  options: Pick<SiteConfigOptions, 'endpoint' | 'timeoutMs'> = {}
+): Promise<SitePublicConfig> => {
+  const endpoint = options.endpoint || DEFAULT_ENDPOINT
+  const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
+  return fetchSitePublicConfig(endpoint, timeoutMs)
+}
+
+/**
  * 函数说明：获取站点公共配置，内置短期缓存与失败兜底
  */
 export const getSitePublicConfig = async (options: SiteConfigOptions = {}): Promise<SitePublicConfig> => {

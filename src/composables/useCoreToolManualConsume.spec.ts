@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   ensureToolConsume: vi.fn(),
-  getSitePublicConfig: vi.fn(),
+  getRequiredSitePublicConfig: vi.fn(),
   resolveFrontendUserPointsConsume: vi.fn(),
   warning: vi.fn()
 }))
@@ -31,7 +31,7 @@ vi.mock('@/services/frontendUser', () => ({
 }))
 
 vi.mock('@/services/siteConfig', () => ({
-  getSitePublicConfig: mocks.getSitePublicConfig
+  getRequiredSitePublicConfig: mocks.getRequiredSitePublicConfig
 }))
 
 import {
@@ -56,8 +56,8 @@ describe('useCoreToolManualConsume', () => {
   beforeEach(() => {
     window.localStorage.clear()
     mocks.ensureToolConsume.mockReset()
-    mocks.getSitePublicConfig.mockReset()
-    mocks.getSitePublicConfig.mockResolvedValue({ loginEnabled: true })
+    mocks.getRequiredSitePublicConfig.mockReset()
+    mocks.getRequiredSitePublicConfig.mockResolvedValue({ loginEnabled: true })
     mocks.resolveFrontendUserPointsConsume.mockReset()
     mocks.warning.mockReset()
     vi.useRealTimers()
@@ -85,12 +85,26 @@ describe('useCoreToolManualConsume', () => {
   })
 
   it('前台登录关闭时跳过积分结算且不显示退款同步警告', async () => {
-    mocks.getSitePublicConfig.mockResolvedValue({ loginEnabled: false })
+    mocks.getRequiredSitePublicConfig.mockResolvedValue({ loginEnabled: false })
     const { resolveCoreToolRun } = useCoreToolManualConsume()
 
     await expect(resolveCoreToolRun('request_00000005', 'failed', '生成失败')).resolves.toBe(true)
     expect(mocks.resolveFrontendUserPointsConsume).not.toHaveBeenCalled()
     expect(mocks.warning).not.toHaveBeenCalled()
+    expect(window.localStorage.getItem(SETTLEMENT_STORAGE_KEY)).toBeNull()
+  })
+
+  it('站点配置读取失败时保留积分结算，不得按免费模式清空', async () => {
+    mocks.getRequiredSitePublicConfig.mockRejectedValue(new Error('network error'))
+    mocks.resolveFrontendUserPointsConsume.mockResolvedValue({ status: 'committed' })
+    const { resolveCoreToolRun } = useCoreToolManualConsume()
+
+    await expect(resolveCoreToolRun('request_00000006', 'success')).resolves.toBe(true)
+    expect(mocks.resolveFrontendUserPointsConsume).toHaveBeenCalledWith(
+      'request_00000006',
+      'success',
+      ''
+    )
     expect(window.localStorage.getItem(SETTLEMENT_STORAGE_KEY)).toBeNull()
   })
 

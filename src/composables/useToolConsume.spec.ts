@@ -12,15 +12,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
   consumeFrontendUserPoints: vi.fn(),
   dispatchFrontendUserLoginPrompt: vi.fn(),
-  getSitePublicConfig: vi.fn(),
+  getRequiredSitePublicConfig: vi.fn(),
   isFrontendUserLoggedIn: vi.fn(),
   trackToolRankingEvent: vi.fn(),
+  error: vi.fn(),
   warning: vi.fn()
 }))
 
 vi.mock('element-plus', () => ({
   ElMessage: {
-    error: vi.fn(),
+    error: mocks.error,
     success: vi.fn(),
     warning: mocks.warning
   }
@@ -39,7 +40,8 @@ vi.mock('@/services/frontendUser', () => ({
 }))
 
 vi.mock('@/services/siteConfig', () => ({
-  getSitePublicConfig: mocks.getSitePublicConfig
+  getRequiredSitePublicConfig: mocks.getRequiredSitePublicConfig,
+  getSitePublicConfig: vi.fn()
 }))
 
 vi.mock('@/services/toolRanking', () => ({
@@ -61,7 +63,7 @@ describe('useToolConsume', () => {
   })
 
   it('前台登录关闭时应跳过登录弹窗和积分扣减并直接放行', async () => {
-    mocks.getSitePublicConfig.mockResolvedValue(createSiteConfig(false))
+    mocks.getRequiredSitePublicConfig.mockResolvedValue(createSiteConfig(false))
     const { ensureToolConsume } = useToolConsume()
 
     await expect(ensureToolConsume({ toolKey: 'ai-ocr', action: 'run' })).resolves.toBe(true)
@@ -70,11 +72,21 @@ describe('useToolConsume', () => {
   })
 
   it('前台登录开启且用户未登录时应继续拉起登录提示', async () => {
-    mocks.getSitePublicConfig.mockResolvedValue(createSiteConfig(true))
+    mocks.getRequiredSitePublicConfig.mockResolvedValue(createSiteConfig(true))
     const { ensureToolConsume } = useToolConsume()
 
     await expect(ensureToolConsume({ toolKey: 'ai-ocr', action: 'run' })).resolves.toBe(false)
     expect(mocks.dispatchFrontendUserLoginPrompt).toHaveBeenCalledOnce()
+    expect(mocks.consumeFrontendUserPoints).not.toHaveBeenCalled()
+  })
+
+  it('站点配置读取失败时应保守拦截，避免误进入免登录模式', async () => {
+    mocks.getRequiredSitePublicConfig.mockRejectedValue(new Error('network error'))
+    const { ensureToolConsume } = useToolConsume()
+
+    await expect(ensureToolConsume({ toolKey: 'ai-ocr', action: 'run' })).resolves.toBe(false)
+    expect(mocks.error).toHaveBeenCalledWith('站点配置读取失败，请检查网络后重试')
+    expect(mocks.dispatchFrontendUserLoginPrompt).not.toHaveBeenCalled()
     expect(mocks.consumeFrontendUserPoints).not.toHaveBeenCalled()
   })
 })

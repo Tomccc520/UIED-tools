@@ -15,7 +15,7 @@ import {
   resolveFrontendUserPointsConsume,
   type FrontendUserPointsConsumeResolveResult
 } from '@/services/frontendUser'
-import { getSitePublicConfig } from '@/services/siteConfig'
+import { getRequiredSitePublicConfig } from '@/services/siteConfig'
 
 export interface CoreToolManualConsumeOptions {
   toolKey: string
@@ -46,7 +46,7 @@ let pendingSettlementFlushPromise: Promise<void> | null = null
  */
 const isFrontendPointSettlementEnabled = async (): Promise<boolean> => {
   try {
-    const siteConfig = await getSitePublicConfig()
+    const siteConfig = await getRequiredSitePublicConfig()
     return Boolean(siteConfig.loginEnabled)
   } catch {
     return true

@@ -5,9 +5,9 @@
  * @createDate 2026-08-25
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import defaultChangelogTimeline from '@/constants/changelogTimeline'
-import { normalizeChangelogTimeline } from './siteConfig'
+import { getRequiredSitePublicConfig, normalizeChangelogTimeline } from './siteConfig'
 
 describe('normalizeChangelogTimeline', () => {
   it('合并重复版本、同名功能块和重复描述', () => {
@@ -66,5 +66,19 @@ describe('normalizeChangelogTimeline', () => {
     expect(new Set(versions).size).toBe(versions.length)
     expect(versions.filter((version) => version === '1.1.8')).toHaveLength(1)
     expect(versions.filter((version) => version === '1.1.4')).toHaveLength(1)
+  })
+})
+
+describe('getRequiredSitePublicConfig', () => {
+  it('接口失败时应抛出异常，不得回退成登录关闭配置', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network error'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(
+      getRequiredSitePublicConfig({ endpoint: '/api/test/config', timeoutMs: 100 })
+    ).rejects.toThrow('network error')
+    expect(fetchMock).toHaveBeenCalledOnce()
+
+    vi.unstubAllGlobals()
   })
 })

@@ -16,7 +16,12 @@ import {
   isFrontendUserLoggedIn,
   type FrontendUserProfile
 } from '@/services/frontendUser'
-import { getSitePublicConfig, type SiteLoginToolConsumeRule } from '@/services/siteConfig'
+import {
+  getRequiredSitePublicConfig,
+  getSitePublicConfig,
+  type SiteLoginToolConsumeRule,
+  type SitePublicConfig
+} from '@/services/siteConfig'
 import { trackToolRankingEvent } from '@/services/toolRanking'
 import type { Tool, ToolCategory } from '@/types/tools'
 
@@ -170,49 +175,60 @@ const resolveRuntimePolicyFromToolCatalog = (
 }
 
 /**
- * 函数说明：根据后端登录策略规则解析当前工具的运行时扣分策略。
+ * 函数说明：从已读取的站点配置解析当前工具运行时扣分策略，避免安全门禁重复请求配置接口。
  */
-export const resolveToolConsumeRuntimePolicy = async (
+const resolveToolConsumeRuntimePolicyFromConfig = (
+  siteConfig: SitePublicConfig,
   toolKey: string,
   routePath = ''
-): Promise<RuntimeToolConsumePolicy | null> => {
+): RuntimeToolConsumePolicy | null => {
   const normalizedToolKey = normalizeRuntimeToolKey(toolKey)
   const normalizedRoutePath = normalizeToolRoutePath(routePath)
   const normalizedRouteMatchKey = normalizeToolRouteMatchKey(routePath)
   if (!normalizedToolKey) {
     return null
   }
+  const ruleList = Array.isArray(siteConfig.loginToolConsumeRules)
+    ? siteConfig.loginToolConsumeRules
+    : []
+  const matchedRule = ruleList.find((item: SiteLoginToolConsumeRule) => {
+    return normalizeRuntimeToolKey(item.toolKey) === normalizedToolKey
+  })
+  if (!matchedRule) {
+    return resolveRuntimePolicyFromToolCatalog(
+      siteConfig.toolCategories,
+      normalizedToolKey,
+      normalizedRoutePath,
+      normalizedRouteMatchKey
+    )
+  }
+  const status = Number(matchedRule.status ?? 1) === 0 ? 0 : 1
+  return {
+    toolKey: normalizedToolKey,
+    consumePoints: Math.max(0, Number(matchedRule.consumePoints ?? 1)),
+    memberFree: Boolean(matchedRule.memberFree),
+    status,
+    remark: String(matchedRule.remark || '').trim(),
+    needLogin:
+      typeof matchedRule.needLogin === 'boolean'
+        ? matchedRule.needLogin
+        : Math.max(0, Number(matchedRule.consumePoints ?? 1)) > 0,
+    ruleMatched: true,
+    source: 'login-rule'
+  }
+}
+
+/**
+ * 函数说明：根据后端登录策略规则解析当前工具的运行时扣分策略，普通展示场景保留配置兜底。
+ */
+export const resolveToolConsumeRuntimePolicy = async (
+  toolKey: string,
+  routePath = ''
+): Promise<RuntimeToolConsumePolicy | null> => {
   try {
     const siteConfig = await getSitePublicConfig()
-    const ruleList = Array.isArray(siteConfig.loginToolConsumeRules)
-      ? siteConfig.loginToolConsumeRules
-      : []
-    const matchedRule = ruleList.find((item: SiteLoginToolConsumeRule) => {
-      return normalizeRuntimeToolKey(item.toolKey) === normalizedToolKey
-    })
-    if (!matchedRule) {
-      return resolveRuntimePolicyFromToolCatalog(
-        siteConfig.toolCategories,
-        normalizedToolKey,
-        normalizedRoutePath,
-        normalizedRouteMatchKey
-      )
-    }
-    const status = Number(matchedRule.status ?? 1) === 0 ? 0 : 1
-    return {
-      toolKey: normalizedToolKey,
-      consumePoints: Math.max(0, Number(matchedRule.consumePoints ?? 1)),
-      memberFree: Boolean(matchedRule.memberFree),
-      status,
-      remark: String(matchedRule.remark || '').trim(),
-      needLogin:
-        typeof matchedRule.needLogin === 'boolean'
-          ? matchedRule.needLogin
-          : Math.max(0, Number(matchedRule.consumePoints ?? 1)) > 0,
-      ruleMatched: true,
-      source: 'login-rule'
-    }
-  } catch (error) {
+    return resolveToolConsumeRuntimePolicyFromConfig(siteConfig, toolKey, routePath)
+  } catch {
     return null
   }
 }
@@ -300,13 +316,24 @@ export const useToolConsume = () => {
       return false
     }
 
-    const runtimePolicy = await resolveToolConsumeRuntimePolicy(toolKey, options.routePath || route.path)
+    let siteConfig: SitePublicConfig
+    try {
+      siteConfig = await getRequiredSitePublicConfig()
+    } catch {
+      ElMessage.error('站点配置读取失败，请检查网络后重试')
+      return false
+    }
+
+    const runtimePolicy = resolveToolConsumeRuntimePolicyFromConfig(
+      siteConfig,
+      toolKey,
+      options.routePath || route.path
+    )
     if (runtimePolicy?.status === 0) {
       ElMessage.warning('当前工具已在后台停用，请稍后再试')
       return false
     }
 
-    const siteConfig = await getSitePublicConfig()
     if (!siteConfig.loginEnabled) {
       return true
     }
