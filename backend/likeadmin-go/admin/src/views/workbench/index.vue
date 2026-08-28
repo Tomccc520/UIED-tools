@@ -485,13 +485,19 @@ onMounted(() => {
 
 <style lang="scss" scoped>
 .container {
+    /* 大屏限制工作台内容宽度并居中，避免 2K/4K 屏幕卡片被无限拉宽。 */
+    width: 100%;
+    max-width: 1840px;
+    margin: 0 auto;
+    box-sizing: border-box;
     background-color: var(--color-fill-2);
     padding: 16px 20px;
     padding-bottom: 0;
 }
 
 .workbench-shell {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 296px;
     gap: 16px;
     align-items: flex-start;
 }

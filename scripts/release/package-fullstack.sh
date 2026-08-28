@@ -32,6 +32,8 @@ RELEASE_PATCH_FILES=(
   "20260826_add_operation_advertising_menu_mysql56.sql"
   "20260826_add_ai_provider_models_permission_compatible.sql"
   "20260826_restore_uied_tools_brand.sql"
+  "20260828_merge_hot_tools_into_advertising.sql"
+  "20260828_add_nine_patch_tool.sql"
 )
 
 # 函数说明：确认发布所需的前端和管理端产物已经完成生产构建。
