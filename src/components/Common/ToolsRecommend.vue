@@ -40,7 +40,7 @@
          - 展示8个同类工具
          - 仅支持站内路由跳转
     -->
-    <div class="bg-white rounded-xl border border-gray-100">
+    <div class="uied-tool-card bg-white rounded-lg border border-gray-100">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
@@ -78,7 +78,7 @@
          - 支持外部链接跳转
          - 使用isExternal属性区分链接类型
     -->
-    <div class="bg-white rounded-xl border border-gray-100">
+    <div class="uied-tool-card bg-white rounded-lg border border-gray-100">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24"
@@ -118,7 +118,7 @@
          - 随机展示8个最新工具
          - 仅支持站内路由跳转
     -->
-    <div class="bg-white rounded-xl shadow-sm">
+    <div class="uied-tool-card bg-white rounded-lg">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24"
@@ -157,7 +157,7 @@
          - 随机展示8个实用工具
          - 仅支持站内路由跳转
     -->
-    <div class="bg-white rounded-xl shadow-sm">
+    <div class="uied-tool-card bg-white rounded-lg">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24"

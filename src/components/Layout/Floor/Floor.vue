@@ -194,7 +194,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <footer class="bg-white border-t border-gray-100 rounded-xl" role="contentinfo" aria-label="页面底部" itemscope
+  <footer class="uied-tool-card bg-white border-t border-gray-100 rounded-lg" role="contentinfo" aria-label="页面底部" itemscope
     itemtype="http://schema.org/WPFooter">
     <div class="max-w-7xl mx-auto py-6 sm:py-8 px-4 sm:px-6">
       <div class="flex flex-col items-center justify-center space-y-6">

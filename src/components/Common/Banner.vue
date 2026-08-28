@@ -8,8 +8,14 @@
  * @createDate 2025-03-21
  */
 
-import { onMounted, onUnmounted, ref, watch } from 'vue'
-import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteBannerSlideItem } from '@/services/siteConfig'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import {
+  getDefaultSitePublicConfig,
+  getSitePublicConfig,
+  SITE_CONFIG_REFRESH_STORAGE_KEY,
+  type SiteBannerSlideItem
+} from '@/services/siteConfig'
+import { sanitizeAdvertisingHtml } from '@/utils/safeAdvertisingHtml'
 
 /**
  * 广告项数据类型
@@ -22,6 +28,7 @@ const slideDurationMs = 4000
 const activeIndex = ref(0)
 const bannerList = ref<BannerItem[]>([])
 let autoPlayTimer: number | null = null
+let isLoadingSiteConfig = false
 
 /**
  * 函数说明：把站点配置中的 Banner 项转换为组件可渲染结构并补齐 id
@@ -29,10 +36,13 @@ let autoPlayTimer: number | null = null
 const mapBannerList = (slides: SiteBannerSlideItem[]): BannerItem[] => {
   return slides.map((item, index) => ({
     id: index + 1,
-    badge: item.badge,
+    renderMode: item.renderMode,
     text: item.text,
+    image: item.image,
+    htmlCode: item.htmlCode,
     link: item.link,
-    gradient: item.gradient
+    target: item.target,
+    height: item.height
   }))
 }
 
@@ -71,18 +81,60 @@ const initDefaultBannerList = () => {
  * 函数说明：读取后台 Banner 配置并替换本地展示列表
  */
 const loadSiteConfig = async () => {
-  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
-  bannerList.value = mapBannerList(siteConfig.bannerSlides)
+  if (isLoadingSiteConfig) return
+  isLoadingSiteConfig = true
+  try {
+    const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+    bannerList.value = mapBannerList(siteConfig.bannerSlides)
+  } finally {
+    isLoadingSiteConfig = false
+  }
 }
 
 /**
- * 获取广告项的行内样式
- * @param item 广告项
- * @returns 行内样式对象
+ * 函数说明：页面重新获得焦点时刷新广告配置，让后台刚发布的内容无需手动刷新即可生效。
  */
-const getSlideStyle = (item: BannerItem) => {
-  return { backgroundImage: item.gradient }
+const handleWindowFocus = () => {
+  void loadSiteConfig()
 }
+
+/**
+ * 函数说明：标签页恢复可见时刷新广告配置，兼容从管理端切回前台的使用场景。
+ */
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    void loadSiteConfig()
+  }
+}
+
+/**
+ * 函数说明：接收同源管理端发布通知并立即刷新顶部广告。
+ */
+const handleSiteConfigStorage = (event: StorageEvent) => {
+  if (event.key === SITE_CONFIG_REFRESH_STORAGE_KEY) {
+    void loadSiteConfig()
+  }
+}
+
+const activeBanner = computed(() => bannerList.value[activeIndex.value] || bannerList.value[0] || null)
+
+/**
+ * 函数说明：根据当前广告的配置高度调整轮播容器。
+ */
+const getCarouselStyle = (): Record<string, string> => ({
+  height: `${Math.min(600, Math.max(32, Number(activeBanner.value?.height) || 48))}px`
+})
+
+/**
+ * 函数说明：净化 HTML 广告内容，防止后台配置携带可执行脚本。
+ */
+const getSafeHtmlCode = (item: BannerItem): string => sanitizeAdvertisingHtml(item.htmlCode)
+
+/**
+ * 函数说明：为新窗口广告链接补齐安全 rel 属性。
+ */
+const getLinkRel = (item: BannerItem): string | undefined =>
+  item.target === '_blank' ? 'noopener noreferrer' : undefined
 
 watch(
   () => bannerList.value.length,
@@ -98,52 +150,63 @@ onMounted(() => {
   initDefaultBannerList()
   resetAutoPlayTimer()
   void loadSiteConfig()
+  window.addEventListener('focus', handleWindowFocus)
+  window.addEventListener('storage', handleSiteConfigStorage)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
 onUnmounted(() => {
   clearAutoPlayTimer()
+  window.removeEventListener('focus', handleWindowFocus)
+  window.removeEventListener('storage', handleSiteConfigStorage)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 </script>
 
 <template>
-  <div class="uied-banner-carousel">
-    <a
+  <div class="uied-banner-carousel" :style="getCarouselStyle()">
+    <div
       v-for="(item, index) in bannerList"
       :key="item.id"
       class="uied-banner-slide"
       :class="{ 'is-active': index === activeIndex }"
-      :href="item.link"
-      target="_blank"
-      rel="noopener noreferrer"
-      :style="getSlideStyle(item)"
     >
-      <span class="uied-banner-content">
-        <span class="uied-banner-badge">{{ item.badge }}</span>
-        <span class="uied-banner-text">{{ item.text }}</span>
-      </span>
-    </a>
+      <div
+        v-if="item.renderMode === 'html'"
+        class="uied-banner-html"
+        v-html="getSafeHtmlCode(item)"
+      />
+      <a
+        v-else-if="item.link"
+        class="uied-banner-image-link"
+        :href="item.link"
+        :target="item.target"
+        :rel="getLinkRel(item)"
+        :title="item.text"
+      >
+        <img :src="item.image" :alt="item.text || '广告图'" loading="lazy" decoding="async" />
+      </a>
+      <div v-else class="uied-banner-image-link" :title="item.text">
+        <img :src="item.image" :alt="item.text || '广告图'" loading="lazy" decoding="async" />
+      </div>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .uied-banner-carousel {
   width: 100%;
-  height: 48px;
   overflow: hidden;
   position: relative;
-  border-radius: 12px;
+  border-radius: 8px;
+  transition: height 240ms ease;
 }
 
 .uied-banner-slide {
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-decoration: none;
-  background-size: cover;
-  background-position: center;
-  padding: 0 8px;
+  overflow: hidden;
+  background: #f8fafc;
   opacity: 0;
   visibility: hidden;
   transition: opacity 320ms ease;
@@ -156,25 +219,21 @@ onUnmounted(() => {
   pointer-events: auto;
 }
 
-.uied-banner-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 40px;
+.uied-banner-html,
+.uied-banner-image-link {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
-.uied-banner-badge {
-  background: rgba(255, 255, 255, 0.5);
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 700;
-  color: #1f2937;
+.uied-banner-html :deep(> *) {
+  max-width: 100%;
 }
 
-.uied-banner-text {
-  font-size: 15px;
-  font-weight: 600;
-  color: #111827;
-  white-space: nowrap;
+.uied-banner-image-link img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 </style>

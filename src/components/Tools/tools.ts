@@ -2465,6 +2465,17 @@ const toolsCategories: ToolCategory[] = [
               cate: '图片工具'
             },
             {
+              id: 5181,
+              title: '免费在线 .9 图生成器',
+              logo: { type: 'svg', name: 'imageProcess' },
+              desc: 'Android Nine-patch 可视化制作工具，支持拉伸区、内容区、实时预览和标准 .9.png 导出',
+              url: '/tools/nine-patch',
+              cate: '图片工具',
+              releaseDate: '2026/8/28 00:00:00',
+              tags: ['免费', '新品', 'Android'],
+              isNew: true
+            },
+            {
               id: 520,
               title: '免费在线图片拼接',
               logo: { type: 'svg', name: 'imageJoin' },

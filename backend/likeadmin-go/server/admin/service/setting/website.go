@@ -81,7 +81,7 @@ const (
 	toolsChangelogSplitDescDefaultValue     = "本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。"
 	toolsChangelogSplitLinkDefaultValue     = "https://github.com/Tomccc520/UIED-tools"
 	toolsChangelogSplitLinkTextDefaultValue = "查看完整源码与部署说明"
-	toolsChangelogStatsTextDefaultValue     = "当前版本：3.0.1 全栈开源版 | 当前工具总数：333个 | 最后更新：2026-08-25 14:17"
+	toolsChangelogStatsTextDefaultValue     = "当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-28 18:00"
 	toolsAiChatHeaderLinksDefaultJSON       = `[{"name":"AI学习平台","link":"https://www.uied.cn/"},{"name":"AI免费工具","link":"https://uiedtool.com"},{"name":"AI资讯热榜","link":"https://hot.uied.cn"},{"name":"AI工具导航","link":"https://hao.uied.cn/ai"},{"name":"AI交流群","link":"https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink"},{"name":"AI知识库","link":"https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink"}]`
 	toolsAiCommonHeaderLinksDefaultJSON     = `[{"name":"每日免费分享最新AI资讯","link":"https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink"},{"name":"AI学习平台","link":"https://www.uied.cn/"},{"name":"AI免费工具uiedtool.com","link":"https://uiedtool.com"},{"name":"AI资讯热榜hot.uied.cn","link":"https://hot.uied.cn"},{"name":"AI工具导航","link":"https://hao.uied.cn/ai"}]`
 	toolsFooterSupportLinksDefaultJSON      = `[{"name":"uiedtool.com","link":"https://uiedtool.com/"},{"name":"UIED技术团队","link":"https://fsuied.com"}]`
@@ -539,7 +539,7 @@ func (wSrv settingWebsiteService) Detail() (res map[string]string, e error) {
 	if toolsChangelogStatsText == "" {
 		toolsChangelogStatsText = toolsChangelogStatsTextDefaultValue
 	}
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前工具总数：334个", "当前工具总数：333个")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前工具总数：333个", "当前工具总数：334个")
 	toolsChangelogTimeline := defaults.NormalizeToolsChangelogTimelineJSON(
 		normalizeToolsLayoutArrayConfig(data[toolsChangelogTimelineConfigName], defaults.GetToolsChangelogTimelineJSON()),
 	)
@@ -963,8 +963,8 @@ func (wSrv settingWebsiteService) Save(wsReq req.SettingWebsiteReq) (e error) {
 		toolsChangelogStatsTextConfigName,
 		strings.ReplaceAll(
 			strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsChangelogStatsText, current[toolsChangelogStatsTextConfigName])),
-			"当前工具总数：334个",
 			"当前工具总数：333个",
+			"当前工具总数：334个",
 		),
 		"Save Set toolsChangelogStatsText err",
 	) {

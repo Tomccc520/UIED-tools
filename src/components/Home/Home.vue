@@ -17,12 +17,17 @@
 -->
 
 <script setup lang="ts">
-import { onMounted, ref, computed, nextTick, watch } from '@vue/runtime-core'
+import { onMounted, onUnmounted, ref, computed, nextTick, watch } from '@vue/runtime-core'
 import { useToolsStore } from '@/store/modules/tools'
 import { useRoute } from "vue-router"
 import HotSearch from '@/components/HotSearch/HotSearch.vue'
 import ToolIcon from '@/components/Tools/ToolIcon.vue'
-import { getSitePublicConfig, type SitePublicConfig, type SiteSidebarCategoryMenu } from '@/services/siteConfig'
+import {
+  getSitePublicConfig,
+  SITE_CONFIG_REFRESH_STORAGE_KEY,
+  type SitePublicConfig,
+  type SiteSidebarCategoryMenu
+} from '@/services/siteConfig'
 import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
@@ -32,6 +37,7 @@ const route = useRoute()
 const sidebarCategoryMenus = ref<SiteSidebarCategoryMenu[]>([])
 const siteConfig = ref<SitePublicConfig | null>(null)
 const { isToolDisabled, openToolEntry } = useToolRuntimeGate()
+let isRefreshingAdvertising = false
 const defaultHomeSectionKeyMap: Record<string, string> = {
   'AI工具箱': 'ai',
   '设计工具': 'design',
@@ -185,8 +191,55 @@ const initHomePage = async () => {
   await scrollToRouteAnchor()
 }
 
+/**
+ * 函数说明：刷新首页广告相关配置，同步热门工具原生广告与公共菜单信息。
+ */
+const refreshHomeAdvertising = async () => {
+  if (isRefreshingAdvertising) return
+  isRefreshingAdvertising = true
+  try {
+    await Promise.all([toolsStore.getRecommends(), loadHomeSiteConfig()])
+  } finally {
+    isRefreshingAdvertising = false
+  }
+}
+
+/**
+ * 函数说明：前台窗口重新获得焦点时拉取管理端最新广告配置。
+ */
+const handleWindowFocus = () => {
+  void refreshHomeAdvertising()
+}
+
+/**
+ * 函数说明：首页标签页恢复可见时同步最新广告配置。
+ */
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    void refreshHomeAdvertising()
+  }
+}
+
+/**
+ * 函数说明：接收同源管理端发布通知并更新热门工具原生广告。
+ */
+const handleSiteConfigStorage = (event: StorageEvent) => {
+  if (event.key === SITE_CONFIG_REFRESH_STORAGE_KEY) {
+    void refreshHomeAdvertising()
+  }
+}
+
 onMounted(() => {
   void initHomePage()
+  window.addEventListener('focus', handleWindowFocus)
+  window.addEventListener('storage', handleSiteConfigStorage)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('focus', handleWindowFocus)
+  window.removeEventListener('storage', handleSiteConfigStorage)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
 })
 
 watch(

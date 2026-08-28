@@ -540,7 +540,7 @@ const toolsCategoryTreeEditor = ref(defaultToolsCategoryTreeJson)
  */
 const handlePageTabChange = (tabName: string | number) => {
     if (tabName === 'hot_tools') {
-        router.push('/official_site/hot_tools')
+        router.push({ path: '/operation/advertising', query: { section: 'hot-tools' } })
         return
     }
     if (tabName === 'frontend_layout') {

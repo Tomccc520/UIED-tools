@@ -5,4 +5,53 @@
 :root{
   --base-gray: #f5f5fb;
   --base-black: #444;
+  /* UIED 工具页统一响应式设计令牌：桌面留白 26px，移动端收窄到 12px。 */
+  --uied-page-gutter: 26px;
+  --uied-space-1: 8px;
+  --uied-space-2: 16px;
+  --uied-space-3: 24px;
+  --uied-card-radius: 8px;
+}
+
+/*
+ * 工具页公共容器契约：容器自身负责断点判断，避免被右侧推荐栏压缩后仍按视口宽度布局。
+ * 具体工具可在此基础上使用 container query，画布、代码等大内容应在自身区域内滚动。
+ */
+.uied-content-layout {
+  container: uied-content / inline-size;
+  min-width: 0;
+}
+
+.uied-main-content,
+.uied-tool-view {
+  min-width: 0;
+}
+
+.uied-tool-view {
+  container: uied-tool / inline-size;
+  width: 100%;
+}
+
+.uied-tool-view > * {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.uied-tool-view :is(h1, h2, h3, h4, p, label, button) {
+  overflow-wrap: anywhere;
+}
+
+.uied-tool-view :is(img, svg) {
+  max-width: 100%;
+}
+
+.uied-tool-card {
+  border-radius: var(--uied-card-radius) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 720px) {
+  :root {
+    --uied-page-gutter: 12px;
+  }
 }

@@ -1,3 +1,11 @@
+<!--
+ * @file DetailHeader.vue
+ * @description 工具页公共标题区域
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-08-28
+ -->
 <script setup lang="ts">
 // import { Star } from '@element-plus/icons-vue'
 import { computed, onMounted, reactive, watch } from 'vue';
@@ -70,7 +78,7 @@ watch(
 </script>
 
 <template>
-  <div class="flex flex-col rounded-2xl bg-white p-4 mt-5 mb-5">
+  <div class="uied-tool-card flex flex-col rounded-lg bg-white p-4 mt-4 mb-4">
     <div class="text-xl font-medium">
       {{ displayTitle }}
     </div>

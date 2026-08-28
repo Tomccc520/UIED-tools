@@ -889,7 +889,7 @@ INSERT INTO `la_system_auth_menu` VALUES (565, 557, 'C', 'AI Provider 管理', '
 INSERT INTO `la_system_auth_menu` VALUES (591, 565, 'A', '获取模型', '', 0, 'setting:ai:provider:models', '', '', '/ai_model_manage/ai_provider', '', 0, 1, 0, 1787673600, 1787673600);
 INSERT INTO `la_system_auth_menu` VALUES (566, 557, 'C', 'AI工具能力代理', '', 2, 'setting:ai:ability:detail', 'ai_ability', 'setting/website/ai_model', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (560, 0, 'M', '官网设置', 'system-icon-Home', 42, 'setting:website:official:manage', 'official_site', '', '', '', 0, 1, 0, 1711000000, 1711000000);
-INSERT INTO `la_system_auth_menu` VALUES (561, 560, 'C', '热门工具', '', 80, 'setting:website:hottools:detail', 'hot_tools', 'setting/website/hot_tools', '', '', 0, 1, 0, 1711000000, 1711000000);
+INSERT INTO `la_system_auth_menu` VALUES (561, 560, 'C', '热门工具（已并入广告管理）', '', 80, 'setting:website:hottools:detail', 'hot_tools', 'setting/website/hot_tools', '', '', 0, 0, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (562, 561, 'A', '保存配置', '', 0, 'setting:website:hottools:save', '', '', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (563, 560, 'C', '前端布局', '', 130, 'setting:website:layout:detail', 'frontend_layout', 'setting/website/frontend_layout', '', '', 0, 1, 0, 1711000000, 1711000000);
 INSERT INTO `la_system_auth_menu` VALUES (564, 563, 'A', '保存配置', '', 0, 'setting:website:layout:save', '', '', '', '', 0, 1, 0, 1711000000, 1711000000);

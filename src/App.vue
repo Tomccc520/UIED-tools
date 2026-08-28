@@ -209,20 +209,20 @@ useToolRankingTracker()
     <!-- 根据左侧菜单状态调整左边距 -->
     <el-container :class="!componentStore.leftCom ? 'c-md:ml-[15rem]' : ''">
       <!-- 顶部导航栏 -->
-      <el-header class="!h-16 !px-4">
+      <el-header class="!h-16 uied-shell-gutter">
         <Header />
       </el-header>
 
       <!-- 广告横幅区域 -->
-      <div class="px-4 mt-2">
+      <div class="uied-shell-gutter mt-2">
         <Banner ref="banner" />
       </div>
 
       <!-- 主内容和右侧边栏容器 -->
-      <div class="flex gap-0 px-4 relative">
+      <div class="uied-shell-gutter uied-content-layout flex gap-0 relative">
         <!-- 主内容区域 -->
         <el-main class="!pt-4"
-          :class="{ 'flex-1': isToolPage && !route.meta.hideToolsRecommend, 'w-full': !isToolPage || route.meta.hideToolsRecommend }">
+          :class="['uied-main-content', { 'flex-1': isToolPage && !route.meta.hideToolsRecommend, 'w-full': !isToolPage || route.meta.hideToolsRecommend }]">
           <section v-if="isCurrentToolDisabled" class="tool-disabled-placeholder">
             <el-alert
               class="tool-runtime-alert tool-runtime-alert--warning"
@@ -243,11 +243,13 @@ useToolRankingTracker()
             </div>
           </section>
           <!-- 路由视图，使用过渡动画 -->
-          <router-view v-if="!isCurrentToolDisabled" v-slot="{ Component }">
-            <transition name="animation" mode="out-in">
-              <component :is="Component" :key="route.fullPath" />
-            </transition>
-          </router-view>
+          <div v-if="!isCurrentToolDisabled" class="uied-tool-view">
+            <router-view v-slot="{ Component }">
+              <transition name="animation" mode="out-in">
+                <component :is="Component" :key="route.fullPath" />
+              </transition>
+            </router-view>
+          </div>
         </el-main>
 
         <!-- 右侧边栏 - 仅在工具页面且未禁用工具推荐时显示 -->
@@ -260,7 +262,7 @@ useToolRankingTracker()
       </div>
 
       <!-- 底部信息区域 -->
-      <el-footer class="!px-4 !py-4 sm:!py-4">
+      <el-footer class="!py-4 sm:!py-4 uied-shell-gutter">
         <Floor />
       </el-footer>
     </el-container>
@@ -284,13 +286,13 @@ useToolRankingTracker()
 
 /* 覆盖 el-footer 的内边距 */
 :deep(.el-footer) {
-  padding: 0.5rem 1rem !important;
+  padding-block: 0.5rem !important;
   margin-top: 1rem !important;
 }
 
 @media (min-width: 640px) {
   :deep(.el-footer) {
-    padding: 0.5rem 1rem !important;
+    padding-block: 0.5rem !important;
     margin-top: 1rem !important;
   }
 }
@@ -324,7 +326,7 @@ useToolRankingTracker()
 
 /* 调整主内容区域右边距 */
 .el-main {
-  padding-right: 1rem !important;
+  padding-right: 0 !important;
 }
 
 .tool-runtime-alert {
@@ -412,5 +414,16 @@ useToolRankingTracker()
 <style>
 :root {
   font-size: 16px;
+}
+
+/* 主站公共横向留白，使用实际内容容器宽度而不是浏览器视口宽度判断。 */
+.uied-shell-gutter {
+  padding-inline: var(--uied-page-gutter);
+}
+
+/* Element Plus 的 header/footer 默认留白为 20px，这里统一覆盖为站点规范值。 */
+.uied-shell-gutter.el-header,
+.uied-shell-gutter.el-footer {
+  padding-inline: var(--uied-page-gutter) !important;
 }
 </style>

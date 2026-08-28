@@ -34,6 +34,9 @@ func (ih indexHandler) console(c *gin.Context) {
 
 // config 公共配置
 func (ih indexHandler) config(c *gin.Context) {
+	c.Header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
+	c.Header("Pragma", "no-cache")
+	c.Header("Expires", "0")
 	res, err := ih.srv.Config()
 	response.CheckAndRespWithData(c, res, err)
 }

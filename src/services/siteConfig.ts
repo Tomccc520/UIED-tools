@@ -9,6 +9,11 @@
 
 import defaultChangelogTimeline from '../constants/changelogTimeline'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
+import {
+  buildLegacyAdvertisingHtml,
+  normalizeSafeAdvertisingUrl,
+  sanitizeAdvertisingHtml
+} from '@/utils/safeAdvertisingHtml'
 
 export interface SiteLinkItem {
   name: string
@@ -60,10 +65,13 @@ export interface SiteHotToolItem {
 }
 
 export interface SiteBannerSlideItem {
-  badge: string
+  renderMode: 'image' | 'html'
   text: string
+  image: string
+  htmlCode: string
   link: string
-  gradient: string
+  target: '_self' | '_blank'
+  height: number
 }
 
 export interface SiteSeoPageItem {
@@ -185,7 +193,27 @@ const DEFAULT_ENDPOINT = '/api/common/index/config'
 const DEFAULT_TIMEOUT_MS = 5000
 const CACHE_TTL_MS = 5 * 60 * 1000
 
+export const SITE_CONFIG_REFRESH_STORAGE_KEY = 'uied_site_config_updated_at'
+
 const DEFAULT_SIDEBAR_MENU_BLOCKS: SiteSidebarMenuBlock[] = []
+
+/**
+ * 函数说明：将默认渐变文字广告转换为新版 HTML 广告结构。
+ */
+const createDefaultBannerSlide = (
+  badge: string,
+  text: string,
+  link: string,
+  gradient: string
+): SiteBannerSlideItem => ({
+  renderMode: 'html',
+  text,
+  image: '',
+  htmlCode: buildLegacyAdvertisingHtml({ badge, text, link, gradient }),
+  link: '',
+  target: '_blank',
+  height: 48
+})
 
 const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   webName: 'UIED-Tools',
@@ -208,48 +236,48 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   loginMemberEnabled: false,
   loginMemberTrialDays: 0,
   bannerSlides: [
-    {
-      badge: '推荐',
-      text: '一人企业Vibe Coding社区！',
-      link: 'https://fsuied.com',
-      gradient: 'linear-gradient(to right,#6366f1,#e0e7ff,#edf2ff,#8b5cf6)'
-    },
-    {
-      badge: '热门',
-      text: 'GPT-5.4重回巅峰 智能对话',
-      link: 'https://nf.video/mbx1u6/?gid=18',
-      gradient: 'linear-gradient(to right,#ec4899,#fbe7ef,#fdf2f8,#f472b6)'
-    },
-    {
-      badge: '新品',
-      text: '免费AI编程工具 Trae - 智能编码助手',
-      link: 'https://www.trae.com.cn/?utm_source=advertising&utm_medium=uied_ug_cpa&utm_term=hw_trae_uied',
-      gradient: 'linear-gradient(to right,#a855f7,#f3e8ff,#f5f3ff,#c084fc)'
-    },
-    {
-      badge: '新品',
-      text: '腾讯元宝 智能对话新体验',
-      link: 'https://yuanbao.paluai.com/uied',
-      gradient: 'linear-gradient(to right,#ffc800,#ffed99,#fff8cc,#ffaa00)'
-    },
-    {
-      badge: '高效',
-      text: '免费AI生成PPT - 一键生成演示文稿',
-      link: 'https://www.aippt.cn/?utm_type=Navweb&utm_source=bbdh&utm_page=aippt&utm_plan=ppt&utm_unit=AIPPT&utm_keyword=40471047',
-      gradient: 'linear-gradient(to right,#10b981,#d1fae5,#ecfdf5,#34d399)'
-    },
-    {
-      badge: '特惠',
-      text: 'Adobe 正版全家桶可用AI',
-      link: 'https://universalbus.cn/?s=lPLG02aydo',
-      gradient: 'linear-gradient(to right,#f97316,#ffedd5,#fff7ed,#fb923c)'
-    },
-    {
-      badge: '新品',
-      text: 'Gemini3 可用 nanobanana',
-      link: 'https://universalbus.cn/?s=lPLG02aydo',
-      gradient: 'linear-gradient(to right,#0ea5e9,#e0f2fe,#f0f9ff,#38bdf8)'
-    }
+    createDefaultBannerSlide(
+      '推荐',
+      '一人企业Vibe Coding社区！',
+      'https://fsuied.com',
+      'linear-gradient(to right,#6366f1,#e0e7ff,#edf2ff,#8b5cf6)'
+    ),
+    createDefaultBannerSlide(
+      '热门',
+      'GPT-5.4重回巅峰 智能对话',
+      'https://nf.video/mbx1u6/?gid=18',
+      'linear-gradient(to right,#ec4899,#fbe7ef,#fdf2f8,#f472b6)'
+    ),
+    createDefaultBannerSlide(
+      '新品',
+      '免费AI编程工具 Trae - 智能编码助手',
+      'https://www.trae.com.cn/?utm_source=advertising&utm_medium=uied_ug_cpa&utm_term=hw_trae_uied',
+      'linear-gradient(to right,#a855f7,#f3e8ff,#f5f3ff,#c084fc)'
+    ),
+    createDefaultBannerSlide(
+      '新品',
+      '腾讯元宝 智能对话新体验',
+      'https://yuanbao.paluai.com/uied',
+      'linear-gradient(to right,#ffc800,#ffed99,#fff8cc,#ffaa00)'
+    ),
+    createDefaultBannerSlide(
+      '高效',
+      '免费AI生成PPT - 一键生成演示文稿',
+      'https://www.aippt.cn/?utm_type=Navweb&utm_source=bbdh&utm_page=aippt&utm_plan=ppt&utm_unit=AIPPT&utm_keyword=40471047',
+      'linear-gradient(to right,#10b981,#d1fae5,#ecfdf5,#34d399)'
+    ),
+    createDefaultBannerSlide(
+      '特惠',
+      'Adobe 正版全家桶可用AI',
+      'https://universalbus.cn/?s=lPLG02aydo',
+      'linear-gradient(to right,#f97316,#ffedd5,#fff7ed,#fb923c)'
+    ),
+    createDefaultBannerSlide(
+      '新品',
+      'Gemini3 可用 nanobanana',
+      'https://universalbus.cn/?s=lPLG02aydo',
+      'linear-gradient(to right,#0ea5e9,#e0f2fe,#f0f9ff,#38bdf8)'
+    )
   ],
   siteSlogan: '免费在线工具集',
   sidebarBrandLogo: '',
@@ -324,7 +352,7 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   changelogSplitDesc: '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。',
   changelogSplitLink: 'https://github.com/Tomccc520/UIED-tools',
   changelogSplitLinkText: '查看完整源码与部署说明',
-  changelogStatsText: '当前版本：3.0.1 全栈开源版 | 当前工具总数：333个 | 最后更新：2026-08-25 14:17',
+  changelogStatsText: '当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-28 18:00',
   changelogTimeline: (defaultChangelogTimeline as SiteChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)
@@ -517,11 +545,11 @@ const normalizeChangelogTextKey = (input: unknown): string => {
 }
 
 /**
- * 函数说明：兼容迁移更新记录旧统计文案，将已确认的工具总数统一修正为 333 个。
+ * 函数说明：兼容迁移更新记录旧统计文案，新增 Nine-patch 工具后将工具总数统一更新为 334 个。
  */
 const normalizeChangelogStatsText = (input: unknown): string => {
   const text = String(input || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).trim()
-  return (text || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).replace(/当前工具总数：334个/g, '当前工具总数：333个')
+  return (text || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).replace(/当前工具总数：333个/g, '当前工具总数：334个')
 }
 
 /**
@@ -673,9 +701,9 @@ const normalizeHotToolItems = (input: unknown): SiteHotToolItem[] => {
 }
 
 /**
- * 函数说明：清洗顶部 Banner 轮播配置，确保每条包含文案、链接和背景渐变
+ * 函数说明：清洗顶部广告轮播，支持图片、HTML 及历史渐变文字结构。
  */
-const normalizeBannerSlides = (input: unknown): SiteBannerSlideItem[] => {
+export const normalizeBannerSlides = (input: unknown): SiteBannerSlideItem[] => {
   const parsed = normalizeArrayInput(input)
     .map((item) => {
       if (!item || typeof item !== 'object') {
@@ -684,12 +712,28 @@ const normalizeBannerSlides = (input: unknown): SiteBannerSlideItem[] => {
       const record = item as Record<string, unknown>
       const badge = String(record.badge || '').trim()
       const text = String(record.text || '').trim()
-      const link = String(record.link || record.url || '').trim()
+      const image = String(record.image || record.thumbnail || '').trim()
+      const htmlCode = String(record.htmlCode || record.html_code || '').trim()
+      const link = normalizeSafeAdvertisingUrl(record.link || record.href || record.url)
       const gradient = String(record.gradient || '').trim()
-      if (!badge || !text || !link || !gradient) {
+      const mode = String(record.renderMode || record.render_mode || record.mode || '').trim().toLowerCase()
+      const renderMode: 'image' | 'html' =
+        mode === 'image' ? 'image' : mode === 'html' ? 'html' : htmlCode || (badge && gradient) ? 'html' : 'image'
+      const target: '_self' | '_blank' = String(record.target || '').trim() === '_self' ? '_self' : '_blank'
+      const rawHeight = Number(record.height)
+      const height = Number.isFinite(rawHeight) ? Math.min(600, Math.max(32, Math.round(rawHeight))) : 48
+      if (!text) {
         return null
       }
-      return { badge, text, link, gradient }
+      if (renderMode === 'image') {
+        const safeImage = normalizeSafeAdvertisingUrl(image)
+        if (!safeImage) return null
+        return { renderMode, text, image: safeImage, htmlCode: '', link, target, height }
+      }
+      const legacyHTML = badge && gradient ? buildLegacyAdvertisingHtml({ badge, text, link, gradient }) : ''
+      const normalizedHTML = sanitizeAdvertisingHtml(htmlCode || legacyHTML).trim()
+      if (!normalizedHTML) return null
+      return { renderMode, text, image: '', htmlCode: normalizedHTML, link: '', target, height }
     })
     .filter((item): item is SiteBannerSlideItem => Boolean(item))
   return parsed.length ? parsed : DEFAULT_SITE_PUBLIC_CONFIG.bannerSlides
@@ -1228,10 +1272,13 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
 const fetchSitePublicConfig = async (endpoint: string, timeoutMs: number): Promise<SitePublicConfig> => {
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), timeoutMs)
+  const separator = endpoint.includes('?') ? '&' : '?'
+  const requestEndpoint = `${endpoint}${separator}_uied_config_ts=${Date.now()}`
   try {
-    const response = await fetch(endpoint, {
+    const response = await fetch(requestEndpoint, {
       method: 'GET',
-      signal: controller.signal
+      signal: controller.signal,
+      cache: 'no-store'
     })
     if (!response.ok) {
       throw new Error(`获取站点配置失败（HTTP ${response.status}）`)

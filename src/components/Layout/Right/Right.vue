@@ -198,7 +198,7 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
 <template>
   <div v-if="shouldShowRecommend" class="sticky top-[5.5rem] w-56 overflow-hidden">
     <!-- 最近使用的工具 -->
-    <div v-if="recentTools.length > 0" class="bg-white rounded-xl shadow-sm mb-4">
+    <div v-if="recentTools.length > 0" class="uied-tool-card bg-white rounded-lg mb-4">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24"
@@ -241,7 +241,7 @@ const isToolPage = computed(() => route.path.startsWith('/tools/'))
     </div>
 
     <!-- 相关工具推荐 -->
-    <div class="bg-white rounded-xl shadow-sm mb-4">
+    <div class="uied-tool-card bg-white rounded-lg mb-4">
       <div class="px-4 py-3 border-b border-gray-100">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"

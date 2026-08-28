@@ -96,8 +96,10 @@ export const useToolsStore = defineStore('tools', {
   }),
   actions: {
     async getRecommends() {
-      // 先回填本地默认值，保证首屏可见
-      this.recommends = buildHotTools(getFallbackHotTools())
+      // 仅在首屏没有数据时回填默认值，后台发布后的刷新过程不闪回旧广告
+      if (!this.recommends.length) {
+        this.recommends = buildHotTools(getFallbackHotTools())
+      }
 
       try {
         const siteConfig = await getSitePublicConfig({ forceRefresh: true })

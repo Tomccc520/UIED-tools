@@ -2145,7 +2145,7 @@ const defaultChangelogSplitDesc =
     '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。'
 const defaultChangelogSplitLink = 'https://github.com/Tomccc520/UIED-tools'
 const defaultChangelogSplitLinkText = '查看完整源码与部署说明'
-const defaultChangelogStatsText = '当前版本：3.0.1 全栈开源版 | 当前工具总数：333个 | 最后更新：2026-08-25 14:17'
+const defaultChangelogStatsText = '当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-28 18:00'
 const defaultChangelogTimeline = (defaultChangelogTimelineSource as ToolsChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)
@@ -4462,7 +4462,7 @@ const goIconLibrary = () => {
  * 函数说明：跳转到热门工具配置页，联动首页热门推荐运营位
  */
 const goHotToolsConfig = () => {
-    router.push('/official_site/hot_tools')
+    router.push({ path: '/operation/advertising', query: { section: 'hot-tools' } })
 }
 
 /**
@@ -4646,7 +4646,7 @@ const cleanupLayoutDraft = () => {
     formData.toolsChangelogSplitLinkText = formData.toolsChangelogSplitLinkText.trim()
     formData.toolsChangelogStatsText = formData.toolsChangelogStatsText
         .trim()
-        .replace(/当前工具总数：334个/g, '当前工具总数：333个')
+        .replace(/当前工具总数：333个/g, '当前工具总数：334个')
 
     layoutForm.footerSupportLinks = sanitizeLinkItems(layoutForm.footerSupportLinks)
     layoutForm.footerRecordLinks = sanitizeLinkItems(layoutForm.footerRecordLinks)
@@ -4850,7 +4850,7 @@ const applyImportedFrontendLayoutData = (source: Record<string, unknown>) => {
         formData.toolsChangelogSplitLinkText
     )
     formData.toolsChangelogStatsText = readString('toolsChangelogStatsText', formData.toolsChangelogStatsText)
-        .replace(/当前工具总数：334个/g, '当前工具总数：333个')
+        .replace(/当前工具总数：333个/g, '当前工具总数：334个')
 
     writeArrayToJsonField('changelogHeaderLinks', 'toolsChangelogHeaderLinks', 'toolsChangelogHeaderLinks')
     writeArrayToJsonField('changelogMetaLinks', 'toolsChangelogMetaLinks', 'toolsChangelogMetaLinks')
@@ -5273,7 +5273,7 @@ const syncLayoutFormToJson = (): boolean => {
     formData.toolsChangelogIntroText = formData.toolsChangelogIntroText.trim()
     formData.toolsChangelogStatsText = formData.toolsChangelogStatsText
         .trim()
-        .replace(/当前工具总数：334个/g, '当前工具总数：333个')
+        .replace(/当前工具总数：333个/g, '当前工具总数：334个')
     formData.toolsChangelogTimeline = JSON.stringify(changelogTimelineItems.value, null, 2)
     if (!simpleMode.value) {
         formData.toolsChangelogSplitTitle = formData.toolsChangelogSplitTitle.trim()

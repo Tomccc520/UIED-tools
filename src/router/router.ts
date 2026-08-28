@@ -451,6 +451,11 @@ export const constantRoute: RouteRecordRaw[] = [
     name: 'imgCut',
   },
   {
+    path: '/tools/nine-patch',
+    component: () => import('../components/Tools/NinePatch/NinePatch.vue'),
+    name: 'ninePatch',
+  },
+  {
     path: '/tools/image-joiner',
     component: () => import('../components/Tools/ImageJoiner/ImageJoiner.vue'),
     name: 'imageJoiner',

@@ -7,15 +7,26 @@
 import request from '@/utils/request'
 
 export interface AdvertisingItem {
-    badge: string
+    renderMode: 'image' | 'html'
     text: string
+    image: string
+    htmlCode: string
     link: string
-    gradient: string
+    target: '_self' | '_blank'
+    height: number
+}
+
+export interface AdvertisingHotToolItem {
+    title: string
+    desc: string
+    link: string
 }
 
 export interface AdvertisingDetail {
     items: AdvertisingItem[]
     total: number
+    hotTools: AdvertisingHotToolItem[]
+    hotToolsTotal: number
 }
 
 /**
@@ -28,6 +39,6 @@ export function getAdvertisingDetail() {
 /**
  * 函数说明：保存运营广告列表并返回最新配置。
  */
-export function saveAdvertising(items: AdvertisingItem[]) {
-    return request.post<AdvertisingDetail>({ url: '/operation/advertising/save', params: { items } })
+export function saveAdvertising(items: AdvertisingItem[], hotTools: AdvertisingHotToolItem[]) {
+    return request.post<AdvertisingDetail>({ url: '/operation/advertising/save', params: { items, hotTools } })
 }

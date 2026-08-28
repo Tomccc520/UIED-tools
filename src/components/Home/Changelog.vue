@@ -125,7 +125,7 @@ const loadSiteConfig = async (): Promise<void> => {
     changelogSplitDesc.value = siteConfig.changelogSplitDesc || defaultSiteConfig.changelogSplitDesc
     changelogSplitLink.value = siteConfig.changelogSplitLink || defaultSiteConfig.changelogSplitLink
     changelogSplitLinkText.value = siteConfig.changelogSplitLinkText || defaultSiteConfig.changelogSplitLinkText
-    changelogStatsText.value = (siteConfig.changelogStatsText || defaultSiteConfig.changelogStatsText).replace(/当前工具总数：334个/g, '当前工具总数：333个')
+    changelogStatsText.value = (siteConfig.changelogStatsText || defaultSiteConfig.changelogStatsText).replace(/当前工具总数：333个/g, '当前工具总数：334个')
     timelineEntries.value = normalizeChangelogTimeline(siteConfig.changelogTimeline)
   } finally {
     isLoading.value = false
