@@ -22,6 +22,14 @@ UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具�
 ## 更新日志
 <a href="https://uiedtool.com/changelog" target="_blank">查看完整更新日志</a>
 
+## 开源协作
+
+- [参与贡献](CONTRIBUTING.md)
+- [安全问题报告](SECURITY.md)
+- [社区行为准则](CODE_OF_CONDUCT.md)
+- [提交 Bug](https://github.com/Tomccc520/UIED-tools/issues/new?template=bug_report.yml)
+- [提交功能建议](https://github.com/Tomccc520/UIED-tools/issues/new?template=feature_request.yml)
+
 ### 3.0.1 新增后台
 
 - **Go API**：基于 Gin 与 likeadmin-go，提供站点配置、菜单权限、工具策略、用户、日志和系统能力。

@@ -418,6 +418,10 @@ useToolRankingTracker()
 
 /* 主站公共横向留白，使用实际内容容器宽度而不是浏览器视口宽度判断。 */
 .uied-shell-gutter {
+  width: 100%;
+  max-width: 1840px;
+  margin-inline: auto;
+  box-sizing: border-box;
   padding-inline: var(--uied-page-gutter);
 }
 

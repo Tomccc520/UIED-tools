@@ -23,12 +23,21 @@ onMounted(() => {
   <!-- desc -->
   <div class="uied-tool-card mt-4 rounded-lg bg-white p-4">
     <el-divider content-position="left">{{ props.title }}</el-divider>
-    <div class="m-4">
+    <div class="uied-tool-detail__body">
       <slot></slot>
     </div> 
   </div>
 </template>
 
 <style scoped>
+.uied-tool-detail__body {
+  margin: 16px;
+  min-width: 0;
+}
 
+@container uied-tool (max-width: 560px) {
+  .uied-tool-detail__body {
+    margin: 12px 0 4px;
+  }
+}
 </style>

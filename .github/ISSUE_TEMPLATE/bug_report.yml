@@ -1,0 +1,30 @@
+name: Bug 反馈
+description: 报告可复现的问题，帮助我们持续维护项目
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先确认没有提交 API Key、Token、密码或用户隐私。
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 请写出最小可复现步骤。
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期与实际结果
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 环境信息
+      description: 例如浏览器、操作系统、版本号或访问端口。
+    validations:
+      required: true
