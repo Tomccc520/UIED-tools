@@ -8,7 +8,7 @@ UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具�
 
 **源码仓库：** [https://github.com/Tomccc520/UIED-tools](https://github.com/Tomccc520/UIED-tools)
 
-**Gitee 镜像：** [https://gitee.com/tomdac/tool](https://gitee.com/tomdac/tool)
+**Gitee 镜像：** [https://gitee.com/tomdac/uied-tools](https://gitee.com/tomdac/uied-tools)
 
 **在线资源矩阵：**
 - **在线工具站**：[UIED免费在线工具集](https://uiedtool.com/)
