@@ -26,7 +26,25 @@ uiedtool-3.0.1/
 └── RELEASE-MANIFEST.txt         文件 SHA-256 清单
 ```
 
-## 二、部署前备份
+## 二、增量升级策略（重要）
+
+宝塔包中的 `deploy-update.sh` 默认采用“仅更新代码”模式：只切换主站、管理端和 Go API，不执行 SQL，不会因为普通页面发布重复改动数据库。
+
+需要新增菜单、工具或配置时，再显式执行数据库迁移。脚本会先导出数据库到本次备份目录，然后按 `la_system_upgrade_log` 校验补丁哈希，已成功且内容未变化的补丁会自动跳过：
+
+```bash
+cd /www/wwwroot/uiedtool.com/app/packages/uiedtool-3.0.1-baota-deploy-版本号
+
+# 默认：代码发布，不改数据库
+bash deploy-update.sh
+
+# 显式：先备份数据库，再执行新增/变更 SQL
+bash deploy-update.sh --apply-db-patches
+```
+
+如果补丁文件内容被修改，脚本会提示哈希变化并重新执行该补丁；因此生产环境不要手工覆盖已发布补丁文件。每次执行结束后，请保留 `backups/<版本-时间>/database.sql.gz`，数据库回滚应先评估业务数据再操作。
+
+## 三、部署前备份
 
 以下命令在服务器执行。发布文件统一放在站点目录的 `app` 中，避免和其他项目、公开静态文件混放。
 
@@ -46,7 +64,7 @@ mysqldump -uroot -p --single-transaction --default-character-set=utf8mb4 uiedtoo
   > "$BACKUP_DIR/uiedtool.sql"
 ```
 
-## 三、初始化数据库
+## 四、初始化数据库
 
 当前正式环境只有旧前端时，按全新数据库安装。数据库密码建议使用只包含大小写字母和数字的长随机值，避免 MySQL DSN 中的特殊字符需要转义。
 
@@ -68,7 +86,7 @@ mysql -uuiedtool -p -h127.0.0.1 uiedtool < "$RELEASE_DIR/sql/install.sql"
 
 `install.sql` 面向全新数据库，会重建同名表，不要对已有正式数据库重复执行。
 
-## 四、准备 Go API
+## 五、准备 Go API
 
 ```bash
 mkdir -p "$APP_DIR/current/backend" "$APP_DIR/shared/uploads"
@@ -106,7 +124,7 @@ docker run -d --name uiedtool-api-v301-live --restart unless-stopped \
 curl -fsS http://127.0.0.1:8003/health
 ```
 
-## 五、发布静态文件
+## 六、发布静态文件
 
 先执行 `--dry-run` 检查清单，再同步到独立的 `public` 目录。`app`、`.well-known` 和 `.user.ini` 不会进入公开目录。
 
@@ -125,7 +143,7 @@ rsync -a --delete "$RELEASE_DIR/admin/" "$SITE_DIR/public/admin/"
 chown -R www:www "$SITE_DIR/public"
 ```
 
-## 六、接入 Nginx
+## 七、接入 Nginx
 
 现有站点已有 RSS、聊天和收藏代理，不覆盖主配置，只新增扩展文件：
 
@@ -138,7 +156,7 @@ cp "$RELEASE_DIR/nginx/uiedtool.com.fullstack.locations.conf" \
 /www/server/nginx/sbin/nginx -s reload
 ```
 
-## 七、上线验收
+## 八、上线验收
 
 ```bash
 curl -fsSI https://uiedtool.com/
@@ -156,7 +174,7 @@ docker logs --tail 100 uiedtool-api-v301-live
 4. 生产主站不展示 AI 简历入口，访问旧入口不会影响其他工具。
 5. 首次登录后台后立即修改默认管理员密码，并关闭不使用的登录、支付和渠道能力。
 
-## 八、回滚
+## 九、回滚
 
 静态页面异常时恢复部署前备份：
 
@@ -177,7 +195,7 @@ docker stop uiedtool-api-v301-live
 
 数据库只有在确认新库需要废弃时才回滚，不要直接覆盖仍有新增业务数据的数据库。
 
-## 九、服务器建议
+## 十、服务器建议
 
 - 当前服务器无 Swap，建议部署前增加 2GB Swap，降低构建外服务同时运行时的内存风险。
 - MySQL 当前监听公网 `*:3306`，上线后应通过安全组和防火墙限制访问来源，能改为本机监听时优先本机监听。

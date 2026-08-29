@@ -16,6 +16,7 @@
                         v-model="formData.tableName"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-form-item>
                 <a-form-item label="表描述">
@@ -24,6 +25,7 @@
                         v-model="formData.tableComment"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-form-item>
                 <a-form-item>

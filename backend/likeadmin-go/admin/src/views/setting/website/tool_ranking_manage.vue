@@ -36,12 +36,14 @@
                     allow-clear
                     placeholder="搜索工具标题 / toolKey / 链接"
                     @press-enter="handleSearch"
+                    @clear="handleSearch"
                 />
                 <a-input
                     v-model="queryParams.cateTitle"
                     allow-clear
                     placeholder="筛选分类，如：图片处理"
                     @press-enter="handleSearch"
+                    @clear="handleSearch"
                 />
                 <a-select v-model="queryParams.period" :options="periodOptions" />
                 <a-select v-model="queryParams.sortBy" :options="sortOptions" />

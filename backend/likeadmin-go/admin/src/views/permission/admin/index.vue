@@ -80,6 +80,7 @@
                         placeholder="管理员账号"
                         allow-clear
                         @press-enter="queryAdmins"
+                        @clear="queryAdmins"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">
@@ -88,6 +89,7 @@
                         placeholder="管理员名称"
                         allow-clear
                         @press-enter="queryAdmins"
+                        @clear="queryAdmins"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">

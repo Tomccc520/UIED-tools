@@ -195,14 +195,23 @@ onMounted(() => {
   --ranking-muted: #707784;
   --ranking-line: #d9dde4;
   --ranking-accent: #ff5b3d;
-  width: 100%;
-  max-width: 1120px;
-  margin: 0 auto;
+  /* 页面背景铺满主内容轨道，避免热榜内容漂浮在浅灰底上。 */
+  width: calc(100% + (var(--uied-page-gutter) * 2));
+  max-width: none;
+  min-height: calc(100vh - 7rem);
+  margin: 0 calc(-1 * var(--uied-page-gutter));
   padding: 1.5rem 0 1.75rem;
+  background: #ffffff;
+  box-sizing: border-box;
+  border-radius: 20px;
+  overflow: hidden;
   color: var(--ranking-ink);
 }
 
 .tool-ranking-page__hero {
+  width: min(1120px, 100%);
+  margin-right: auto;
+  margin-left: auto;
   margin-bottom: 1.4rem;
   padding: 0 0.25rem 1.1rem;
   border-bottom: 1px solid var(--ranking-line);
@@ -339,6 +348,9 @@ onMounted(() => {
 }
 
 .tool-ranking-page__board-shell {
+  width: min(1120px, 100%);
+  margin-right: auto;
+  margin-left: auto;
   min-height: 360px;
   padding: 0 0.25rem;
 }
@@ -387,7 +399,7 @@ onMounted(() => {
 
 @media (max-width: 768px) {
   .tool-ranking-page {
-    padding: 0.9rem 0 1rem;
+    padding: 0.9rem var(--uied-page-gutter) 1rem;
   }
 
   .tool-ranking-page__hero {
@@ -449,6 +461,22 @@ onMounted(() => {
   .tool-ranking-page__board-shell,
   .tool-ranking-page__status {
     min-height: 280px;
+  }
+}
+
+/* 函数说明：超窄屏将榜单数量信息移到标题下方，避免标题与 TOP 数字争抢横向空间。 */
+@media (max-width: 360px) {
+  .tool-ranking-page__hero-main {
+    display: block;
+  }
+
+  .tool-ranking-page__hero-panel {
+    justify-content: flex-start;
+    margin-top: 0.65rem;
+  }
+
+  .tool-ranking-page__hero-panel strong {
+    font-size: 2.2rem;
   }
 }
 </style>

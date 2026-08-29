@@ -81,6 +81,7 @@
                         placeholder="数据名称"
                         allow-clear
                         @press-enter="handleQuery"
+                        @clear="handleQuery"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 2 }">

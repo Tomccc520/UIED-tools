@@ -1,3 +1,11 @@
+<!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-08-29
+ */
+-->
 <template>
   <!-- 搜索面板 -->
   <div v-if="visible" class="search-panel">
@@ -6,16 +14,19 @@
       <!-- 标题栏 -->
       <div class="panel-header">
         <div class="header-left">
-          <h2 class="panel-title">AI智能搜索</h2>
+          <div class="panel-heading">
+            <span class="panel-kicker">SEARCH WORKSPACE</span>
+            <h2 class="panel-title">工具智能搜索</h2>
+          </div>
           <div class="header-subtitle">
-            本服务由
-            <a :href="searchProviderLink" target="_blank" class="provider-link">
+            本地秒搜 + AI 增强 · AI 服务由
+            <a :href="searchProviderLink" target="_blank" rel="noopener noreferrer" class="provider-link">
               {{ searchProviderLabel }}
             </a>
             提供
           </div>
         </div>
-        <el-button class="close-btn" @click="handleClose">
+        <el-button class="close-btn" aria-label="关闭搜索" @click="handleClose">
           <el-icon>
             <Close />
           </el-icon>
@@ -124,11 +135,56 @@
         <!-- 快捷工具 -->
         <template v-if="!currentQuestion">
           <div class="welcome-section">
-            <h3 class="welcome-title">AI智能助手</h3>
-            <p class="welcome-desc">我可以帮您查找工具、解答问题或推荐解决方案。</p>
+            <h3 class="welcome-title">先找工具，再解决问题</h3>
+            <p class="welcome-desc">输入名称、用途、分类或英文别名，常用工具即时出现；复杂需求可继续使用 AI 搜索。</p>
           </div>
 
-          <div class="quick-access">
+          <section v-if="normalizedSearchQuery" class="instant-results" aria-live="polite">
+            <div class="instant-results__header">
+              <div>
+                <span class="instant-results__eyebrow">即时匹配</span>
+                <h3>找到 {{ localSearchResults.length }} 个相关工具</h3>
+              </div>
+              <span class="instant-results__hint">按 ↑ ↓ 选择，Enter 打开</span>
+            </div>
+
+            <div v-if="localSearchResults.length" class="instant-results__list" role="listbox" aria-label="工具搜索结果">
+              <button
+                v-for="(tool, index) in localSearchResults"
+                :key="tool.url"
+                type="button"
+                :class="[
+                  'instant-result-item',
+                  {
+                    'is-active': activeLocalResultIndex === index,
+                    'is-disabled': isToolEntryDisabled(tool.url)
+                  }
+                ]"
+                role="option"
+                :aria-selected="activeLocalResultIndex === index"
+                @mouseenter="activeLocalResultIndex = index"
+                @click="handleLocalResultClick(tool)"
+              >
+                <span class="instant-result-item__index">{{ String(index + 1).padStart(2, '0') }}</span>
+                <span class="instant-result-item__body">
+                  <span class="instant-result-item__title-row">
+                    <strong>{{ tool.title }}</strong>
+                    <span v-if="tool.cate" class="instant-result-item__category">{{ tool.cate }}</span>
+                    <span v-if="isToolEntryDisabled(tool.url)" class="instant-result-item__disabled">已停用</span>
+                  </span>
+                  <span class="instant-result-item__desc">{{ tool.desc || '打开工具立即使用' }}</span>
+                </span>
+                <span class="instant-result-item__action">打开</span>
+              </button>
+            </div>
+
+            <div v-else class="instant-results__empty">
+              <strong>暂时没有直接匹配</strong>
+              <span>可以换一个更短的关键词，或点击下方“AI 搜索”描述具体需求。</span>
+            </div>
+          </section>
+
+          <div v-if="!normalizedSearchQuery" class="quick-access">
             <div class="section-title">快捷入口</div>
             <div class="quick-tools-grid">
               <div
@@ -147,10 +203,10 @@
           </div>
 
           <!-- 搜索历史 -->
-          <div v-if="searchHistory.length" class="search-history">
+          <div v-if="!normalizedSearchQuery && searchHistory.length" class="search-history">
             <div class="history-header">
               <h3 class="section-title">搜索历史</h3>
-              <button class="clear-history" @click="clearHistory">
+              <button class="clear-history" type="button" @click="clearHistory">
                 <el-icon>
                   <Delete />
                 </el-icon>
@@ -166,7 +222,12 @@
                   </el-icon>
                   <span class="history-text">{{ item }}</span>
                 </div>
-                <el-button class="delete-btn" type="text" @click.stop="removeHistory(index)">
+                <el-button
+                  class="delete-btn"
+                  type="text"
+                  :aria-label="`删除搜索历史：${item}`"
+                  @click.stop="removeHistory(index)"
+                >
                   <el-icon>
                     <Close />
                   </el-icon>
@@ -188,22 +249,45 @@
       <!-- 底部搜索框 -->
       <div class="search-footer">
         <div class="search-input-wrapper">
-          <el-input v-model="searchParam.title" placeholder="输入关键词搜索工具，或描述您的需求..." :prefix-icon="Search"
-            class="search-input" @keyup.enter="handleEnterSearch" :loading="searchParam.loading"
-            :disabled="searchParam.loading" />
+          <el-input
+            ref="searchInputRef"
+            v-model="searchParam.title"
+            placeholder="搜索工具名称、用途或描述您的需求..."
+            :prefix-icon="Search"
+            class="search-input"
+            :loading="searchParam.loading"
+            @keydown="handleSearchInputKeydown"
+          />
           <div class="button-group">
-            <button v-if="searchParam.title && !searchParam.loading" class="clear-btn" @click="handleClear">
+            <button
+              v-if="searchParam.title && !searchParam.loading"
+              class="clear-btn"
+              type="button"
+              aria-label="清空搜索关键词"
+              @click="handleClear"
+            >
               <el-icon>
                 <Close />
               </el-icon>
             </button>
-            <button class="send-btn" @click="handleSearch" :disabled="searchParam.loading">
-              <span v-if="!searchParam.loading">发送</span>
+            <button
+              class="send-btn"
+              type="button"
+              @click="handleSearch"
+              :disabled="searchParam.loading || !normalizedSearchQuery"
+            >
+              <span v-if="!searchParam.loading">AI 搜索</span>
               <el-icon v-else class="loading-icon">
                 <Loading />
               </el-icon>
             </button>
           </div>
+        </div>
+        <div class="search-keyboard-hint">
+          <span><kbd>↑</kbd><kbd>↓</kbd> 选择结果</span>
+          <span><kbd>Enter</kbd> 打开所选</span>
+          <span><kbd>⌘/Ctrl</kbd> + <kbd>Enter</kbd> AI 搜索</span>
+          <span><kbd>Esc</kbd> 关闭</span>
         </div>
       </div>
     </div>
@@ -211,7 +295,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { Search, Delete, Link as LinkIcon, Close, Loading, User, ChatDotRound, Check } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
@@ -220,6 +304,7 @@ import { resolveToolRuntimeLinkKind, useToolRuntimeGate, type ToolRuntimeEntry }
 import type { Tool, ToolCategory } from '@/types/tools'
 import logoImg from '@/assets/uiedlogo.png'
 import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
+import { searchToolsByQuery } from '@/utils/toolSearch'
 import { debugLog, debugError, isDev } from '@/utils/debug'
 
 // 测试logo是否正确加载 - 仅在开发环境
@@ -234,7 +319,12 @@ const quickTools = ref<SiteQuickToolItem[]>(defaultSearchQuickTools)
 const searchProviderLabel = ref(getDefaultSitePublicConfig().searchProviderLabel)
 const searchProviderLink = ref(getDefaultSitePublicConfig().searchProviderLink)
 const toolRuntimeEntryMap = ref<Map<string, Tool>>(new Map())
+const searchableTools = ref<Tool[]>([])
+const searchInputRef = ref<{ focus?: () => void } | null>(null)
+const activeLocalResultIndex = ref(-1)
 const { isToolDisabled, openToolEntry } = useToolRuntimeGate()
+let searchRequestSerial = 0
+let previousBodyOverflow = ''
 
 /**
  * 按需加载并配置搜索面板 Markdown 渲染器
@@ -310,6 +400,11 @@ const chatHistory = ref<Array<{
   answer: AISearchResponse
 }>>([])
 const currentQuestion = ref('')
+
+const normalizedSearchQuery = computed(() => searchParam.title.trim())
+const localSearchResults = computed(() =>
+  searchToolsByQuery(searchableTools.value, normalizedSearchQuery.value, 8)
+)
 
 const currentAnswerHtml = ref('')
 const historyAnswerHtmlCache = new Map<string, string>()
@@ -463,20 +558,27 @@ const updateResponse = (data: { content?: string }) => {
 
 // 从localStorage加载搜索历史
 const loadSearchHistory = () => {
-  const history = localStorage.getItem('searchHistory')
-  if (history) {
-    searchHistory.value = JSON.parse(history)
+  try {
+    const history = localStorage.getItem('searchHistory')
+    const parsedHistory = history ? JSON.parse(history) : []
+    searchHistory.value = Array.isArray(parsedHistory)
+      ? parsedHistory.map(item => String(item || '').trim()).filter(Boolean).slice(0, MAX_HISTORY)
+      : []
+  } catch (_error) {
+    searchHistory.value = []
+    localStorage.removeItem('searchHistory')
   }
 }
 
 // 保存搜索历史到localStorage
 const saveHistory = (query: string) => {
-  if (!query.trim()) return
-  const index = searchHistory.value.indexOf(query)
+  const normalizedQuery = query.trim()
+  if (!normalizedQuery) return
+  const index = searchHistory.value.indexOf(normalizedQuery)
   if (index > -1) {
     searchHistory.value.splice(index, 1)
   }
-  searchHistory.value.unshift(query)
+  searchHistory.value.unshift(normalizedQuery)
   if (searchHistory.value.length > MAX_HISTORY) {
     searchHistory.value.pop()
   }
@@ -506,6 +608,23 @@ const loadSearchQuickTools = async () => {
   searchProviderLabel.value = siteConfig.searchProviderLabel || getDefaultSitePublicConfig().searchProviderLabel
   searchProviderLink.value = siteConfig.searchProviderLink || getDefaultSitePublicConfig().searchProviderLink
   toolRuntimeEntryMap.value = buildToolRuntimeEntryMap(siteConfig.toolCategories)
+  searchableTools.value = flattenSearchableTools(siteConfig.toolCategories)
+}
+
+/**
+ * 函数说明：将后台工具分类树拍平为搜索数据，并补齐子分类名称。
+ * @param categories 后台工具分类树
+ * @returns 可用于本地检索的工具列表
+ */
+const flattenSearchableTools = (categories: ToolCategory[]): Tool[] => {
+  return categories.flatMap(category =>
+    category.list.flatMap(subCategory =>
+      subCategory.list.map(tool => ({
+        ...tool,
+        cate: tool.cate || subCategory.title || category.title
+      }))
+    )
+  )
 }
 
 /**
@@ -626,7 +745,9 @@ const resolveSearchRuntimeEntry = (url: string, fallbackTitle = '该工具'): To
 // 处理搜索
 const handleSearch = async () => {
   const query = searchParam.title.trim()
-  if (!query) return
+  if (!query || searchParam.loading) return
+
+  const currentRequestSerial = ++searchRequestSerial
 
   try {
     searchParam.loading = true
@@ -670,7 +791,15 @@ const handleSearch = async () => {
     }, 25000)
 
     try {
-      const response = await searchWithAI(query, updateResponse)
+      const response = await searchWithAI(query, (data) => {
+        if (currentRequestSerial === searchRequestSerial) {
+          updateResponse(data)
+        }
+      })
+
+      if (currentRequestSerial !== searchRequestSerial) {
+        return
+      }
 
       // 清除超时计时器
       clearTimeout(timeoutTimer)
@@ -714,6 +843,10 @@ const handleSearch = async () => {
     debugError('搜索过程出错:', error)
     ElMessage.error('搜索失败，请稍后重试')
   } finally {
+    if (currentRequestSerial !== searchRequestSerial) {
+      return
+    }
+
     searchParam.loading = false
     isTyping.value = false
 
@@ -738,6 +871,14 @@ const handleToolClick = async (url: string, title = '') => {
   })
 }
 
+/**
+ * 函数说明：打开本地即时匹配结果，并复用工具运行态校验。
+ * @param tool 当前选择的工具
+ */
+const handleLocalResultClick = async (tool: Tool) => {
+  await handleToolClick(tool.url, tool.title)
+}
+
 // 处理历史记录点击
 const handleHistoryClick = (query: string) => {
   searchParam.title = query
@@ -746,7 +887,10 @@ const handleHistoryClick = (query: string) => {
 
 // 关闭搜索面板
 const handleClose = () => {
+  searchRequestSerial += 1
   emit('update:visible', false)
+  searchParam.loading = false
+  isTyping.value = false
   searchParam.title = ''
   currentQuestion.value = ''
   // 清除所有状态
@@ -771,6 +915,7 @@ const handleClose = () => {
 // 清除搜索
 const handleClear = () => {
   searchParam.title = ''
+  activeLocalResultIndex.value = -1
   // 不清除 aiResponse，保留对话历史
 }
 
@@ -790,6 +935,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  document.body.style.overflow = previousBodyOverflow
   if (responseFlushRafId !== null) {
     window.cancelAnimationFrame(responseFlushRafId)
     responseFlushRafId = null
@@ -801,12 +947,69 @@ onBeforeUnmount(() => {
   }
 })
 
-// 处理回车搜索
-const handleEnterSearch = () => {
-  if (!searchParam.loading && searchParam.title.trim()) {
-    handleSearch();
+/**
+ * 函数说明：处理搜索框键盘操作，支持结果选择、AI 搜索和快捷关闭。
+ * @param event 键盘事件
+ */
+const handleSearchInputKeydown = (event: KeyboardEvent) => {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    handleClose()
+    return
   }
+
+  if (event.key === 'ArrowDown' && localSearchResults.value.length) {
+    event.preventDefault()
+    activeLocalResultIndex.value =
+      (activeLocalResultIndex.value + 1 + localSearchResults.value.length) % localSearchResults.value.length
+    return
+  }
+
+  if (event.key === 'ArrowUp' && localSearchResults.value.length) {
+    event.preventDefault()
+    activeLocalResultIndex.value = activeLocalResultIndex.value <= 0
+      ? localSearchResults.value.length - 1
+      : activeLocalResultIndex.value - 1
+    return
+  }
+
+  if (event.key !== 'Enter' || event.isComposing) {
+    return
+  }
+
+  event.preventDefault()
+  if (event.metaKey || event.ctrlKey) {
+    void handleSearch()
+    return
+  }
+
+  const selectedTool = localSearchResults.value[activeLocalResultIndex.value]
+  if (selectedTool) {
+    void handleLocalResultClick(selectedTool)
+    return
+  }
+
+  void handleSearch()
 }
+
+watch(normalizedSearchQuery, () => {
+  activeLocalResultIndex.value = -1
+})
+
+watch(
+  () => props.visible,
+  async (visible) => {
+    if (visible) {
+      previousBodyOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      await nextTick()
+      searchInputRef.value?.focus?.()
+      return
+    }
+    document.body.style.overflow = previousBodyOverflow
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -1872,5 +2075,312 @@ const handleEnterSearch = () => {
   margin: 0;
   line-height: 1.5;
   opacity: 0.9;
+}
+
+/* 搜索工作台增强样式 */
+.search-wrapper {
+  width: min(960px, calc(100vw - 48px));
+  height: min(820px, calc(100dvh - 48px));
+  border-radius: 16px;
+  border-color: #dfe4ec;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 86px;
+}
+
+.panel-heading {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.panel-kicker {
+  color: #6c54ff;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+}
+
+.panel-title {
+  margin-bottom: 4px;
+}
+
+.instant-results {
+  padding-bottom: 8px;
+}
+
+.instant-results__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.instant-results__eyebrow {
+  display: block;
+  margin-bottom: 4px;
+  color: #6c54ff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.instant-results__header h3 {
+  margin: 0;
+  color: #172033;
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.instant-results__hint {
+  color: #8791a4;
+  font-size: 12px;
+}
+
+.instant-results__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.instant-result-item {
+  width: 100%;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 14px;
+  border: 1px solid #e3e7ee;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+
+.instant-result-item:hover,
+.instant-result-item.is-active {
+  border-color: #6c54ff;
+  background: #f8f7ff;
+  transform: translateY(-1px);
+}
+
+.instant-result-item.is-disabled {
+  opacity: 0.58;
+}
+
+.instant-result-item__index {
+  color: #a1a9b8;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+}
+
+.instant-result-item__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.instant-result-item__title-row {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.instant-result-item__title-row strong {
+  overflow: hidden;
+  color: #20293a;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instant-result-item__category,
+.instant-result-item__disabled {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: #f0f2f6;
+  color: #707b8e;
+  font-size: 10px;
+}
+
+.instant-result-item__disabled {
+  background: #fff0f0;
+  color: #d14343;
+}
+
+.instant-result-item__desc {
+  overflow: hidden;
+  color: #778196;
+  font-size: 12px;
+  line-height: 1.45;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.instant-result-item__action {
+  color: #6c54ff;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.instant-results__empty {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 24px;
+  border: 1px dashed #d7dce5;
+  border-radius: 8px;
+  background: #fafbfc;
+  color: #7a8495;
+  font-size: 13px;
+  text-align: center;
+}
+
+.instant-results__empty strong {
+  color: #283244;
+  font-size: 15px;
+}
+
+.search-input-wrapper {
+  border: 1px solid #e2e6ed;
+  border-radius: 10px;
+  box-shadow: none;
+}
+
+.search-keyboard-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  padding-top: 9px;
+  color: #8a93a3;
+  font-size: 11px;
+}
+
+.search-keyboard-hint span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.search-keyboard-hint kbd {
+  min-width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
+  border: 1px solid #dfe3ea;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #fff;
+  color: #5d6676;
+  font-family: inherit;
+  font-size: 10px;
+}
+
+.send-btn:disabled {
+  opacity: 0.55;
+}
+
+@media screen and (max-width: 768px) {
+  .search-wrapper {
+    width: 100%;
+    height: 100dvh;
+    padding: 16px;
+    border-radius: 0;
+  }
+
+  .panel-header {
+    min-height: 76px;
+    margin: -16px -16px 0;
+    padding: 14px 56px 12px 18px;
+  }
+
+  .panel-heading {
+    display: block;
+  }
+
+  .panel-kicker,
+  .instant-results__hint,
+  .search-keyboard-hint {
+    display: none;
+  }
+
+  .panel-title {
+    font-size: 18px;
+  }
+
+  .header-subtitle {
+    overflow: hidden;
+    max-width: calc(100vw - 92px);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .search-content {
+    margin: 0 -16px;
+    padding: 16px;
+  }
+
+  .welcome-section {
+    margin-bottom: 18px;
+    padding: 18px;
+  }
+
+  .instant-results__list {
+    grid-template-columns: 1fr;
+  }
+
+  .instant-result-item {
+    grid-template-columns: 24px minmax(0, 1fr) auto;
+    padding: 12px;
+  }
+
+  .instant-result-item__category {
+    display: none;
+  }
+
+  .search-footer {
+    margin: 0 -16px -16px;
+    padding: 12px;
+  }
+
+  .search-input-wrapper {
+    gap: 6px;
+    padding: 5px;
+  }
+
+  .clear-btn {
+    width: 38px;
+    padding: 0;
+  }
+
+  .send-btn {
+    min-width: 76px;
+    padding: 0 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .instant-result-item,
+  .chat-message,
+  .loading-icon {
+    animation: none;
+    transition: none;
+  }
 }
 </style>

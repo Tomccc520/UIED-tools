@@ -34,6 +34,7 @@
                             placeholder="用户编号/昵称/手机号码"
                             allow-clear
                             @press-enter="resetPage"
+                            @clear="resetPage"
                         />
                     </a-form-item>
 

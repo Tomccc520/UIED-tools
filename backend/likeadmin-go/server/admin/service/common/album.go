@@ -66,8 +66,9 @@ func (albSrv albumService) AlbumList(page request.PageReq, listReq req.CommonAlb
 	if listReq.Cid > 0 {
 		albumModel = albumModel.Where("cid = ?", listReq.Cid)
 	}
-	if listReq.Name != "" {
-		albumModel = albumModel.Where("name like ?", "%"+listReq.Name+"%")
+	name := strings.TrimSpace(listReq.Name)
+	if name != "" {
+		albumModel = albumModel.Where("name like ?", "%"+name+"%")
 	}
 	if listReq.Type > 0 {
 		albumModel = albumModel.Where("type = ?", listReq.Type)
@@ -533,8 +534,9 @@ func (albSrv albumService) CateList(listReq req.CommonCateListReq) (mapList []in
 	if listReq.Type > 0 {
 		cateModel = cateModel.Where("type = ?", listReq.Type)
 	}
-	if listReq.Name != "" {
-		cateModel = cateModel.Where("name like ?", "%"+listReq.Name+"%")
+	name := strings.TrimSpace(listReq.Name)
+	if name != "" {
+		cateModel = cateModel.Where("name like ?", "%"+name+"%")
 	}
 	err := cateModel.Find(&cates).Error
 	if e = response.CheckErr(err, "CateList Find err"); e != nil {

@@ -15,6 +15,13 @@ CONTAINER_NAME="${UIEDTOOL_CONTAINER_NAME:-uiedtool-api-v301-live}"
 CONTAINER_IMAGE="${UIEDTOOL_CONTAINER_IMAGE:-node:20}"
 CONTAINER_ENV="${APP_ROOT}/shared/.env.container"
 RUNTIME_ARCHIVE="$(find "${SCRIPT_DIR}" -maxdepth 1 -type f -name 'uiedtool-*-runtime.tar.gz' | sort | head -n 1)"
+APPLY_DB_PATCHES="${UIEDTOOL_APPLY_DB_PATCHES:-0}"
+
+DB_USER=""
+DB_PASSWORD=""
+DB_HOST=""
+DB_PORT=""
+DB_NAME=""
 
 # 函数说明：输出部署阶段信息，便于在宝塔终端快速定位进度。
 log_step() {
@@ -23,8 +30,16 @@ log_step() {
 
 # 函数说明：检查部署依赖与固定目录，避免误操作其他站点。
 check_requirements() {
-  local required_commands=(tar rsync docker curl mysql sha256sum)
+  local required_commands=(tar rsync docker curl mysql sha1sum sha256sum)
   local command_name
+
+  if [[ "${APPLY_DB_PATCHES}" == "1" ]]; then
+    required_commands+=(mysqldump)
+  fi
+  [[ "${APPLY_DB_PATCHES}" == "0" || "${APPLY_DB_PATCHES}" == "1" ]] || {
+    printf 'UIEDTOOL_APPLY_DB_PATCHES 只能设置为 0 或 1\n' >&2
+    return 1
+  }
 
   [[ -n "${RUNTIME_ARCHIVE}" && -f "${RUNTIME_ARCHIVE}" ]] || {
     printf '未找到 uiedtool 运行包\n' >&2
@@ -51,10 +66,35 @@ check_requirements() {
   done
 }
 
-# 函数说明：从现有 DATABASE_URL 解析数据库连接并按文件名顺序执行当前版本增量脚本。
-apply_database_patches() {
-  local patch_file
-  local database_url credentials host_port db_user db_password db_host db_port db_name
+# 函数说明：解析宝塔升级参数，默认仅发布代码，只有显式参数才执行数据库补丁。
+parse_arguments() {
+  local argument
+  for argument in "$@"; do
+    case "${argument}" in
+      --apply-db-patches)
+        APPLY_DB_PATCHES="1"
+        ;;
+      --code-only)
+        APPLY_DB_PATCHES="0"
+        ;;
+      -h|--help)
+        printf '用法: bash deploy-update.sh [--code-only|--apply-db-patches]\n'
+        printf '默认模式: 仅更新主站、管理端和 Go API，不执行数据库补丁。\n'
+        printf '数据库模式: 先备份数据库，再按 la_system_upgrade_log 跳过已成功补丁。\n'
+        exit 0
+        ;;
+      *)
+        printf '未知参数: %s\n' "${argument}" >&2
+        printf '用法: bash deploy-update.sh [--code-only|--apply-db-patches]\n' >&2
+        return 1
+        ;;
+    esac
+  done
+}
+
+# 函数说明：从现有 DATABASE_URL 解析数据库连接，供备份、补丁和升级日志共用。
+load_database_connection() {
+  local database_url credentials host_port
 
   database_url="$(sed -n 's/^DATABASE_URL=//p' "${APP_ROOT}/shared/.env" | head -n 1)"
   database_url="${database_url#\'}"
@@ -69,21 +109,118 @@ apply_database_patches() {
   credentials="${database_url%%@tcp(*}"
   host_port="${database_url#*@tcp(}"
   host_port="${host_port%%)*}"
-  db_user="${credentials%%:*}"
-  db_password="${credentials#*:}"
-  db_host="${host_port%%:*}"
-  db_port="${host_port##*:}"
-  db_name="${database_url#*)/}"
-  db_name="${db_name%%\?*}"
+  DB_USER="${credentials%%:*}"
+  DB_PASSWORD="${credentials#*:}"
+  DB_HOST="${host_port%%:*}"
+  DB_PORT="${host_port##*:}"
+  DB_NAME="${database_url#*)/}"
+  DB_NAME="${DB_NAME%%\?*}"
+  [[ -n "${DB_USER}" && -n "${DB_HOST}" && -n "${DB_PORT}" && -n "${DB_NAME}" ]] || {
+    printf 'DATABASE_URL 格式不正确，无法解析数据库连接\n' >&2
+    return 1
+  }
+}
 
+# 函数说明：执行数据库备份，只有显式执行补丁时才会调用，避免普通代码发布增加数据库负担。
+backup_database() {
+  local backup_file="$1"
+  load_database_connection
+  printf '导出数据库备份: %s\n' "${backup_file}"
+  MYSQL_PWD="${DB_PASSWORD}" mysqldump \
+    --single-transaction \
+    --routines \
+    --triggers \
+    --events \
+    --default-character-set=utf8mb4 \
+    -u "${DB_USER}" \
+    -h "${DB_HOST}" \
+    -P "${DB_PORT}" \
+    "${DB_NAME}" | gzip > "${backup_file}"
+}
+
+# 函数说明：执行单条数据库查询，统一使用当前生产环境连接参数。
+database_query() {
+  local sql="$1"
+  MYSQL_PWD="${DB_PASSWORD}" mysql \
+    --default-character-set=utf8mb4 \
+    -Nse "${sql}" \
+    -u "${DB_USER}" \
+    -h "${DB_HOST}" \
+    -P "${DB_PORT}" \
+    "${DB_NAME}"
+}
+
+# 函数说明：创建升级日志表，用于记录补丁文件哈希并跳过已成功执行的补丁。
+ensure_upgrade_log_table() {
+  database_query "CREATE TABLE IF NOT EXISTS la_system_upgrade_log (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    patch_key VARCHAR(255) NOT NULL,
+    patch_type VARCHAR(32) NOT NULL DEFAULT '',
+    file_name VARCHAR(255) NOT NULL DEFAULT '',
+    file_path VARCHAR(500) NOT NULL DEFAULT '',
+    sha1 VARCHAR(64) NOT NULL DEFAULT '',
+    status VARCHAR(32) NOT NULL DEFAULT 'success',
+    remark VARCHAR(500) NOT NULL DEFAULT '',
+    applied_at BIGINT NOT NULL DEFAULT 0,
+    create_time BIGINT NOT NULL DEFAULT 0,
+    update_time BIGINT NOT NULL DEFAULT 0,
+    PRIMARY KEY (id),
+    UNIQUE KEY uniq_patch_key (patch_key)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;"
+}
+
+# 函数说明：转义升级日志 SQL 字符串，避免文件名或备注破坏查询语法。
+escape_sql_value() {
+  printf "%s" "$1" | sed "s/'/''/g"
+}
+
+# 函数说明：记录补丁执行结果，便于后续升级跳过成功补丁并追溯发布时间。
+record_patch_status() {
+  local patch_key="$1"
+  local patch_name="$2"
+  local patch_sha1="$3"
+  local now_ts
+  now_ts="$(date +%s)"
+  database_query "INSERT INTO la_system_upgrade_log
+    (patch_key, patch_type, file_name, file_path, sha1, status, remark, applied_at, create_time, update_time)
+    VALUES ('$(escape_sql_value "${patch_key}")', 'patch', '$(escape_sql_value "${patch_name}")', '$(escape_sql_value "${patch_name}")', '$(escape_sql_value "${patch_sha1}")', 'success', 'baota_deploy', ${now_ts}, ${now_ts}, ${now_ts})
+    ON DUPLICATE KEY UPDATE sha1=VALUES(sha1), status='success', remark='baota_deploy', applied_at=VALUES(applied_at), update_time=VALUES(update_time);"
+}
+
+# 函数说明：从升级日志读取补丁状态和哈希，查询失败时按未执行处理并交给后续 SQL 报错兜底。
+get_patch_record() {
+  local patch_key="$1"
+  database_query "SELECT CONCAT(COALESCE(status,''), '|', COALESCE(sha1,'')) FROM la_system_upgrade_log WHERE patch_key='$(escape_sql_value "${patch_key}")' LIMIT 1;" 2>/dev/null || true
+}
+
+# 函数说明：按补丁文件哈希执行数据库迁移，已成功且内容未变化的补丁直接跳过。
+apply_database_patches() {
+  local patch_file patch_name patch_key patch_sha1 patch_record
+
+  load_database_connection
+  ensure_upgrade_log_table
   while IFS= read -r patch_file; do
     [[ -n "${patch_file}" ]] || continue
-    printf '执行数据库补丁: %s\n' "$(basename "${patch_file}")"
-    MYSQL_PWD="${db_password}" mysql \
-      -u "${db_user}" \
-      -h "${db_host}" \
-      -P "${db_port}" \
-      "${db_name}" < "${patch_file}"
+    patch_name="$(basename "${patch_file}")"
+    patch_key="patch:${patch_name}"
+    patch_sha1="$(sha1sum "${patch_file}" | awk '{print $1}')"
+    patch_record="$(get_patch_record "${patch_key}")"
+    if [[ "${patch_record}" == "success|${patch_sha1}" ]]; then
+      printf '跳过已成功补丁: %s\n' "${patch_name}"
+      continue
+    fi
+    if [[ -n "${patch_record}" ]]; then
+      printf '补丁内容已变化，重新执行: %s\n' "${patch_name}"
+    else
+      printf '执行数据库补丁: %s\n' "${patch_name}"
+    fi
+    MYSQL_PWD="${DB_PASSWORD}" mysql \
+      --default-character-set=utf8mb4 \
+      -u "${DB_USER}" \
+      -h "${DB_HOST}" \
+      -P "${DB_PORT}" \
+      "${DB_NAME}" < "${patch_file}"
+    record_patch_status "${patch_key}" "${patch_name}" "${patch_sha1}"
   done < <(find "${SCRIPT_DIR}" -maxdepth 1 -type f -name '*.sql' | sort)
 }
 
@@ -163,10 +300,11 @@ rollback_release() {
   start_api_container
 }
 
-# 函数说明：执行校验、备份、解压、数据库补丁、静态发布与 API 切换的完整升级。
+# 函数说明：执行校验、备份、解压、可选数据库补丁、静态发布与 API 切换的完整升级。
 main() {
   local archive_name version deploy_id release_dir backup_dir previous_release
 
+  parse_arguments "$@"
   check_requirements
 
   log_step '校验部署包'
@@ -196,8 +334,14 @@ main() {
   test -f "${release_dir}/frontend/admin/index.html"
   chmod 755 "${release_dir}/backend/uiedtool-api"
 
-  log_step '执行增量配置修复'
-  apply_database_patches
+  log_step '数据库变更策略'
+  if [[ "${APPLY_DB_PATCHES}" == "1" ]]; then
+    backup_database "${backup_dir}/database.sql.gz"
+    apply_database_patches
+  else
+    printf '默认代码发布模式：跳过数据库补丁。\n'
+    printf '如需执行数据库迁移，请使用: bash deploy-update.sh --apply-db-patches\n'
+  fi
 
   log_step '发布主站和管理端'
   ln -sfn "${release_dir}" "${APP_ROOT}/current"

@@ -60,6 +60,7 @@
                         placeholder="搜索岗位编码"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">
@@ -68,6 +69,7 @@
                         placeholder="搜索岗位名称"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">

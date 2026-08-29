@@ -185,11 +185,13 @@ func (adminSrv systemAuthAdminService) List(page request.PageReq, listReq req.Sy
 		fmt.Sprintf("LEFT JOIN %s ON admin.dept_id = %s.id", deptTbName, deptTbName)).Select(
 		fmt.Sprintf("admin.*, %s.name as dept, %s.name as role", deptTbName, roleTbName))
 	// 条件
-	if listReq.Username != "" {
-		adminModel = adminModel.Where("username like ?", "%"+listReq.Username+"%")
+	username := strings.TrimSpace(listReq.Username)
+	nickname := strings.TrimSpace(listReq.Nickname)
+	if username != "" {
+		adminModel = adminModel.Where("username like ?", "%"+username+"%")
 	}
-	if listReq.Nickname != "" {
-		adminModel = adminModel.Where("nickname like ?", "%"+listReq.Nickname+"%")
+	if nickname != "" {
+		adminModel = adminModel.Where("nickname like ?", "%"+nickname+"%")
 	}
 	if listReq.Role >= 0 {
 		adminModel = adminModel.Where("role = ?", listReq.Role)

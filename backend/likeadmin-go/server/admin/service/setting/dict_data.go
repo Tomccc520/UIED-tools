@@ -7,6 +7,7 @@ import (
 	"likeadmin/core/request"
 	"likeadmin/core/response"
 	"likeadmin/model/setting"
+	"strings"
 	"time"
 )
 
@@ -19,20 +20,21 @@ type ISettingDictDataService interface {
 	Del(delReq req.SettingDictDataDelReq) (e error)
 }
 
-//NewSettingDictDataService 初始化
+// NewSettingDictDataService 初始化
 func NewSettingDictDataService(db *gorm.DB) ISettingDictDataService {
 	return &settingDictDataService{db: db}
 }
 
-//settingDictDataService 字典数据服务实现类
+// settingDictDataService 字典数据服务实现类
 type settingDictDataService struct {
 	db *gorm.DB
 }
 
-//All 字典数据所有
+// All 字典数据所有
 func (ddSrv settingDictDataService) All(allReq req.SettingDictDataListReq) (res []resp.SettingDictDataResp, e error) {
+	dictTypeName := strings.TrimSpace(allReq.DictType)
 	var dictType setting.DictType
-	err := ddSrv.db.Where("dict_type = ? AND is_delete = ?", allReq.DictType, 0).Limit(1).First(&dictType).Error
+	err := ddSrv.db.Where("dict_type = ? AND is_delete = ?", dictTypeName, 0).Limit(1).First(&dictType).Error
 	if e = response.CheckErrDBNotRecord(err, "该字典类型不存在！"); e != nil {
 		return
 	}
@@ -40,11 +42,13 @@ func (ddSrv settingDictDataService) All(allReq req.SettingDictDataListReq) (res 
 		return
 	}
 	ddModel := ddSrv.db.Where("type_id = ? AND is_delete = ?", dictType.ID, 0)
-	if allReq.Name != "" {
-		ddModel = ddModel.Where("name like ?", "%"+allReq.Name+"%")
+	name := strings.TrimSpace(allReq.Name)
+	value := strings.TrimSpace(allReq.Value)
+	if name != "" {
+		ddModel = ddModel.Where("name like ?", "%"+name+"%")
 	}
-	if allReq.Value != "" {
-		ddModel = ddModel.Where("value like ?", "%"+allReq.Value+"%")
+	if value != "" {
+		ddModel = ddModel.Where("value like ?", "%"+value+"%")
 	}
 	if allReq.Status >= 0 {
 		ddModel = ddModel.Where("status = ?", allReq.Status)
@@ -59,12 +63,13 @@ func (ddSrv settingDictDataService) All(allReq req.SettingDictDataListReq) (res 
 	return
 }
 
-//List 字典数据列表
+// List 字典数据列表
 func (ddSrv settingDictDataService) List(page request.PageReq, listReq req.SettingDictDataListReq) (res response.PageResp, e error) {
 	limit := page.PageSize
 	offset := page.PageSize * (page.PageNo - 1)
+	dictTypeName := strings.TrimSpace(listReq.DictType)
 	var dictType setting.DictType
-	err := ddSrv.db.Where("dict_type = ? AND is_delete = ?", listReq.DictType, 0).Limit(1).First(&dictType).Error
+	err := ddSrv.db.Where("dict_type = ? AND is_delete = ?", dictTypeName, 0).Limit(1).First(&dictType).Error
 	if e = response.CheckErrDBNotRecord(err, "该字典类型不存在！"); e != nil {
 		return
 	}
@@ -72,17 +77,19 @@ func (ddSrv settingDictDataService) List(page request.PageReq, listReq req.Setti
 		return
 	}
 	ddModel := ddSrv.db.Model(&setting.DictData{}).Where("type_id = ? AND is_delete = ?", dictType.ID, 0)
-	if listReq.Name != "" {
-		ddModel = ddModel.Where("name like ?", "%"+listReq.Name+"%")
+	name := strings.TrimSpace(listReq.Name)
+	value := strings.TrimSpace(listReq.Value)
+	if name != "" {
+		ddModel = ddModel.Where("name like ?", "%"+name+"%")
 	}
-	if listReq.Value != "" {
-		ddModel = ddModel.Where("value like ?", "%"+listReq.Value+"%")
+	if value != "" {
+		ddModel = ddModel.Where("value like ?", "%"+value+"%")
 	}
 	if listReq.Status >= 0 {
 		ddModel = ddModel.Where("status = ?", listReq.Status)
 	}
 	var count int64
-	e = ddModel.Count(&count).Error
+	err = ddModel.Count(&count).Error
 	if e = response.CheckErr(err, "List Count err"); e != nil {
 		return
 	}
@@ -101,7 +108,7 @@ func (ddSrv settingDictDataService) List(page request.PageReq, listReq req.Setti
 	}, nil
 }
 
-//Detail 字典数据详情
+// Detail 字典数据详情
 func (ddSrv settingDictDataService) Detail(id uint) (res resp.SettingDictDataResp, e error) {
 	var dd setting.DictData
 	err := ddSrv.db.Where("id = ? AND is_delete = ?", id, 0).Limit(1).First(&dd).Error
@@ -115,7 +122,7 @@ func (ddSrv settingDictDataService) Detail(id uint) (res resp.SettingDictDataRes
 	return
 }
 
-//Add 字典数据新增
+// Add 字典数据新增
 func (ddSrv settingDictDataService) Add(addReq req.SettingDictDataAddReq) (e error) {
 	if r := ddSrv.db.Where("name = ? AND is_delete = ?", addReq.Name, 0).Limit(1).First(&setting.DictData{}); r.RowsAffected > 0 {
 		return response.AssertArgumentError.Make("字典数据已存在！")
@@ -127,7 +134,7 @@ func (ddSrv settingDictDataService) Add(addReq req.SettingDictDataAddReq) (e err
 	return
 }
 
-//Edit 字典数据编辑
+// Edit 字典数据编辑
 func (ddSrv settingDictDataService) Edit(editReq req.SettingDictDataEditReq) (e error) {
 	err := ddSrv.db.Where("id = ? AND is_delete = ?", editReq.ID, 0).Limit(1).First(&setting.DictData{}).Error
 	if e = response.CheckErrDBNotRecord(err, "字典数据不存在！"); e != nil {
@@ -146,7 +153,7 @@ func (ddSrv settingDictDataService) Edit(editReq req.SettingDictDataEditReq) (e 
 	return
 }
 
-//Del 字典数据删除
+// Del 字典数据删除
 func (ddSrv settingDictDataService) Del(delReq req.SettingDictDataDelReq) (e error) {
 	err := ddSrv.db.Model(&setting.DictData{}).Where("id IN ?", delReq.Ids).Updates(
 		setting.DictData{IsDelete: 1, DeleteTime: time.Now().Unix()}).Error

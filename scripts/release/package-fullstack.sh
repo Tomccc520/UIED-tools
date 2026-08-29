@@ -89,7 +89,7 @@ write_release_manifest() {
     {
       printf "UIED-Tools %s 全栈发布包\n" "${VERSION}"
       printf "生成时间: %s\n" "$(date '+%Y-%m-%d %H:%M:%S %z')"
-      printf "发布范围: 主站静态前端、/admin 管理端、Go API、全新数据库脚本\n"
+      printf "发布范围: 主站静态前端、/admin 管理端、Go API；数据库补丁需显式执行 --apply-db-patches\n"
       printf "暂不包含: AI 简历 Next.js 服务、抠图独立代理服务\n\n"
       find . -type f ! -name 'RELEASE-MANIFEST.txt' ! -name '.DS_Store' -print0 \
         | sort -z \

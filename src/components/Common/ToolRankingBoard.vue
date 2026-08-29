@@ -327,15 +327,16 @@ watch(
 }
 
 .tool-ranking-board__list--with-podium {
-  margin-top: 0;
+  margin-top: 1rem;
 }
 
 .tool-ranking-board__podium {
   display: grid;
   grid-template-columns: 1.1fr 1fr 1fr;
   gap: 0;
-  border-top: 1px solid #d9dde4;
-  border-bottom: 1px solid #d9dde4;
+  border: 1px solid #d9dde4;
+  border-radius: 16px;
+  overflow: hidden;
   background: #f3f5f7;
 }
 
@@ -458,14 +459,15 @@ watch(
   min-height: 72px;
   background: transparent;
   border: 0;
-  border-bottom: 1px solid #e0e3e8;
-  border-radius: 0;
-  padding: 0.9rem 0.25rem;
+  border: 1px solid #e0e3e8;
+  border-radius: 12px;
+  padding: 0.9rem 0.75rem;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item:hover {
   transform: none;
   background: #f6f7f8;
+  border-color: #cfd5de;
 }
 
 .tool-ranking-board__rank {
@@ -631,6 +633,14 @@ watch(
 
   .tool-ranking-board--flat .tool-ranking-board__item {
     align-items: center;
+  }
+
+  .tool-ranking-board--flat .tool-ranking-board__item-title {
+    display: -webkit-box;
+    overflow: hidden;
+    white-space: normal;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
   }
 
   .tool-ranking-board--flat .tool-ranking-board__stat {

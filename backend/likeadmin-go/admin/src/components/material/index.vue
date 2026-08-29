@@ -187,6 +187,7 @@
                                     v-model="fileParams.name"
                                     allow-clear
                                     @search="refresh"
+                                    @clear="refresh"
                                 />
                                 <a-button v-if="mode == 'page'" @click="clearBindFilters">
                                     重置绑定筛选

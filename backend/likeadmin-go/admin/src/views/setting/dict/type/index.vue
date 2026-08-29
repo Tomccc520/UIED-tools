@@ -59,6 +59,7 @@
                         placeholder="字典名称"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 4 }">
@@ -67,6 +68,7 @@
                         placeholder="字典类型"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 2 }">

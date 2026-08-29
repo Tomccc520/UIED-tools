@@ -54,6 +54,7 @@
                         placeholder="管理员账号"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">
@@ -72,6 +73,7 @@
                         placeholder="来源 IP"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">
@@ -80,6 +82,7 @@
                         placeholder="访问链接"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 6 }">

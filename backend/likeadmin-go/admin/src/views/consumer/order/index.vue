@@ -171,6 +171,7 @@
                             placeholder="订单号/商品名称/用户昵称/手机"
                             allow-clear
                             @press-enter="resetPage"
+                            @clear="resetPage"
                         />
                     </a-form-item>
 
@@ -236,6 +237,7 @@
                             placeholder="筛选订单绑定域名"
                             allow-clear
                             @press-enter="resetPage"
+                            @clear="resetPage"
                         />
                     </a-form-item>
 

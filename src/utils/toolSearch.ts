@@ -6,6 +6,18 @@
  */
 import type { Tool } from '@/types/tools'
 
+const SEARCH_SYNONYM_GROUPS = [
+  ['图片', '图像', '照片', 'image', 'photo'],
+  ['压缩', '缩小', '减小', 'compress'],
+  ['抠图', '去背景', '移除背景', '背景移除', 'matting'],
+  ['二维码', 'qr', 'qrcode'],
+  ['视频', '影片', 'video'],
+  ['音频', '声音', 'audio'],
+  ['人工智能', '智能', 'ai'],
+  ['格式化', '美化', 'format'],
+  ['转换', '转化', 'convert']
+]
+
 /**
  * 归一化搜索文本
  * @description 统一小写、去空白，降低中英文混排查询的匹配噪音
@@ -13,7 +25,67 @@ import type { Tool } from '@/types/tools'
  * @returns 归一化后的文本
  */
 const normalizeText = (value: string): string => {
-  return value.toLowerCase().replace(/\s+/g, '').trim()
+  return String(value || '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/\s+/g, '')
+    .trim()
+}
+
+/**
+ * 函数说明：拆分并扩展搜索词，兼容中英文别名和常见同义表达。
+ * @param query 用户输入
+ * @returns 去重后的搜索词集合
+ */
+const buildSearchTokens = (query: string): string[] => {
+  const normalizedQuery = normalizeText(query)
+  const tokenSet = new Set(
+    String(query || '')
+      .toLowerCase()
+      .split(/[\s,，。.!！？;；、/\\|_-]+/)
+      .map(token => normalizeText(token))
+      .filter(Boolean)
+  )
+
+  if (normalizedQuery) {
+    tokenSet.add(normalizedQuery)
+  }
+
+  SEARCH_SYNONYM_GROUPS.forEach((group) => {
+    const normalizedGroup = group.map(item => normalizeText(item))
+    if (normalizedGroup.some(item => normalizedQuery.includes(item) || tokenSet.has(item))) {
+      normalizedGroup.forEach(item => tokenSet.add(item))
+    }
+  })
+
+  return Array.from(tokenSet)
+}
+
+/**
+ * 函数说明：判断工具是否满足查询中已识别出的全部搜索概念。
+ * @description 多概念查询采用同时满足策略，例如“图片压缩”不会混入仅命中“压缩”的视频工具。
+ * @param tool 工具数据
+ * @param query 用户输入
+ * @returns 是否满足搜索意图
+ */
+const matchesSearchIntent = (tool: Tool, query: string): boolean => {
+  const normalizedQuery = normalizeText(query)
+  const searchableText = normalizeText([
+    tool.title,
+    tool.desc,
+    tool.cate,
+    ...(tool.tags || []),
+    tool.toolKey,
+    tool.seoTitle,
+    tool.seoKeywords,
+    tool.seoDescription
+  ].filter(Boolean).join(' '))
+
+  const detectedConceptGroups = SEARCH_SYNONYM_GROUPS
+    .map(group => group.map(item => normalizeText(item)))
+    .filter(group => group.some(item => normalizedQuery.includes(item)))
+
+  return detectedConceptGroups.every(group => group.some(item => searchableText.includes(item)))
 }
 
 /**
@@ -41,6 +113,12 @@ const scoreTool = (tool: Tool, query: string, tokens: string[]): number => {
   const desc = normalizeText(tool.desc || '')
   const cate = normalizeText(tool.cate || '')
   const tags = (tool.tags || []).map(tag => normalizeText(tag)).filter(Boolean)
+  const metadata = normalizeText([
+    tool.toolKey,
+    tool.seoTitle,
+    tool.seoKeywords,
+    tool.seoDescription
+  ].filter(Boolean).join(' '))
 
   let score = 0
 
@@ -50,6 +128,7 @@ const scoreTool = (tool: Tool, query: string, tokens: string[]): number => {
   if (desc.includes(query)) score += 36
   if (cate.includes(query)) score += 24
   if (tags.some(tag => tag.includes(query))) score += 40
+  if (metadata.includes(query)) score += 28
 
   for (const token of tokens) {
     if (token.length < 2) continue
@@ -57,9 +136,11 @@ const scoreTool = (tool: Tool, query: string, tokens: string[]): number => {
     if (desc.includes(token)) score += 14
     if (cate.includes(token)) score += 12
     if (tags.some(tag => tag.includes(token))) score += 18
+    if (metadata.includes(token)) score += 10
   }
 
   if (tool.isNew) score += 2
+  if (Number(tool.status) === 0) score -= 8
   return score
 }
 
@@ -77,18 +158,14 @@ export const searchToolsByQuery = (tools: Tool[], query: string, limit: number =
     return []
   }
 
-  const tokens = query
-    .toLowerCase()
-    .split(/[\s,，。.!！？;；、/\\|_-]+/)
-    .map(token => normalizeText(token))
-    .filter(Boolean)
+  const tokens = buildSearchTokens(query)
 
   const scoredTools = tools
     .map(tool => ({
       tool,
       score: scoreTool(tool, normalizedQuery, tokens)
     }))
-    .filter(item => item.score > 0)
+    .filter(item => item.score > 0 && matchesSearchIntent(item.tool, query))
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score
       return (a.tool.title || '').length - (b.tool.title || '').length

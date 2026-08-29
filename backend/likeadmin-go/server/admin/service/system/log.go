@@ -9,6 +9,7 @@ import (
 	"likeadmin/core/request"
 	"likeadmin/core/response"
 	"likeadmin/model/system"
+	"strings"
 )
 
 type ISystemLogsServer interface {
@@ -16,17 +17,17 @@ type ISystemLogsServer interface {
 	Login(page request.PageReq, logReq req.SystemLogLoginReq) (res response.PageResp, e error)
 }
 
-//NewSystemLogsServer 初始化
+// NewSystemLogsServer 初始化
 func NewSystemLogsServer(db *gorm.DB) ISystemLogsServer {
 	return &systemLogsServer{db: db}
 }
 
-//systemLogsServer 系统日志服务实现类
+// systemLogsServer 系统日志服务实现类
 type systemLogsServer struct {
 	db *gorm.DB
 }
 
-//Operate 系统操作日志
+// Operate 系统操作日志
 func (logSrv systemLogsServer) Operate(page request.PageReq, logReq req.SystemLogOperateReq) (res response.PageResp, e error) {
 	// 分页信息
 	limit := page.PageSize
@@ -38,14 +39,18 @@ func (logSrv systemLogsServer) Operate(page request.PageReq, logReq req.SystemLo
 		fmt.Sprintf("LEFT JOIN %s AS admin ON log.admin_id = admin.id", adminTbName)).Select(
 		"log.*, admin.username, admin.nickname")
 	// 条件
-	if logReq.Title != "" {
-		logModel = logModel.Where("title like ?", "%"+logReq.Title+"%")
+	title := strings.TrimSpace(logReq.Title)
+	username := strings.TrimSpace(logReq.Username)
+	ip := strings.TrimSpace(logReq.Ip)
+	url := strings.TrimSpace(logReq.Url)
+	if title != "" {
+		logModel = logModel.Where("title like ?", "%"+title+"%")
 	}
-	if logReq.Username != "" {
-		logModel = logModel.Where("username like ?", "%"+logReq.Username+"%")
+	if username != "" {
+		logModel = logModel.Where("username like ?", "%"+username+"%")
 	}
-	if logReq.Ip != "" {
-		logModel = logModel.Where("ip like ?", "%"+logReq.Ip+"%")
+	if ip != "" {
+		logModel = logModel.Where("ip like ?", "%"+ip+"%")
 	}
 	if logReq.Type != "" {
 		logModel = logModel.Where("type = ?", logReq.Type)
@@ -53,8 +58,8 @@ func (logSrv systemLogsServer) Operate(page request.PageReq, logReq req.SystemLo
 	if logReq.Status > 0 {
 		logModel = logModel.Where("status = ?", logReq.Status)
 	}
-	if logReq.Url != "" {
-		logModel = logModel.Where("url = ?", logReq.Url)
+	if url != "" {
+		logModel = logModel.Where("url like ?", "%"+url+"%")
 	}
 	if !logReq.StartTime.IsZero() {
 		logModel = logModel.Where("log.create_time >= ?", logReq.StartTime.Unix())
@@ -82,7 +87,7 @@ func (logSrv systemLogsServer) Operate(page request.PageReq, logReq req.SystemLo
 	}, nil
 }
 
-//Login 系统登录日志
+// Login 系统登录日志
 func (logSrv systemLogsServer) Login(page request.PageReq, logReq req.SystemLogLoginReq) (res response.PageResp, e error) {
 	// 分页信息
 	limit := page.PageSize
@@ -90,8 +95,9 @@ func (logSrv systemLogsServer) Login(page request.PageReq, logReq req.SystemLogL
 	// 查询
 	logModel := logSrv.db.Model(&system.SystemLogLogin{})
 	// 条件
-	if logReq.Username != "" {
-		logModel = logModel.Where("username like ?", "%"+logReq.Username+"%")
+	username := strings.TrimSpace(logReq.Username)
+	if username != "" {
+		logModel = logModel.Where("username like ?", "%"+username+"%")
 	}
 	if logReq.Status > 0 {
 		logModel = logModel.Where("status = ?", logReq.Status)

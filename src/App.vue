@@ -222,7 +222,14 @@ useToolRankingTracker()
       <div class="uied-shell-gutter uied-content-layout flex gap-0 relative">
         <!-- 主内容区域 -->
         <el-main class="!pt-4"
-          :class="['uied-main-content', { 'flex-1': isToolPage && !route.meta.hideToolsRecommend, 'w-full': !isToolPage || route.meta.hideToolsRecommend }]">
+          :class="[
+            'uied-main-content',
+            {
+              'flex-1': isToolPage && !route.meta.hideToolsRecommend,
+              'w-full': !isToolPage || route.meta.hideToolsRecommend,
+              'uied-main-content--full-bleed': route.path === '/tools/hot-ranking'
+            }
+          ]">
           <section v-if="isCurrentToolDisabled" class="tool-disabled-placeholder">
             <el-alert
               class="tool-runtime-alert tool-runtime-alert--warning"
@@ -393,6 +400,11 @@ useToolRankingTracker()
 
 .tool-runtime-alert--warning {
   border-color: #f59e0b;
+}
+
+/* 函数说明：为整页白底的热榜开放受控溢出，避免负边距背景被 el-main 裁切。 */
+.uied-main-content--full-bleed {
+  overflow: visible !important;
 }
 
 @media (max-width: 768px) {

@@ -16,6 +16,7 @@
                         class="w-[280px]"
                         allow-clear
                         @press-enter="resetPage"
+                        @clear="resetPage"
                     />
                 </a-form-item>
                 <a-form-item label="栏目名称">

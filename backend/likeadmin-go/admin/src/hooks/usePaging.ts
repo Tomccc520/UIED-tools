@@ -21,6 +21,18 @@ export function usePaging(options: Options) {
         count: 0,
         lists: [] as any[]
     })
+    // 请求序号用于丢弃较早返回的搜索结果，避免快速连续查询时旧数据覆盖新数据。
+    let requestSerial = 0
+
+    /**
+     * 函数说明：清理列表查询参数中的首尾空格，统一后台各列表搜索行为。
+     */
+    const normalizeRequestParams = () =>
+        Object.keys(params).reduce<Record<string, any>>((result, key) => {
+            const value = params[key]
+            result[key] = typeof value === 'string' ? value.trim() : value
+            return result
+        }, {})
 
     /**
      * 函数说明：兼容后端不同分页字段命名，统一提取列表数据数组。
@@ -47,35 +59,45 @@ export function usePaging(options: Options) {
 
     // 请求分页接口
     const getLists = () => {
+        const currentRequestSerial = ++requestSerial
         pager.loading = true
         return fetchFun({
             pageNo: pager.page,
             pageSize: pager.size,
-            ...params
+            ...normalizeRequestParams()
         })
             .then((res: any) => {
+                if (currentRequestSerial !== requestSerial) {
+                    return res
+                }
                 pager.count = normalizeCount(res)
                 pager.lists = normalizeListData(res)
                 return Promise.resolve(res)
             })
             .catch((err: any) => {
+                // 已被更新请求取代的失败结果不再向页面冒泡，避免快速搜索时出现误报。
+                if (currentRequestSerial !== requestSerial) {
+                    return undefined
+                }
                 return Promise.reject(err)
             })
             .finally(() => {
-                pager.loading = false
+                if (currentRequestSerial === requestSerial) {
+                    pager.loading = false
+                }
             })
     }
     // 重置为第一页
     const resetPage = () => {
         pager.page = 1
-        getLists()
+        return getLists()
     }
     // 重置参数
     const resetParams = () => {
         Object.keys(paramsInit).forEach((item) => {
             params[item] = paramsInit[item]
         })
-        getLists()
+        return getLists()
     }
     return {
         pager,

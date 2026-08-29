@@ -663,7 +663,8 @@ watch(
 }
 
 .home-container {
-  padding: 0 1rem 2rem;
+  /* 横向留白由 App 公共容器统一管理，避免首页区块与顶部导航出现双重缩进。 */
+  padding: 0 0 2rem;
 }
 
 /* 推荐区域样式 */
