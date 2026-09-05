@@ -1,6 +1,6 @@
 <!--
  * @file RandomTools.vue
- * @description 使用循环 WebGL 画廊呈现随机工具推荐
+ * @description 以结构化推荐卡片呈现随机工具，支持分类筛选与随机刷新
  * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @author UIED技术团队
@@ -8,25 +8,18 @@
  -->
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
-import { ArrowPathIcon, CursorArrowRaysIcon } from '@heroicons/vue/24/outline'
-import CircularGallery, { type CircularGalleryItem } from '@/components/Common/CircularGallery.vue'
+import { onMounted, ref } from 'vue'
+import { ArrowPathIcon, ArrowUpRightIcon, SparklesIcon } from '@heroicons/vue/24/outline'
 import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import { flattenToolsFromCategories } from '@/services/toolCatalog'
 import { useToolsStore } from '@/store/modules/tools'
 import type { Tool, ToolCategory } from '@/types/tools'
+import ToolIcon from '@/components/Tools/ToolIcon.vue'
 
 interface RandomToolCategory {
   key: string
   title: string
   categoryIndex?: number
-}
-
-interface CoverPalette {
-  background: string
-  foreground: string
-  accent: string
-  muted: string
 }
 
 const store = useToolsStore()
@@ -38,17 +31,6 @@ const categories = ref<RandomToolCategory[]>([
   { key: 'all', title: '全部分类' },
   { key: 'hot', title: '热门工具' }
 ])
-
-const coverPalettes: CoverPalette[] = [
-  { background: '#18191d', foreground: '#f7f4ec', accent: '#f4c84a', muted: '#35363d' },
-  { background: '#2656d8', foreground: '#ffffff', accent: '#ff6b52', muted: '#1d43aa' },
-  { background: '#dce7d6', foreground: '#18221a', accent: '#4b7d50', muted: '#b9cbb4' },
-  { background: '#f4f0e8', foreground: '#17213b', accent: '#3468e8', muted: '#d6d0c5' },
-  { background: '#7b2e46', foreground: '#fff7f3', accent: '#f3a3b8', muted: '#5d2235' },
-  { background: '#173c45', foreground: '#f1fcf8', accent: '#63d4b2', muted: '#285762' },
-  { background: '#b64b31', foreground: '#fff8ee', accent: '#ffd067', muted: '#8d3826' },
-  { background: '#d8d0ea', foreground: '#251d34', accent: '#6a4eb0', muted: '#b7acd1' }
-]
 
 /**
  * 函数说明：将后台一级工具分类转换为随机工具页筛选项。
@@ -66,7 +48,7 @@ const buildCategoryOptions = (toolCategories: ToolCategory[]): RandomToolCategor
 }
 
 /**
- * 函数说明：按工具链接去重，避免后台推荐和分类主数据重复进入循环画廊。
+ * 函数说明：按工具链接去重，避免后台推荐和分类主数据重复进入推荐列表。
  */
 const dedupeTools = (tools: Tool[]): Tool[] => {
   const seen = new Set<string>()
@@ -112,102 +94,6 @@ const resolveToolPool = (): Tool[] => {
 }
 
 /**
- * 函数说明：控制 Canvas 标题行宽，兼容中英文长工具名。
- */
-const splitCoverTitle = (title: string): string[] => {
-  const normalizedTitle = String(title || '实用工具').trim()
-  if (normalizedTitle.length <= 9) {
-    return [normalizedTitle]
-  }
-  const splitIndex = Math.min(10, Math.ceil(normalizedTitle.length / 2))
-  return [normalizedTitle.slice(0, splitIndex), normalizedTitle.slice(splitIndex, splitIndex + 10)]
-}
-
-/**
- * 函数说明：为缺少封面图的工具生成稳定 Canvas 位图，供 WebGL 作为真实纹理加载。
- */
-const createToolCover = (tool: Tool, index: number): string => {
-  const canvas = document.createElement('canvas')
-  const context = canvas.getContext('2d')
-  if (!context) {
-    return ''
-  }
-
-  const palette = coverPalettes[index % coverPalettes.length]
-  const width = 720
-  const height = 900
-  canvas.width = width
-  canvas.height = height
-  context.fillStyle = palette.background
-  context.fillRect(0, 0, width, height)
-
-  context.strokeStyle = palette.muted
-  context.lineWidth = 2
-  for (let row = 0; row <= 4; row += 1) {
-    const y = 68 + row * 176
-    context.beginPath()
-    context.moveTo(54, y)
-    context.lineTo(width - 54, y)
-    context.stroke()
-  }
-
-  context.fillStyle = palette.accent
-  context.fillRect(0, 0, width, 18)
-  context.fillRect(54, 68, 118, 7)
-  context.fillRect(width - 176, height - 76, 122, 7)
-
-  context.strokeStyle = palette.accent
-  context.lineWidth = 4
-  context.strokeRect(width - 156, 66, 102, 102)
-  context.fillStyle = palette.accent
-  context.fillRect(width - 130, 92, 50, 50)
-
-  context.fillStyle = palette.foreground
-  context.font = '700 24px "PingFang SC", "Microsoft YaHei", sans-serif'
-  context.textBaseline = 'top'
-  context.fillText(`UIED / ${String(index + 1).padStart(2, '0')}`, 54, 106)
-  context.fillStyle = palette.accent
-  context.font = '700 23px "PingFang SC", "Microsoft YaHei", sans-serif'
-  context.fillText(String(tool.cate || '效率工具').toUpperCase(), 54, 158)
-
-  context.save()
-  context.globalAlpha = 0.11
-  context.fillStyle = palette.foreground
-  context.font = '900 232px "Arial Black", sans-serif'
-  context.textAlign = 'right'
-  context.fillText(String(index + 1).padStart(2, '0'), width - 42, 228)
-  context.restore()
-
-  context.fillStyle = palette.foreground
-  context.font = '800 56px "PingFang SC", "Microsoft YaHei", sans-serif'
-  splitCoverTitle(tool.title).forEach((line, lineIndex) => {
-    context.fillText(line, 54, 382 + lineIndex * 76)
-  })
-
-  context.fillStyle = palette.foreground
-  context.globalAlpha = 0.68
-  context.font = '500 22px "PingFang SC", "Microsoft YaHei", sans-serif'
-  const description = String(tool.desc || '发现一个新的实用工具').replace(/\s+/g, ' ').slice(0, 34)
-  context.fillText(description, 54, height - 112)
-  context.globalAlpha = 1
-  return canvas.toDataURL('image/png')
-}
-
-/**
- * 函数说明：将当前随机工具转换为 CircularGallery 所需的封面数据。
- */
-const galleryItems = computed<CircularGalleryItem[]>(() => {
-  if (typeof document === 'undefined') {
-    return []
-  }
-  return randomTools.value.map((tool, index) => ({
-    key: tool.toolKey || tool.url || tool.id,
-    image: createToolCover(tool, index),
-    text: tool.title
-  }))
-})
-
-/**
  * 函数说明：重新读取后台工具主数据并随机抽取八个候选工具。
  */
 const refreshTools = async (reloadCatalog: boolean = true) => {
@@ -238,7 +124,7 @@ const selectCategory = (categoryKey: string) => {
 }
 
 /**
- * 函数说明：点击画廊工具后统一走运行态门禁，避免绕过停用、登录和计费策略。
+ * 函数说明：点击推荐工具后统一走运行态门禁，避免绕过停用、登录和计费策略。
  */
 const handleGallerySelect = async (index: number) => {
   const selectedTool = randomTools.value[index]
@@ -262,25 +148,31 @@ onMounted(() => {
     <header class="random-tools-page__header">
       <div class="random-tools-page__heading">
         <p class="random-tools-page__eyebrow">
-          <span>DISCOVERY 01</span>
+          <span>发现工具 / 01</span>
           <i></i>
-          随机工具
+          随机推荐
         </p>
-        <h1>今天，换一组工具看看</h1>
-        <p>从工具库中重新组合一组值得尝试的选择。</p>
+        <h1>给今天换一组顺手工具</h1>
+        <p>从工具库里抽取 8 个选择，打开一个，也许刚好解决眼前的任务。</p>
       </div>
 
-      <button
-        type="button"
-        class="random-tools-page__refresh"
-        :disabled="loading"
-        title="换一批推荐"
-        aria-label="换一批推荐"
-        @click="refreshTools(false)"
-      >
-        <ArrowPathIcon :class="{ 'is-spinning': loading }" aria-hidden="true" />
-        <span>换一批</span>
-      </button>
+      <div class="random-tools-page__actions">
+        <div class="random-tools-page__stat" aria-label="本轮工具数量">
+          <span>本轮推荐</span>
+          <strong>{{ loading ? '—' : String(randomTools.length).padStart(2, '0') }}</strong>
+        </div>
+        <button
+          type="button"
+          class="random-tools-page__refresh"
+          :disabled="loading"
+          title="换一批推荐"
+          aria-label="换一批推荐"
+          @click="refreshTools(false)"
+        >
+          <ArrowPathIcon :class="{ 'is-spinning': loading }" aria-hidden="true" />
+          <span>换一批</span>
+        </button>
+      </div>
     </header>
 
     <nav class="random-tools-page__categories" aria-label="随机工具分类">
@@ -297,32 +189,45 @@ onMounted(() => {
       </button>
     </nav>
 
-    <section class="random-tools-page__stage" aria-label="随机工具画廊">
+    <section class="random-tools-page__stage" aria-label="随机工具推荐">
       <div class="random-tools-page__stage-topline">
-        <span>UIED TOOLS / RANDOM DECK</span>
-        <span class="random-tools-page__stage-count">
-          {{ loading ? 'LOADING' : String(randomTools.length).padStart(2, '0') }}
-          <CursorArrowRaysIcon aria-hidden="true" />
-        </span>
+        <div>
+          <span class="random-tools-page__stage-kicker">推荐清单</span>
+          <strong>本轮推荐</strong>
+        </div>
+        <span>点击卡片立即打开工具</span>
       </div>
-
       <div v-if="loading" class="random-tools-page__loading" role="status">
         <i></i>
         <span>正在发现新的工具组合</span>
       </div>
 
-      <CircularGallery
-        v-else-if="galleryItems.length"
-        class="random-tools-page__gallery"
-        :items="galleryItems"
-        :bend="1.55"
-        text-color="#17191d"
-        :border-radius="0.028"
-        font="800 27px 'PingFang SC', 'Microsoft YaHei', sans-serif"
-        :scroll-speed="1.8"
-        :scroll-ease="0.06"
-        @select="handleGallerySelect"
-      />
+      <div v-else-if="randomTools.length" class="random-tools-page__grid">
+        <button
+          v-for="(tool, index) in randomTools"
+          :key="tool.toolKey || tool.url || tool.id"
+          type="button"
+          class="random-tools-page__card"
+          @click="handleGallerySelect(index)"
+        >
+          <div class="random-tools-page__card-head">
+            <span class="random-tools-page__card-index">{{ String(index + 1).padStart(2, '0') }}</span>
+            <span class="random-tools-page__card-cate">{{ tool.cate || '实用工具' }}</span>
+            <ArrowUpRightIcon aria-hidden="true" />
+          </div>
+          <div class="random-tools-page__card-main">
+            <ToolIcon :icon="tool.logo" />
+            <div>
+              <h2>{{ tool.title }}</h2>
+              <p>{{ tool.desc || '打开工具，开始处理你的任务。' }}</p>
+            </div>
+          </div>
+          <div class="random-tools-page__card-footer">
+            <span>立即使用</span>
+            <span class="random-tools-page__card-dot"><SparklesIcon aria-hidden="true" /></span>
+          </div>
+        </button>
+      </div>
 
       <div v-else class="random-tools-page__empty">
         当前分类暂时没有可推荐的工具
@@ -340,7 +245,7 @@ onMounted(() => {
   width: 100%;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 1.75rem 0 1.5rem;
+  padding: 1.75rem 0 2.25rem;
   color: var(--random-ink);
 }
 
@@ -349,7 +254,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 1.5rem;
-  padding: 0 0.25rem 1.25rem;
+  padding: 0 0.25rem 1.4rem;
 }
 
 .random-tools-page__heading {
@@ -380,7 +285,7 @@ onMounted(() => {
 .random-tools-page__heading h1 {
   margin: 0;
   color: var(--random-ink);
-  font-size: 2rem;
+  font-size: clamp(1.8rem, 3vw, 2.55rem);
   line-height: 1.25;
   font-weight: 900;
   letter-spacing: 0;
@@ -389,8 +294,35 @@ onMounted(() => {
 .random-tools-page__heading > p:last-child {
   margin: 0.45rem 0 0;
   color: var(--random-muted);
-  font-size: 0.86rem;
+  max-width: 38rem;
+  font-size: 0.88rem;
   line-height: 1.55;
+}
+
+.random-tools-page__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-shrink: 0;
+}
+
+.random-tools-page__stat {
+  display: grid;
+  gap: 0.12rem;
+  padding-right: 1rem;
+  border-right: 1px solid var(--random-line);
+  color: var(--random-muted);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.random-tools-page__stat strong {
+  color: var(--random-ink);
+  font-size: 1.2rem;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .random-tools-page__refresh {
@@ -408,7 +340,7 @@ onMounted(() => {
   font-size: 0.82rem;
   font-weight: 800;
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition: background-color var(--uied-motion-fast) ease, transform var(--uied-motion-fast) ease;
 }
 
 .random-tools-page__refresh:hover:not(:disabled) {
@@ -455,7 +387,7 @@ onMounted(() => {
   font-size: 0.76rem;
   font-weight: 700;
   cursor: pointer;
-  transition: background-color 0.18s ease, color 0.18s ease;
+  transition: background-color var(--uied-motion-fast) ease, color var(--uied-motion-fast) ease;
 }
 
 .random-tools-page__category:hover {
@@ -478,65 +410,180 @@ onMounted(() => {
 
 .random-tools-page__stage {
   position: relative;
-  height: min(540px, calc(100vh - 250px));
-  min-height: 470px;
   overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid #d5dae2;
-  background-color: #e9edf2;
-  background-image:
-    linear-gradient(rgba(23, 25, 29, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(23, 25, 29, 0.045) 1px, transparent 1px);
-  background-size: 56px 56px;
-}
-
-.random-tools-page__stage::before {
-  content: '';
-  position: absolute;
-  inset: 45px 0 auto;
-  height: 1px;
-  background: rgba(23, 25, 29, 0.11);
-  pointer-events: none;
-  z-index: 2;
+  border-top: 1px solid var(--random-ink);
+  border-bottom: 1px solid var(--random-line);
+  background: #ffffff;
 }
 
 .random-tools-page__stage-topline {
-  position: absolute;
-  top: 0;
-  right: 1rem;
-  left: 1rem;
-  height: 45px;
-  z-index: 3;
+  min-height: 3.9rem;
+  padding: 0 0.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #5e6570;
+  gap: 1rem;
+  border-bottom: 1px solid var(--random-line);
+  color: var(--random-muted);
+  font-size: 0.72rem;
+}
+
+.random-tools-page__stage-topline > div {
+  display: flex;
+  align-items: baseline;
+  gap: 0.8rem;
+}
+
+.random-tools-page__stage-topline strong {
+  color: var(--random-ink);
+  font-size: 1rem;
+}
+
+.random-tools-page__stage-kicker {
+  color: var(--random-accent);
   font-size: 0.65rem;
   font-weight: 800;
-  pointer-events: none;
+  letter-spacing: 0.08em;
 }
 
-.random-tools-page__stage-count {
+.random-tools-page__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+}
+
+.random-tools-page__card {
+  min-height: 15.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  padding: 1.2rem 1.25rem 1.05rem;
+  border: 0;
+  border-right: 1px solid var(--random-line);
+  border-bottom: 1px solid var(--random-line);
+  background: #fff;
+  color: var(--random-ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--uied-motion-fast) ease, box-shadow var(--uied-motion-fast) ease, transform var(--uied-motion-fast) ease;
+}
+
+.random-tools-page__card:nth-child(4n) {
+  border-right: 0;
+}
+
+.random-tools-page__card:nth-last-child(-n + 4) {
+  border-bottom: 0;
+}
+
+.random-tools-page__card:hover {
+  position: relative;
+  z-index: 1;
+  background: #f7f6ff;
+  box-shadow: inset 0 0 0 2px var(--random-accent);
+  transform: translateY(-1px);
+}
+
+.random-tools-page__card:focus-visible {
+  position: relative;
+  z-index: 2;
+  outline: 3px solid rgba(91, 84, 232, 0.28);
+  outline-offset: -3px;
+}
+
+.random-tools-page__card-head,
+.random-tools-page__card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.random-tools-page__card-index {
+  color: var(--random-accent);
+  font-size: 0.68rem;
+  font-weight: 900;
+}
+
+.random-tools-page__card-cate {
+  flex: 1;
+  overflow: hidden;
+  color: var(--random-muted);
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.random-tools-page__card-head svg {
+  width: 1rem;
+  height: 1rem;
+  color: #a0a5b1;
+}
+
+.random-tools-page__card-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.random-tools-page__card-main :deep(.tool-icon) {
+  flex-shrink: 0;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 0.7rem;
+}
+
+.random-tools-page__card-main h2 {
+  margin: 0.15rem 0 0.4rem;
+  overflow: hidden;
+  font-size: 1.05rem;
+  line-height: 1.35;
+  font-weight: 850;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.random-tools-page__card-main p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--random-muted);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.random-tools-page__card-footer {
+  margin-top: auto;
+  padding-top: 0.8rem;
+  border-top: 1px solid var(--random-line);
+  color: #666d79;
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+.random-tools-page__card-dot {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  color: var(--random-ink);
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: #eeedff;
+  color: var(--random-accent);
 }
 
-.random-tools-page__stage-count svg {
-  width: 1.05rem;
-  height: 1.05rem;
-}
-
-.random-tools-page__gallery {
-  width: 100%;
-  height: 100%;
-  padding-top: 20px;
+.random-tools-page__card-dot svg {
+  width: 0.85rem;
+  height: 0.85rem;
 }
 
 .random-tools-page__loading,
 .random-tools-page__empty {
-  height: 100%;
+  min-height: 20rem;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -581,6 +628,14 @@ onMounted(() => {
     padding: 0 0.1rem 0.85rem;
   }
 
+  .random-tools-page__actions {
+    gap: 0.6rem;
+  }
+
+  .random-tools-page__stat {
+    display: none;
+  }
+
   .random-tools-page__heading h1 {
     font-size: 1.5rem;
     line-height: 1.9rem;
@@ -607,20 +662,67 @@ onMounted(() => {
     margin-left: -0.1rem;
   }
 
-  .random-tools-page__stage {
-    height: min(510px, calc(100vh - 220px));
-    min-height: 430px;
-    border-radius: 6px;
-    background-size: 42px 42px;
-  }
-
   .random-tools-page__stage-topline {
-    right: 0.8rem;
-    left: 0.8rem;
+    min-height: 3.6rem;
+    align-items: flex-start;
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.18rem;
   }
 
-  .random-tools-page__gallery {
-    padding-top: 14px;
+  .random-tools-page__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .random-tools-page__card {
+    min-height: 14.5rem;
+    padding: 1rem;
+  }
+
+  .random-tools-page__card:nth-child(4n) {
+    border-right: 1px solid var(--random-line);
+  }
+
+  .random-tools-page__card:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .random-tools-page__card:nth-last-child(-n + 4) {
+    border-bottom: 1px solid var(--random-line);
+  }
+
+  .random-tools-page__card:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .random-tools-page__header {
+    gap: 0.75rem;
+  }
+
+  .random-tools-page__heading h1 {
+    font-size: 1.45rem;
+  }
+
+  .random-tools-page__heading > p:last-child {
+    max-width: 17rem;
+  }
+
+  .random-tools-page__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .random-tools-page__card,
+  .random-tools-page__card:nth-child(2n),
+  .random-tools-page__card:nth-child(4n) {
+    min-height: 12.5rem;
+    border-right: 0;
+    border-bottom: 1px solid var(--random-line);
+  }
+
+  .random-tools-page__card:last-child {
+    border-bottom: 0;
   }
 }
 

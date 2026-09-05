@@ -153,7 +153,7 @@ const values = [
         <!-- 版权信息 -->
         <div class="copyright-section pt-6 border-t border-gray-100">
           <div class="text-sm text-gray-400">
-            <p class="mb-2">© 2024-2025 UIED-Tools. All Rights Reserved.</p>
+            <p class="mb-2">© 2024-2025 UIED-Tools。版权所有。</p>
             <p>本站内容未经授权，禁止转载或用于其他商业用途</p>
           </div>
         </div>

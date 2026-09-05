@@ -16,6 +16,7 @@ var InitRouters = []*core.GroupBase{
 	// common
 	common.AiModelPublicGroup,
 	common.AlbumGroup,
+	common.CopywritingGroup,
 	common.FrontendUserGroup,
 	common.IndexGroup,
 	common.ToolRankingGroup,

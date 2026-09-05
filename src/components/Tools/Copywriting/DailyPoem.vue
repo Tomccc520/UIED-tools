@@ -2,6 +2,7 @@
 * @file DailyPoem.vue
 * @description 今日诗词生成器
 * @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
 * @createDate 2024-1-9
 *
@@ -16,21 +17,20 @@
   <div class="min-h-screen">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-5 sm:p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300 cursor-pointer"
-                @click="getRandomPoem">今日诗词</span>
+          <h1 class="text-3xl sm:text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="relative px-4 sm:px-12">
+              <span class="text-gray-800">今日诗词</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">每次都能获取一首优美的诗词</p>
         </div>
 
         <!-- 诗词展示区域 -->
         <div class="bg-gray-50 rounded-lg p-6 mb-6" style="min-height: 300px;">
           <div class="text-center">
-            <h3 class="text-2xl font-bold mb-4 text-gray-800">{{ displayText.title }}</h3>
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">{{ displayText.title }}</h2>
             <div class="poem-content text-lg leading-loose mt-8">
               <p v-for="(line, index) in displayText.content" :key="index"
                 class="mb-3 text-gray-700 transition-all duration-300">{{ line }}</p>
@@ -40,12 +40,12 @@
 
         <!-- 操作按钮区域 -->
         <div class="flex justify-center gap-4">
-          <button @click="getRandomPoem"
+          <button type="button" aria-label="换一首诗词" @click="getRandomPoem"
             class="inline-flex items-center px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-base transition-colors">
             <div ref="refreshContainer" class="w-6 h-6 mr-2"></div>
             换一首
           </button>
-          <button @click="copyText"
+          <button type="button" @click="copyText"
             class="inline-flex items-center px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-base transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -108,7 +108,7 @@
 
         <!-- 常见问题解答 -->
         <div class="mt-12">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">常见问题</h3>
+          <h2 class="text-xl font-semibold text-gray-900 mb-6">常见问题</h2>
           <div class="space-y-6">
             <div class="pb-6 border-b border-gray-200 last:border-0">
               <h4 class="text-base font-medium text-gray-900 mb-3">诗词内容从哪里来？</h4>
@@ -150,6 +150,7 @@ import { ref, onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { copy } from '@/utils/copy'
+import { fetchCopywritingText } from '@/services/copywriting'
 
 declare const lottie: any
 
@@ -362,6 +363,9 @@ const typeText = (poem: PoemData) => {
   }, 300) // 每个部分的显示间隔
 }
 
+/**
+ * 函数说明：通过同域 Go API 获取每日诗词，保留篇名和作者并将正文拆成可读行。
+ */
 const getRandomPoem = async () => {
   try {
     // 播放刷新动画
@@ -369,20 +373,10 @@ const getRandomPoem = async () => {
       refreshAnimation.goToAndPlay(0, true)
     }
 
-    // 使用新的 API
-    const response = await fetch('https://v1.jinrishici.com/all.json')
-    const data = await response.json()
-    console.log('获取到的原始数据:', data) // 调试日志
-
-    // 添加详细的数据验证
-    if (!data) {
-      throw new Error('API返回数据为空')
-    }
-
-    // 解析诗词内容
-    const content = data.content || ''
-    const title = data.origin || '未知'
-    const author = data.author || '佚名'
+    const result = await fetchCopywritingText('daily-poem')
+    const content = result.text
+    const title = result.title || '每日诗词'
+    const author = result.author || '佚名'
 
     // 处理文本内容，按句号分割
     const contentLines = content.split(/[。？！]/)
@@ -394,18 +388,17 @@ const getRandomPoem = async () => {
       content: contentLines.length > 0 ? contentLines : [content]
     }
 
-    console.log('处理后的诗词数据:', poem) // 调试日志
     currentPoem.value = poem
     typeText(poem)
   } catch (error) {
     console.error('获取诗词失败:', error)
-    showMessage(`获取诗词失败: ${error instanceof Error ? error.message : '请稍后重试'}`, 'error')
-
-    // 重置显示内容
-    displayText.value = {
-      title: '',
-      content: []
+    const fallbackPoem: PoemData = {
+      title: '行路难·李白',
+      content: ['长风破浪会有时。', '直挂云帆济沧海。']
     }
+    currentPoem.value = fallbackPoem
+    typeText(fallbackPoem)
+    showMessage('文案服务暂不可用，已加载备用诗词', 'error')
   }
 }
 

@@ -8,227 +8,85 @@
  -->
 
 <template>
-  <div class="min-h-screen">
-    <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <!-- 头部区域 -->
-        <div class="text-center mb-10 relative">
-          <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-            <div class="w-64 h-64 bg-blue-400 rounded-full blur-3xl"></div>
-            <div class="w-64 h-64 bg-purple-400 rounded-full blur-3xl -ml-20"></div>
-          </div>
-          <h2
-            class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-            免费 AI文章生成
-          </h2>
-          <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成高质量文章，支持多种风格和用途，助您高效创作</p>
+  <div>
+    <AIToolPageTemplate
+      eyebrow="AI 写作工作台"
+      title="AI 文章生成"
+      description="输入主题、关键词和写作约束，生成可编辑的 Markdown 草稿，并继续完成扩写、改写、润色与纠错。"
+      input-title="写作配置"
+      result-title="文章草稿"
+      :is-busy="isGenerating"
+      :has-result="Boolean(resultText)"
+    >
+      <template #input>
+        <div class="article-form">
+          <label class="article-field">
+            <span>文章主题 <b>*</b></span>
+            <el-input v-model="form.topic" placeholder="请输入文章主题或标题" size="large" clearable />
+          </label>
+          <label class="article-field">
+            <span>关键词 <em>可选</em></span>
+            <el-input v-model="form.keywords" placeholder="多个关键词用逗号分隔" size="large" clearable />
+          </label>
+          <label class="article-field">
+            <span>文章类型</span>
+            <el-select v-model="form.type" placeholder="选择文章类型" class="w-full" size="large">
+              <el-option label="通用文章" value="general" />
+              <el-option label="新闻资讯" value="news" />
+              <el-option label="博客/公众号" value="blog" />
+              <el-option label="学术论文" value="academic" />
+              <el-option label="故事/小说" value="story" />
+              <el-option label="种草文案" value="marketing" />
+            </el-select>
+          </label>
+          <label class="article-field">
+            <span>写作风格</span>
+            <el-select v-model="form.style" placeholder="选择写作风格" class="w-full" size="large">
+              <el-option label="专业严谨" value="professional" />
+              <el-option label="幽默风趣" value="humorous" />
+              <el-option label="温馨感人" value="emotional" />
+              <el-option label="犀利点评" value="critical" />
+              <el-option label="简单直白" value="simple" />
+            </el-select>
+          </label>
+          <label class="article-field">
+            <span>篇幅长度 <em>{{ form.length }} 字</em></span>
+            <el-slider v-model="form.length" :min="100" :max="2000" :step="100" />
+          </label>
         </div>
+      </template>
 
-        <MemberCoreToolTips
-          class="mb-8"
-          tool-key="ai-article-generator"
-          title="文章结果交付建议"
-          :items="articleExperienceTips"
-        />
+      <template #primary-action>
+        <button class="article-primary-action" :disabled="isGenerating || !form.topic" @click="generateArticle">
+          <span v-if="!isGenerating">开始生成</span>
+          <span v-else>AI 正在创作中…</span>
+        </button>
+      </template>
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <!-- 左侧：配置区域 -->
-          <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
-                <span class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-                  </svg>
-                </span>
-                写作配置
-              </h3>
+      <template #result-actions>
+        <button v-if="resultText && mode !== 'preview'" class="article-action" @click="copyResult">复制 Markdown</button>
+        <button v-if="resultText" class="article-action" @click="copyPreviewHtml">复制预览样式</button>
+        <button v-if="resultText" class="article-action article-action--danger" @click="clearResult">清空</button>
+      </template>
 
-              <div class="space-y-5">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">文章主题 <span
-                      class="text-red-500">*</span></label>
-                  <el-input v-model="form.topic" placeholder="请输入文章主题或标题" size="large" clearable class="custom-input" />
-                </div>
+      <template #assist-actions>
+        <button v-for="item in assistActions" :key="item.type" class="article-assist-action" :disabled="isGenerating || !resultText" @click="handleAiAssist(item.type)">{{ item.label }}</button>
+      </template>
 
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">关键词 (可选)</label>
-                  <el-input v-model="form.keywords" placeholder="多个关键词用逗号分隔" size="large" clearable
-                    class="custom-input" />
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">文章类型</label>
-                  <el-select v-model="form.type" placeholder="选择文章类型" class="w-full" size="large">
-                    <el-option label="通用文章" value="general" />
-                    <el-option label="新闻资讯" value="news" />
-                    <el-option label="博客/公众号" value="blog" />
-                    <el-option label="学术论文" value="academic" />
-                    <el-option label="故事/小说" value="story" />
-                    <el-option label="种草文案" value="marketing" />
-                  </el-select>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">写作风格</label>
-                  <el-select v-model="form.style" placeholder="选择写作风格" class="w-full" size="large">
-                    <el-option label="专业严谨" value="professional" />
-                    <el-option label="幽默风趣" value="humorous" />
-                    <el-option label="温馨感人" value="emotional" />
-                    <el-option label="犀利点评" value="critical" />
-                    <el-option label="简单直白" value="simple" />
-                  </el-select>
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">篇幅长度: {{ form.length }}字</label>
-                  <div class="px-2">
-                    <el-slider v-model="form.length" :min="100" :max="2000" :step="100" />
-                  </div>
-                </div>
-
-
-
-                <div class="pt-4">
-                  <button @click="generateArticle" :disabled="isGenerating || !form.topic"
-                    class="group w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 transform active:scale-[0.98]">
-                    <span v-if="!isGenerating" class="flex items-center">
-                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      开始生成
-                    </span>
-                    <span v-else class="flex items-center">
-                      <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                        viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                      </svg>
-                      AI正在创作中...
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 右侧：生成结果 -->
-          <div class="lg:col-span-8">
-            <div class="border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[900px] bg-white shadow-sm">
-              <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <div class="flex items-center space-x-3">
-                  <div class="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <h3 class="font-medium text-gray-700">生成结果</h3>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <button v-if="resultText && mode !== 'preview'" @click="copyResult"
-                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    复制Markdown
-                  </button>
-                  <button v-if="resultText" @click="copyPreviewHtml"
-                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-green-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    复制预览样式
-                  </button>
-                  <button v-if="resultText" @click="clearResult"
-                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    清空
-                  </button>
-                </div>
-              </div>
-
-              <!-- AI辅助工具栏 -->
-              <div class="px-3 py-2 border-b border-gray-100 bg-gray-50 flex flex-wrap gap-2">
-                <button @click="handleAiAssist('expand')" :disabled="isGenerating || !resultText"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                  </svg>
-                  扩写
-                </button>
-                <button @click="handleAiAssist('continue')" :disabled="isGenerating || !resultText"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-green-50 hover:text-green-600 hover:border-green-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M11 17l-5-5m0 0l5-5m-5 5h12" />
-                  </svg>
-                  续写
-                </button>
-                <button @click="handleAiAssist('summarize')" :disabled="isGenerating || !resultText"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h7" />
-                  </svg>
-                  简写
-                </button>
-                <button @click="handleAiAssist('rewrite')" :disabled="isGenerating || !resultText"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                  </svg>
-                  改写
-                </button>
-                <button @click="handleAiAssist('polish')" :disabled="isGenerating || !resultText"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                  润色
-                </button>
-                <button @click="handleAiAssist('fix')" :disabled="isGenerating || !resultText"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  纠错
-                </button>
-              </div>
-
-              <div class="flex-1 relative bg-white min-h-0">
-                <template v-if="showResultEditor">
-                  <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI生成的内容将在这里显示..."
-                    :disabled-menus="[]" @save="save"></v-md-editor>
-                </template>
-                <template v-else>
-                  <div class="h-full flex flex-col items-center justify-center text-gray-500 bg-gray-50/70">
-                    <p class="text-sm mb-1">点击“开始生成”后将自动加载编辑器并显示结果</p>
-                    <p class="text-xs text-gray-400">无需额外操作</p>
-                  </div>
-                </template>
-              </div>
-            </div>
-          </div>
+      <template #result>
+        <div v-if="showResultEditor" class="article-result-editor">
+          <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI生成的内容将在这里显示..." :disabled-menus="[]" @save="save"></v-md-editor>
         </div>
+        <div v-else class="article-empty-result">
+          <strong>等待生成</strong>
+          <span>填写主题后开始，结果会在这里进入可编辑状态。</span>
+        </div>
+      </template>
 
+      <template #guide>
         <WritingGuide />
-      </div>
-    </div>
+      </template>
+    </AIToolPageTemplate>
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
@@ -239,7 +97,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { downloadMarkdownResult } from '@/utils/markdownResult'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
-import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
+import AIToolPageTemplate from '@/components/Common/PageTemplates/AIToolPageTemplate.vue'
 import WritingGuide from './WritingGuide.vue'
 import { generateAIWriting } from '@/services/ai'
 import {
@@ -248,19 +106,13 @@ import {
 } from '@/composables/useCoreToolManualConsume'
 
 const route = useRoute()
-const articleExperienceTips = [
-  {
-    label: '输入模板',
-    text: '建议补主题、受众、关键词、字数和语气，避免只输入一句话导致结果空泛。'
-  },
-  {
-    label: '二次润色',
-    text: '生成后可用扩写、改写、润色、纠错继续加工，再复制 Markdown 或预览样式。'
-  },
-  {
-    label: '发布检查',
-    text: '发布前补原创案例和品牌口径，核对标题、事实、日期和正文逻辑。'
-  }
+const assistActions = [
+  { type: 'expand', label: '扩写' },
+  { type: 'continue', label: '续写' },
+  { type: 'summarize', label: '简写' },
+  { type: 'rewrite', label: '改写' },
+  { type: 'polish', label: '润色' },
+  { type: 'fix', label: '纠错' }
 ]
 const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
@@ -653,6 +505,23 @@ const save = (text: string, _html: string) => {
 </script>
 
 <style scoped>
+.article-form { display: grid; gap: 18px; }
+.article-field { display: grid; gap: 7px; color: #344054; font-size: 12px; font-weight: 650; }
+.article-field span { display: flex; justify-content: space-between; gap: 8px; }
+.article-field b { color: #d92d20; }
+.article-field em { color: #98a2b3; font-size: 11px; font-style: normal; font-weight: 500; }
+.article-primary-action { width: 100%; min-height: 42px; border: 0; color: #fff; background: var(--uied-color-primary); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .2s ease, transform .2s ease; }
+.article-primary-action:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
+.article-primary-action:disabled { opacity: .45; cursor: not-allowed; }
+.article-action, .article-assist-action { border: 1px solid #dfe2ea; padding: 6px 10px; color: #596273; background: #fff; font-size: 11px; cursor: pointer; }
+.article-action:hover, .article-assist-action:hover:not(:disabled) { border-color: var(--uied-color-primary); color: var(--uied-color-primary); }
+.article-action--danger:hover { border-color: #d92d20; color: #d92d20; }
+.article-assist-action:disabled { opacity: .45; cursor: not-allowed; }
+.article-result-editor { height: 100%; min-height: 540px; }
+.article-empty-result { display: grid; place-content: center; gap: 7px; height: 100%; min-height: 540px; color: #98a2b3; text-align: center; }
+.article-empty-result strong { color: #475467; font-size: 17px; }
+.article-empty-result span { font-size: 13px; }
+
 .custom-input :deep(.el-input__wrapper) {
   box-shadow: 0 0 0 1px #e5e7eb inset;
   padding: 8px 12px;

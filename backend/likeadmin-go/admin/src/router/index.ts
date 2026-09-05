@@ -109,7 +109,12 @@ export function getRoutePath(perms: string) {
 
 // 重置路由
 export function resetRouter() {
-    router.removeRoute(INDEX_ROUTE_NAME)
+    /**
+     * 函数说明：仅移除已注册的动态根路由，避免重复登出或刷新时触发 Vue Router 警告。
+     */
+    if (router.hasRoute(INDEX_ROUTE_NAME)) {
+        router.removeRoute(INDEX_ROUTE_NAME)
+    }
     const { routes } = useUserStore()
     routes.forEach((route) => {
         const name = route.name

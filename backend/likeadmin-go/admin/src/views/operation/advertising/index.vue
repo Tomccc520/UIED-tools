@@ -19,8 +19,8 @@
                         {{ validationTips.length ? `${validationTips.length} 项待处理` : '配置健康' }}
                     </a-tag>
                     <a-button size="small" @click="restoreActiveDefaults">恢复当前默认</a-button>
-                    <a-button size="small" @click="openFrontendPreview">前端预览</a-button>
-                    <a-button size="small" @click="runHealthCheck">一键体检</a-button>
+                    <a-button data-admin-smoke="advertising-preview" size="small" @click="openFrontendPreview">前端预览</a-button>
+                    <a-button data-admin-smoke="advertising-health-check" size="small" @click="runHealthCheck">一键体检</a-button>
                 </div>
             </template>
         </a-page-header>
@@ -119,7 +119,7 @@
                             <strong>广告内容</strong>
                             <span>图片广告支持素材库和跳转链接，HTML 广告支持安全代码片段</span>
                         </div>
-                        <a-button type="primary" size="small" @click="addAdvertisingItem">新增广告</a-button>
+                        <a-button data-admin-smoke="advertising-banner-add" type="primary" size="small" @click="addAdvertisingItem">新增广告</a-button>
                     </div>
                 </template>
 
@@ -286,7 +286,7 @@
                 </div>
             </a-card>
 
-            <footer-btns :fixed="false" v-perms="['operation:advertising:save']">
+            <footer-btns data-admin-smoke="advertising-save" :fixed="false" v-perms="['operation:advertising:save']">
                 <span v-if="lastSavedAt" class="saved-at">最近保存：{{ lastSavedAt }}</span>
                 <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存并发布</a-button>
             </footer-btns>

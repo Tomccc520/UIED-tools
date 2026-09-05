@@ -22,19 +22,21 @@
  -->
 
 <template>
-  <div class="min-h-screen">
-    <div class="mx-auto">
+  <div>
+    <StandardToolPageTemplate
+      eyebrow="图片工具"
+      title="图片压缩"
+      description="在浏览器本地批量压缩 JPG、PNG 和 WebP，保留预览、质量调节与打包下载能力。"
+      workspace-label="图片 / 01"
+    >
+      <template #meta>
+        <span class="image-meta">本地处理</span>
+        <span class="image-meta">最多 30 个文件</span>
+        <span class="image-meta">单个不超过 25MB</span>
+      </template>
+
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
-            </div>
-          </h2>
-          <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
-        </div>
-
         <!-- 配置区域 -->
         <div class="grid grid-cols-1 gap-8">
           <!-- 上传区域 -->
@@ -76,17 +78,27 @@
                 <el-slider v-model="quality" :min="1" :max="100" :step="1" />
               </div>
               <div class="flex space-x-3">
-                <el-button data-smoke="image-compress-start" type="primary" size="large" :loading="isCompressing" @click="compressAll"
-                  class="flex-1 !h-10">
+                <button
+                  type="button"
+                  data-smoke="image-compress-start"
+                  :disabled="isCompressing"
+                  @click="compressAll"
+                  class="image-action image-action--primary flex-1 !h-10"
+                >
                   {{ isCompressing ? '压缩中...' : '开始压缩' }}
-                </el-button>
-                <el-button v-if="fileList.length > 0" size="large" @click="recompress" class="flex-1 !h-10">
+                </button>
+                <button v-if="fileList.length > 0" type="button" @click="recompress" class="image-action flex-1 !h-10">
                   重新压缩
-                </el-button>
-                <el-button data-smoke="image-compress-download" v-if="fileList.length > 0" type="success" size="large" @click="downloadAll"
-                  class="flex-1 !h-10">
+                </button>
+                <button
+                  v-if="fileList.length > 0"
+                  type="button"
+                  data-smoke="image-compress-download"
+                  @click="downloadAll"
+                  class="image-action image-action--success flex-1 !h-10"
+                >
                   打包下载
-                </el-button>
+                </button>
               </div>
             </div>
           </div>
@@ -289,9 +301,15 @@
         </div>
       </div>
 
-      <!-- 工具推荐 -->
-      <ToolsRecommend :currentPath="route.path" />
-    </div>
+      <template #actions>
+        <el-button @click="clearFiles" size="large">清空文件列表</el-button>
+        <el-button v-if="compressedCount > 0" data-smoke="image-compress-download" type="success" size="large" @click="downloadAll">
+          打包下载 ({{ compressedCount }})
+        </el-button>
+      </template>
+    </StandardToolPageTemplate>
+    <!-- 工具推荐 -->
+    <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
 
@@ -307,6 +325,7 @@ import { autoDown } from '@/utils/file'
 import { ElMessage } from 'element-plus'
 import * as UPNG from 'upng-js'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import StandardToolPageTemplate from '@/components/Common/PageTemplates/StandardToolPageTemplate.vue'
 import { useRoute } from 'vue-router'
 import JSZip from 'jszip'
 
@@ -829,6 +848,28 @@ const route = useRoute()
 </script>
 
 <style scoped>
+.image-meta {
+  padding: 5px 9px;
+  border: 1px solid #dfe2ea;
+  color: #687083;
+  font-size: 11px;
+}
+
+.image-action {
+  border: 1px solid #d9dde7;
+  color: #475467;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: filter .2s ease, opacity .2s ease;
+}
+
+.image-action:hover:not(:disabled) { filter: brightness(.97); }
+.image-action:disabled { opacity: .55; cursor: not-allowed; }
+.image-action--primary { border-color: #409eff; color: #fff; background: #409eff; }
+.image-action--success { border-color: #67c23a; color: #fff; background: #67c23a; }
+
 /* 禁用图片拖动 */
 img {
   user-select: none;

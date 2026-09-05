@@ -304,7 +304,7 @@ export default defineConfig({
           ws: true
         }
       } : {}),
-      // 翻译接口代理配置
+      // 历史翻译代理配置；业务页面统一使用 /api/common/copywriting/translate。
       '/api/translate': {
         target: 'https://suapi.net',
         changeOrigin: true,
@@ -312,7 +312,7 @@ export default defineConfig({
         secure: false
       },
 
-      // KFC文案接口代理配置
+      // 历史 KFC 文案代理配置；业务页面统一使用 /api/common/copywriting/kfc。
       '/api/kfc': {
         target: 'https://tools.mgtv100.com',
         changeOrigin: true,
@@ -344,7 +344,7 @@ export default defineConfig({
         secure: false
       },
 
-      // 一言接口代理配置
+      // 历史一言代理配置；业务页面统一使用 /api/common/copywriting/yiyan。
       '/api/yiyan': {
         target: 'https://api.52vmy.cn',
         changeOrigin: true,

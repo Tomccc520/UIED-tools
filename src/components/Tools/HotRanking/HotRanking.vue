@@ -124,7 +124,7 @@ onMounted(() => {
       <div class="tool-ranking-page__hero-main">
         <div class="tool-ranking-page__hero-copy">
           <p class="tool-ranking-page__eyebrow">
-            <span>RANKING 01</span>
+            <span>热榜 / 01</span>
             <i></i>
             {{ toolRankingPeriodLabel }}点击榜
           </p>
@@ -133,7 +133,7 @@ onMounted(() => {
         </div>
 
         <div class="tool-ranking-page__hero-panel">
-          <span>TOP</span>
+          <span>前列</span>
           <strong>{{ String(toolRankingPageLimit).padStart(2, '0') }}</strong>
         </div>
       </div>
@@ -164,7 +164,7 @@ onMounted(() => {
           <div class="tool-ranking-page__board-title">本期排行</div>
           <div class="tool-ranking-page__board-note">基于站内工具真实点击统计</div>
         </div>
-        <span class="tool-ranking-page__board-badge">{{ toolRankingPeriodLabel }} / TOP {{ toolRankingPageLimit }}</span>
+        <span class="tool-ranking-page__board-badge">{{ toolRankingPeriodLabel }} / 前 {{ toolRankingPageLimit }}</span>
       </div>
 
       <div v-if="pageLoading" class="tool-ranking-page__status">

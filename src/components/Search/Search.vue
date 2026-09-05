@@ -8,22 +8,14 @@
 -->
 <template>
   <!-- 搜索面板 -->
-  <div v-if="visible" class="search-panel">
+  <div v-if="visible" class="search-panel" @click.self="handleClose">
     <div class="search-mask" @click="handleClose"></div>
     <div class="search-wrapper">
       <!-- 标题栏 -->
       <div class="panel-header">
         <div class="header-left">
           <div class="panel-heading">
-            <span class="panel-kicker">SEARCH WORKSPACE</span>
-            <h2 class="panel-title">工具智能搜索</h2>
-          </div>
-          <div class="header-subtitle">
-            本地秒搜 + AI 增强 · AI 服务由
-            <a :href="searchProviderLink" target="_blank" rel="noopener noreferrer" class="provider-link">
-              {{ searchProviderLabel }}
-            </a>
-            提供
+            <h2 class="panel-title">搜索工具</h2>
           </div>
         </div>
         <el-button class="close-btn" aria-label="关闭搜索" @click="handleClose">
@@ -134,11 +126,6 @@
 
         <!-- 快捷工具 -->
         <template v-if="!currentQuestion">
-          <div class="welcome-section">
-            <h3 class="welcome-title">先找工具，再解决问题</h3>
-            <p class="welcome-desc">输入名称、用途、分类或英文别名，常用工具即时出现；复杂需求可继续使用 AI 搜索。</p>
-          </div>
-
           <section v-if="normalizedSearchQuery" class="instant-results" aria-live="polite">
             <div class="instant-results__header">
               <div>
@@ -185,6 +172,31 @@
           </section>
 
           <div v-if="!normalizedSearchQuery" class="quick-access">
+            <!-- 每周热门工具：读取后台按点击量聚合的周榜，接口不可用时不影响快捷入口。 -->
+            <section v-if="weeklyHotTools.length || weeklyHotLoading" class="weekly-hot-tools" aria-live="polite">
+              <div class="section-title weekly-hot-tools__title">
+                <span>每周热门工具</span>
+              </div>
+              <div v-if="weeklyHotLoading && !weeklyHotTools.length" class="weekly-hot-tools__loading">
+                正在读取本周热门工具…
+              </div>
+              <div v-else class="weekly-hot-tools__list">
+                <button
+                  v-for="tool in weeklyHotTools"
+                  :key="tool.toolUrl"
+                  type="button"
+                  :class="['weekly-hot-tool', { 'weekly-hot-tool--disabled': isToolEntryDisabled(tool.toolUrl) }]"
+                  @click="handleToolClick(tool.toolUrl, tool.toolTitle)"
+                >
+                  <span class="weekly-hot-tool__rank">{{ String(tool.rank).padStart(2, '0') }}</span>
+                  <span class="weekly-hot-tool__body">
+                    <strong>{{ tool.toolTitle }}</strong>
+                    <span>{{ tool.remark || tool.cateTitle || '热门工具' }}</span>
+                  </span>
+                </button>
+              </div>
+            </section>
+
             <div class="section-title">快捷入口</div>
             <div class="quick-tools-grid">
               <div
@@ -300,8 +312,10 @@ import { Search, Delete, Link as LinkIcon, Close, Loading, User, ChatDotRound, C
 import { ElMessage } from 'element-plus'
 import { searchWithAI, type AISearchResponse } from '@/services/ai'
 import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteQuickToolItem } from '@/services/siteConfig'
+import { getToolRankingList, type ToolRankingListItem } from '@/services/toolRanking'
 import { resolveToolRuntimeLinkKind, useToolRuntimeGate, type ToolRuntimeEntry } from '@/composables/useToolRuntimeGate'
 import type { Tool, ToolCategory } from '@/types/tools'
+import { getToolsCate } from '@/components/Tools/tools'
 import logoImg from '@/assets/uiedlogo.png'
 import { ensureMarkedRuntime } from '@/utils/toolRuntimeLoaders'
 import { searchToolsByQuery } from '@/utils/toolSearch'
@@ -316,8 +330,11 @@ let markedConfigured = false
 const markedReady = ref(false)
 const defaultSearchQuickTools = getDefaultSitePublicConfig().searchQuickTools
 const quickTools = ref<SiteQuickToolItem[]>(defaultSearchQuickTools)
-const searchProviderLabel = ref(getDefaultSitePublicConfig().searchProviderLabel)
-const searchProviderLink = ref(getDefaultSitePublicConfig().searchProviderLink)
+const weeklyHotTools = ref<ToolRankingListItem[]>([])
+const weeklyHotLoading = ref(false)
+let weeklyHotLastLoadedAt = 0
+let weeklyHotRequestSerial = 0
+const WEEKLY_HOT_CACHE_TTL_MS = 5 * 60 * 1000
 const toolRuntimeEntryMap = ref<Map<string, Tool>>(new Map())
 const searchableTools = ref<Tool[]>([])
 const searchInputRef = ref<{ focus?: () => void } | null>(null)
@@ -598,17 +615,47 @@ const removeHistory = (index: number) => {
 }
 
 /**
- * 函数说明：读取后台搜索面板快捷入口配置，未配置时回退前端默认值。
+ * 函数说明：读取后台按周点击量聚合的热门工具，供搜索弹窗快速发现高频工具。
+ * 接口失败或榜单暂无有效数据时保持空列表，不阻塞本地搜索和快捷入口。
  */
+const loadWeeklyHotTools = async () => {
+  const now = Date.now()
+  if (weeklyHotLoading.value || now - weeklyHotLastLoadedAt < WEEKLY_HOT_CACHE_TTL_MS) {
+    return
+  }
+
+  const requestSerial = ++weeklyHotRequestSerial
+  weeklyHotLoading.value = true
+  try {
+    const result = await getToolRankingList({ period: 'week', sortBy: 'view', limit: 5 })
+    if (requestSerial !== weeklyHotRequestSerial) {
+      return
+    }
+    weeklyHotTools.value = result.list
+      .filter((item) => item.status !== 0 && item.viewCount > 0 && item.toolUrl)
+      .slice(0, 5)
+    weeklyHotLastLoadedAt = Date.now()
+  } catch {
+    if (requestSerial === weeklyHotRequestSerial) {
+      weeklyHotTools.value = []
+    }
+  } finally {
+    if (requestSerial === weeklyHotRequestSerial) {
+      weeklyHotLoading.value = false
+    }
+  }
+}
+
 const loadSearchQuickTools = async () => {
-  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+  seedLocalSearchIndex()
+  const siteConfig = await getSitePublicConfig()
   quickTools.value = siteConfig.searchQuickTools.length
     ? siteConfig.searchQuickTools
     : defaultSearchQuickTools
-  searchProviderLabel.value = siteConfig.searchProviderLabel || getDefaultSitePublicConfig().searchProviderLabel
-  searchProviderLink.value = siteConfig.searchProviderLink || getDefaultSitePublicConfig().searchProviderLink
   toolRuntimeEntryMap.value = buildToolRuntimeEntryMap(siteConfig.toolCategories)
-  searchableTools.value = flattenSearchableTools(siteConfig.toolCategories)
+  if (siteConfig.toolCategories.length) {
+    searchableTools.value = flattenSearchableTools(siteConfig.toolCategories)
+  }
 }
 
 /**
@@ -625,6 +672,16 @@ const flattenSearchableTools = (categories: ToolCategory[]): Tool[] => {
       }))
     )
   )
+}
+
+/**
+ * 函数说明：用前端内置工具目录预热本地搜索索引，避免等待后台配置请求完成后才能开始匹配。
+ */
+const seedLocalSearchIndex = () => {
+  if (searchableTools.value.length) {
+    return
+  }
+  searchableTools.value = flattenSearchableTools(getToolsCate())
 }
 
 /**
@@ -922,6 +979,7 @@ const handleClear = () => {
 // 组件挂载时加载搜索历史
 onMounted(() => {
   loadSearchHistory()
+  seedLocalSearchIndex()
   loadSearchQuickTools()
 
   // 调试logo图片 - 仅在开发环境
@@ -1002,6 +1060,7 @@ watch(
     if (visible) {
       previousBodyOverflow = document.body.style.overflow
       document.body.style.overflow = 'hidden'
+      void loadWeeklyHotTools()
       await nextTick()
       searchInputRef.value?.focus?.()
       return
@@ -2381,6 +2440,225 @@ watch(
   .loading-icon {
     animation: none;
     transition: none;
+  }
+}
+
+/* 搜索弹窗采用内容自适应高度，让用户打开后直接聚焦搜索，不被大块空白打断。 */
+.search-wrapper {
+  height: auto;
+  min-height: 0;
+  max-height: min(760px, calc(100dvh - 48px));
+  padding: 0;
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgb(15 23 42 / 18%);
+}
+
+.panel-header {
+  order: 0;
+  min-height: 68px;
+  margin: 0;
+  padding: 18px 24px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.panel-title {
+  margin: 0;
+  color: #182230;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.search-content {
+  order: 2;
+  flex: 0 1 auto;
+  min-height: 220px;
+  max-height: 520px;
+  margin: 0;
+  padding: 22px 24px;
+}
+
+.quick-access {
+  margin-bottom: 0;
+}
+
+.quick-tools-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.quick-tool-item {
+  min-height: 76px;
+  padding: 13px 14px;
+  border: 1px solid #e3e7ee;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.quick-tool-item:hover {
+  border-color: #c9c4ff;
+  background: #faf9ff;
+  box-shadow: 0 4px 14px rgb(91 84 232 / 10%);
+}
+
+.quick-tool-title {
+  font-size: 14px;
+}
+
+.quick-tool-desc {
+  font-size: 12px;
+}
+
+.search-footer {
+  order: 1;
+  position: relative;
+  margin: 0;
+  padding: 14px 24px 16px;
+  border-top: 0;
+  border-bottom: 1px solid #edf0f4;
+  background: #fff;
+  backdrop-filter: none;
+}
+
+.weekly-hot-tools {
+  margin-bottom: 18px;
+  padding: 14px;
+  border: 1px solid #e4e7ef;
+  border-radius: 10px;
+  background: #f8f9fc;
+}
+
+.weekly-hot-tools__title {
+  justify-content: flex-start;
+  margin: 0 0 12px;
+}
+
+.weekly-hot-tools__loading {
+  padding: 12px 14px;
+  border: 1px solid #e5e8ef;
+  border-radius: 8px;
+  color: #8a93a3;
+  font-size: 12px;
+  background: #fff;
+}
+
+.weekly-hot-tools__list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.weekly-hot-tool {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 10px;
+  min-height: 74px;
+  padding: 12px;
+  border: 1px solid #e1e5ed;
+  border-radius: 9px;
+  background: #fff;
+  color: #334155;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.weekly-hot-tool::after {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  content: '↗';
+  color: #a2aabb;
+  font-size: 12px;
+}
+
+.weekly-hot-tool:hover {
+  border-color: #c7c1ff;
+  background: #fff;
+  box-shadow: 0 5px 14px rgb(91 84 232 / 10%);
+  transform: translateY(-2px);
+}
+
+.weekly-hot-tool--disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.weekly-hot-tool__rank {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: #eeecff;
+  color: #6658e8;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.weekly-hot-tool__body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 5px;
+  padding-right: 12px;
+}
+
+.weekly-hot-tool__body strong,
+.weekly-hot-tool__body span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.weekly-hot-tool__body strong {
+  color: #253044;
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.weekly-hot-tool__body span {
+  color: #8a93a3;
+  font-size: 11px;
+}
+
+@media screen and (max-width: 768px) {
+  .search-wrapper {
+    height: 100dvh;
+    max-height: none;
+    border-radius: 0;
+  }
+
+  .panel-header {
+    min-height: 64px;
+    padding: 16px 52px 16px 20px;
+  }
+
+  .panel-title {
+    font-size: 19px;
+  }
+
+  .search-content {
+    max-height: none;
+    padding: 18px 16px;
+  }
+
+  .weekly-hot-tools__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-tools-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .search-footer {
+    padding: 12px;
   }
 }
 </style>

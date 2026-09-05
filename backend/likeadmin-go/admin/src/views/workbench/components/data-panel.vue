@@ -75,6 +75,7 @@ const props = defineProps<{
     display: flex;
     align-items: center;
     gap: 12px;
+    min-height: 72px;
 }
 
 .metric-content {

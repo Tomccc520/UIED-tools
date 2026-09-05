@@ -727,18 +727,24 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="h-14 sm:h-16 w-full flex items-center bg-white border-b border-gray-200 rounded-b-xl overflow-hidden">
+  <header class="relative h-14 sm:h-16 w-full flex items-center bg-white border-b border-gray-200 rounded-b-xl overflow-hidden">
     <div class="header-left-zone flex items-center min-w-0">
       <!-- 菜单折叠按钮 -->
-      <div class="menu-toggle cursor-pointer pl-4" @click="toggleSidebar">
+      <button
+        type="button"
+        class="menu-toggle ml-1 md:ml-3"
+        :aria-label="isCollapse ? '展开侧边栏' : '收起侧边栏'"
+        :aria-expanded="!isCollapse"
+        @click="toggleSidebar"
+      >
         <el-icon class="text-gray-500 hover:text-blue-500 text-xl">
           <Expand v-if="isCollapse" />
           <Fold v-else />
         </el-icon>
-      </div>
+      </button>
 
       <!-- 左侧一言 - 仅在 PC 端显示 -->
-      <div class="daily-word-outer hidden md:block" @click.stop="getDailyWord">
+      <button type="button" class="daily-word-outer hidden md:flex" aria-label="换一条每日一言" @click.stop="getDailyWord">
         <div class="daily-word-wrapper">
           <span class="daily-word-prefix">每日一言：</span>
           <div class="daily-word-content">
@@ -750,8 +756,12 @@ onUnmounted(() => {
             </div>
           </div>
         </div>
-      </div>
+      </button>
     </div>
+
+    <router-link class="mobile-brand md:hidden" to="/" aria-label="返回 UIED-Tools 首页">
+      UIED <span>Tools</span>
+    </router-link>
 
     <div class="header-right-zone px-0 md:px-4">
       <div class="flex justify-end items-center w-full">
@@ -820,7 +830,7 @@ onUnmounted(() => {
     >
       <template #header>
         <div class="login-dialog-header">
-          <div class="login-dialog-kicker">UIED ACCOUNT</div>
+          <div class="login-dialog-kicker">账号中心</div>
           <h3>登录用户中心</h3>
           <p>{{ loginDialogReason || '登录后可进入个人中心，查看每日积分并绑定 QQ 邮箱。' }}</p>
         </div>
@@ -959,19 +969,24 @@ onUnmounted(() => {
 
 .daily-word-outer {
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: color var(--uied-motion-fast) ease, background-color var(--uied-motion-fast) ease;
   padding: 8px 16px;
-  display: flex;
   align-items: center;
   margin-left: 12px;
   flex: 1 1 auto;
   min-width: 0;
   max-width: 100%;
   overflow: hidden;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  border: 0;
+  border-radius: var(--uied-radius-md);
+  background: transparent;
 }
 
 .daily-word-outer:hover {
-  background: #f0edff;
+  background: var(--uied-color-primary-soft);
 }
 
 .daily-word-wrapper {
@@ -983,7 +998,7 @@ onUnmounted(() => {
 }
 
 .daily-word-prefix {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
@@ -1047,13 +1062,13 @@ onUnmounted(() => {
 }
 
 .menu-icon-btn {
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: color var(--uied-motion-fast) ease, background-color var(--uied-motion-fast) ease;
   color: #515151;
   border: 0;
   border-radius: 8px;
@@ -1061,8 +1076,8 @@ onUnmounted(() => {
 }
 
 .menu-icon-btn:hover {
-  color: #6C54FF;
-  background-color: #f0edff;
+  color: var(--uied-color-primary);
+  background-color: var(--uied-color-primary-soft);
 }
 
 .menu-icon-btn .el-icon {
@@ -1162,13 +1177,47 @@ onUnmounted(() => {
   color: #94a3b8 !important;
 }
 
-/* 修改菜单折叠按钮悬停颜色 */
+/* 菜单折叠按钮使用真实 button，保留键盘焦点与移动端点击区。 */
+.menu-toggle {
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: var(--uied-color-text-secondary);
+  border: 0;
+  border-radius: var(--uied-radius-md);
+  background: transparent;
+  transition: color var(--uied-motion-fast) ease, background-color var(--uied-motion-fast) ease;
+}
+
 .menu-toggle .el-icon {
-  transition: all 0.3s ease;
+  transition: color var(--uied-motion-fast) ease;
+}
+
+.menu-toggle:hover {
+  color: var(--uied-color-primary);
+  background: var(--uied-color-primary-soft);
 }
 
 .menu-toggle:hover .el-icon {
-  color: #6C54FF !important;
+  color: currentColor !important;
+}
+
+.mobile-brand {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  color: var(--uied-color-text);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  transform: translate(-50%, -50%);
+}
+
+.mobile-brand span {
+  color: var(--uied-color-primary);
 }
 
 /* 修改收藏到书签按钮样式 */
@@ -1422,6 +1471,12 @@ onUnmounted(() => {
 
 /* 移动端适配 */
 @media screen and (max-width: 768px) {
+  .menu-toggle,
+  .menu-icon-btn {
+    width: 44px;
+    height: 44px;
+  }
+
   .daily-word-outer {
     display: none;
   }

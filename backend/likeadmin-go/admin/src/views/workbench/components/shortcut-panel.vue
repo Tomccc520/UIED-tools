@@ -50,7 +50,7 @@ const props = defineProps<{
 
 <style lang="scss" scoped>
 .general-card {
-    border-radius: 4px;
+    border-radius: 12px;
 }
 
 .wrapper {
@@ -63,6 +63,10 @@ const props = defineProps<{
     align-items: center;
     text-decoration: none;
     cursor: pointer;
+    min-height: 64px;
+    padding: 6px 4px;
+    border-radius: 10px;
+    transition: background-color 160ms ease;
 }
 
 .icon {
@@ -89,6 +93,8 @@ const props = defineProps<{
 }
 
 .wrapper-link:hover {
+    background: #f5f7fc;
+
     .icon {
         color: rgb(var(--arcoblue-6));
         background-color: #e8f3ff;

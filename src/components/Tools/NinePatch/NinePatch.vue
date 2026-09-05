@@ -547,7 +547,7 @@ onBeforeUnmount(() => {
         <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
       </div>
       <div>
-        <div class="tool-kicker">ANDROID ASSET LAB · LOCAL PROCESSING</div>
+        <div class="tool-kicker">Android 素材工具 · 本地处理</div>
         <h1>免费在线 .9 图生成器</h1>
         <p>可视化标记拉伸区域和内容安全区，实时验证不同尺寸效果，导出 Android 标准 Nine-patch PNG。</p>
       </div>
@@ -608,7 +608,7 @@ onBeforeUnmount(() => {
         <article class="editor-card">
           <div class="panel-heading">
             <div>
-              <span>EDGE MAP</span>
+              <span>边缘映射</span>
               <h2>四边标记编辑器</h2>
             </div>
             <div class="mode-switch" role="tablist" aria-label="编辑模式">
@@ -693,10 +693,10 @@ onBeforeUnmount(() => {
         <aside class="preview-card">
           <div class="panel-heading">
             <div>
-              <span>LIVE STRETCH TEST</span>
+              <span>实时拉伸预览</span>
               <h2>实时拉伸预览</h2>
             </div>
-            <span class="preview-status"><i></i> LIVE</span>
+            <span class="preview-status"><i></i> 实时预览</span>
           </div>
 
           <div class="preview-presets">
@@ -727,7 +727,7 @@ onBeforeUnmount(() => {
           <div class="preview-viewport">
             <div class="preview-asset" :style="{ aspectRatio: `${previewWidth} / ${previewHeight}` }">
               <canvas ref="previewCanvasRef"></canvas>
-              <div class="content-safe-area" :style="previewContentStyle"><span>CONTENT SAFE AREA</span></div>
+              <div class="content-safe-area" :style="previewContentStyle"><span>内容安全区</span></div>
             </div>
           </div>
 
@@ -738,9 +738,9 @@ onBeforeUnmount(() => {
 
           <div class="export-summary">
             <div>
-              <span>OUTPUT</span>
+              <span>输出预览</span>
               <strong>{{ outputName }}</strong>
-              <small>{{ sourceWidth + 2 }} × {{ sourceHeight + 2 }} px · PNG · 1px border</small>
+              <small>{{ sourceWidth + 2 }} × {{ sourceHeight + 2 }} px · PNG · 1px 边框</small>
             </div>
             <button type="button" :disabled="isExporting" @click="downloadNinePatch">
               <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" /></svg>

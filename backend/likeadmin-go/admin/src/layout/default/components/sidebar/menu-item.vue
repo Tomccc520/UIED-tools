@@ -1,14 +1,14 @@
 <template>
     <template v-if="!route.meta?.hidden">
-        <a-menu-item v-if="!hasShowChild" :key="routePath" @click="handleMenuClick">
+        <a-menu-item v-if="!hasShowChild" :key="routePath" :title="String(routeMeta?.title || '')" @click="handleMenuClick">
             <template #icon>
                 <icon class="menu-item-icon" :size="16" :name="menuIcon" />
             </template>
-            <span>{{ routeMeta?.title }}</span>
+            <span :title="String(routeMeta?.title || '')">{{ routeMeta?.title }}</span>
         </a-menu-item>
         <a-sub-menu v-else :key="routePath">
             <template #title>
-                <span>{{ routeMeta?.title }}</span>
+                <span :title="String(routeMeta?.title || '')">{{ routeMeta?.title }}</span>
             </template>
             <template #icon>
                 <icon class="menu-item-icon" :size="16" :name="menuIcon" />

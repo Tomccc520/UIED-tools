@@ -7,7 +7,7 @@
  */
 -->
 <template>
-    <div class="container">
+    <div class="container workbench-page">
         <a-spin :loading="loading" tip="正在加载工作台数据..." style="display: block">
             <div class="workbench-shell">
                 <div class="left-side">
@@ -102,12 +102,12 @@ const userStore = useUserStore()
 const loading = ref(false)
 
 const actionButtonList = [
-    { label: '前端布局', to: '/official_site/frontend_layout', short: 'LAY' },
-    { label: '侧栏菜单', to: '/official_site/sidebar', short: 'SID' },
-    { label: '头部设置', to: '/official_site/header', short: 'HDR' },
-    { label: '页脚设置', to: '/official_site/footer', short: 'FTR' },
-    { label: '工具主数据', to: '/official_site/tools_catalog', short: 'TOOL' },
-    { label: 'SEO设置', to: '/official_site/seo', short: 'SEO' }
+    { label: '前端布局', to: '/official_site/frontend_layout', short: '布局' },
+    { label: '侧栏菜单', to: '/official_site/sidebar', short: '侧栏' },
+    { label: '头部设置', to: '/official_site/header', short: '头部' },
+    { label: '页脚设置', to: '/official_site/footer', short: '页脚' },
+    { label: '工具主数据', to: '/official_site/tools_catalog', short: '工具' },
+    { label: 'SEO设置', to: '/official_site/seo', short: '优化' }
 ]
 
 const quickLinkDescMap: Record<string, string> = {
@@ -269,7 +269,7 @@ const versionText = computed(() => formatMetricValue(workbenchData.version.versi
 const todayCards = computed(() => [
     {
         key: 'visits',
-        icon: 'PV',
+        icon: '访问',
         label: '今日访问量',
         value: formatMetricValue(workbenchData.today.todayVisits),
         totalLabel: '累计访问',
@@ -277,7 +277,7 @@ const todayCards = computed(() => [
     },
     {
         key: 'sales',
-        icon: 'GMV',
+        icon: '销售',
         label: '今日销售额',
         value: formatMetricValue(workbenchData.today.todaySales),
         totalLabel: '累计销售',
@@ -285,7 +285,7 @@ const todayCards = computed(() => [
     },
     {
         key: 'orders',
-        icon: 'ORD',
+        icon: '订单',
         label: '今日订单量',
         value: formatMetricValue(workbenchData.today.todayOrder),
         totalLabel: '累计订单',
@@ -293,7 +293,7 @@ const todayCards = computed(() => [
     },
     {
         key: 'users',
-        icon: 'USR',
+        icon: '用户',
         label: '新增用户',
         value: formatMetricValue(workbenchData.today.todayUsers),
         totalLabel: '累计用户',
@@ -392,8 +392,15 @@ const welcomeHighlightList = computed(() => {
 })
 
 /**
- * 函数说明：计算右栏系统状态条百分比，作为环境健康度展示。
+ * 函数说明：将原始指标转换为可解释的进度状态，零值明确标记为暂无数据。
  */
+const createStatusProgress = (label: string, value: number, ratio: number): { label: string; percent: number; hasData: boolean } => {
+    if (value <= 0) {
+        return { label, percent: 0, hasData: false }
+    }
+    return { label, percent: Math.min(100, Math.round(value * ratio)), hasData: true }
+}
+
 const statusProgressList = computed(() => {
     const todayVisits = toNumber(workbenchData.today.todayVisits)
     const todayUsers = toNumber(workbenchData.today.todayUsers)
@@ -401,10 +408,10 @@ const statusProgressList = computed(() => {
     const todaySales = toNumber(workbenchData.today.todaySales)
 
     return [
-        { label: '访问健康度', percent: Math.min(100, Math.max(8, Math.round(todayVisits / 2))) },
-        { label: '用户增长度', percent: Math.min(100, Math.max(8, Math.round(todayUsers / 2))) },
-        { label: '订单转化度', percent: Math.min(100, Math.max(8, Math.round(todayOrder * 4))) },
-        { label: '营收完成度', percent: Math.min(100, Math.max(8, Math.round(todaySales / 5))) }
+        createStatusProgress('访问健康度', todayVisits, 0.5),
+        createStatusProgress('用户增长度', todayUsers, 0.5),
+        createStatusProgress('订单转化度', todayOrder, 4),
+        createStatusProgress('营收完成度', todaySales, 0.2)
     ]
 })
 

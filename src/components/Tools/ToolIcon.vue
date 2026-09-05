@@ -2,6 +2,7 @@
 * @file ToolIcon.vue
 * @description 工具图标组件，支持 SVG 和图片两种类型的图标展示
 * @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
 * @createDate 2024-1-10
 *
@@ -14,12 +15,12 @@
 -->
 
 <template>
-  <div class="tool-icon">
+  <div class="tool-icon" aria-hidden="true">
     <template v-if="typeof icon === 'object' && icon.type === 'svg' && icon.name && getSvgIcon(icon.name)">
       <div class="icon-wrapper" v-html="getSvgIcon(icon.name)?.content" />
     </template>
     <template v-else-if="typeof icon === 'string'">
-      <img :src="icon" class="icon-image" :alt="icon" />
+      <img :src="icon" class="icon-image" alt="" />
     </template>
     <template v-else>
       <div class="icon-placeholder">
@@ -38,6 +39,9 @@ interface Props {
 
 defineProps<Props>()
 
+/**
+ * 函数说明：按图标名称读取内置 SVG，未匹配时由模板显示占位图标。
+ */
 const getSvgIcon = (name: string) => {
   return toolIcons[name as keyof typeof toolIcons]
 }
@@ -46,19 +50,17 @@ const getSvgIcon = (name: string) => {
 <style scoped>
 .tool-icon {
   @apply w-10 h-10 min-h-[2.5rem] min-w-[2.5rem] rounded-full flex items-center justify-center;
-  background-color: rgba(108, 84, 255, 0.1);
-  color: #6C54FF;
-  transition: all 0.3s ease;
+  color: var(--uied-color-primary);
+  background-color: var(--uied-color-primary-soft);
+  transition: color var(--uied-motion-fast) ease, background-color var(--uied-motion-fast) ease;
 }
 
 .icon-wrapper {
   @apply w-6 h-6;
-  transition: all 0.3s ease;
 }
 
 .icon-image {
   @apply w-6 h-6 object-contain;
-  transition: all 0.3s ease;
 }
 
 .icon-placeholder {
@@ -68,14 +70,14 @@ const getSvgIcon = (name: string) => {
 :deep(svg) {
   width: 100%;
   height: 100%;
-  stroke: #6C54FF;
-  transition: all 0.3s ease;
+  stroke: currentColor;
+  transition: stroke var(--uied-motion-fast) ease;
 }
 
 :deep(svg path) {
   stroke-dasharray: 50;
   stroke-dashoffset: 0;
-  transition: all 0.3s ease;
+  transition: stroke-dashoffset var(--uied-motion-base) ease;
 }
 
 .tool-icon:hover :deep(svg path) {

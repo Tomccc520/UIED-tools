@@ -14,6 +14,7 @@ import (
 var InitFunctions = []interface{}{
 	// common
 	common.NewAlbumService,
+	common.NewCopywritingService,
 	common.NewFrontendUserService,
 	common.NewIndexService,
 	common.NewToolRankingService,

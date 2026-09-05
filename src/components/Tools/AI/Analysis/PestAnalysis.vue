@@ -8,152 +8,79 @@
  -->
 
 <template>
-  <div class="min-h-screen">
-    <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <div class="text-center mb-10 relative">
-          <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-            <div class="w-64 h-64 bg-sky-400 rounded-full blur-3xl"></div>
-            <div class="w-64 h-64 bg-cyan-400 rounded-full blur-3xl -ml-20"></div>
-          </div>
-          <h2
-            class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-sky-500 to-cyan-500">
-            免费 PEST分析
-          </h2>
-          <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">智能生成PEST宏观环境分析，涵盖政治、经济、社会与技术四大维度</p>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
-              <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
-                <span class="w-8 h-8 rounded-lg bg-sky-100 text-sky-600 flex items-center justify-center mr-3">
-                  <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </span>
-                分析信息
-              </h3>
-
-              <div class="space-y-5">
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">分析对象 <span
-                      class="text-red-500">*</span></label>
-                  <el-input v-model="form.target" placeholder="例如：跨境电商行业、某公司出海战略" size="large" clearable
-                    class="custom-input" />
-                </div>
-
-                <div>
-                  <label class="block text-sm font-medium text-gray-700 mb-2">背景信息</label>
-                  <el-input v-model="form.background" type="textarea" :rows="3"
-                    placeholder="补充相关的背景信息，如行业现状、目标市场等..." class="custom-input" />
-                </div>
-
-                <div class="pt-4">
-                  <button @click="generateContent" :disabled="isGenerating || !form.target"
-                    class="group w-full py-3.5 px-4 bg-gradient-to-r from-sky-500 to-cyan-500 hover:from-sky-600 hover:to-cyan-600 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-sky-500/30 hover:shadow-sky-500/40 transform active:scale-[0.98]">
-                    <span v-if="!isGenerating" class="flex items-center">
-                      <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                          d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                      开始分析
-                    </span>
-                    <span v-else class="flex items-center">
-                      <svg class="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none"
-                        viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-                        </circle>
-                        <path class="opacity-75" fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                        </path>
-                      </svg>
-                      AI正在分析中...
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </div>
+  <div class="pest-page">
+    <AIToolPageTemplate
+      title="PEST 宏观环境分析"
+      description="围绕政治、经济、社会与技术四个维度建立结构化判断，适用于市场进入、战略规划和外部环境研究。"
+      input-title="定义分析任务"
+      result-title="PEST 分析报告"
+      :is-busy="isGenerating"
+      :has-result="Boolean(resultText)"
+    >
+      <template #input>
+        <div class="pest-fields">
+          <div>
+            <label for="pest-target">分析对象 <span aria-hidden="true">*</span></label>
+            <el-input id="pest-target" v-model="form.target" placeholder="例如：跨境电商行业、某公司出海战略" size="large"
+              clearable class="custom-input" />
+            <p>写清行业、组织或具体战略，结果会更聚焦。</p>
           </div>
 
-          <div class="lg:col-span-8">
-            <div class="border border-gray-200 rounded-xl overflow-hidden flex flex-col h-[900px] bg-white shadow-sm">
-              <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                <div class="flex items-center space-x-3">
-                  <div class="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                  </div>
-                  <h3 class="font-medium text-gray-700">分析报告</h3>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  <button v-if="resultText && mode !== 'preview'" @click="copyResult"
-                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                    </svg>
-                    复制Markdown
-                  </button>
-                  <button v-if="resultText" @click="copyPreviewHtml"
-                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-green-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    复制预览样式
-                  </button>
-                  <button v-if="resultText" @click="clearResult"
-                    class="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    清空
-                  </button>
-                </div>
-              </div>
-
-              <div class="px-3 py-2 border-b border-gray-100 bg-gray-50 flex flex-wrap gap-2">
-                <button @click="handleAiAssist('strategy')" :disabled="isGenerating || !resultText"
-                  class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-sky-50 hover:text-sky-600 hover:border-sky-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <svg class="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  生成战略建议
-                </button>
-              </div>
-
-              <div class="flex-1 relative bg-white min-h-0">
-                <template v-if="showResultEditor">
-                  <v-md-editor v-model="resultText" height="100%" :mode="mode" placeholder="AI生成的PEST分析报告将在这里显示..."
-                    :disabled-menus="[]" @save="save"></v-md-editor>
-                </template>
-                <template v-else>
-                  <div class="h-full flex flex-col items-center justify-center text-gray-500 bg-gray-50/70">
-                    <p class="text-sm mb-1">点击“开始生成”后将自动加载编辑器并显示结果</p>
-                    <p class="text-xs text-gray-400">无需额外操作</p>
-                  </div>
-                </template>
-              </div>
-            </div>
+          <div>
+            <label for="pest-background">背景信息</label>
+            <el-input id="pest-background" v-model="form.background" type="textarea" :rows="5"
+              placeholder="补充目标市场、发展阶段、当前挑战等背景信息…" class="custom-input" />
           </div>
         </div>
-        <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
-          <h3 class="text-lg font-semibold text-gray-800 mb-4">使用说明</h3>
-          <ul class="space-y-2 list-disc list-inside text-gray-600 text-sm">
-            <li>输入分析对象和背景信息，AI将为您生成PEST分析报告。</li>
-            <li>报告从政治(Political)、经济(Economic)、社会(Social)、技术(Technological)四个维度进行深入剖析。</li>
-            <li>适用于宏观环境分析、市场进入决策、战略规划等场景。</li>
-          </ul>
+      </template>
+
+      <template #primary-action>
+        <button type="button" @click="generateContent" :disabled="isGenerating || !form.target"
+          class="pest-primary-action">
+          <svg v-if="!isGenerating" aria-hidden="true" viewBox="0 0 24 24">
+            <path d="M13 2 4 14h7v8l9-12h-7V2Z" />
+          </svg>
+          <span v-else class="pest-spinner" aria-hidden="true"></span>
+          {{ isGenerating ? 'AI 正在分析…' : '开始分析' }}
+        </button>
+      </template>
+
+      <template #result-actions>
+        <button type="button" @click="copyResult" :disabled="!resultText || mode === 'preview'"
+          class="pest-toolbar-button">复制 Markdown</button>
+        <button type="button" @click="copyPreviewHtml" :disabled="!resultText"
+          class="pest-toolbar-button">复制预览样式</button>
+        <button type="button" @click="clearResult" :disabled="!resultText"
+          class="pest-toolbar-button pest-toolbar-button--danger">清空</button>
+      </template>
+
+      <template #assist-actions>
+        <button type="button" @click="handleAiAssist('strategy')" :disabled="isGenerating || !resultText"
+          class="pest-assist-button">基于报告生成战略建议</button>
+      </template>
+
+      <template #result>
+        <v-md-editor v-if="showResultEditor" v-model="resultText" height="100%" :mode="mode"
+          placeholder="AI 生成的 PEST 分析报告将在这里显示…" :disabled-menus="[]" @save="save"></v-md-editor>
+        <div v-else class="pest-empty">
+          <div class="pest-empty__diagram" aria-hidden="true">
+            <span>P</span><span>E</span><span>S</span><span>T</span>
+          </div>
+          <strong>报告区等待任务</strong>
+          <p>填写左侧分析对象，AI 将按四个环境维度生成可继续编辑的 Markdown 报告。</p>
         </div>
-      </div>
-    </div>
+      </template>
+
+      <template #guide>
+        <h2>如何得到更准确的分析</h2>
+        <ul>
+          <li>分析对象尽量包含行业、地区或业务阶段。</li>
+          <li>背景信息可补充目标市场、竞争格局和当前决策。</li>
+          <li>生成后可继续编辑，并让 AI 基于报告提出战略建议。</li>
+        </ul>
+      </template>
+    </AIToolPageTemplate>
+
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
@@ -164,6 +91,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { downloadMarkdownResult } from '@/utils/markdownResult'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import AIToolPageTemplate from '@/components/Common/PageTemplates/AIToolPageTemplate.vue'
 import { generateAIWriting } from '@/services/ai'
 
 const route = useRoute()
@@ -272,7 +200,7 @@ ${form.background ? `背景信息：${form.background}` : ''}
       temperature: 0.7
     }, (content) => {
       appendResultChunk(content)
-        })
+    })
     forceFlushPendingResultChunk()
 
     ElMessage.success('生成完成')
@@ -307,7 +235,7 @@ const handleAiAssist = async (type: string) => {
       systemPrompt: '你是一个资深的战略分析师，擅长运用PEST模型进行宏观环境分析。'
     }, (chunk) => {
       appendResultChunk(chunk)
-        })
+    })
     forceFlushPendingResultChunk()
   } catch (error) {
     forceFlushPendingResultChunk()
@@ -372,16 +300,227 @@ const save = (text: string, _html: string) => {
 </script>
 
 <style scoped>
+.pest-page {
+  width: 100%;
+}
+
+.pest-page :deep(.tools-recommend) {
+  margin-top: 18px;
+}
+
+.pest-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+
+.pest-fields label {
+  display: block;
+  margin-bottom: 8px;
+  color: #303747;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.pest-fields label span {
+  color: var(--uied-color-danger);
+}
+
+.pest-fields p {
+  margin: 8px 0 0;
+  color: #858c9b;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .custom-input :deep(.el-input__wrapper) {
-  box-shadow: 0 0 0 1px #e5e7eb inset;
+  min-height: 44px;
   padding: 8px 12px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #d8dce5 inset;
+  background: rgb(255 255 255 / 92%);
 }
 
 .custom-input :deep(.el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 2px #0ea5e9 inset;
+  box-shadow: 0 0 0 2px var(--uied-color-primary) inset;
+}
+
+.custom-input :deep(.el-textarea__inner) {
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 0 0 1px #d8dce5 inset;
+  background: rgb(255 255 255 / 92%);
+}
+
+.custom-input :deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 2px var(--uied-color-primary) inset;
+}
+
+.pest-primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  width: 100%;
+  min-height: 46px;
+  padding: 11px 16px;
+  border: 1px solid var(--uied-color-primary);
+  border-radius: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  background: var(--uied-color-primary);
+  box-shadow: 0 9px 20px rgb(91 84 232 / 18%);
+  transition: background-color var(--uied-motion-fast) ease, border-color var(--uied-motion-fast) ease, transform var(--uied-motion-fast) ease;
+}
+
+.pest-primary-action:hover:not(:disabled) {
+  border-color: var(--uied-color-primary-hover);
+  background: var(--uied-color-primary-hover);
+  transform: translateY(-1px);
+}
+
+.pest-primary-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+}
+
+.pest-primary-action svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.pest-spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid rgb(255 255 255 / 38%);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: pest-spin 0.8s linear infinite;
+}
+
+.pest-toolbar-button,
+.pest-assist-button {
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #dde0e8;
+  border-radius: 7px;
+  color: #525a6b;
+  font-size: 11px;
+  font-weight: 650;
+  background: #fff;
+  transition: color var(--uied-motion-fast) ease, border-color var(--uied-motion-fast) ease, background-color var(--uied-motion-fast) ease;
+}
+
+.pest-toolbar-button:hover:not(:disabled),
+.pest-assist-button:hover:not(:disabled) {
+  color: var(--uied-color-primary);
+  border-color: var(--uied-color-primary);
+  background: #f7f6ff;
+}
+
+.pest-toolbar-button--danger:hover:not(:disabled) {
+  color: var(--uied-color-danger);
+  border-color: rgb(217 45 32 / 36%);
+  background: rgb(217 45 32 / 5%);
+}
+
+.pest-toolbar-button:disabled,
+.pest-assist-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.pest-assist-button {
+  color: var(--uied-color-primary);
+  border-color: rgb(91 84 232 / 22%);
+}
+
+.pest-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 520px;
+  padding: 40px 24px;
+  text-align: center;
+  background:
+    linear-gradient(90deg, rgb(17 24 39 / 3%) 1px, transparent 1px),
+    linear-gradient(rgb(17 24 39 / 3%) 1px, transparent 1px),
+    #fcfcfd;
+  background-size: 30px 30px;
+}
+
+.pest-empty__diagram {
+  display: grid;
+  grid-template-columns: repeat(2, 48px);
+  gap: 5px;
+  margin-bottom: 22px;
+  transform: rotate(-2deg);
+}
+
+.pest-empty__diagram span {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid #cfd3dc;
+  color: #788092;
+  font-family: "DIN Alternate", "Avenir Next Condensed", sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  background: rgb(255 255 255 / 88%);
+}
+
+.pest-empty__diagram span:nth-child(2),
+.pest-empty__diagram span:nth-child(3) {
+  color: #fff;
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary);
+}
+
+.pest-empty strong {
+  color: #252b38;
+  font-size: 17px;
+}
+
+.pest-empty p {
+  max-width: 420px;
+  margin: 10px 0 0;
+  color: #7b8292;
+  font-size: 13px;
+  line-height: 1.75;
+}
+
+.pest-page :deep(.ai-tool-guide__content h2) {
+  margin: 0 0 12px;
+  color: #242b39;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.pest-page :deep(.ai-tool-guide__content ul) {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pest-page :deep(.ai-tool-guide__content li) {
+  padding-left: 12px;
+  border-left: 2px solid #dfe2ea;
+  color: #697183;
+  font-size: 12px;
+  line-height: 1.65;
 }
 
 :deep(.v-md-editor) {
+  height: 100% !important;
   box-shadow: none;
   border: none;
 }
@@ -401,7 +540,7 @@ const save = (text: string, _html: string) => {
   font-size: 14px;
 }
 
-@keyframes spin {
+@keyframes pest-spin {
   from {
     transform: rotate(0deg);
   }
@@ -411,7 +550,13 @@ const save = (text: string, _html: string) => {
   }
 }
 
-.animate-spin {
-  animation: spin 1s linear infinite;
+@media (max-width: 720px) {
+  .pest-empty {
+    min-height: 430px;
+  }
+
+  .pest-page :deep(.ai-tool-guide__content ul) {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

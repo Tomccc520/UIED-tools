@@ -133,7 +133,7 @@ const bannerSlides = computed(() => [
 const bannerMetricList = computed(() => [
     { label: 'UI 库', value: 'Arco Pro' },
     { label: '后台能力', value: 'Go API' },
-    { label: '当前版本', value: 'v3.0.1' }
+    { label: '当前版本', value: 'v3.0.3' }
 ])
 </script>
 

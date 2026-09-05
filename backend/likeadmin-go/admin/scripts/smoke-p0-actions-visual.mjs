@@ -255,7 +255,7 @@ const prepareFrontendLayoutUnsaved = async (page) => {
   await page.waitForFunction(
     () => {
       const bodyText = document.body?.innerText || ''
-      return bodyText.includes('顶部Banner') && bodyText.includes('每日学习')
+      return bodyText.includes('每日学习') && bodyText.includes('首页每日学习 RSS')
     },
     undefined,
     { timeout: actionTimeout }
@@ -269,24 +269,8 @@ const prepareFrontendLayoutUnsaved = async (page) => {
   ) {
     return
   }
-  const bannerModule = page.getByText('顶部Banner', { exact: true }).first()
-  if (await bannerModule.isVisible({ timeout: 1000 }).catch(() => false)) {
-    await bannerModule.click({ timeout: actionTimeout })
-  }
-  const firstBannerTextInput = page
-    .locator('.banner-row input[placeholder*="文案"], input[placeholder*="免费AI编程工具"]')
-    .first()
-  const isBannerTextVisible = await firstBannerTextInput.isVisible({ timeout: actionTimeout }).catch(() => false)
-  if (isBannerTextVisible) {
-    const currentValue = await firstBannerTextInput.inputValue()
-    const nextValue = currentValue.endsWith(' Playwright')
-      ? currentValue.replace(/\s+Playwright$/, '')
-      : `${currentValue || 'Playwright 可视冒烟'} Playwright`
-    await firstBannerTextInput.fill(nextValue)
-    await firstBannerTextInput.press('Tab').catch(() => undefined)
-  } else {
-    await page.locator('button', { hasText: '新增轮播' }).first().click({ timeout: actionTimeout })
-  }
+  const learningSwitch = page.locator('[data-admin-smoke="frontend-layout-learning-enabled"]').first()
+  await learningSwitch.click({ timeout: actionTimeout })
   await page.waitForSelector('[data-admin-smoke="frontend-layout-save-floating"]', {
     state: 'visible',
     timeout: actionTimeout

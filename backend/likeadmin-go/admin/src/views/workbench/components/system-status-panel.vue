@@ -26,9 +26,9 @@
             <div v-for="item in statusProgressList" :key="item.label" class="status-progress-item">
                 <div class="status-progress-head">
                     <span>{{ item.label }}</span>
-                    <span>{{ item.percent }}%</span>
+                    <span>{{ item.hasData ? `${item.percent}%` : '暂无数据' }}</span>
                 </div>
-                <a-progress :percent="item.percent" :show-text="false" :stroke-width="8" />
+                <a-progress :percent="item.hasData ? item.percent : 0" :show-text="false" :stroke-width="8" />
             </div>
         </div>
     </a-card>
@@ -43,6 +43,7 @@ interface EnvironmentInfoItem {
 interface StatusProgressItem {
     label: string
     percent: number
+    hasData: boolean
 }
 
 const props = defineProps<{

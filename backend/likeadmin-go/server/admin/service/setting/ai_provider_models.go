@@ -52,7 +52,7 @@ func (aSrv settingAiModelService) FetchProviderModels(fetchReq req.SettingAiProv
 	}
 	request.Header.Set("Authorization", "Bearer "+apiKey)
 	request.Header.Set("Accept", "application/json")
-	request.Header.Set("User-Agent", "UIED-Tools/3.0.1")
+	request.Header.Set("User-Agent", "UIED-Tools/3.0.3")
 
 	client := &http.Client{Timeout: 20 * time.Second}
 	upstreamResp, err := client.Do(request)

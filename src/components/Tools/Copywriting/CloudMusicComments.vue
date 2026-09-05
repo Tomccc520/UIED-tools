@@ -2,6 +2,7 @@
 * @file CloudMusicComments.vue
 * @description 网易云热评生成器
 * @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
 * @createDate 2025-1-9
 *
@@ -16,14 +17,13 @@
   <div class="min-h-screen">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-5 sm:p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300 cursor-pointer"
-                @click="getRandomComment">网易云热评</span>
+          <h1 class="text-3xl sm:text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="relative px-4 sm:px-12">
+              <span class="text-gray-800">网易云热评</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">每次都能获取一条走心的网易云热评</p>
         </div>
 
@@ -40,12 +40,12 @@
 
         <!-- 操作按钮区域 -->
         <div class="flex justify-center gap-4">
-          <button @click="getRandomComment"
+          <button type="button" aria-label="换一条网易云热评" @click="getRandomComment"
             class="inline-flex items-center px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg text-base transition-colors">
             <div ref="refreshContainer" class="w-6 h-6 mr-2"></div>
             换一条
           </button>
-          <button @click="copyText"
+          <button type="button" @click="copyText"
             class="inline-flex items-center px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-base transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -108,7 +108,7 @@
 
         <!-- 常见问题解答 -->
         <div class="mt-12">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">常见问题</h3>
+          <h2 class="text-xl font-semibold text-gray-900 mb-6">常见问题</h2>
           <div class="space-y-6">
             <div class="pb-6 border-b border-gray-200 last:border-0">
               <h4 class="text-base font-medium text-gray-900 mb-3">热评内容从哪里来？</h4>
@@ -156,6 +156,7 @@ import { ref, onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { copy } from '@/utils/copy'
+import { fetchCopywritingText } from '@/services/copywriting'
 
 // Declare lottie for TypeScript
 declare const lottie: any
@@ -268,8 +269,7 @@ const typeText = (text: string) => {
 }
 
 /**
- * 获取随机网易云热评
- * API: https://zj.v.api.aa1.cn/api/wenan-wy/
+ * 函数说明：通过同域 Go API 获取随机网易云热评，同时保留歌曲来源信息。
  */
 const getRandomComment = async () => {
   try {
@@ -279,17 +279,13 @@ const getRandomComment = async () => {
     }
 
     try {
-      const response = await fetch('https://zj.v.api.aa1.cn/api/wenan-wy/?type=json')
-      const data = await response.json()
-      if (data && data.text) {
-        currentComment.value = data.text
-        currentSong.value = data.from || '网易云音乐'
-        // 触发文字生成效果
-        typeText(data.text)
-        return
-      }
+      const result = await fetchCopywritingText('cloud-music')
+      currentComment.value = result.text
+      currentSong.value = result.from || '网易云音乐'
+      typeText(result.text)
+      return
     } catch (error) {
-      console.log('API请求失败,使用本地数据')
+      console.log('同域网易云热评接口请求失败，使用本地数据:', error)
     }
 
     // 如果API失败,使用本地数据

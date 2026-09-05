@@ -1,0 +1,201 @@
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-09-05
+ */
+
+/* 后台交互基线：用清晰层级、稳定点击区域和克制强调色统一高频运营页面。 */
+:root {
+    --uied-admin-accent: #315bd8;
+    --uied-admin-accent-soft: #eef3ff;
+    --uied-admin-ink: #182230;
+    --uied-admin-muted: #718096;
+    --uied-admin-surface: #ffffff;
+    --uied-admin-canvas: #f4f6fa;
+    --uied-admin-border: #e4e9f2;
+    --uied-admin-radius: 12px;
+}
+
+.layout {
+    background: var(--uied-admin-canvas) !important;
+}
+
+.layout-navbar,
+.header-wrap,
+.navbar {
+    background: rgba(255, 255, 255, 0.96) !important;
+    backdrop-filter: blur(12px);
+}
+
+.navbar {
+    padding: 0 18px;
+    border-bottom-color: var(--uied-admin-border) !important;
+}
+
+.nav-btn {
+    width: 36px !important;
+    height: 36px !important;
+    border-color: transparent !important;
+    color: var(--uied-admin-muted) !important;
+    transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease;
+}
+
+.nav-btn:hover,
+.nav-btn:focus-visible {
+    color: var(--uied-admin-accent) !important;
+    background: var(--uied-admin-accent-soft) !important;
+    border-color: #d8e2ff !important;
+}
+
+.layout-sider {
+    background: var(--uied-admin-surface) !important;
+    box-shadow: 8px 0 24px rgba(35, 48, 76, 0.04);
+}
+
+.side {
+    padding: 10px 8px;
+    background: var(--uied-admin-surface) !important;
+}
+
+.side :deep(.arco-menu) {
+    background: transparent !important;
+}
+
+.side :deep(.arco-menu-item),
+.side :deep(.arco-menu-inline-header) {
+    min-height: 40px;
+    margin: 3px 0;
+    border-radius: 9px;
+    color: #536174;
+    transition: color 160ms ease, background-color 160ms ease;
+}
+
+.side :deep(.arco-menu-item:hover),
+.side :deep(.arco-menu-inline-header:hover) {
+    color: var(--uied-admin-accent);
+    background: #f5f7fc;
+}
+
+.side :deep(.arco-menu-item.arco-menu-selected),
+.side :deep(.arco-menu-inline-header.arco-menu-selected) {
+    color: var(--uied-admin-accent);
+    background: var(--uied-admin-accent-soft);
+    font-weight: 600;
+}
+
+.side :deep(.arco-menu-item.arco-menu-selected::before) {
+    left: 0;
+    width: 3px;
+    height: 18px;
+    border-radius: 0 3px 3px 0;
+    background: var(--uied-admin-accent);
+}
+
+.layout-content {
+    background: var(--uied-admin-canvas) !important;
+}
+
+.workbench-page {
+    color: var(--uied-admin-ink);
+}
+
+.workbench-page .arco-card,
+.workbench-page .panel {
+    border: 1px solid var(--uied-admin-border) !important;
+    border-radius: var(--uied-admin-radius) !important;
+    box-shadow: 0 8px 24px rgba(35, 48, 76, 0.035) !important;
+}
+
+.workbench-page .arco-card-header {
+    min-height: 52px;
+    border-bottom-color: #edf0f5;
+}
+
+.workbench-page .arco-card-header-title {
+    color: var(--uied-admin-ink);
+    font-weight: 700;
+}
+
+/* 函数说明：将页面级加载容器撑满可用宽度，避免 Arco 行内 spin 收缩配置表单。 */
+.pro-page-shell > .arco-spin {
+    display: block;
+    width: 100%;
+}
+
+.website-frontend-layout .layout-main-card,
+.website-tools-catalog .page-card {
+    width: 100%;
+}
+
+@media (max-width: 900px) {
+    .navbar {
+        padding: 0 12px;
+    }
+
+    .side {
+        padding: 12px;
+    }
+}
+
+/* 函数说明：为窄屏收敛顶部操作数量，避免品牌、导航按钮和用户菜单互相遮挡。 */
+@media (max-width: 600px) {
+    .left-side {
+        gap: 8px !important;
+        padding-left: 0 !important;
+    }
+
+    .left-brand {
+        max-width: 74px;
+        overflow: hidden;
+    }
+
+    .left-brand .brand-copy {
+        display: none;
+    }
+
+    .right-side {
+        gap: 0;
+    }
+
+    .right-side li {
+        padding: 0 2px !important;
+    }
+
+    .right-side li:nth-child(1),
+    .right-side li:nth-child(3) {
+        display: none;
+    }
+
+    .website-frontend-layout .layout-page-header .arco-page-header-subtitle {
+        display: none;
+    }
+}
+
+/* 函数说明：移动端固定表单标签列宽，避免中文标签逐字换行挤压输入控件。 */
+@media (max-width: 920px) {
+    .website-frontend-layout .compact-form .arco-form-item-label-col,
+    .website-tools-catalog .compact-form .arco-form-item-label-col {
+        flex: 0 0 88px;
+        width: 88px;
+        max-width: 88px;
+    }
+
+    .website-frontend-layout .compact-form .arco-form-item-label,
+    .website-tools-catalog .compact-form .arco-form-item-label {
+        flex: 0 0 88px;
+        width: 88px;
+        padding-right: 12px;
+    }
+
+    .website-frontend-layout .compact-form .arco-form-item-wrapper,
+    .website-tools-catalog .compact-form .arco-form-item-wrapper {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .website-frontend-layout .layout-page-header .arco-page-header-subtitle {
+        max-width: 100%;
+        white-space: normal;
+    }
+}

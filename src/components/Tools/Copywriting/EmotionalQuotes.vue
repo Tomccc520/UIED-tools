@@ -2,6 +2,7 @@
 * @file EmotionalQuotes.vue
 * @description 随机一言生成器
 * @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
 * @createDate 2025-1-9
 *
@@ -13,37 +14,34 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="quotes-page">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="quotes-shell uied-tool-card bg-white border border-gray-100 mb-4">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300 cursor-pointer"
-                @click="getRandomQuote">随机一言</span>
-            </div>
-          </h2>
-          <p class="text-gray-500 text-sm mt-6">每次随机获取一条精选一言</p>
+          <h1 class="text-2xl sm:text-[32px] font-bold mb-3">随机一言</h1>
+          <p class="text-gray-500 text-sm">每次随机获取一条精选一言</p>
         </div>
 
         <!-- 语录展示区域 -->
-        <div class="bg-gray-50 rounded-lg p-6 mb-6" style="min-height: 300px;">
+        <div class="quote-panel mb-6">
           <div class="text-center">
-            <p class="text-gray-700 leading-relaxed typing-text text-lg transition-all duration-300">{{ displayText }}
+            <p class="text-gray-700 leading-relaxed typing-text text-lg" :class="{ 'is-typing': isTyping }"
+              role="status" aria-live="polite" aria-atomic="true">
+              {{ isLoading ? '正在获取语录…' : displayText }}
             </p>
           </div>
         </div>
 
         <!-- 操作按钮区域 -->
-        <div class="flex justify-center gap-4">
-          <button @click="getRandomQuote"
-            class="inline-flex items-center px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-base transition-colors">
-            <div ref="refreshContainer" class="w-6 h-6 mr-2"></div>
-            换一个
+        <div class="quote-actions">
+          <button type="button" @click="getRandomQuote" :disabled="isLoading || isTyping" class="quote-action quote-action--primary"
+            aria-label="换一条随机一言">
+            <div ref="refreshContainer" class="w-6 h-6 mr-2" aria-hidden="true"></div>
+            {{ isLoading || isTyping ? '获取中…' : '换一个' }}
           </button>
-          <button @click="copyText"
-            class="inline-flex items-center px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-base transition-colors">
+          <button type="button" @click="copyText" :disabled="!currentQuote" class="quote-action quote-action--quiet"
+            aria-label="复制当前随机一言">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -64,10 +62,10 @@
                       d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                   </svg>
                 </div>
-                <h4 class="text-base font-medium text-gray-900">智能推荐</h4>
+                <h4 class="text-base font-medium text-gray-900">多源可用</h4>
               </div>
               <p class="text-sm text-gray-600 leading-relaxed">
-                智能算法推荐，每次都能获取一条富有感情的语录
+                后台统一请求上游，异常时自动切换本地精选语录
               </p>
             </div>
 
@@ -110,7 +108,7 @@
             <div class="pb-6 border-b border-gray-200 last:border-0">
               <h4 class="text-base font-medium text-gray-900 mb-3">语录内容从哪里来？</h4>
               <p class="text-sm text-gray-600 leading-relaxed">
-                所有语录均来自项目内置精选语录库，经过筛选和整理，确保内容稳定可用。
+                优先由后台同域接口获取公开语录，上游异常时会自动使用项目内置精选语录。
               </p>
             </div>
             <div class="pb-6 border-b border-gray-200 last:border-0">
@@ -135,7 +133,7 @@
       <!-- 提示信息 -->
       <div v-if="showToast"
         class="fixed top-4 right-4 px-4 py-2 rounded-lg text-sm text-white shadow-lg transition-all duration-300"
-        :class="toastType === 'success' ? 'bg-green-500' : 'bg-red-500'">
+        :class="toastType === 'success' ? 'bg-green-500' : 'bg-red-500'" role="status" aria-live="polite">
         {{ toastMessage }}
       </div>
     </div>
@@ -143,10 +141,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from '@vue/runtime-core'
+import { onBeforeUnmount, onMounted, ref } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { copy } from '@/utils/copy'
+import { fetchCopywritingText } from '@/services/copywriting'
 
 declare const lottie: any
 
@@ -213,14 +212,19 @@ const toastType = ref('success')
 const refreshContainer = ref<HTMLElement | null>(null)
 let refreshAnimation: any = null
 const displayText = ref('')
-const textContainer = ref<HTMLElement | null>(null)
+const isLoading = ref(false)
+const isTyping = ref(false)
 let typingTimer: number | null = null
+let toastTimer: number | null = null
+let lottieScript: HTMLScriptElement | null = null
+let quoteRequestId = 0
 
 const refreshAnimationData = { "v": "5.6.5", "fr": 30, "ip": 0, "op": 60, "w": 32, "h": 32, "nm": "refresh-cw", "ddd": 0, "assets": [], "layers": [{ "ddd": 0, "ind": 1, "ty": 4, "nm": "refresh-cw", "sr": 1, "ks": { "o": { "a": 0, "k": 100, "ix": 11 }, "r": { "a": 1, "k": [{ "i": { "x": [0.7], "y": [1] }, "o": { "x": [0.7], "y": [0] }, "t": 0, "s": [0] }, { "i": { "x": [0.7], "y": [1] }, "o": { "x": [0.7], "y": [0] }, "t": 10, "s": [-20] }, { "i": { "x": [0.355], "y": [1] }, "o": { "x": [0.334], "y": [0] }, "t": 13, "s": [-20] }, { "t": 59, "s": [720] }], "ix": 10 }, "p": { "a": 0, "k": [16, 16, 0], "ix": 2 }, "a": { "a": 0, "k": [16, 16, 0], "ix": 1 }, "s": { "a": 0, "k": [100, 100, 100], "ix": 6 } }, "ao": 0, "shapes": [{ "ty": "gr", "it": [{ "ind": 0, "ty": "sh", "ix": 1, "ks": { "a": 0, "k": { "i": [[0, 0], [0, 0], [-3.5, 3.5], [-0.4, 1.3]], "o": [[0, 0], [3.5, 3.5], [0.9, -0.9], [0, 0]], "v": [[-11, 2.1], [-6.4, 6.5], [6.3, 6.5], [8.4, 3.1]], "c": false }, "ix": 2 }, "nm": "Path 1", "mn": "ADBE Vector Shape - Group", "hd": false }, { "ind": 1, "ty": "sh", "ix": 2, "ks": { "a": 0, "k": { "i": [[0, 0], [-4.7, -1.6], [-1, -0.9], [0, 0]], "o": [[1.7, -4.7], [1.3, 0.4], [0, 0], [0, 0]], "v": [[-8.5, -2.9], [3, -8.4], [6.4, -6.3], [11, -1.9]], "c": false }, "ix": 2 }, "nm": "Path 2", "mn": "ADBE Vector Shape - Group", "hd": false }, { "ind": 2, "ty": "sh", "ix": 3, "ks": { "a": 0, "k": { "i": [[0, 0], [0, 0], [0, 0]], "o": [[0, 0], [0, 0], [0, 0]], "v": [[-11, 8.1], [-11, 2.1], [-5, 2.1]], "c": false }, "ix": 2 }, "nm": "Path 3", "mn": "ADBE Vector Shape - Group", "hd": false }, { "ind": 3, "ty": "sh", "ix": 4, "ks": { "a": 0, "k": { "i": [[0, 0], [0, 0], [0, 0]], "o": [[0, 0], [0, 0], [0, 0]], "v": [[11, -7.9], [11, -1.9], [5, -1.9]], "c": false }, "ix": 2 }, "nm": "Path 4", "mn": "ADBE Vector Shape - Group", "hd": false }, { "ty": "mm", "mm": 1, "nm": "Merge Paths 1", "mn": "ADBE Vector Filter - Merge", "hd": false }, { "ty": "st", "c": { "a": 0, "k": [1, 1, 1, 1], "ix": 3 }, "o": { "a": 0, "k": 100, "ix": 4 }, "w": { "a": 0, "k": 2, "ix": 5 }, "lc": 2, "lj": 2, "bm": 0, "nm": "Stroke 1", "mn": "ADBE Vector Graphic - Stroke", "hd": false }, { "ty": "tr", "p": { "a": 0, "k": [16, 15.9], "ix": 2 }, "a": { "a": 0, "k": [0, 0], "ix": 1 }, "s": { "a": 0, "k": [100, 100], "ix": 3 }, "r": { "a": 0, "k": 0, "ix": 6 }, "o": { "a": 0, "k": 100, "ix": 7 }, "sk": { "a": 0, "k": 0, "ix": 4 }, "sa": { "a": 0, "k": 0, "ix": 5 }, "nm": "Transform" }], "nm": "arrow", "np": 6, "cix": 2, "bm": 0, "ix": 1, "mn": "ADBE Vector Group", "hd": false }], "ip": 0, "op": 60, "st": 0, "bm": 0 }], "markers": [] }
 
 onMounted(() => {
   // 动态加载lottie-web
   const script = document.createElement('script')
+  lottieScript = script
   script.src = 'https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js'
   script.onload = () => {
     // 初始化刷新动画
@@ -237,19 +241,28 @@ onMounted(() => {
   document.head.appendChild(script)
 })
 
+/**
+ * 函数说明：显示有时限的操作反馈，新消息会覆盖上一个计时器。
+ */
 const showMessage = (message: string, type: 'success' | 'error') => {
   toastMessage.value = message
   toastType.value = type
   showToast.value = true
-  setTimeout(() => {
+  if (toastTimer) {
+    window.clearTimeout(toastTimer)
+  }
+  toastTimer = window.setTimeout(() => {
     showToast.value = false
   }, 2000)
 }
 
-// 文字生成效果函数
+/**
+ * 函数说明：逐字展示语录，开始新任务前会清理上一个打字计时器。
+ */
 const typeText = (text: string) => {
   let index = 0
   displayText.value = ''
+  isTyping.value = true
 
   // 清除之前的定时器
   if (typingTimer) {
@@ -263,25 +276,48 @@ const typeText = (text: string) => {
     } else {
       if (typingTimer) {
         clearInterval(typingTimer)
+        typingTimer = null
       }
+      isTyping.value = false
     }
   }, 50) // 每个字符的打印间隔，可以调整
 }
 
 /**
- * 函数说明：从项目内置精选语录库中随机切换内容，避免失效公共接口拖慢工具响应。
+ * 函数说明：从同域后台获取随机一言，上游或网络异常时回退本地语录，并忽略过期响应。
  */
-const getRandomQuote = () => {
+const getRandomQuote = async () => {
+  const requestId = ++quoteRequestId
+  isLoading.value = true
   if (refreshAnimation) {
     refreshAnimation.goToAndPlay(0)
   }
 
-  const randomIndex = Math.floor(Math.random() * localInspiringQuotes.length)
-  const quote = localInspiringQuotes[randomIndex]
-  currentQuote.value = quote
-  typeText(quote)
+  try {
+    const result = await fetchCopywritingText('yiyan')
+    if (requestId !== quoteRequestId) {
+      return
+    }
+    currentQuote.value = result.text
+    typeText(result.text)
+  } catch {
+    if (requestId !== quoteRequestId) {
+      return
+    }
+    const randomIndex = Math.floor(Math.random() * localInspiringQuotes.length)
+    const quote = localInspiringQuotes[randomIndex]
+    currentQuote.value = quote
+    typeText(quote)
+  } finally {
+    if (requestId === quoteRequestId) {
+      isLoading.value = false
+    }
+  }
 }
 
+/**
+ * 函数说明：复制当前完整语录，并显示成功或失败反馈。
+ */
 const copyText = async () => {
   try {
     const success = await copy(currentQuote.value)
@@ -298,9 +334,82 @@ const copyText = async () => {
 
 // 初始化时生成一条文案
 getRandomQuote()
+
+onBeforeUnmount(() => {
+  quoteRequestId++
+  if (typingTimer) {
+    window.clearInterval(typingTimer)
+  }
+  isTyping.value = false
+  if (toastTimer) {
+    window.clearTimeout(toastTimer)
+  }
+  refreshAnimation?.destroy?.()
+  lottieScript?.remove()
+})
 </script>
 
 <style scoped>
+.quotes-page {
+  width: 100%;
+}
+
+.quotes-shell {
+  padding: clamp(20px, 4vw, 32px);
+}
+
+.quote-panel {
+  min-height: 200px;
+  display: grid;
+  place-items: center;
+  padding: clamp(20px, 4vw, 32px);
+  border: 1px solid var(--uied-color-border);
+  border-radius: var(--uied-radius-lg);
+  background: var(--uied-color-surface-subtle);
+}
+
+.quote-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
+
+.quote-action {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 28px;
+  color: var(--uied-color-text);
+  font-size: 15px;
+  font-weight: 600;
+  border: 1px solid var(--uied-color-border);
+  border-radius: var(--uied-radius-md);
+  background: var(--uied-color-surface);
+  transition: color var(--uied-motion-fast) ease, border-color var(--uied-motion-fast) ease, background-color var(--uied-motion-fast) ease;
+}
+
+.quote-action--primary {
+  color: #fff;
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary);
+}
+
+.quote-action--primary:hover:not(:disabled) {
+  border-color: var(--uied-color-primary-hover);
+  background: var(--uied-color-primary-hover);
+}
+
+.quote-action--quiet:hover:not(:disabled) {
+  border-color: var(--uied-color-primary);
+}
+
+.quote-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .typing-text {
   white-space: pre-wrap;
   word-break: break-word;
@@ -324,6 +433,10 @@ getRandomQuote()
   margin-left: 2px;
 }
 
+.typing-text:not(.is-typing)::after {
+  display: none;
+}
+
 @keyframes ripple {
   from {
     transform: translate(-50%, -50%) scale(0);
@@ -338,5 +451,22 @@ getRandomQuote()
 
 .animate-ripple {
   animation: ripple 1s ease-out forwards;
+}
+
+@media screen and (max-width: 640px) {
+  .quote-panel {
+    min-height: 160px;
+  }
+
+  .quote-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quote-action {
+    width: 100%;
+    padding-right: 12px;
+    padding-left: 12px;
+  }
 }
 </style>

@@ -1,6 +1,9 @@
 <!--
 * @file ToolsRecommend.vue
 * @description 工具推荐公共组件
+* @copyright Tomda (https://www.tomda.top)
+* @copyright UIED技术团队 (https://fsuied.com)
+* @author UIED技术团队
 * @createDate 2025-1-10
 *
 * 【重要说明】
@@ -50,10 +53,11 @@
           相关工具
         </h3>
       </div>
-      <div class="divide-y divide-gray-100">
-        <div v-for="tool in relatedTools" :key="tool.id" @click="handleToolClick(tool)"
+      <div class="recommend-list divide-y divide-gray-100">
+        <button type="button" v-for="tool in relatedTools" :key="tool.id" @click="handleToolClick(tool)"
+          :disabled="isToolDisabled(tool)" :aria-label="`${isToolDisabled(tool) ? '已停用：' : '打开'}${tool.title}`"
           :class="[
-            'block px-4 py-3 transition-all duration-200 group',
+            'tool-recommend-item block w-full px-4 py-3 text-left group',
             isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
           ]">
           <div class="flex items-center justify-between">
@@ -68,7 +72,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
-        </div>
+        </button>
       </div>
     </div>
 
@@ -89,11 +93,17 @@
           热门工具
         </h3>
       </div>
-      <div class="divide-y divide-gray-100">
-        <div
+      <div class="recommend-list divide-y divide-gray-100">
+        <button
+          type="button"
           v-for="tool in hotTools"
           :key="tool.id"
-          class="block px-4 py-3 hover:bg-gray-50 transition-all duration-200 group cursor-pointer"
+          :disabled="isToolDisabled(tool)"
+          :aria-label="`${isToolDisabled(tool) ? '已停用：' : '打开'}${tool.title}`"
+          :class="[
+            'tool-recommend-item block w-full px-4 py-3 text-left group',
+            isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
+          ]"
           @click="handleToolClick(tool)"
         >
             <div class="flex items-center justify-between">
@@ -109,7 +119,7 @@
                   d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </div>
-        </div>
+        </button>
       </div>
     </div>
 
@@ -129,10 +139,11 @@
           新品上线
         </h3>
       </div>
-      <div class="divide-y divide-gray-100">
-        <div v-for="tool in newTools" :key="tool.id" @click="handleToolClick(tool)"
+      <div class="recommend-list divide-y divide-gray-100">
+        <button type="button" v-for="tool in newTools" :key="tool.id" @click="handleToolClick(tool)"
+          :disabled="isToolDisabled(tool)" :aria-label="`${isToolDisabled(tool) ? '已停用：' : '打开'}${tool.title}`"
           :class="[
-            'block px-4 py-3 transition-all duration-200 group',
+            'tool-recommend-item block w-full px-4 py-3 text-left group',
             isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
           ]">
           <div class="flex items-center justify-between">
@@ -148,7 +159,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
-        </div>
+        </button>
       </div>
     </div>
 
@@ -168,10 +179,11 @@
           实用工具
         </h3>
       </div>
-      <div class="divide-y divide-gray-100">
-        <div v-for="tool in utilityTools" :key="tool.id" @click="handleToolClick(tool)"
+      <div class="recommend-list divide-y divide-gray-100">
+        <button type="button" v-for="tool in utilityTools" :key="tool.id" @click="handleToolClick(tool)"
+          :disabled="isToolDisabled(tool)" :aria-label="`${isToolDisabled(tool) ? '已停用：' : '打开'}${tool.title}`"
           :class="[
-            'block px-4 py-3 transition-all duration-200 group',
+            'tool-recommend-item block w-full px-4 py-3 text-left group',
             isToolDisabled(tool) ? 'cursor-not-allowed opacity-60' : 'hover:bg-gray-50 cursor-pointer'
           ]">
           <div class="flex items-center justify-between">
@@ -187,7 +199,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
           </div>
-        </div>
+        </button>
       </div>
     </div>
   </div>
@@ -306,3 +318,27 @@ onMounted(() => {
   void refreshRecommendPanels()
 })
 </script>
+
+<style scoped>
+.tool-recommend-item {
+  min-height: 62px;
+  color: inherit;
+  font: inherit;
+  border: 0;
+  background: transparent;
+  transition: color var(--uied-motion-fast) ease, background-color var(--uied-motion-fast) ease;
+}
+
+.tool-recommend-item:focus-visible {
+  position: relative;
+  z-index: 1;
+  box-shadow: var(--uied-focus-ring);
+}
+
+@media screen and (max-width: 767px) {
+  /* 移动端每组优先露出 4 个推荐，避免工具主任务后出现过长推荐瀑布。 */
+  .recommend-list > .tool-recommend-item:nth-child(n + 5) {
+    display: none;
+  }
+}
+</style>

@@ -31,6 +31,7 @@
                 <router-link
                     :to="item.url"
                     class="wrapper-link"
+                    :aria-label="`${item.name}：${item.desc}`"
                     :title="item.desc"
                     data-admin-smoke="workbench-quick-operation"
                 >
@@ -62,7 +63,7 @@ const props = defineProps<{
 
 <style lang="scss" scoped>
 .general-card {
-    border-radius: 4px;
+    border-radius: 12px;
 }
 
 .module-link {
@@ -81,6 +82,10 @@ const props = defineProps<{
     align-items: center;
     text-decoration: none;
     cursor: pointer;
+    min-height: 76px;
+    padding: 8px 4px;
+    border-radius: 10px;
+    transition: background-color 160ms ease;
 }
 
 .icon {
@@ -112,6 +117,8 @@ const props = defineProps<{
 }
 
 .wrapper-link:hover {
+    background: #f5f7fc;
+
     .icon {
         color: rgb(var(--arcoblue-6));
         background-color: #e8f3ff;
@@ -130,7 +137,7 @@ const props = defineProps<{
 
 @media (max-width: 768px) {
     .general-card {
-        border-radius: 4px;
+        border-radius: 12px;
     }
 
     .icon {

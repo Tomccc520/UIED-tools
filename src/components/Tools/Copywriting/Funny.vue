@@ -2,6 +2,7 @@
 * @file Funny.vue
 * @description 随机搞笑文案生成器
 * @author UIED技术团队
+* @copyright Tomda (https://www.tomda.top)
 * @copyright UIED技术团队 (https://fsuied.com)
 * @createDate 2025-1-9
 *
@@ -16,14 +17,13 @@
   <div class="min-h-screen">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-5 sm:p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
-              <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300 cursor-pointer"
-                @click="getRandomCopy">随机搞笑文案</span>
+          <h1 class="text-3xl sm:text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="relative px-4 sm:px-12">
+              <span class="text-gray-800">随机搞笑文案</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">每次都能获取最新的文案</p>
         </div>
 
@@ -37,12 +37,12 @@
 
         <!-- 操作按钮区域 -->
         <div class="flex justify-center gap-4">
-          <button @click="getRandomCopy"
+          <button type="button" aria-label="换一条搞笑文案" @click="getRandomCopy"
             class="inline-flex items-center px-8 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-base transition-colors">
             <div ref="refreshContainer" class="w-6 h-6 mr-2"></div>
             换一个
           </button>
-          <button @click="copyText"
+          <button type="button" @click="copyText"
             class="inline-flex items-center px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-base transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -105,7 +105,7 @@
 
         <!-- 常见问题解答 -->
         <div class="mt-12">
-          <h3 class="text-xl font-semibold text-gray-900 mb-6">常见问题</h3>
+          <h2 class="text-xl font-semibold text-gray-900 mb-6">常见问题</h2>
           <div class="space-y-6">
             <div class="pb-6 border-b border-gray-200 last:border-0">
               <h4 class="text-base font-medium text-gray-900 mb-3">文案内容从哪里来？</h4>
@@ -147,6 +147,7 @@ import { ref, onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { copy } from '@/utils/copy'
+import { fetchCopywritingText } from '@/services/copywriting'
 
 declare const lottie: any
 
@@ -268,6 +269,9 @@ const typeText = (text: string) => {
   }, 50) // 每个字符的打印间隔，可以调整
 }
 
+/**
+ * 函数说明：通过同域 Go API 获取随机搞笑文案，接口异常时回退页面内置文案。
+ */
 const getRandomCopy = async () => {
   try {
     // 播放刷新动画
@@ -276,16 +280,12 @@ const getRandomCopy = async () => {
     }
 
     try {
-      const response = await fetch('https://zj.v.api.aa1.cn/api/wenan-gaoxiao/?type=json')
-      const data = await response.json()
-      if (data && data.msg) {
-        currentCopy.value = data.msg
-        // 触发文字生成效果
-        typeText(data.msg)
-        return
-      }
+      const result = await fetchCopywritingText('funny')
+      currentCopy.value = result.text
+      typeText(result.text)
+      return
     } catch (error) {
-      console.log('API请求失败,使用本地数据')
+      console.log('同域搞笑文案接口请求失败，使用本地数据:', error)
     }
 
     // 如果API失败,使用本地数据

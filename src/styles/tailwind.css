@@ -2,15 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
-:root{
+:root {
   --base-gray: #f5f5fb;
   --base-black: #444;
-  /* UIED 工具页统一响应式设计令牌：桌面留白 26px，移动端收窄到 12px。 */
+
+  /* UIED 3.x 基础颜色令牌：主色仅用于主操作、链接与焦点反馈。 */
+  --uied-color-primary: #5b54e8;
+  --uied-color-primary-hover: #4d47d0;
+  --uied-color-primary-soft: #efefff;
+  --uied-color-page: #f6f7fb;
+  --uied-color-surface: #ffffff;
+  --uied-color-surface-subtle: #f8fafc;
+  --uied-color-text: #172033;
+  --uied-color-text-secondary: #667085;
+  --uied-color-border: #e4e7ec;
+  --uied-color-success: #16845b;
+  --uied-color-danger: #d92d20;
+
+  /* UIED 工具页统一响应式与间距令牌。 */
   --uied-page-gutter: 26px;
   --uied-space-1: 8px;
   --uied-space-2: 16px;
   --uied-space-3: 24px;
+  --uied-space-4: 32px;
+  --uied-radius-sm: 6px;
+  --uied-radius-md: 8px;
+  --uied-radius-lg: 12px;
+  --uied-radius-xl: 16px;
   --uied-card-radius: 8px;
+  --uied-shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 5%);
+  --uied-motion-fast: 160ms;
+  --uied-motion-base: 240ms;
+  --uied-focus-ring: 0 0 0 3px rgb(91 84 232 / 22%);
+}
+
+body {
+  color: var(--uied-color-text);
+  background: var(--uied-color-page);
+}
+
+:where(a, button, input, textarea, select, [role='button'], [tabindex]):focus-visible {
+  outline: 2px solid var(--uied-color-primary);
+  outline-offset: 2px;
 }
 
 /*
@@ -48,6 +81,17 @@
 .uied-tool-card {
   border-radius: var(--uied-card-radius) !important;
   box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @media (max-width: 720px) {

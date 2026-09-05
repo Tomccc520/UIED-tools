@@ -326,7 +326,7 @@ onMounted(() => {
             <div class="flex flex-col items-center md:items-end space-y-3">
               <div class="text-gray-400" itemprop="copyrightNotice">
                 <meta itemprop="copyrightYear" :content="currentYear">
-                © {{ currentYear }} {{ displayWebName }}. All rights reserved.
+                © {{ currentYear }} {{ displayWebName }}。版权所有。
               </div>
               <div class="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-400">
                 <a v-for="link in footerLinks" :key="`${link.name}-${link.link}`" :href="link.link || '#'"

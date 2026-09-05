@@ -10,6 +10,7 @@
     <div class="banner-panel">
         <div class="banner-head">
             <div class="banner-copy">
+                <div class="banner-kicker">运营工作台 / 今日</div>
                 <a-typography-title :heading="5" style="margin-top: 0; margin-bottom: 0">
                     {{ periodGreeting }}，{{ adminName }}
                 </a-typography-title>
@@ -17,7 +18,12 @@
                     先处理官网设置、工具主数据、AI 模型与内容运营链路，这四组是当前后台最核心的运营主线。
                 </a-typography-paragraph>
             </div>
-            <a-tag color="arcoblue" bordered>v{{ versionText }}</a-tag>
+            <div class="banner-actions">
+                <a-tag color="arcoblue" bordered>v{{ versionText }}</a-tag>
+                <router-link to="/official_site/frontend_layout" class="banner-action-link">
+                    <a-button type="primary" size="small">进入官网配置</a-button>
+                </router-link>
+            </div>
         </div>
 
         <div v-if="highlightList.length" class="banner-meta-list">
@@ -42,9 +48,9 @@ const props = defineProps<{
 <style lang="scss" scoped>
 .banner-panel {
     width: 100%;
-    padding: 20px 20px 0 20px;
+    padding: 24px 24px 0;
     background-color: var(--color-bg-2, #fff);
-    border-radius: 4px 4px 0 0;
+    border-radius: 12px 12px 0 0;
 }
 
 .banner-head {
@@ -58,9 +64,30 @@ const props = defineProps<{
     min-width: 0;
 }
 
+.banner-kicker {
+    margin-bottom: 8px;
+    color: var(--uied-admin-accent, #315bd8);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.banner-action-link {
+    text-decoration: none;
+}
+
 .banner-desc {
     margin-top: 8px;
     margin-bottom: 0 !important;
+    max-width: 760px;
     color: var(--color-text-2, #4e5969);
     line-height: 1.8;
 }
@@ -97,6 +124,11 @@ const props = defineProps<{
     .banner-head {
         flex-direction: column;
         align-items: flex-start;
+    }
+
+    .banner-actions {
+        width: 100%;
+        justify-content: space-between;
     }
 
     .metric-panel {

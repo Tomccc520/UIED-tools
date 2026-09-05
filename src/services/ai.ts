@@ -229,10 +229,14 @@ export const searchWithAI = async (
   try {
     debugLog('开始AI搜索，查询内容:', safeQuery)
 
-    const allTools = await loadAllTools()
+    // 工具目录与 Provider 配置互不依赖，首屏并行读取，减少 AI 搜索首字节等待时间。
+    const [allTools, provider] = await Promise.all([
+      loadAllTools(),
+      getCurrentAiProvider()
+    ])
     const { localMatches, contextTools } = buildSearchToolPool(allTools, safeQuery)
 
-    if (!(await hasAvailableProvider())) {
+    if (!(provider.available && provider.defaultModel)) {
       return buildLocalFallbackResponse(safeQuery, localMatches, 'AI能力未配置，已切换为本地搜索模式。')
     }
 
@@ -264,7 +268,7 @@ export const searchWithAI = async (
       })
     })
 
-    const model = await getProviderModel(AI_DEFAULT_MODELS.SEARCH)
+    const model = provider.defaultModel || AI_DEFAULT_MODELS.SEARCH
 
     await aiClient.post('/chat', {
       scene: 'chat',
