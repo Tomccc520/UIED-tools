@@ -11,6 +11,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 VERSION="${RELEASE_VERSION:-$(node -p "require('${ROOT_DIR}/package.json').version")}"
 OUTPUT_DIR="${ROOT_DIR}/output"
 RELEASE_NAME="uiedtool-${VERSION}"
+DEPLOY_DOC="${ROOT_DIR}/docs/uiedtool-${VERSION}-baota-deploy.md"
 SOURCE_REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD)"
 PRODUCTION_DIR="${OUTPUT_DIR}/production/${RELEASE_NAME}"
 STAGING_DIR="${OUTPUT_DIR}/.release-staging"
@@ -50,6 +51,11 @@ require_build_artifacts() {
       return 1
     fi
   done
+
+  if [[ ! -f "${DEPLOY_DOC}" ]]; then
+    printf "缺少当前版本部署文档: %s\n" "${DEPLOY_DOC}" >&2
+    return 1
+  fi
 }
 
 # 函数说明：为 CentOS 7 服务器构建无 CGO 依赖的 Linux amd64 Go API。
@@ -79,7 +85,7 @@ assemble_release_files() {
   cp "${ROOT_DIR}/deploy/systemd/uiedtool-api.service" "${RELEASE_DIR}/server/uiedtool-api.service"
   cp "${ROOT_DIR}/deploy/nginx/uiedtool.com.fullstack.locations.conf" "${RELEASE_DIR}/nginx/"
   cp "${BACKEND_DIR}/sql/install.sql" "${RELEASE_DIR}/sql/"
-  cp "${ROOT_DIR}/docs/uiedtool-3.0.1-baota-deploy.md" "${RELEASE_DIR}/docs/DEPLOY.md"
+  cp "${DEPLOY_DOC}" "${RELEASE_DIR}/docs/DEPLOY.md"
 }
 
 # 函数说明：记录每个发布文件的 SHA-256，便于上传后验证完整性。
@@ -159,7 +165,7 @@ assemble_production_resources() {
   cp "${ROOT_DIR}/deploy/systemd/uiedtool-api.service" "${PRODUCTION_DIR}/"
   cp "${ROOT_DIR}/scripts/release/deploy-update.sh" "${PRODUCTION_DIR}/"
   chmod 755 "${PRODUCTION_DIR}/deploy-update.sh"
-  cp "${ROOT_DIR}/docs/uiedtool-3.0.1-baota-deploy.md" "${PRODUCTION_DIR}/DEPLOY.md"
+  cp "${DEPLOY_DOC}" "${PRODUCTION_DIR}/DEPLOY.md"
   clean_macos_metadata "${PRODUCTION_DIR}"
 }
 

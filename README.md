@@ -1,8 +1,8 @@
-# UIED Tools 3.0.1 - 全栈开源在线工具平台
+# UIED Tools 3.0.3 - 全栈开源在线工具平台
 
 > Vue 3 主站 + Go API + Arco Pro 管理后台，面向免费工具、内容运营、SEO 和社区共建。
 
-UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具平台。3.0.1 起，主站、Go API、管理后台、数据库脚本和部署工具统一开放源码，不再区分“纯前端开源版”和“后台商业版”。
+UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具平台。3.0.3 起，主站、Go API、管理后台、数据库脚本和部署工具统一开放源码，不再区分“纯前端开源版”和“后台商业版”。
 
 项目当前以工具流量和内容增长为优先：核心工具免费使用，会员、订单和支付模块作为可选能力保留，默认不展示非必要商业化入口。
 
@@ -30,7 +30,7 @@ UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具�
 - [提交 Bug](https://github.com/Tomccc520/UIED-tools/issues/new?template=bug_report.yml)
 - [提交功能建议](https://github.com/Tomccc520/UIED-tools/issues/new?template=feature_request.yml)
 
-### 3.0.1 新增后台
+### 3.0.3 新增后台
 
 - **Go API**：基于 Gin 与 likeadmin-go，提供站点配置、菜单权限、工具策略、用户、日志和系统能力。
 - **Arco Pro 管理端**：管理头部、侧栏、页脚、SEO、更新记录、工具主数据、AI Provider 等运营配置。
@@ -119,15 +119,15 @@ go build .
 
 完整生产部署包含主站静态资源、管理端静态资源、Go API、MySQL 与 Redis。宝塔环境请参考：
 
-- [`docs/uiedtool-3.0.1-baota-deploy.md`](docs/uiedtool-3.0.1-baota-deploy.md)
+- [`docs/uiedtool-3.0.3-baota-deploy.md`](docs/uiedtool-3.0.3-baota-deploy.md)
 - [`scripts/release/package-fullstack.sh`](scripts/release/package-fullstack.sh)
 
 ```bash
 npm run build:check
-npm run release:fullstack
+npm run release:production
 ```
 
-正式发布文件会统一生成到 `output/production/uiedtool-3.0.1/`。不要把示例数据库密码或第三方 API 密钥直接用于生产环境。
+正式发布文件会统一生成到 `output/production/uiedtool-3.0.3/`。不要把示例数据库密码或第三方 API 密钥直接用于生产环境。
 
 ## 项目结构说明
 
