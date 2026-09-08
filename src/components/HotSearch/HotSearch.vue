@@ -123,6 +123,7 @@ const isRefreshing = ref(false)
 const lastRefreshTime = ref(0)
 const timeTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const autoRefreshTimer = ref<ReturnType<typeof setInterval> | null>(null)
+const initialLoadTimer = ref<ReturnType<typeof setTimeout> | null>(null)
 const learningConfig = ref<HomepageLearningFeedConfig>(getDefaultHomepageLearningConfig())
 
 const CACHE_KEY = 'hot_search_cache_v6'
@@ -328,7 +329,10 @@ const refreshList = async (forceRefresh = false) => {
 }
 
 onMounted(() => {
-  void refreshList()
+  // 函数说明：将热榜首次请求延后到首屏完成绘制后，避免与首页核心配置争抢网络和主线程。
+  initialLoadTimer.value = setTimeout(() => {
+    void refreshList()
+  }, 120)
   updateTime()
   timeTimer.value = setInterval(updateTime, 1000)
   autoRefreshTimer.value = setInterval(() => {
@@ -337,6 +341,9 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (initialLoadTimer.value) {
+    clearTimeout(initialLoadTimer.value)
+  }
   if (timeTimer.value) {
     clearInterval(timeTimer.value)
   }
