@@ -119,12 +119,19 @@
                 <div class="group-head">
                     <span>页面级 SEO</span>
                     <div class="group-actions">
+                        <a-button type="text" @click="applyRecommendedSeoPages">一键补齐常用页面</a-button>
                         <a-button type="text" @click="addSeoPage">新增页面</a-button>
                     </div>
                 </div>
                 <div class="form-tips mb-2">
                     用于覆盖首页、更新页、登录页、用户中心等固定页面 SEO。路径建议填写完整站内路径，如
                     <code>/changelog</code>。
+                </div>
+
+                <div class="seo-template-strip">
+                    <span class="seo-template-strip__label">推荐覆盖</span>
+                    <span>关于我们、工具热榜、随机工具、图片压缩、JSON 格式化</span>
+                    <span class="seo-template-strip__hint">只会追加当前缺少的页面，不覆盖已维护内容</span>
                 </div>
 
                 <div v-if="seoPages.length === 0" class="form-tips">
@@ -228,6 +235,47 @@ const createEmptySeoPage = (): ToolsSeoPageItem => ({
     description: '',
     image: '',
 })
+
+/**
+ * 函数说明：提供高频固定页面的 SEO 推荐模板，帮助运营快速补齐搜索入口。
+ */
+const recommendedSeoPages: ToolsSeoPageItem[] = [
+    {
+        path: '/about',
+        title: '关于 UIED Tools',
+        keywords: 'UIED Tools,在线工具平台,免费在线工具,AI工具,开发工具',
+        description: '了解 UIED Tools 在线工具平台、产品能力与开发团队，发现 AI、设计、图片处理和开发工具。',
+        image: '/favicon.ico',
+    },
+    {
+        path: '/tools/hot-ranking',
+        title: '热门工具排行榜',
+        keywords: '热门工具,在线工具排行,工具排行榜,AI工具排行',
+        description: '查看 UIED Tools 站内热门工具排行榜，快速找到近期使用最多的实用工具。',
+        image: '/favicon.ico',
+    },
+    {
+        path: '/tools/random-tools',
+        title: '随机工具推荐',
+        keywords: '随机工具,在线工具推荐,免费工具,实用工具',
+        description: '随机发现 UIED Tools 精选在线工具，覆盖设计、开发、图片、办公和生活场景。',
+        image: '/favicon.ico',
+    },
+    {
+        path: '/tools/image-compress',
+        title: '图片压缩工具',
+        keywords: '图片压缩,在线图片压缩,JPG压缩,PNG压缩,WEBP压缩',
+        description: '免费在线压缩 JPG、PNG 和 WEBP 图片，在保持画质的同时快速减小图片体积。',
+        image: '/favicon.ico',
+    },
+    {
+        path: '/tools/dev/json-format',
+        title: 'JSON 格式化工具',
+        keywords: 'JSON格式化,JSON校验,JSON压缩,在线开发工具',
+        description: '在线格式化、校验和压缩 JSON 数据，帮助开发者快速阅读与处理接口内容。',
+        image: '/favicon.ico',
+    },
+]
 
 /**
  * 函数说明：判断 SEO 图片地址是否合法，支持站内路径与 http(s) 链接。
@@ -508,6 +556,24 @@ const addSeoPage = () => {
 }
 
 /**
+ * 函数说明：追加缺失的推荐页面 SEO 模板，避免重复路径并保留运营已有配置。
+ */
+const applyRecommendedSeoPages = () => {
+    const existingPaths = new Set(seoPages.value.map((item) => item.path.trim().toLowerCase()))
+    const missingPages = recommendedSeoPages
+        .filter((item) => !existingPaths.has(item.path.toLowerCase()))
+        .map((item) => ({ ...item }))
+
+    if (missingPages.length === 0) {
+        feedback.msgSuccess('常用页面 SEO 已经补齐')
+        return
+    }
+
+    seoPages.value.push(...missingPages)
+    feedback.msgSuccess(`已补齐 ${missingPages.length} 个常用页面 SEO，请保存后生效`)
+}
+
+/**
  * 函数说明：删除页面 SEO 条目。
  */
 const removeSeoPage = (index: number) => {
@@ -718,6 +784,29 @@ onBeforeUnmount(() => {
     padding: 10px 12px;
     font-size: 12px;
     line-height: 1.7;
+    color: var(--color-text-3);
+}
+
+.seo-template-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0 2px;
+    padding: 10px 12px;
+    border-left: 3px solid rgb(var(--primary-6));
+    background: var(--color-fill-1, #f7f8fa);
+    color: var(--color-text-2);
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.seo-template-strip__label {
+    color: var(--color-text-1);
+    font-weight: 600;
+}
+
+.seo-template-strip__hint {
     color: var(--color-text-3);
 }
 
