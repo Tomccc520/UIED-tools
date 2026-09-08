@@ -151,6 +151,13 @@
                         同步高频工具
                     </a-button>
                     <a-button
+                        status="success"
+                        data-admin-smoke="tools-catalog-seo-fill-quick"
+                        @click="fillMissingToolSeo"
+                    >
+                        补齐工具 SEO
+                    </a-button>
+                    <a-button
                         data-admin-smoke="tools-catalog-policy-sync"
                         @click="syncToolPoliciesToLoginConfig"
                     >
@@ -1450,6 +1457,54 @@ const reloadCatalogData = async () => {
  */
 const openToolsPreview = () => {
     window.open(resolveToolsPreviewUrl(appStore.config), '_blank')
+}
+
+/**
+ * 函数说明：为缺少 SEO 字段的工具生成可编辑的基础标题、关键词、描述和分享图。
+ */
+const fillMissingToolSeo = () => {
+    const result = toolsCategoryTreeParseResult.value
+    if (result.error) {
+        feedback.msgError(result.error)
+        return
+    }
+
+    let filledCount = 0
+    result.items.forEach((category) => {
+        category.list.forEach((subCategory) => {
+            subCategory.list.forEach((tool) => {
+                const title = String(tool.title || '').trim()
+                if (!title) {
+                    return
+                }
+                const categoryName = String(subCategory.title || category.title || '在线工具').trim()
+                const description = String(tool.desc || '').trim() || `${title}在线工具，免费快捷使用。`
+                if (!String(tool.seoTitle || '').trim()) {
+                    tool.seoTitle = `${title}｜${categoryName}在线工具`
+                    filledCount += 1
+                }
+                if (!String(tool.seoKeywords || '').trim()) {
+                    tool.seoKeywords = `${title},${categoryName},在线工具,免费工具`
+                    filledCount += 1
+                }
+                if (!String(tool.seoDescription || '').trim()) {
+                    tool.seoDescription = description
+                    filledCount += 1
+                }
+                if (!String(tool.seoImage || '').trim()) {
+                    tool.seoImage = '/favicon.ico'
+                    filledCount += 1
+                }
+            })
+        })
+    })
+
+    toolsCategoryTreeEditor.value = JSON.stringify(result.items, null, 2)
+    feedback.msgSuccess(
+        filledCount > 0
+            ? `已为工具补齐 ${filledCount} 个 SEO 字段，请检查后保存`
+            : '所有工具 SEO 字段已经补齐'
+    )
 }
 
 /**
