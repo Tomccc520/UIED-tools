@@ -145,6 +145,18 @@ func NormalizeToolsChangelogTimelineJSON(raw string) string {
 		}
 	}
 	normalized := normalizeToolsChangelogTimeline(items)
+	// 已保存的旧站点配置也要自动带上最新版本，避免必须手工重新录入时间线。
+	if !hasChangelogVersion(normalized, "3.0.3") {
+		defaults := make([]toolsChangelogTimelineItem, 0)
+		if err := json.Unmarshal([]byte(toolsChangelogTimelineJSON), &defaults); err == nil {
+			for _, item := range normalizeToolsChangelogTimeline(defaults) {
+				if normalizeToolsChangelogTextKey(item.Version) == normalizeToolsChangelogTextKey("3.0.3") {
+					normalized = append([]toolsChangelogTimelineItem{item}, normalized...)
+					break
+				}
+			}
+		}
+	}
 	if len(normalized) == 0 && input != toolsChangelogTimelineJSON {
 		if err := json.Unmarshal([]byte(toolsChangelogTimelineJSON), &items); err == nil {
 			normalized = normalizeToolsChangelogTimeline(items)
@@ -155,6 +167,22 @@ func NormalizeToolsChangelogTimelineJSON(raw string) string {
 		return "[]"
 	}
 	return string(encoded)
+}
+
+/**
+ * 判断更新时间线中是否已经包含指定版本。
+ * @param items 已清洗的更新时间线
+ * @param version 目标版本号
+ * @returns 是否存在目标版本
+ */
+func hasChangelogVersion(items []toolsChangelogTimelineItem, version string) bool {
+	versionKey := normalizeToolsChangelogTextKey(version)
+	for _, item := range items {
+		if normalizeToolsChangelogTextKey(item.Version) == versionKey {
+			return true
+		}
+	}
+	return false
 }
 
 /**

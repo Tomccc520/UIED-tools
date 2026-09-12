@@ -19,23 +19,27 @@ func TestNormalizeToolsChangelogTimelineJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(normalizedJSON), &items); err != nil {
 		t.Fatalf("解析归一化结果失败: %v", err)
 	}
-	if len(items) != 1 {
-		t.Fatalf("期望合并为 1 个版本，实际为 %d", len(items))
+	if len(items) != 2 {
+		t.Fatalf("期望补齐 3.0.3 并合并为 2 个版本，实际为 %d", len(items))
 	}
-	if items[0].Title != "首次发布" {
-		t.Fatalf("期望保留首次版本标题，实际为 %s", items[0].Title)
+	if items[0].Version != "3.0.3" {
+		t.Fatalf("期望最新版本排在首位，实际为 %s", items[0].Version)
 	}
-	if len(items[0].Features) != 2 {
-		t.Fatalf("期望保留 2 个功能块，实际为 %d", len(items[0].Features))
+	legacyItem := items[1]
+	if legacyItem.Title != "首次发布" {
+		t.Fatalf("期望保留首次版本标题，实际为 %s", legacyItem.Title)
 	}
-	if len(items[0].Features[0].Points) != 3 {
-		t.Fatalf("期望功能更新包含 3 条去重描述，实际为 %d", len(items[0].Features[0].Points))
+	if len(legacyItem.Features) != 2 {
+		t.Fatalf("期望保留 2 个功能块，实际为 %d", len(legacyItem.Features))
 	}
-	if len(items[0].Features[1].Points) != 1 || items[0].Features[1].Points[0] != "无阴影卡片" {
-		t.Fatalf("跨功能块重复描述未正确移除: %#v", items[0].Features[1].Points)
+	if len(legacyItem.Features[0].Points) != 3 {
+		t.Fatalf("期望功能更新包含 3 条去重描述，实际为 %d", len(legacyItem.Features[0].Points))
 	}
-	if items[0].Features[1].Title != "体验优化" {
-		t.Fatalf("历史 HTML 功能标题未正确清洗: %s", items[0].Features[1].Title)
+	if len(legacyItem.Features[1].Points) != 1 || legacyItem.Features[1].Points[0] != "无阴影卡片" {
+		t.Fatalf("跨功能块重复描述未正确移除: %#v", legacyItem.Features[1].Points)
+	}
+	if legacyItem.Features[1].Title != "体验优化" {
+		t.Fatalf("历史 HTML 功能标题未正确清洗: %s", legacyItem.Features[1].Title)
 	}
 }
 

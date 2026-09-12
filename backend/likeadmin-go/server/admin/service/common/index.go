@@ -634,6 +634,8 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 		toolsChangelogStatsText = getDefaultToolsChangelogStatsText()
 	}
 	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前工具总数：333个", "当前工具总数：334个")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.1", "当前版本：3.0.3")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-08-28 18:00", "最后更新：2026-09-12 15:50")
 	toolsChangelogTimeline := parseWebsiteJsonArray(website, "toolsChangelogTimeline")
 	if len(toolsChangelogTimeline) == 0 {
 		toolsChangelogTimeline = servicedefaults.GetToolsChangelogTimelineItems()
