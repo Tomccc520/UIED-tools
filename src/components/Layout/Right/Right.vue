@@ -75,7 +75,7 @@ const getToolsData = async () => {
   if (!route.path.startsWith('/tools/') || !shouldShowRecommend.value) return
 
   await toolsStore.getToolCate()
-  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, route.fullPath || route.path, 8, 8)
+  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, route.fullPath || route.path, 6, 2)
   randomTools.value = getRandomToolsFromCategories(toolsStore.cates, 8, route.fullPath || route.path)
 }
 

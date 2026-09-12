@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	VideoCompressMaxFileSize      int64   = 220 * 1024 * 1024
+	VideoCompressMaxFileSize      int64   = 500 * 1024 * 1024
 	videoCompressKeepOriginalRate float64 = 0.98
 )
 
@@ -78,7 +78,7 @@ func (videoCompressService) Config() VideoCompressConfig {
 		AudioCodec:    "AAC",
 		MaxResolution: 1920,
 		MaxFrameRate:  30,
-		CRF:           28,
+		CRF:           26,
 		AudioBitrate:  "128K",
 		Concurrency:   1,
 	}
@@ -150,13 +150,13 @@ func (videoCompressService) Compress(ctx context.Context, file *multipart.FileHe
 	return result, nil
 }
 
-// validateVideoCompressFile 校验视频格式和 220MB 上传限制。
+// validateVideoCompressFile 校验视频格式和 500MB 上传限制。
 func validateVideoCompressFile(file *multipart.FileHeader) error {
 	if file == nil || file.Size <= 0 {
 		return response.AssertArgumentError.Make("请选择有效的视频文件")
 	}
 	if file.Size > VideoCompressMaxFileSize {
-		return response.AssertArgumentError.Make("视频大小不能超过 220MB")
+		return response.AssertArgumentError.Make("视频大小不能超过 500MB")
 	}
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	allowed := map[string]bool{
@@ -194,7 +194,7 @@ func buildVideoCompressArgs(inputPath string, outputPath string) []string {
 		"-map", "0:v:0", "-map", "0:a?", "-map_metadata", "-1",
 		"-vf", "scale=w='min(1920,iw)':h='min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
 		"-fpsmax", "30",
-		"-c:v", "libx264", "-preset", "veryfast", "-crf", "28", "-pix_fmt", "yuv420p",
+		"-c:v", "libx264", "-preset", "medium", "-crf", "26", "-pix_fmt", "yuv420p",
 		"-c:a", "aac", "-b:a", "128k",
 		"-movflags", "+faststart",
 		outputPath,

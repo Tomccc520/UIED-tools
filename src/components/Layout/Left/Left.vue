@@ -647,7 +647,7 @@ const getToolCates = async () => {
  * 函数说明：读取后台站点基础配置并更新侧栏品牌信息
  */
 const loadSiteConfig = async () => {
-  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+  const siteConfig = await getSitePublicConfig()
   if (siteConfig.webName) {
     appName.value = siteConfig.webName
   }

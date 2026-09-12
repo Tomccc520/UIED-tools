@@ -25,6 +25,7 @@ var AiModelPublicGroup = core.Group("/common", newAiModelPublicHandler, regAiMod
 
 const (
 	aiProviderChatBodyLimit     = 128 << 10
+	aiImageProxyBodyLimit       = 32 << 20
 	aiProviderChatMinuteLimit   = 12
 	aiProviderChatHourLimit     = 120
 	aiProviderChatDayLimit      = 300
@@ -128,7 +129,7 @@ func (ah aiModelPublicHandler) proxyChat(c *gin.Context) {
 	}
 
 	upstreamURL := strings.TrimRight(proxyPayload.BaseURL, "/") + "/chat/completions"
-	requestObj, reqErr := http.NewRequest(http.MethodPost, upstreamURL, bytes.NewReader([]byte(bodyBytes)))
+	requestObj, reqErr := http.NewRequestWithContext(c.Request.Context(), http.MethodPost, upstreamURL, bytes.NewReader([]byte(bodyBytes)))
 	if reqErr != nil {
 		response.FailWithMsg(c, response.SystemError, "AI Provider 请求初始化失败")
 		return
@@ -211,6 +212,8 @@ func allowAiProviderChatRequest(c *gin.Context) bool {
 
 // proxyImageAbility 函数说明：统一代理图片 AI 能力请求到后台配置的上游地址，支持 GET 查询与 POST 上传两种模式。
 func (ah aiModelPublicHandler) proxyImageAbility(c *gin.Context) {
+	// 函数说明：限制图片 AI 代理请求体大小，避免公开代理被大请求耗尽内存和上游带宽。
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, aiImageProxyBodyLimit)
 	ability := strings.TrimSpace(c.Query("ability"))
 	proxyPayload, err := ah.srv.BuildImageAbilityProxyPayload(ability)
 	if err != nil {
@@ -244,7 +247,7 @@ func (ah aiModelPublicHandler) proxyImageAbility(c *gin.Context) {
 		requestBody = bytes.NewReader(bodyBytes)
 	}
 
-	requestObj, reqErr := http.NewRequest(proxyPayload.Method, upstreamURL, requestBody)
+	requestObj, reqErr := http.NewRequestWithContext(c.Request.Context(), proxyPayload.Method, upstreamURL, requestBody)
 	if reqErr != nil {
 		response.FailWithMsg(c, response.SystemError, "图片 AI 请求初始化失败")
 		return

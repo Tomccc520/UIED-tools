@@ -41,13 +41,13 @@ interface CompressOptions {
 
 const DEFAULT_SERVER_CONFIG: VideoCompressServerConfig = {
   available: false,
-  maxSizeMB: 220,
+  maxSizeMB: 500,
   outputFormat: 'MP4',
   videoCodec: 'H.264',
   audioCodec: 'AAC',
   maxResolution: 1920,
   maxFrameRate: 30,
-  crf: 28,
+  crf: 26,
   audioBitrate: '128K',
   concurrency: 1
 }

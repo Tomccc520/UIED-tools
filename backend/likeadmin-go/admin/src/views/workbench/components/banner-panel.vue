@@ -20,9 +20,6 @@
             </div>
             <div class="banner-actions">
                 <a-tag color="arcoblue" bordered>v{{ versionText }}</a-tag>
-                <router-link to="/official_site/frontend_layout" class="banner-action-link">
-                    <a-button type="primary" size="small">进入官网配置</a-button>
-                </router-link>
             </div>
         </div>
 
@@ -78,10 +75,6 @@ const props = defineProps<{
     align-items: center;
     gap: 10px;
     flex-shrink: 0;
-}
-
-.banner-action-link {
-    text-decoration: none;
 }
 
 .banner-desc {

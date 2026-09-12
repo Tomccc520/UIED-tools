@@ -80,11 +80,11 @@ const initDefaultBannerList = () => {
 /**
  * 函数说明：读取后台 Banner 配置并替换本地展示列表
  */
-const loadSiteConfig = async () => {
+const loadSiteConfig = async (forceRefresh = false) => {
   if (isLoadingSiteConfig) return
   isLoadingSiteConfig = true
   try {
-    const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+    const siteConfig = await getSitePublicConfig({ forceRefresh })
     bannerList.value = mapBannerList(siteConfig.bannerSlides)
   } finally {
     isLoadingSiteConfig = false
@@ -95,7 +95,7 @@ const loadSiteConfig = async () => {
  * 函数说明：页面重新获得焦点时刷新广告配置，让后台刚发布的内容无需手动刷新即可生效。
  */
 const handleWindowFocus = () => {
-  void loadSiteConfig()
+  void loadSiteConfig(true)
 }
 
 /**
@@ -103,7 +103,7 @@ const handleWindowFocus = () => {
  */
 const handleVisibilityChange = () => {
   if (document.visibilityState === 'visible') {
-    void loadSiteConfig()
+    void loadSiteConfig(true)
   }
 }
 
@@ -112,7 +112,7 @@ const handleVisibilityChange = () => {
  */
 const handleSiteConfigStorage = (event: StorageEvent) => {
   if (event.key === SITE_CONFIG_REFRESH_STORAGE_KEY) {
-    void loadSiteConfig()
+    void loadSiteConfig(true)
   }
 }
 

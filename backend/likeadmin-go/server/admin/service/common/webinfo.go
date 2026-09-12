@@ -7,6 +7,7 @@ import (
 	"html"
 	"io"
 	"likeadmin/core/response"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -58,11 +59,60 @@ func normalizeWebInfoInput(rawLink string) (*url.URL, error) {
 	if strings.TrimSpace(parsed.Host) == "" {
 		return nil, response.AssertArgumentError.Make("域名格式不正确")
 	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, response.AssertArgumentError.Make("仅支持 HTTP 或 HTTPS 网站")
+	}
+	if err := validateWebInfoURL(parsed); err != nil {
+		return nil, response.AssertArgumentError.Make("暂不支持内网或本机地址")
+	}
 
 	parsed.Path = "/"
 	parsed.RawQuery = ""
 	parsed.Fragment = ""
 	return parsed, nil
+}
+
+/**
+ * 函数说明：判断网站信息抓取目标是否属于本机、内网、链路本地或云元数据地址，避免公开接口形成 SSRF。
+ * 参数说明：hostname 为 URL 解析后的主机名，不包含端口。
+ * 返回值说明：属于受限地址时返回 true，否则返回 false。
+ */
+func isPrivateWebInfoHost(hostname string) bool {
+	host := strings.ToLower(strings.TrimSuffix(strings.TrimSpace(hostname), "."))
+	if host == "" || strings.Contains(host, "%") || host == "localhost" || strings.HasSuffix(host, ".localhost") || strings.HasSuffix(host, ".local") {
+		return true
+	}
+	parsedIP := net.ParseIP(host)
+	if parsedIP == nil {
+		return false
+	}
+	return parsedIP.IsLoopback() || parsedIP.IsPrivate() || parsedIP.IsLinkLocalUnicast() || parsedIP.IsLinkLocalMulticast() || parsedIP.IsUnspecified()
+}
+
+/**
+ * 函数说明：校验网站信息抓取地址及其 DNS 解析结果，阻止域名指向内网或本机地址。
+ * 参数说明：target 为待请求的完整网站 URL。
+ * 返回值说明：地址不安全或 DNS 解析到受限地址时返回错误。
+ */
+func validateWebInfoURL(target *url.URL) error {
+	if target == nil || (target.Scheme != "http" && target.Scheme != "https") || target.User != nil {
+		return errors.New("网站地址不安全")
+	}
+	hostname := target.Hostname()
+	if isPrivateWebInfoHost(hostname) {
+		return errors.New("网站地址不安全")
+	}
+	resolvedIPs, err := net.LookupIP(hostname)
+	if err != nil {
+		// DNS 失败交给 HTTP 客户端处理，避免误伤暂时不可解析但格式合法的公网域名。
+		return nil
+	}
+	for _, resolvedIP := range resolvedIPs {
+		if isPrivateWebInfoHost(resolvedIP.String()) {
+			return errors.New("网站地址不安全")
+		}
+	}
+	return nil
 }
 
 /**
@@ -151,6 +201,13 @@ func extractFavicon(htmlText string, pageURL *url.URL) string {
  * 函数说明：请求目标网站并返回最终 URL 与 HTML 源码，默认优先 HTTPS。
  */
 func (wSrv webInfoService) fetchHtmlWithFallback(target *url.URL) (*url.URL, string, error) {
+	client := *wSrv.client
+	client.CheckRedirect = func(request *http.Request, via []*http.Request) error {
+		if len(via) >= 5 {
+			return errors.New("网站重定向次数过多")
+		}
+		return validateWebInfoURL(request.URL)
+	}
 	candidates := []*url.URL{target}
 	if strings.EqualFold(target.Scheme, "https") {
 		httpCandidate := *target
@@ -168,7 +225,7 @@ func (wSrv webInfoService) fetchHtmlWithFallback(target *url.URL) (*url.URL, str
 		req.Header.Set("User-Agent", "Mozilla/5.0 (compatible; UIEDToolBot/1.0; +https://uiedtool.com)")
 		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 
-		resp, err := wSrv.client.Do(req)
+		resp, err := client.Do(req)
 		if err != nil {
 			lastErr = err
 			continue

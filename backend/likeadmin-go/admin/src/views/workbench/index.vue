@@ -103,9 +103,6 @@ const loading = ref(false)
 
 const actionButtonList = [
     { label: '前端布局', to: '/official_site/frontend_layout', short: '布局' },
-    { label: '侧栏菜单', to: '/official_site/sidebar', short: '侧栏' },
-    { label: '头部设置', to: '/official_site/header', short: '头部' },
-    { label: '页脚设置', to: '/official_site/footer', short: '页脚' },
     { label: '工具主数据', to: '/official_site/tools_catalog', short: '工具' },
     { label: 'SEO设置', to: '/official_site/seo', short: '优化' }
 ]

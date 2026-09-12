@@ -18,7 +18,7 @@
             <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">免费应用图标生成器</span>
           </div>
         </h2>
-        <p class="text-gray-500 text-sm mt-2">Free App Icon Generator Professional</p>
+        <p class="text-gray-500 text-sm mt-2">支持多平台尺寸、实时预览和批量导出</p>
       </div>
 
       <!-- 主要工作区 -->
@@ -73,8 +73,10 @@
                 class="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition-all duration-300 group"
                 :class="{ 'border-blue-500 bg-blue-50': isDragging }" @dragenter.prevent="isDragging = true"
                 @dragleave.prevent="isDragging = false" @dragover.prevent @drop.prevent="handleDrop"
-                @click="triggerFileInput">
-                <input type="file" ref="fileInput" class="hidden" accept="image/*" @change="handleFileChange">
+                @click="triggerFileInput" @keydown.enter.prevent="triggerFileInput" @keydown.space.prevent="triggerFileInput"
+                role="button" tabindex="0" aria-label="上传图标素材">
+                <input type="file" ref="fileInput" class="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  @change="handleFileChange">
                 <div v-if="!config.image" class="space-y-2">
                   <el-icon class="text-4xl text-gray-400 group-hover:text-blue-500 transition-colors">
                     <UploadFilled />
@@ -97,7 +99,7 @@
                 <div>
                   <label class="text-sm font-medium text-gray-700 mb-2 block">背景样式</label>
                   <div class="flex items-center gap-4">
-                    <el-color-picker v-model="config.backgroundColor" show-alpha />
+                    <el-color-picker v-model="config.backgroundColor" show-alpha @change="saveHistory" />
                     <span class="text-xs text-gray-500">{{ config.backgroundColor }}</span>
                     <el-checkbox v-model="config.transparentBg" label="透明背景" @change="handleTransparentChange" />
                   </div>
@@ -107,11 +109,11 @@
                 <div class="grid grid-cols-2 gap-4">
                   <div>
                     <label class="text-xs text-gray-500 mb-1 block">图标缩放 ({{ config.scale }}%)</label>
-                    <el-slider v-model="config.scale" :min="10" :max="200" size="small" />
+                    <el-slider v-model="config.scale" :min="10" :max="200" size="small" @change="saveHistory" />
                   </div>
                   <div>
                     <label class="text-xs text-gray-500 mb-1 block">圆角半径 ({{ config.radius }}%)</label>
-                    <el-slider v-model="config.radius" :min="0" :max="50" size="small" />
+                    <el-slider v-model="config.radius" :min="0" :max="50" size="small" @change="saveHistory" />
                   </div>
                 </div>
               </div>
@@ -192,7 +194,7 @@
                 <h4 class="text-sm font-bold text-gray-700 mb-4">各平台效果预览</h4>
                 <el-tabs v-model="activePreviewTab">
                   <el-tab-pane label="iOS" name="ios">
-                    <div class="grid grid-cols-4 gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div v-for="size in getPlatformSizes('ios')" :key="size.name" class="text-center">
                         <div class="bg-white rounded p-2 shadow-sm mb-2 inline-block">
                           <img :src="previewDataUrl" :style="getPreviewStyle(size.size)"
@@ -203,7 +205,7 @@
                     </div>
                   </el-tab-pane>
                   <el-tab-pane label="Android" name="android">
-                    <div class="grid grid-cols-4 gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div v-for="size in getPlatformSizes('android')" :key="size.name" class="text-center">
                         <div class="bg-white rounded p-2 shadow-sm mb-2 inline-block">
                           <img :src="previewDataUrl" :style="getPreviewStyle(size.size)"
@@ -215,7 +217,7 @@
                     </div>
                   </el-tab-pane>
                   <el-tab-pane label="Web" name="webapp">
-                    <div class="grid grid-cols-4 gap-4">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <div v-for="size in getPlatformSizes('webapp')" :key="size.name" class="text-center">
                         <div class="bg-white rounded p-2 shadow-sm mb-2 inline-block">
                           <img :src="previewDataUrl" :style="getPreviewStyle(size.size)"
@@ -239,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, nextTick } from 'vue'
+import { ref, reactive, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
@@ -289,7 +291,12 @@ const exportFormat = ref('png')
 // 历史记录 (简单的状态快照)
 const history = ref<string[]>([])
 const historyIndex = ref(-1)
-let isHistoryChange = false
+
+const MAX_ICON_SOURCE_SIZE_BYTES = 10 * 1024 * 1024
+let renderTimer: number | null = null
+let renderToken = 0
+let cachedImageSource = ''
+let cachedImage: HTMLImageElement | null = null
 
 // --- 平台数据 ---
 const platforms: Platform[] = [
@@ -377,15 +384,13 @@ useHead({
 
 // 1. 历史记录管理
 const saveHistory = () => {
-  if (isHistoryChange) {
-    isHistoryChange = false
-    return
-  }
+  const snapshot = JSON.stringify(config)
+  if (history.value[historyIndex.value] === snapshot) return
   // 删除当前指针之后的历史
   if (historyIndex.value < history.value.length - 1) {
     history.value = history.value.slice(0, historyIndex.value + 1)
   }
-  history.value.push(JSON.stringify(config))
+  history.value.push(snapshot)
   historyIndex.value = history.value.length - 1
 
   // 限制历史记录长度
@@ -398,7 +403,6 @@ const saveHistory = () => {
 const undo = () => {
   if (historyIndex.value > 0) {
     historyIndex.value--
-    isHistoryChange = true
     const state = JSON.parse(history.value[historyIndex.value])
     Object.assign(config, state)
   }
@@ -407,7 +411,6 @@ const undo = () => {
 const redo = () => {
   if (historyIndex.value < history.value.length - 1) {
     historyIndex.value++
-    isHistoryChange = true
     const state = JSON.parse(history.value[historyIndex.value])
     Object.assign(config, state)
   }
@@ -448,8 +451,9 @@ const renderCanvas = async () => {
   if (!mainCanvasRef.value) return
 
   const canvas = mainCanvasRef.value
-  const ctx = canvas.getContext('2d', { willReadFrequently: true })
+  const ctx = canvas.getContext('2d')
   if (!ctx) return
+  const currentToken = ++renderToken
 
   // 设置画布尺寸（基准 1024x1024）
   const size = 1024
@@ -491,6 +495,7 @@ const renderCanvas = async () => {
   if (config.image) {
     try {
       const img = await loadImage(config.image)
+      if (currentToken !== renderToken) return
       const scale = config.scale / 100
 
       const imgW = size * scale
@@ -549,10 +554,15 @@ const renderCanvas = async () => {
 
 // 辅助：加载图片
 const loadImage = (src: string): Promise<HTMLImageElement> => {
+  if (cachedImageSource === src && cachedImage) return Promise.resolve(cachedImage)
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
-    img.onload = () => resolve(img)
+    img.onload = () => {
+      cachedImageSource = src
+      cachedImage = img
+      resolve(img)
+    }
     img.onerror = reject
     img.src = src
   })
@@ -564,6 +574,7 @@ const handleFileChange = (e: Event) => {
   if (input.files && input.files[0]) {
     handleDrop({ dataTransfer: { files: input.files } } as any)
   }
+  input.value = ''
 }
 
 const handleDrop = (e: DragEvent) => {
@@ -576,11 +587,17 @@ const handleDrop = (e: DragEvent) => {
     return
   }
 
+  if (file.size > MAX_ICON_SOURCE_SIZE_BYTES) {
+    ElMessage.error('图片大小不能超过 10MB')
+    return
+  }
+
   const reader = new FileReader()
   reader.onload = (event) => {
     config.image = event.target?.result as string
     saveHistory()
   }
+  reader.onerror = () => ElMessage.error('读取图片失败，请重新选择')
   reader.readAsDataURL(file)
 }
 
@@ -593,6 +610,7 @@ const handleTransparentChange = (val: boolean) => {
     // 如果设为透明，可能需要提示用户圆角在某些平台（如iOS）是系统自动加的，这里生成的透明PNG在iOS上会显示黑色背景
     // 但为了灵活性，允许透明
   }
+  saveHistory()
 }
 
 const selectAllPlatforms = () => {
@@ -614,101 +632,103 @@ const removeCustomSize = (index: number) => {
 }
 
 // 4. 导出逻辑
+/**
+ * 将 PNG 数据封装为浏览器可识别的单图标 ICO 文件。
+ * @param pngBlob 已渲染的 PNG 数据
+ * @param size 图标边长
+ * @returns 标准 ICO Blob
+ */
+const createIcoBlob = async (pngBlob: Blob, size: number): Promise<Blob> => {
+  const pngBuffer = await pngBlob.arrayBuffer()
+  const output = new ArrayBuffer(22 + pngBuffer.byteLength)
+  const view = new DataView(output)
+  view.setUint16(0, 0, true)
+  view.setUint16(2, 1, true)
+  view.setUint16(4, 1, true)
+  view.setUint8(6, size >= 256 ? 0 : size)
+  view.setUint8(7, size >= 256 ? 0 : size)
+  view.setUint8(8, 0)
+  view.setUint8(9, 0)
+  view.setUint16(10, 1, true)
+  view.setUint16(12, 32, true)
+  view.setUint32(14, pngBuffer.byteLength, true)
+  view.setUint32(18, 22, true)
+  new Uint8Array(output, 22).set(new Uint8Array(pngBuffer))
+  return new Blob([output], { type: 'image/x-icon' })
+}
+
+/**
+ * 从主画布导出指定尺寸的 PNG 数据。
+ * @param baseCanvas 已渲染的基准画布
+ * @param size 输出图标边长
+ * @returns PNG Blob，无法创建时返回 null
+ */
+const renderExportBlob = async (baseCanvas: HTMLCanvasElement, size: number): Promise<Blob | null> => {
+  const canvas = document.createElement('canvas')
+  canvas.width = size
+  canvas.height = size
+  const ctx = canvas.getContext('2d')
+  if (!ctx) return null
+  ctx.imageSmoothingEnabled = true
+  ctx.imageSmoothingQuality = 'high'
+  ctx.drawImage(baseCanvas, 0, 0, size, size)
+  return new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+}
+
+/**
+ * 根据当前配置生成并下载图标压缩包。
+ * @returns 异步任务，无返回值
+ */
 const generateIcons = async () => {
-  if (!config.image && !config.backgroundColor) {
-    ElMessage.warning('请先设计图标')
+  if (!config.image) {
+    ElMessage.warning('请先上传图标素材')
+    return
+  }
+  if (exportFormat.value !== 'svg' && !selectedPlatforms.value.length && !customSizes.value.length) {
+    ElMessage.warning('请至少选择一个平台或添加一个自定义尺寸')
     return
   }
 
   isGenerating.value = true
   try {
     const zip = new JSZip()
-    const baseCanvas = mainCanvasRef.value!
+    const baseCanvas = mainCanvasRef.value
+    if (!baseCanvas) throw new Error('预览画布尚未准备好')
 
-    // 收集所有需要生成的尺寸
     const tasks: { folder: string, name: string, size: number }[] = []
-
-    // 1. 平台尺寸
     selectedPlatforms.value.forEach(pid => {
       const platform = platforms.find(p => p.id === pid)
-      if (platform) {
-        platform.sizes.forEach(s => {
-          tasks.push({ folder: platform.name, name: s.name, size: s.size })
-        })
-      }
+      platform?.sizes.forEach(s => tasks.push({ folder: platform.name, name: s.name, size: s.size }))
     })
+    customSizes.value.forEach(s => tasks.push({ folder: 'Custom', name: `icon-${s}`, size: s }))
 
-    // 2. 自定义尺寸
-    customSizes.value.forEach(s => {
-      tasks.push({ folder: 'Custom', name: `icon-${s}`, size: s })
-    })
-
-    // 生成处理
-    for (const task of tasks) {
-      // 创建临时 Canvas 进行缩放
-      const canvas = document.createElement('canvas')
-      canvas.width = task.size
-      canvas.height = task.size
-      const ctx = canvas.getContext('2d')
-      if (!ctx) continue
-
-      ctx.imageSmoothingEnabled = true
-      ctx.imageSmoothingQuality = 'high'
-
-      // 从 1024x1024 的主画布绘制到小画布，获得最佳质量
-      ctx.drawImage(baseCanvas, 0, 0, task.size, task.size)
-
-      if (exportFormat.value === 'png') {
-        const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'))
+    if (exportFormat.value === 'png') {
+      for (const task of tasks) {
+        const blob = await renderExportBlob(baseCanvas, task.size)
         if (blob) zip.folder(task.folder)?.file(`${task.name}.png`, blob)
-      } else if (exportFormat.value === 'ico') {
-        // 简单的 ICO 生成：只对特定小尺寸有效，或者用 PNG 包装
-        // 这里为了兼容性，对于 ICO 格式，我们只生成根目录的一个 favicon.ico (包含多尺寸)
-        // 或者为每个尺寸生成单独的 .ico (不常见)
-        // 策略：如果选了 ICO，我们为 Web App 平台的尺寸生成 ico 文件
-        if (task.folder === 'Web App' || task.folder === 'Custom') {
-          const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png')) // 现代 ICO 可以包含 PNG
-          // 实际上真正的 ICO 需要二进制头。这里简化处理：如果用户选 ICO，我们仅生成一个 favicon.ico 包含 16/32/48
-        }
       }
-    }
-
-    // 特殊处理格式
-    if (exportFormat.value === 'ico') {
-      // 生成一个包含常用尺寸的 favicon.ico
-      // 注意：JSZip 无法直接合成 ICO 二进制，需要手动构建 ArrayBuffer
-      // 这里简化为：将 32x32 的 PNG 改名为 ico (这是种 hack，但部分浏览器支持)
-      // 更好的做法是构建 ICO Header。鉴于代码量，这里仅演示 PNG 导出为主。
-      // 如果用户选 ICO，提示暂仅支持 PNG 或提供 basic fallback
-      ElMessage.info('ICO 格式生成中，将使用 PNG 封装模式')
-      const canvas = document.createElement('canvas')
-      canvas.width = 32; canvas.height = 32
-      const ctx = canvas.getContext('2d')!
-      ctx.drawImage(baseCanvas, 0, 0, 32, 32)
-      const blob = await new Promise<Blob | null>(r => canvas.toBlob(r, 'image/png'))
-      if (blob) zip.file('favicon.ico', blob)
-    }
-
-    if (exportFormat.value === 'svg' && config.image) {
-      // 生成 SVG 字符串
+    } else if (exportFormat.value === 'ico') {
+      const pngBlob = await renderExportBlob(baseCanvas, 32)
+      if (pngBlob) zip.file('favicon.ico', await createIcoBlob(pngBlob, 32))
+    } else {
       const svgContent = `
 <svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
   ${!config.transparentBg ? `<rect width="1024" height="1024" rx="${(1024 * config.radius) / 100}" fill="${config.backgroundColor}" />` : ''}
-  <image href="${config.image}" x="${(1024 - (1024 * config.scale / 100)) / 2}" y="${(1024 - (1024 * config.scale / 100)) / 2}" width="${1024 * config.scale / 100}" height="${1024 * config.scale / 100}" />
+  <image href="${config.image}" x="0" y="0" width="1024" height="1024" preserveAspectRatio="xMidYMid meet" />
 </svg>`
       zip.file('icon.svg', svgContent)
     }
 
-    // 导出 ZIP
     const content = await zip.generateAsync({ type: 'blob' })
     const url = URL.createObjectURL(content)
     const link = document.createElement('a')
     link.href = url
-    link.download = 'app-icons.zip'
+    link.download = exportFormat.value === 'ico' ? 'favicon-package.zip' : 'app-icons.zip'
+    document.body.appendChild(link)
     link.click()
-    URL.revokeObjectURL(url)
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
     ElMessage.success('图标包已生成')
-
   } catch (e) {
     console.error(e)
     ElMessage.error('生成失败，请重试')
@@ -731,17 +751,32 @@ const getPreviewStyle = (size: number) => {
   }
 }
 
+/**
+ * 调度画布渲染，合并连续滑块变更，避免拖动过程中重复解码和绘制。
+ * @returns 无返回值
+ */
+const scheduleRenderCanvas = () => {
+  if (renderTimer !== null) window.clearTimeout(renderTimer)
+  renderTimer = window.setTimeout(() => {
+    renderTimer = null
+    void renderCanvas()
+  }, 24)
+}
+
 // --- 监听与生命周期 ---
-watch(config, () => {
-  renderCanvas()
-  saveHistory()
-}, { deep: true })
+watch(config, scheduleRenderCanvas, { deep: true })
 
 onMounted(() => {
   saveHistory() // 初始状态
   nextTick(() => {
-    renderCanvas()
+    void renderCanvas()
   })
+})
+
+onUnmounted(() => {
+  if (renderTimer !== null) window.clearTimeout(renderTimer)
+  renderTimer = null
+  renderToken++
 })
 
 </script>

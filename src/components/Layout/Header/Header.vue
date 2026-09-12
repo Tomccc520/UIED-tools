@@ -116,7 +116,7 @@ const initDailyWord = () => {
  * 函数说明：读取后台站点配置并同步头部入口和工具运行策略。
  */
 const loadSiteConfig = async () => {
-  const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+  const siteConfig = await getSitePublicConfig()
   siteConfigState.value = siteConfig
   headerToolRuntimeEntryMap.value = buildToolRuntimeEntryMap(siteConfig)
   headerLinks.value = mergeHeaderLinksWithAuthEntries(siteConfig)
@@ -387,43 +387,23 @@ const removeSearchHistory = (index: number) => {
 // 搜索建议
 const searchSuggestions = computed(() => {
   const query = searchParam.title.toLowerCase().trim()
-  console.log('搜索关键词:', query)
 
   if (!query) return []
 
-  // 获取所有工具并打印详细信息
   const allTools = toolsStore.getAllTools()
-  console.log('搜索时的工具数据:', {
-    totalTools: allTools.length,
-    sampleTool: allTools[0],
-    allTools
-  })
 
   const filteredTools = allTools.filter((tool: Tool) => {
     const toolTitle = tool?.title?.toLowerCase() || ''
     const toolDesc = tool?.desc?.toLowerCase() || ''
-    const matched = toolTitle.includes(query) || toolDesc.includes(query)
-
-    // 打印匹配过程
-    console.log('工具匹配检查:', {
-      tool: tool.title,
-      query,
-      titleMatch: toolTitle.includes(query),
-      descMatch: toolDesc.includes(query),
-      matched
-    })
-
-    return matched
+    return toolTitle.includes(query) || toolDesc.includes(query)
   })
 
-  console.log('过滤后的工具:', filteredTools)
   return filteredTools.slice(0, 10)
 })
 
 //搜索工具
 const searchTools = async (query: string) => {
   loading.value = true
-  console.log('执行搜索，关键词:', query)
 
   try {
     if (query) {
@@ -462,11 +442,8 @@ const showSearch = ref(false)
 // 处理搜索选择
 const handleSearchSelect = (url: string) => {
   if (!url) {
-    console.warn('点击的链接为空')
     return
   }
-
-  console.log('准备跳转到:', url)
 
   try {
     if (isHeaderLinkDisabled(url)) {

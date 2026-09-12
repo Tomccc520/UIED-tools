@@ -10,7 +10,13 @@
     <header class="header-wrap">
         <div class="navbar">
             <div class="left-side">
-                <a-button class="nav-btn menu-trigger-btn" type="outline" shape="circle" @click="toggleCollapsed">
+                <a-button
+                    class="nav-btn menu-trigger-btn"
+                    type="outline"
+                    shape="circle"
+                    aria-label="展开或收起侧栏"
+                    @click="toggleCollapsed"
+                >
                     <template #icon>
                         <icon-menu-fold />
                     </template>
@@ -46,6 +52,7 @@
                             class="nav-btn"
                             type="outline"
                             shape="circle"
+                            aria-label="打开全局搜索"
                             @click="openSearchModal"
                         >
                             <template #icon>
@@ -62,6 +69,7 @@
                                     class="nav-btn"
                                     type="outline"
                                     shape="circle"
+                                    aria-label="打开系统通知"
                                     @click="openNoticeDrawer"
                                 >
                                     <icon-notification />
@@ -76,6 +84,7 @@
                             class="nav-btn"
                             type="outline"
                             shape="circle"
+                            :aria-label="isFullscreen ? '退出全屏' : '进入全屏'"
                             @click="handleToggleFullscreen"
                         >
                             <template #icon>
@@ -91,6 +100,7 @@
                             class="nav-btn"
                             type="outline"
                             shape="circle"
+                            aria-label="打开界面设置"
                             @click="openSetting"
                         >
                             <template #icon>

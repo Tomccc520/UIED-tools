@@ -18,7 +18,7 @@ import (
 	"likeadmin/core/response"
 )
 
-const videoCompressMultipartOverhead int64 = 2 * 1024 * 1024
+const videoCompressMultipartOverhead int64 = 5 * 1024 * 1024
 
 var VideoCompressGroup = core.Group("/common", newVideoCompressHandler, regVideoCompress)
 
@@ -50,7 +50,7 @@ func (h videoCompressHandler) compress(c *gin.Context) {
 	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxBodySize)
 	file, err := c.FormFile("file")
 	if err != nil {
-		response.FailWithMsg(c, response.AssertArgumentError, "请选择 220MB 以内的视频文件")
+		response.FailWithMsg(c, response.AssertArgumentError, "请选择 500MB 以内的视频文件")
 		return
 	}
 

@@ -1213,9 +1213,17 @@ const toolConsumeRulePresetOptions: ToolConsumeRulePresetOption[] = [
         value: 'video-compress',
         label: 'video-compress（视频压缩）',
         defaultName: '视频压缩',
-        consumePoints: 2,
+        consumePoints: 0,
         memberFree: 1,
-        remark: '视频压缩场景通常更耗资源'
+        remark: '普通视频压缩免费使用'
+    },
+    {
+        value: 'video-compress-large',
+        label: 'video-compress-large（视频压缩-大文件）',
+        defaultName: '视频压缩-大文件',
+        consumePoints: 5,
+        memberFree: 0,
+        remark: '超过 220MB 的视频按次扣积分，会员可单独配置免扣'
     },
     {
         value: 'gif-compress',

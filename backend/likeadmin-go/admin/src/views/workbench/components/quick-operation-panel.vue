@@ -13,9 +13,6 @@
         :header-style="{ paddingBottom: '0' }"
         :body-style="{ padding: '24px 20px 0 20px' }"
     >
-        <template #extra>
-            <router-link class="module-link" to="/official_site/frontend_layout">管理</router-link>
-        </template>
         <a-row :gutter="8">
             <a-col
                 v-for="item in menuList"
@@ -64,12 +61,6 @@ const props = defineProps<{
 <style lang="scss" scoped>
 .general-card {
     border-radius: 12px;
-}
-
-.module-link {
-    color: rgb(var(--arcoblue-6));
-    text-decoration: none;
-    font-size: 13px;
 }
 
 .wrapper {

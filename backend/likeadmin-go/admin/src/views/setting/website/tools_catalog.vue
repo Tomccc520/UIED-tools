@@ -10,7 +10,7 @@
     <div class="website-tools-catalog pro-page-shell">
         <a-page-header class="layout-page-header" title="官网设置 · 工具主数据">
             <template #subtitle>
-                维护工具分类树、基础信息、SEO 和计费策略字段。
+                维护工具分类树、基础信息、SEO、GEO 和计费策略字段。
             </template>
             <template #extra>
                 <div class="layout-page-actions">
@@ -158,6 +158,13 @@
                         补齐工具 SEO
                     </a-button>
                     <a-button
+                        status="success"
+                        data-admin-smoke="tools-catalog-geo-fill-quick"
+                        @click="fillMissingToolGeo"
+                    >
+                        补齐工具 GEO
+                    </a-button>
+                    <a-button
                         data-admin-smoke="tools-catalog-policy-sync"
                         @click="syncToolPoliciesToLoginConfig"
                     >
@@ -182,6 +189,10 @@
                     <div>
                         <span>toolKey 冲突</span>
                         <strong :class="{ 'is-danger': toolKeyConflictCount > 0 }">{{ toolKeyConflictCount }} 项</strong>
+                    </div>
+                    <div>
+                        <span>SEO / GEO</span>
+                        <strong>{{ toolsSeoConfiguredCount }} / {{ toolsGeoConfiguredCount }}</strong>
                     </div>
                 </div>
             </section>
@@ -345,7 +356,7 @@
                     最小结构要求：一级分类 <code>title/list</code>、二级分类
                     <code>title/list</code>、工具条目 <code>title/url</code>。 工具条目还支持
                     <code>releaseDate</code
-                    >、<code>tags</code>、<code>isNew</code>、<code>seoTitle</code>、<code>seoKeywords</code>、<code>seoDescription</code>、<code>seoImage</code>、
+                    >、<code>tags</code>、<code>isNew</code>、<code>seoTitle</code>、<code>seoKeywords</code>、<code>seoDescription</code>、<code>seoImage</code>、<code>geoSummary</code>、<code>geoQuestions</code>、
                     <code>toolKey</code
                     >、<code>consumePoints</code>、<code>memberFree</code>、<code>status</code>、<code>sort</code>、<code>remark</code>。
                 </div>
@@ -369,7 +380,7 @@
                     class="catalog-json-editor"
                     v-model="toolsCategoryTreeEditor"
                     :auto-size="{ minRows: 18, maxRows: 28 }"
-                    placeholder='请输入 JSON 数组，如：[{"title":"AI工具箱","list":[{"title":"AI对话","list":[{"title":"DeepSeek R1","url":"/tools/ai/deepseek-r1","toolKey":"ai-deepseek-r1","consumePoints":2,"memberFree":true,"status":1,"desc":"...","seoTitle":"DeepSeek R1 免费对话","seoKeywords":"DeepSeek R1,AI对话","seoDescription":"..."}]}]}]'
+                    placeholder='请输入 JSON 数组，如：[{"title":"AI工具箱","list":[{"title":"AI对话","list":[{"title":"DeepSeek R1","url":"/tools/ai/deepseek-r1","toolKey":"ai-deepseek-r1","consumePoints":2,"memberFree":true,"status":1,"desc":"...","seoTitle":"DeepSeek R1 免费对话","seoKeywords":"DeepSeek R1,AI对话","seoDescription":"...","geoSummary":"DeepSeek R1 适合进行长文本对话与推理。","geoQuestions":"DeepSeek R1是什么？；DeepSeek R1怎么用？"}]}]}]'
                 />
 
                 <div class="catalog-stat-row">
@@ -421,6 +432,8 @@ interface ToolsCatalogToolItem {
     seoKeywords?: string
     seoDescription?: string
     seoImage?: string
+    geoSummary?: string
+    geoQuestions?: string
     toolKey?: string
     consumePoints?: number
     memberFree?: boolean
@@ -770,6 +783,12 @@ function parseToolsCategoryTreeImpl(jsonText: string): ToolsCategoryTreeParseRes
                                             const seoImage = String(
                                                 toolRecord.seoImage || ''
                                             ).trim()
+                                            const geoSummary = String(
+                                                toolRecord.geoSummary || ''
+                                            ).trim()
+                                            const geoQuestions = String(
+                                                toolRecord.geoQuestions || ''
+                                            ).trim()
                                             const toolKey = String(toolRecord.toolKey || '')
                                                 .trim()
                                                 .toLowerCase()
@@ -840,6 +859,8 @@ function parseToolsCategoryTreeImpl(jsonText: string): ToolsCategoryTreeParseRes
                                                 ...(seoKeywords ? { seoKeywords } : {}),
                                                 ...(seoDescription ? { seoDescription } : {}),
                                                 ...(seoImage ? { seoImage } : {}),
+                                                ...(geoSummary ? { geoSummary } : {}),
+                                                ...(geoQuestions ? { geoQuestions } : {}),
                                                 ...(toolKey ? { toolKey } : {}),
                                                 ...(consumePoints !== undefined
                                                     ? { consumePoints }
@@ -986,6 +1007,19 @@ const toolsSeoConfiguredCount = computed<number>(() => {
                 )
             }, 0)
         )
+    }, 0)
+})
+
+/**
+ * 统计已补充 GEO 字段的工具数量，帮助运营判断 AI 搜索摘要覆盖度。
+ */
+const toolsGeoConfiguredCount = computed<number>(() => {
+    return toolsCategoryTreeParseResult.value.items.reduce((count, category) => {
+        return count + category.list.reduce((subCount, subCategory) => {
+            return subCount + subCategory.list.filter((tool) => {
+                return Boolean(String(tool.geoSummary || '').trim() || String(tool.geoQuestions || '').trim())
+            }).length
+        }, 0)
     }, 0)
 })
 
@@ -1504,6 +1538,44 @@ const fillMissingToolSeo = () => {
         filledCount > 0
             ? `已为工具补齐 ${filledCount} 个 SEO 字段，请检查后保存`
             : '所有工具 SEO 字段已经补齐'
+    )
+}
+
+/**
+ * 为缺少 GEO 字段的工具生成答案优先摘要和常见问题，供 AI 搜索引用。
+ */
+const fillMissingToolGeo = () => {
+    const result = toolsCategoryTreeParseResult.value
+    if (result.error) {
+        feedback.msgError(result.error)
+        return
+    }
+
+    let filledCount = 0
+    result.items.forEach((category) => {
+        category.list.forEach((subCategory) => {
+            subCategory.list.forEach((tool) => {
+                const title = String(tool.title || '').trim()
+                if (!title) return
+                const categoryName = String(subCategory.title || category.title || '在线工具').trim()
+                const description = String(tool.desc || '').trim() || `${title}在线工具，免费快捷使用。`
+                if (!String(tool.geoSummary || '').trim()) {
+                    tool.geoSummary = `${title}是一款${categoryName}工具，适合快速完成${description.replace(/[。.!！?？].*$/, '')}。`
+                    filledCount += 1
+                }
+                if (!String(tool.geoQuestions || '').trim()) {
+                    tool.geoQuestions = `${title}是什么？；${title}怎么用？；${title}有哪些用途？`
+                    filledCount += 1
+                }
+            })
+        })
+    })
+
+    toolsCategoryTreeEditor.value = JSON.stringify(result.items, null, 2)
+    feedback.msgSuccess(
+        filledCount > 0
+            ? `已为工具补齐 ${filledCount} 个 GEO 字段，请检查后保存`
+            : '所有工具 GEO 字段已经补齐'
     )
 }
 

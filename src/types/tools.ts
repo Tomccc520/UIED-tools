@@ -27,6 +27,10 @@ export interface Tool {
   seoKeywords?: string
   seoDescription?: string
   seoImage?: string
+  /** 面向 AI 搜索与答案引擎的简短结论。 */
+  geoSummary?: string
+  /** 面向 AI 搜索的常见问题，使用换行或中文分号分隔。 */
+  geoQuestions?: string
   toolKey?: string
   consumePoints?: number
   memberFree?: boolean

@@ -287,7 +287,7 @@ const relatedTools = ref<Tool[]>([])
  */
 const loadHotToolsFromSiteConfig = async () => {
   try {
-    const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+    const siteConfig = await getSitePublicConfig()
     if (siteConfig.hotTools.length > 0) {
       hotTools.value = mapHotToolsToRecommendTools(siteConfig.hotTools, siteConfig.toolCategories).slice(0, 8)
       return
@@ -304,7 +304,7 @@ const loadHotToolsFromSiteConfig = async () => {
  */
 const refreshRecommendPanels = async () => {
   await toolsStore.getToolCate()
-  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, currentPath.value, 8, 8)
+  relatedTools.value = getRelatedToolsFromCategories(toolsStore.cates, currentPath.value, 6, 2)
   newTools.value = getNewToolsFromCategories(toolsStore.cates, 8)
   utilityTools.value = getUtilityToolsFromCategories(toolsStore.cates, 8)
 }

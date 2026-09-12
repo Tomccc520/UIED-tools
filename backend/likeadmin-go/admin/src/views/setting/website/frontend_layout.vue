@@ -686,7 +686,8 @@
                                             工具条目还支持
                                             <code>releaseDate</code>、<code>tags</code>、<code>isNew</code>、
                                             <code>seoTitle</code
-                                            >、<code>seoKeywords</code>、<code>seoDescription</code>、<code>seoImage</code>。
+                                            >、<code>seoKeywords</code>、<code>seoDescription</code>、<code>seoImage</code>、
+                                            <code>geoSummary</code>、<code>geoQuestions</code>。
                                         </div>
                                         <a-alert class="catalog-alert" type="warning" :closable="false" show-icon>
                                             建议从现有配置导出后再编辑。字段最小结构为：分类.title/list、子分类.title/list、工具.title/url。
@@ -709,7 +710,7 @@
                                         <a-textarea
                                             v-model="toolsCategoryTreeEditor"
                                             :rows="20"
-                                            placeholder='请输入 JSON 数组，如：[{"title":"AI工具箱","list":[{"title":"AI对话","list":[{"title":"DeepSeek R1","url":"/tools/ai/deepseek-r1","desc":"...","seoTitle":"DeepSeek R1 免费对话","seoKeywords":"DeepSeek R1,AI对话","seoDescription":"..." }]}]}]'
+                                            placeholder='请输入 JSON 数组，如：[{"title":"AI工具箱","list":[{"title":"AI对话","list":[{"title":"DeepSeek R1","url":"/tools/ai/deepseek-r1","desc":"...","seoTitle":"DeepSeek R1 免费对话","seoKeywords":"DeepSeek R1,AI对话","seoDescription":"...","geoSummary":"DeepSeek R1 适合进行长文本对话与推理。","geoQuestions":"DeepSeek R1是什么？；DeepSeek R1怎么用？"}]}]}]'
                                         />
                                         <div class="catalog-stat-row">
                                             <a-tag color="arcoblue" bordered>一级分类 {{ toolsCategoryCount }}</a-tag>
@@ -1859,6 +1860,10 @@ interface ToolsCatalogToolItem {
     seoKeywords?: string
     seoDescription?: string
     seoImage?: string
+    /** 面向 AI 搜索与答案引擎的简短结论。 */
+    geoSummary?: string
+    /** 面向 AI 搜索的常见问题，使用换行或中文分号分隔。 */
+    geoQuestions?: string
 }
 
 interface ToolsCatalogSubCategoryItem {
@@ -4134,6 +4139,8 @@ function parseToolsCategoryTreeImpl(jsonText: string): ToolsCategoryTreeParseRes
                                             const seoKeywords = String(toolRecord.seoKeywords || '').trim()
                                             const seoDescription = String(toolRecord.seoDescription || '').trim()
                                             const seoImage = String(toolRecord.seoImage || '').trim()
+                                            const geoSummary = String(toolRecord.geoSummary || '').trim()
+                                            const geoQuestions = String(toolRecord.geoQuestions || '').trim()
                                             const tags = Array.isArray(toolRecord.tags)
                                                 ? toolRecord.tags.map((tag) => String(tag || '').trim()).filter(Boolean)
                                                 : []
@@ -4148,7 +4155,9 @@ function parseToolsCategoryTreeImpl(jsonText: string): ToolsCategoryTreeParseRes
                                                 !logo &&
                                                 !toolId &&
                                                 !seoTitle &&
-                                                !seoDescription
+                                                !seoDescription &&
+                                                !geoSummary &&
+                                                !geoQuestions
                                             ) {
                                                 return null
                                             }
@@ -4169,6 +4178,8 @@ function parseToolsCategoryTreeImpl(jsonText: string): ToolsCategoryTreeParseRes
                                                 ...(seoKeywords ? { seoKeywords } : {}),
                                                 ...(seoDescription ? { seoDescription } : {}),
                                                 ...(seoImage ? { seoImage } : {}),
+                                                ...(geoSummary ? { geoSummary } : {}),
+                                                ...(geoQuestions ? { geoQuestions } : {}),
                                             } as ToolsCatalogToolItem
                                         })
                                         .filter((tool): tool is ToolsCatalogToolItem => Boolean(tool))

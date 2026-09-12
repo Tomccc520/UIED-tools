@@ -14,6 +14,7 @@ import { useGlobalToolConsumeGuard } from '@/composables/useGlobalToolConsumeGua
 import { useToolRankingTracker } from '@/composables/useToolRankingTracker'
 import { resolveMemberCoreToolExperience } from '@/config/memberCoreTools'
 import { getSitePublicConfig } from '@/services/siteConfig'
+import { findToolByUrl } from '@/services/toolCatalog'
 import type { Tool } from '@/types/tools'
 
 // 导入布局相关组件
@@ -91,45 +92,16 @@ const normalizeToolRoutePath = (path: unknown): string => {
 }
 
 /**
- * 函数说明：标准化工具完整路由匹配键，保留 query 区分同一路径下的细分会员核心工具。
- */
-const normalizeToolRouteMatchKey = (path: unknown): string => {
-  const rawValue = String(path || '').trim().split('#')[0]
-  if (!rawValue) {
-    return ''
-  }
-  const [rawPath, rawQuery = ''] = rawValue.split('?')
-  const normalizedPath = rawPath === '/' ? '/' : rawPath.replace(/\/+$/g, '')
-  const query = rawQuery.trim()
-  return query ? `${normalizedPath}?${query}` : normalizedPath
-}
-
-/**
  * 函数说明：按当前路由在后台工具分类树中查找工具配置项。
  */
 const findToolByRoutePath = async (routePath: string): Promise<Tool | null> => {
   const normalizedPath = normalizeToolRoutePath(routePath)
-  const normalizedMatchKey = normalizeToolRouteMatchKey(routePath)
   if (!normalizedPath.startsWith('/tools/')) {
     return null
   }
   try {
     const siteConfig = await getSitePublicConfig()
-    const categoryList = Array.isArray(siteConfig.toolCategories) ? siteConfig.toolCategories : []
-    for (const category of categoryList) {
-      const subList = Array.isArray(category.list) ? category.list : []
-      for (const subCategory of subList) {
-        const toolList = Array.isArray(subCategory.list) ? subCategory.list : []
-        const matchedExactTool = toolList.find((tool) => normalizeToolRouteMatchKey(tool.url) === normalizedMatchKey)
-        const matchedTool = matchedExactTool || toolList.find((tool) => {
-          return normalizeToolRoutePath(tool.url) === normalizedPath
-        })
-        if (matchedTool) {
-          return matchedTool
-        }
-      }
-    }
-    return null
+    return findToolByUrl(siteConfig.toolCategories, routePath)
   } catch (error) {
     return null
   }
@@ -219,7 +191,7 @@ useToolRankingTracker()
       </div>
 
       <!-- 主内容和右侧边栏容器 -->
-      <div class="uied-shell-gutter uied-content-layout flex gap-0 relative">
+      <div class="uied-shell-gutter uied-content-layout flex gap-4 relative">
         <!-- 主内容区域 -->
         <el-main class="!pt-4"
           :class="[
@@ -252,7 +224,8 @@ useToolRankingTracker()
           <!-- 路由视图，使用过渡动画 -->
           <div v-if="!isCurrentToolDisabled" class="uied-tool-view">
             <router-view v-slot="{ Component }">
-              <transition name="animation" mode="out-in">
+              <!-- 热榜是全宽负边距页面，关闭路由平移动画，避免移动端过渡帧把整页撑出视口。 -->
+              <transition name="animation" mode="out-in" :css="route.path !== '/tools/hot-ranking'">
                 <component :is="Component" :key="route.fullPath" />
               </transition>
             </router-view>

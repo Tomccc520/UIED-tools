@@ -14,7 +14,7 @@
         :body-style="{ paddingTop: 0 }"
     >
         <template #extra>
-            <a-link>官方渠道</a-link>
+            <a-link href="https://uiedtool.com" target="_blank" rel="noopener noreferrer">官方渠道</a-link>
         </template>
         <div v-if="supportList.length" class="support-list">
             <div v-for="(item, index) in supportList" :key="index" class="support-item">

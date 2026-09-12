@@ -14,7 +14,7 @@
         title="访问趋势"
     >
         <template #extra>
-            <a-link>最近周期</a-link>
+            <span class="panel-extra-label">最近 15 天</span>
         </template>
         <v-charts class="visitor-chart" :option="option" :autoresize="true" />
     </a-card>
@@ -36,6 +36,11 @@ const props = defineProps<{
 
 .visitor-chart {
     height: 320px;
+}
+
+.panel-extra-label {
+    color: var(--color-text-3, #86909c);
+    font-size: 13px;
 }
 
 @media (max-width: 1280px) {

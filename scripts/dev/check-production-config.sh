@@ -96,7 +96,10 @@ require_env_value() {
     return
   fi
 
-  if [[ "${value}" =~ example\.com|replace-with|your[-_]|change[-_]|changeme|local[-_]development|development-token ]]; then
+  # 示例环境文件的占位符可能使用大写或不同分隔符，统一转小写后再检查。
+  local normalized_value
+  normalized_value="$(printf "%s" "${value}" | tr '[:upper:]' '[:lower:]')"
+  if [[ "${normalized_value}" =~ example\.com|replace[-_]?with|your[-_]|change[-_]|changeto|changeme|local[-_]development|development[-_]token|at[-_]least|random[-_]token ]]; then
     mark_fail "${label}仍使用 ${key} 示例占位值"
     return
   fi

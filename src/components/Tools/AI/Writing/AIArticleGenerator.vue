@@ -87,6 +87,13 @@
         <WritingGuide />
       </template>
     </AIToolPageTemplate>
+    <MemberCoreToolTips
+      v-if="currentMemberCoreExperience"
+      class="mb-4"
+      :tool-key="currentMemberCoreExperience.toolKey"
+      :title="memberCoreTipsTitle"
+      :items="memberCoreTipsItems"
+    />
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
@@ -97,6 +104,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { downloadMarkdownResult } from '@/utils/markdownResult'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import AIToolPageTemplate from '@/components/Common/PageTemplates/AIToolPageTemplate.vue'
 import WritingGuide from './WritingGuide.vue'
 import { generateAIWriting } from '@/services/ai'
@@ -104,6 +112,7 @@ import {
   createCoreToolRunRequestId,
   useCoreToolManualConsume
 } from '@/composables/useCoreToolManualConsume'
+import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
 
 const route = useRoute()
 const assistActions = [
@@ -115,6 +124,11 @@ const assistActions = [
   { type: 'fix', label: '纠错' }
 ]
 const { consumeCoreToolRun, resolveCoreToolRun } = useCoreToolManualConsume()
+const {
+  currentMemberCoreExperience,
+  memberCoreTipsTitle,
+  memberCoreTipsItems
+} = useMemberCoreToolExperienceTips(route)
 const mode = ref<'editable' | 'preview' | 'edit'>('editable')
 const form = reactive({
   topic: '',

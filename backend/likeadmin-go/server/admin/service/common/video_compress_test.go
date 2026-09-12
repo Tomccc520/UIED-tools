@@ -17,7 +17,8 @@ func TestBuildVideoCompressArgs(t *testing.T) {
 	args := strings.Join(buildVideoCompressArgs("source.mov", "result.mp4"), " ")
 	wants := []string{
 		"-c:v libx264",
-		"-crf 28",
+		"-preset medium",
+		"-crf 26",
 		"-fpsmax 30",
 		"scale=w='min(1920,iw)':h='min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
 		"-c:a aac",
@@ -31,7 +32,7 @@ func TestBuildVideoCompressArgs(t *testing.T) {
 	}
 }
 
-// TestValidateVideoCompressFile 校验格式和 220MB 上传边界。
+// TestValidateVideoCompressFile 校验格式和 500MB 上传边界。
 func TestValidateVideoCompressFile(t *testing.T) {
 	valid := &multipart.FileHeader{Filename: "demo.mov", Size: VideoCompressMaxFileSize}
 	if err := validateVideoCompressFile(valid); err != nil {
@@ -40,7 +41,7 @@ func TestValidateVideoCompressFile(t *testing.T) {
 
 	tooLarge := &multipart.FileHeader{Filename: "demo.mp4", Size: VideoCompressMaxFileSize + 1}
 	if err := validateVideoCompressFile(tooLarge); err == nil {
-		t.Fatal("超过 220MB 的视频应被拒绝")
+		t.Fatal("超过 500MB 的视频应被拒绝")
 	}
 
 	invalidFormat := &multipart.FileHeader{Filename: "demo.txt", Size: 1024}

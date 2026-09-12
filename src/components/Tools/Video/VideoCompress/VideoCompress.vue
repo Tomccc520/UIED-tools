@@ -92,6 +92,8 @@ const resultDownloadName = ref('')
 const serverResultCompressed = ref<boolean | null>(null)
 const serverElapsedMs = ref(0)
 const serverConfig = ref<VideoCompressServerConfig | null>(null)
+const DEFAULT_MAX_FILE_SIZE_MB = 500
+const LARGE_FILE_THRESHOLD_MB = 220
 
 const isProcessing = ref(false)
 const progress = ref(0)
@@ -169,7 +171,7 @@ const faqList: FaqItem[] = [
   },
   {
     question: '是否有文件大小限制？',
-    answer: '当前单个视频最大 220MB。更大的视频建议先分段，避免上传超时或浏览器内存不足。'
+    answer: '当前单个视频最大 500MB。更大的视频建议先分段，避免上传超时或浏览器内存不足。'
   }
 ]
 
@@ -200,6 +202,14 @@ const sourceSizeMB = computed(() => {
   if (!videoFile.value) return 0
   return videoFile.value.size / 1024 / 1024
 })
+
+/**
+ * 根据源视频大小选择后台计费策略键；大于阈值的视频交给后台的独立规则处理。
+ * @returns 当前视频应使用的工具计费策略键
+ */
+const getVideoCompressConsumeToolKey = () => {
+  return sourceSizeMB.value > LARGE_FILE_THRESHOLD_MB ? 'video-compress-large' : 'video-compress'
+}
 
 const sourceBitrateKbps = computed(() => {
   if (!videoFile.value || !sourceMeta.duration) return 0
@@ -265,7 +275,7 @@ const validateVideoFile = (file: File) => {
     return false
   }
 
-  const maxSizeMB = 220
+  const maxSizeMB = serverConfig.value?.maxSizeMB || DEFAULT_MAX_FILE_SIZE_MB
   if (file.size > maxSizeMB * 1024 * 1024) {
     ElMessage.warning(`视频大小不能超过 ${maxSizeMB}MB`)
     return false
@@ -1149,7 +1159,7 @@ const compressVideo = async () => {
   }
 
   const canConsume = await ensureToolConsume({
-    toolKey: 'video-compress',
+    toolKey: getVideoCompressConsumeToolKey(),
     action: 'compress',
     loginWarningText: '请先登录后再使用视频压缩',
     showConsumeSuccessToast: true
@@ -1188,7 +1198,7 @@ const handleBeforeUnload = (event: BeforeUnloadEvent) => {
 const downloadResult = async () => {
   if (!resultVideoUrl.value || !videoFile.value) return
   const canDownload = await ensureToolConsume({
-    toolKey: 'video-compress',
+    toolKey: getVideoCompressConsumeToolKey(),
     action: 'download',
     mode: 'check-login',
     loginWarningText: '请先登录后再下载压缩视频'
@@ -1296,7 +1306,7 @@ onBeforeRouteLeave((to, from, next) => {
         <VideoWorkspaceIntro
           title="视频压缩"
           description="自动输出兼容性更好的 H.264 MP4，压缩后可直接预览并下载。"
-          :specs="['最大 220MB', 'H.264 + AAC', '最高 30fps']"
+          :specs="[`最大 ${serverConfig?.maxSizeMB || DEFAULT_MAX_FILE_SIZE_MB}MB`, 'H.264 + AAC', '最高 30fps']"
           :notices="['专业模式仅临时上传转码，完成后立即清理', '服务不可用时自动切换浏览器本地处理']"
         />
 

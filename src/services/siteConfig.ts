@@ -348,11 +348,11 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
     { name: 'CSDN 博客', link: 'https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343' },
     { name: 'UIED技术团队', link: 'https://fsuied.com/' }
   ],
-  changelogSplitTitle: '3.0.1 全栈开源说明',
+  changelogSplitTitle: '3.0.3 全栈开源说明',
   changelogSplitDesc: '本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。',
   changelogSplitLink: 'https://github.com/Tomccc520/UIED-tools',
   changelogSplitLinkText: '查看完整源码与部署说明',
-  changelogStatsText: '当前版本：3.0.1 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-28 18:00',
+  changelogStatsText: '当前版本：3.0.3 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-09-12 15:50',
   changelogTimeline: (defaultChangelogTimeline as SiteChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)
@@ -1011,6 +1011,8 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
               const seoKeywords = String(toolRecord.seoKeywords || '').trim()
               const seoDescription = String(toolRecord.seoDescription || '').trim()
               const seoImage = String(toolRecord.seoImage || '').trim()
+              const geoSummary = String(toolRecord.geoSummary || '').trim()
+              const geoQuestions = String(toolRecord.geoQuestions || '').trim()
               const toolKey = String(toolRecord.toolKey || '').trim().toLowerCase()
               const consumePointsRaw = Number(toolRecord.consumePoints)
               const consumePoints =
@@ -1062,6 +1064,8 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
                 ...(seoKeywords ? { seoKeywords } : {}),
                 ...(seoDescription ? { seoDescription } : {}),
                 ...(seoImage ? { seoImage } : {}),
+                ...(geoSummary ? { geoSummary } : {}),
+                ...(geoQuestions ? { geoQuestions } : {}),
                 ...(toolKey ? { toolKey } : {}),
                 ...(consumePoints !== undefined ? { consumePoints } : {}),
                 ...(memberFree !== undefined ? { memberFree } : {}),

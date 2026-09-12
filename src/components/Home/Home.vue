@@ -73,9 +73,9 @@ const getToolsCate = async () => {
 /**
  * 函数说明：读取后台侧栏分类菜单配置，用于同步首页分类区锚点 key
  */
-const loadHomeSiteConfig = async () => {
+const loadHomeSiteConfig = async (forceRefresh = false) => {
   try {
-    const config = await getSitePublicConfig({ forceRefresh: true })
+    const config = await getSitePublicConfig({ forceRefresh })
     siteConfig.value = config
     sidebarCategoryMenus.value = config.sidebarCategoryMenus
   } catch (error) {
@@ -198,7 +198,7 @@ const refreshHomeAdvertising = async () => {
   if (isRefreshingAdvertising) return
   isRefreshingAdvertising = true
   try {
-    await Promise.all([toolsStore.getRecommends(), loadHomeSiteConfig()])
+    await Promise.all([toolsStore.getRecommends(true), loadHomeSiteConfig(true)])
   } finally {
     isRefreshingAdvertising = false
   }

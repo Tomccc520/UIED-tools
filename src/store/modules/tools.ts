@@ -95,14 +95,15 @@ export const useToolsStore = defineStore('tools', {
     webInfo: null
   }),
   actions: {
-    async getRecommends() {
+    async getRecommends(forceRefresh = false) {
       // 仅在首屏没有数据时回填默认值，后台发布后的刷新过程不闪回旧广告
       if (!this.recommends.length) {
         this.recommends = buildHotTools(getFallbackHotTools())
       }
 
       try {
-        const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+        // 首次加载复用站点配置缓存，后台发布通知触发刷新时才绕过缓存。
+        const siteConfig = await getSitePublicConfig({ forceRefresh })
         if (siteConfig.hotTools.length > 0) {
           this.recommends = buildHotTools(siteConfig.hotTools, siteConfig.toolCategories)
         }
@@ -155,13 +156,14 @@ export const useToolsStore = defineStore('tools', {
         return null
       }
     },
-    async getToolCate() {
+    async getToolCate(forceRefresh = false) {
       try {
         // 先回填前端内置工具库，保证接口不可用时功能不受影响
         this.cates = cloneToolCategories(getToolsCate())
 
         // 再尝试读取后台配置化工具分类，优先使用运营配置
-        const siteConfig = await getSitePublicConfig({ forceRefresh: true })
+        // 工具分类与推荐区共享站点配置缓存，发布通知时再由页面主动强制刷新。
+        const siteConfig = await getSitePublicConfig({ forceRefresh })
         if (siteConfig.toolCategories.length > 0) {
           this.cates = cloneToolCategories(filterToolCategoriesForRelease(siteConfig.toolCategories))
         }

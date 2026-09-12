@@ -19,6 +19,8 @@ interface ResolvedSeoPayload {
   keywords: string
   description: string
   image: string
+  geoSummary: string
+  geoQuestions: string
 }
 
 interface RouteStructuredDataPayload {
@@ -28,6 +30,8 @@ interface RouteStructuredDataPayload {
   siteName: string
   siteUrl: string
   url: string
+  geoSummary: string
+  geoQuestions: string
 }
 
 /**
@@ -174,12 +178,16 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     siteConfig.seoDefaultImage,
     '/favicon.ico'
   )
+  const geoSummary = pickFirstText(toolSource?.geoSummary, fallbackDescription)
+  const geoQuestions = pickFirstText(toolSource?.geoQuestions)
 
   return {
     title: buildDocumentTitle(fallbackTitle, webName),
     keywords: fallbackKeywords,
     description: fallbackDescription,
-    image: fallbackImage
+    image: fallbackImage,
+    geoSummary,
+    geoQuestions
   }
 }
 
@@ -229,7 +237,20 @@ const upsertRouteStructuredData = (route: RouteLike, payload: RouteStructuredDat
       '@type': 'WebSite',
       name: payload.siteName,
       url: payload.siteUrl
-    }
+    },
+    ...(payload.geoSummary ? { abstract: payload.geoSummary } : {}),
+    ...(payload.geoQuestions
+      ? {
+          mainEntity: {
+            '@type': 'Question',
+            name: payload.geoQuestions.split(/[；;\n]/).map((item) => item.trim()).filter(Boolean)[0] || payload.title,
+            acceptedAnswer: {
+              '@type': 'Answer',
+              text: payload.geoSummary || payload.description
+            }
+          }
+        }
+      : {})
   })
 }
 
@@ -275,7 +296,9 @@ const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConf
     image: absoluteImageUrl,
     siteName,
     siteUrl: `${siteUrl}/`,
-    url: currentUrl
+    url: currentUrl,
+    geoSummary: resolvedSeo.geoSummary,
+    geoQuestions: resolvedSeo.geoQuestions
   })
 }
 
