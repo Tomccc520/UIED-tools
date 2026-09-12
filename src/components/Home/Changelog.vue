@@ -7,7 +7,7 @@
  */
 -->
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 import { getDefaultSitePublicConfig, getSitePublicConfig, normalizeChangelogTimeline, type SiteChangelogTimelineItem, type SiteLinkItem } from '@/services/siteConfig'
 
@@ -113,6 +113,18 @@ const showAllVersions = (): void => {
 }
 
 /**
+ * 切换到全部版本并定位到指定版本，确保目录链接对历史版本始终可用。
+ * @param id 版本卡片的 DOM ID
+ * @returns 异步等待定位完成
+ */
+const jumpToTimelineItem = async (id: string): Promise<void> => {
+  activeScope.value = 'all'
+  searchKeyword.value = ''
+  await nextTick()
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+/**
  * 函数说明：读取站点公共配置，统一更新开源说明、统计文案和去重后的版本时间线。
  */
 const loadSiteConfig = async (): Promise<void> => {
@@ -188,6 +200,21 @@ onMounted(() => {
 
       <span class="result-summary" aria-live="polite">{{ resultSummary }}</span>
     </section>
+
+    <nav class="changelog-toc" aria-label="版本目录">
+      <div class="changelog-toc__title">版本目录</div>
+      <div class="changelog-toc__list">
+        <a
+          v-for="(entry, index) in timelineEntries"
+          :key="`toc-${entry.id}-${entry.version}`"
+          :href="`#${buildTimelineItemId(entry, index)}`"
+          @click.prevent="jumpToTimelineItem(buildTimelineItemId(entry, index))"
+        >
+          <span>{{ formatVersionLabel(entry.version) }}</span>
+          <small>{{ entry.title }}</small>
+        </a>
+      </div>
+    </nav>
 
     <section v-loading="isLoading" class="changelog-list" aria-live="polite">
       <article v-for="(entry, entryIndex) in visibleTimelineEntries" :id="buildTimelineItemId(entry, entryIndex)" :key="`${entry.version}-${entry.id}`" class="release-card">
@@ -393,6 +420,53 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.changelog-toc {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid #e1e5eb;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.changelog-toc__title {
+  margin-bottom: 10px;
+  color: #374151;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.changelog-toc__list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 16px;
+}
+
+.changelog-toc__list a {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: #5c45e6;
+  font-size: 13px;
+  text-decoration: none;
+}
+
+.changelog-toc__list a:hover {
+  background: #f7f5ff;
+}
+
+.changelog-toc__list small {
+  min-width: 0;
+  overflow: hidden;
+  color: #667085;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .changelog-list {
   min-height: 240px;
   padding-top: 18px;
@@ -547,6 +621,10 @@ onMounted(() => {
 
   .changelog-toolbar {
     grid-template-columns: 1fr auto;
+  }
+
+  .changelog-toc__list {
+    grid-template-columns: 1fr;
   }
 
   .changelog-search {
