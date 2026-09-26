@@ -125,6 +125,16 @@ const jumpToTimelineItem = async (id: string): Promise<void> => {
 }
 
 /**
+ * 函数说明：根据版本对象返回稳定锚点，避免筛选后使用当前列表索引造成定位错位。
+ * @param entry 版本记录
+ * @returns 版本记录对应的 DOM ID
+ */
+const getTimelineEntryAnchor = (entry: SiteChangelogTimelineItem): string => {
+  const index = timelineEntries.value.indexOf(entry)
+  return buildTimelineItemId(entry, index >= 0 ? index : 0)
+}
+
+/**
  * 函数说明：读取站点公共配置，统一更新开源说明、统计文案和去重后的版本时间线。
  */
 const loadSiteConfig = async (): Promise<void> => {
@@ -201,52 +211,56 @@ onMounted(() => {
       <span class="result-summary" aria-live="polite">{{ resultSummary }}</span>
     </section>
 
-    <nav class="changelog-toc" aria-label="版本目录">
-      <div class="changelog-toc__title">版本目录</div>
-      <div class="changelog-toc__list">
-        <a
-          v-for="(entry, index) in timelineEntries"
-          :key="`toc-${entry.id}-${entry.version}`"
-          :href="`#${buildTimelineItemId(entry, index)}`"
-          @click.prevent="jumpToTimelineItem(buildTimelineItemId(entry, index))"
-        >
-          <span>{{ formatVersionLabel(entry.version) }}</span>
-          <small>{{ entry.title }}</small>
-        </a>
-      </div>
-    </nav>
-
-    <section v-loading="isLoading" class="changelog-list" aria-live="polite">
-      <article v-for="(entry, entryIndex) in visibleTimelineEntries" :id="buildTimelineItemId(entry, entryIndex)" :key="`${entry.version}-${entry.id}`" class="release-card">
-        <header class="release-card__header">
-          <div class="release-version">
-            <span class="release-version__number">{{ formatVersionLabel(entry.version) }}</span>
-            <el-tag v-if="entry.badgeText" size="small" :type="entry.badgeType || 'info'">
-              {{ entry.badgeText }}
-            </el-tag>
+    <div class="changelog-content-layout">
+      <aside class="changelog-sidebar">
+        <nav class="changelog-toc" aria-label="版本目录">
+          <div class="changelog-toc__title">版本目录</div>
+          <div class="changelog-toc__list">
+            <a
+              v-for="entry in timelineEntries"
+              :key="`toc-${entry.id}-${entry.version}`"
+              :href="`#${getTimelineEntryAnchor(entry)}`"
+              @click.prevent="jumpToTimelineItem(getTimelineEntryAnchor(entry))"
+            >
+              <span>{{ formatVersionLabel(entry.version) }}</span>
+              <small>{{ entry.title }}</small>
+            </a>
           </div>
-          <time :datetime="entry.date.replace(' ', 'T')">{{ entry.date }}</time>
-        </header>
+        </nav>
+      </aside>
 
-        <h2>{{ entry.title }}</h2>
+      <section v-loading="isLoading" class="changelog-list" aria-live="polite">
+        <article v-for="entry in visibleTimelineEntries" :id="getTimelineEntryAnchor(entry)" :key="`${entry.version}-${entry.id}`" class="release-card">
+          <header class="release-card__header">
+            <div class="release-version">
+              <span class="release-version__number">{{ formatVersionLabel(entry.version) }}</span>
+              <el-tag v-if="entry.badgeText" size="small" :type="entry.badgeType || 'info'">
+                {{ entry.badgeText }}
+              </el-tag>
+            </div>
+            <time :datetime="entry.date.replace(' ', 'T')">{{ entry.date }}</time>
+          </header>
 
-        <div class="feature-grid">
-          <section v-for="(feature, featureIndex) in entry.features" :key="`${entry.id}-feature-${featureIndex}-${feature.title}`" class="feature-block">
-            <h3>{{ feature.title }}</h3>
-            <ul>
-              <li v-for="(point, pointIndex) in feature.points" :key="`${entry.id}-point-${featureIndex}-${pointIndex}`" v-html="normalizeTimelinePointHtml(point)"></li>
-            </ul>
-          </section>
+          <h2>{{ entry.title }}</h2>
+
+          <div class="feature-grid">
+            <section v-for="(feature, featureIndex) in entry.features" :key="`${entry.id}-feature-${featureIndex}-${feature.title}`" class="feature-block">
+              <h3>{{ feature.title }}</h3>
+              <ul>
+                <li v-for="(point, pointIndex) in feature.points" :key="`${entry.id}-point-${featureIndex}-${pointIndex}`" v-html="normalizeTimelinePointHtml(point)"></li>
+              </ul>
+            </section>
+          </div>
+        </article>
+
+        <div v-if="!isLoading && visibleTimelineEntries.length === 0" class="empty-result">
+          <div class="empty-result__icon">⌕</div>
+          <h2>没有找到匹配的更新记录</h2>
+          <p>可以更换关键词，或切换到“全部版本”继续搜索。</p>
+          <button type="button" @click="showAllVersions">查看全部版本</button>
         </div>
-      </article>
-
-      <div v-if="!isLoading && visibleTimelineEntries.length === 0" class="empty-result">
-        <div class="empty-result__icon">⌕</div>
-        <h2>没有找到匹配的更新记录</h2>
-        <p>可以更换关键词，或切换到“全部版本”继续搜索。</p>
-        <button type="button" @click="showAllVersions">查看全部版本</button>
-      </div>
-    </section>
+      </section>
+    </div>
 
     <el-backtop :right="24" :bottom="24" />
   </main>
@@ -254,6 +268,7 @@ onMounted(() => {
 
 <style scoped>
 .changelog-page {
+  --changelog-sticky-offset: 76px;
   width: min(1120px, 100%);
   margin: 0 auto;
   color: #1f2937;
@@ -420,8 +435,20 @@ onMounted(() => {
   font-size: 12px;
 }
 
+.changelog-content-layout {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.changelog-sidebar {
+  position: sticky;
+  top: var(--changelog-sticky-offset);
+  min-width: 0;
+}
+
 .changelog-toc {
-  margin-top: 16px;
   padding: 14px 16px;
   border: 1px solid #e1e5eb;
   border-radius: 8px;
@@ -437,25 +464,33 @@ onMounted(() => {
 
 .changelog-toc__list {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 16px;
+  gap: 4px;
+  max-height: min(62vh, 560px);
+  overflow-y: auto;
+  padding-right: 2px;
 }
 
 .changelog-toc__list a {
   display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  gap: 8px;
-  align-items: baseline;
+  gap: 3px;
   min-width: 0;
-  padding: 6px 8px;
-  border-radius: 6px;
-  color: #5c45e6;
+  padding: 8px 9px;
+  border-left: 2px solid transparent;
+  color: #374151;
   font-size: 13px;
   text-decoration: none;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
 .changelog-toc__list a:hover {
+  border-left-color: #6c54ff;
   background: #f7f5ff;
+  color: #5c45e6;
+}
+
+.changelog-toc__list a span {
+  color: #5c45e6;
+  font-weight: 700;
 }
 
 .changelog-toc__list small {
@@ -469,7 +504,8 @@ onMounted(() => {
 
 .changelog-list {
   min-height: 240px;
-  padding-top: 18px;
+  min-width: 0;
+  padding-top: 0;
 }
 
 .release-card {
@@ -623,8 +659,24 @@ onMounted(() => {
     grid-template-columns: 1fr auto;
   }
 
+  .changelog-content-layout {
+    display: block;
+  }
+
+  .changelog-sidebar {
+    position: static;
+    margin-top: 14px;
+  }
+
   .changelog-toc__list {
-    grid-template-columns: 1fr;
+    display: flex;
+    max-height: none;
+    overflow-x: auto;
+    padding-bottom: 3px;
+  }
+
+  .changelog-toc__list a {
+    flex: 0 0 150px;
   }
 
   .changelog-search {
@@ -634,6 +686,10 @@ onMounted(() => {
 
   .feature-grid {
     grid-template-columns: 1fr;
+  }
+
+  .changelog-list {
+    padding-top: 16px;
   }
 }
 
