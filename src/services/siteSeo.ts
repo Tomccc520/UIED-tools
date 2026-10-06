@@ -10,7 +10,7 @@
 import type { RouteLocationNormalizedLoaded, RouteLocationNormalized } from 'vue-router'
 import type { SitePublicConfig, SiteSeoPageItem } from '@/services/siteConfig'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
-import { getDefaultSitePublicConfig, getSitePublicConfig } from '@/services/siteConfig'
+import { getDefaultSitePublicConfig, getSitePublicConfig, normalizeToolSeoTitle } from '@/services/siteConfig'
 
 type RouteLike = Pick<RouteLocationNormalizedLoaded | RouteLocationNormalized, 'path' | 'fullPath' | 'meta'>
 
@@ -128,7 +128,7 @@ const pickFirstText = (...values: unknown[]): string => {
  * 函数说明：构建最终文档标题，避免站点名重复拼接。
  */
 const buildDocumentTitle = (rawTitle: string, webName: string): string => {
-  const title = String(rawTitle || '').trim()
+  const title = normalizeToolSeoTitle(rawTitle)
   const brand = String(webName || '').trim()
   if (!title) {
     return brand || 'UIED Tools'

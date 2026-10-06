@@ -7,7 +7,7 @@
 
 import { describe, expect, it, vi } from 'vitest'
 import defaultChangelogTimeline from '@/constants/changelogTimeline'
-import { getRequiredSitePublicConfig, normalizeBannerSlides, normalizeChangelogTimeline } from './siteConfig'
+import { getRequiredSitePublicConfig, normalizeBannerSlides, normalizeChangelogTimeline, normalizeToolSeoTitle } from './siteConfig'
 
 describe('normalizeBannerSlides', () => {
   it('会将历史渐变文字广告迁移为 HTML 广告', () => {
@@ -133,5 +133,12 @@ describe('getRequiredSitePublicConfig', () => {
     expect(fetchMock).toHaveBeenCalledOnce()
 
     vi.unstubAllGlobals()
+  })
+})
+
+describe('normalizeToolSeoTitle', () => {
+  it('应清理历史配置中的重复 SEO 固定短语', () => {
+    expect(normalizeToolSeoTitle('色彩对比度检测｜在线工具在线工具')).toBe('色彩对比度检测｜在线工具')
+    expect(normalizeToolSeoTitle('在线工具大全工具大全')).toBe('在线工具大全')
   })
 })

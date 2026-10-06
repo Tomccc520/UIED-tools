@@ -16,6 +16,18 @@ import {
 } from '@/utils/safeAdvertisingHtml'
 import { getImageCompressToolDescription } from '@/constants/imageCompress'
 
+/**
+ * 函数说明：清理后台 SEO 标题中重复拼接的固定短语，兼容历史配置数据。
+ * @param value 原始 SEO 标题
+ * @returns 清洗后的 SEO 标题
+ */
+export const normalizeToolSeoTitle = (value: unknown): string => {
+  return String(value || '')
+    .trim()
+    .replace(/在线工具在线工具/g, '在线工具')
+    .replace(/工具大全工具大全/g, '工具大全')
+}
+
 export interface SiteLinkItem {
   name: string
   link: string
@@ -1012,7 +1024,7 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
               const gradient = String(toolRecord.gradient || '').trim()
               const badge = String(toolRecord.badge || '').trim()
               const text = String(toolRecord.text || '').trim()
-              const seoTitle = String(toolRecord.seoTitle || '').trim()
+              const seoTitle = normalizeToolSeoTitle(toolRecord.seoTitle)
               const seoKeywords = String(toolRecord.seoKeywords || '').trim()
               const seoDescription = String(toolRecord.seoDescription || '').trim()
               const seoImage = String(toolRecord.seoImage || '').trim()
