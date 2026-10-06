@@ -11,8 +11,6 @@
 import { computed, onMounted, ref } from 'vue'
 import ToolRankingBoard from '@/components/Common/ToolRankingBoard.vue'
 import { getSitePublicConfig } from '@/services/siteConfig'
-import { getNewToolsFromCategories } from '@/services/toolCatalog'
-import type { Tool } from '@/types/tools'
 import type { ToolRankingPeriod } from '@/services/toolRanking'
 
 const pageLoading = ref(true)
@@ -21,7 +19,6 @@ const toolRankingPageTitle = ref('站内工具使用排行榜')
 const toolRankingPageDescription = ref('按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。')
 const activeToolRankingPeriod = ref<ToolRankingPeriod>('week')
 const toolRankingPageLimit = ref(12)
-const toolRankingFallbackTools = ref<Tool[]>([])
 const toolRankingPeriodOptions: Array<{ label: string; value: ToolRankingPeriod }> = [
   { label: '日榜', value: 'day' },
   { label: '周榜', value: 'week' },
@@ -88,7 +85,7 @@ const syncToolRankingDocumentTitle = () => {
 }
 
 /**
- * 函数说明：读取后台热榜页面配置，并同步生成榜单兜底工具列表。
+ * 函数说明：读取后台热榜页面配置，并为榜单请求同步页面展示参数。
  */
 const loadToolRankingPageConfig = async () => {
   pageLoading.value = true
@@ -99,14 +96,12 @@ const loadToolRankingPageConfig = async () => {
     toolRankingPageDescription.value = resolveToolRankingPageDescription(siteConfig.toolRankingPageDescription)
     activeToolRankingPeriod.value = siteConfig.toolRankingDefaultPeriod || 'week'
     toolRankingPageLimit.value = normalizeToolRankingPageLimit(siteConfig.toolRankingPageLimit)
-    toolRankingFallbackTools.value = getNewToolsFromCategories(siteConfig.toolCategories || [], toolRankingPageLimit.value)
   } catch {
     toolRankingEnabled.value = true
     toolRankingPageTitle.value = '站内工具使用排行榜'
     toolRankingPageDescription.value = '按站内真实点击量排行，帮助你快速看清当前最受欢迎的工具。'
     activeToolRankingPeriod.value = 'week'
     toolRankingPageLimit.value = 12
-    toolRankingFallbackTools.value = []
   } finally {
     syncToolRankingDocumentTitle()
     pageLoading.value = false
@@ -167,7 +162,7 @@ onMounted(() => {
         <span class="tool-ranking-page__board-badge">{{ toolRankingPeriodLabel }} / 前 {{ toolRankingPageLimit }}</span>
       </div>
 
-      <div v-if="pageLoading" class="tool-ranking-page__status">
+      <div v-if="pageLoading" class="tool-ranking-page__status" role="status" aria-live="polite">
         工具排行榜加载中...
       </div>
 
@@ -178,11 +173,14 @@ onMounted(() => {
         :title="toolRankingPageTitle"
         :period="activeToolRankingPeriod"
         :limit="toolRankingPageLimit"
-        :fallback-tools="toolRankingFallbackTools"
-        empty-text="当前还没有足够的站内工具数据，榜单会在真实使用后自动更新。"
+        :fallback-tools="[]"
+        :use-fallback-on-error="false"
+        show-retry
+        empty-text="当前暂无排行榜数据，产生真实使用后会自动更新。"
+        error-text="排行榜加载失败，请重试"
       />
 
-      <div v-else class="tool-ranking-page__status tool-ranking-page__status--muted">
+      <div v-else class="tool-ranking-page__status tool-ranking-page__status--muted" role="status" aria-live="polite">
         当前站内工具排行榜已在后台关闭。
       </div>
     </section>

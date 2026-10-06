@@ -21,7 +21,10 @@ const props = withDefaults(defineProps<{
   flat?: boolean
   showHeader?: boolean
   fallbackTools?: Tool[]
+  useFallbackOnError?: boolean
   emptyText?: string
+  errorText?: string
+  showRetry?: boolean
 }>(), {
   title: '工具热榜',
   period: 'week',
@@ -30,11 +33,15 @@ const props = withDefaults(defineProps<{
   flat: false,
   showHeader: true,
   fallbackTools: () => [],
-  emptyText: '当前还没有足够的排行榜数据'
+  useFallbackOnError: true,
+  emptyText: '当前还没有足够的排行榜数据',
+  errorText: '排行榜加载失败，请重试',
+  showRetry: false
 })
 
 const { openToolEntry } = useToolRuntimeGate()
 const loading = ref(false)
+const loadError = ref(false)
 const rankingList = ref<ToolRankingListItem[]>([])
 const liveRankingReady = ref(false)
 const latestLoadRequestId = ref(0)
@@ -71,7 +78,9 @@ const resolveRankingUniqueKey = (item: ToolRankingListItem): string => {
  * 函数说明：构建当前页面可展示的榜单数据，优先保留真实榜单并用去重后的推荐工具补足配置数量。
  */
 const displayRankingList = computed<ToolRankingListItem[]>(() => {
-  const fallbackRankingItems = buildFallbackToolRankingItems(props.fallbackTools)
+  const fallbackRankingItems = !loadError.value || props.useFallbackOnError
+    ? buildFallbackToolRankingItems(props.fallbackTools)
+    : []
   const seenKeys = new Set(rankingList.value.map(resolveRankingUniqueKey))
   const supplementalItems = fallbackRankingItems.filter((item) => {
     const uniqueKey = resolveRankingUniqueKey(item)
@@ -98,8 +107,8 @@ const topRankingItems = computed(() => displayRankingList.value.slice(0, 3))
  * 函数说明：独立排行榜页抽取前三名之后的列表项，避免同一工具重复显示。
  */
 const secondaryRankingItems = computed(() => {
-  if (props.flat && !props.compact && displayRankingList.value.length > 3) {
-    return displayRankingList.value.slice(3)
+  if (props.flat && !props.compact) {
+    return displayRankingList.value.length > 3 ? displayRankingList.value.slice(3) : []
   }
   return displayRankingList.value
 })
@@ -118,6 +127,7 @@ const loadToolRankingList = async () => {
   const currentRequestId = latestLoadRequestId.value + 1
   latestLoadRequestId.value = currentRequestId
   loading.value = true
+  loadError.value = false
   try {
     const result = await getToolRankingList({
       period: props.period,
@@ -135,11 +145,31 @@ const loadToolRankingList = async () => {
     }
     rankingList.value = []
     liveRankingReady.value = false
+    loadError.value = true
+    reportToolRankingLoadError(props.period)
   } finally {
     if (currentRequestId === latestLoadRequestId.value) {
       loading.value = false
     }
   }
+}
+
+/**
+ * 函数说明：记录排行榜请求失败的必要信息，方便前端排障但不把异常堆栈展示给用户。
+ * @param period 当前排行榜周期
+ */
+const reportToolRankingLoadError = (period: ToolRankingPeriod): void => {
+  console.error('[tool-ranking] load failed', {
+    period,
+    message: '排行榜接口请求失败或超时'
+  })
+}
+
+/**
+ * 函数说明：重新发起排行榜请求，供失败状态按钮使用。
+ */
+const handleRetryToolRanking = (): void => {
+  void loadToolRankingList()
 }
 
 /**
@@ -263,8 +293,19 @@ watch(
       </button>
     </div>
 
-    <div v-else class="tool-ranking-board__empty">
-      {{ loading ? '工具热榜加载中...' : emptyText }}
+    <div v-else class="tool-ranking-board__empty" role="status" aria-live="polite">
+      <template v-if="loading">
+        工具热榜加载中...
+      </template>
+      <template v-else-if="loadError">
+        <span>{{ errorText }}</span>
+        <button v-if="showRetry" type="button" class="tool-ranking-board__retry" @click="handleRetryToolRanking">
+          重试
+        </button>
+      </template>
+      <template v-else>
+        {{ emptyText }}
+      </template>
     </div>
   </div>
 </template>
@@ -577,6 +618,27 @@ watch(
   font-size: 0.875rem;
   line-height: 1.5rem;
   color: #64748b;
+}
+
+.tool-ranking-board__retry {
+  display: inline-flex;
+  min-height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-left: 0.75rem;
+  padding: 0 0.9rem;
+  color: #fff;
+  background: #6757ff;
+  border: 0;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tool-ranking-board__retry:focus-visible {
+  outline: 2px solid #6757ff;
+  outline-offset: 2px;
 }
 
 .tool-ranking-board--compact .tool-ranking-board__header {

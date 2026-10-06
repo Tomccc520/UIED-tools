@@ -131,4 +131,68 @@ describe('toolRanking', () => {
     expect(result.list).toHaveLength(1)
     expect(result.list[0]?.toolTitle).toBe('拼豆图纸生成器')
   })
+
+  describe('排行榜请求状态', () => {
+    it('请求成功时返回真实排行榜数据', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+        code: 200,
+        data: {
+          period: 'week',
+          sortBy: 'view',
+          limit: 4,
+          list: [{
+            rank: 1,
+            toolKey: 'ai-perler',
+            toolTitle: '拼豆图纸生成器',
+            toolUrl: '/tools/ai-perler',
+            cateTitle: 'AI图像工具',
+            viewCount: 42
+          }]
+        }
+      }), { status: 200 }))
+
+      const result = await getToolRankingList({ period: 'week', limit: 4 })
+      expect(result.list).toHaveLength(1)
+      expect(result.list[0]?.viewCount).toBe(42)
+    })
+
+    it('接口返回空列表时保留明确的空数据结果', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+        code: 200,
+        data: { period: 'week', sortBy: 'view', limit: 4, list: [] }
+      }), { status: 200 }))
+
+      const result = await getToolRankingList({ period: 'week', limit: 4 })
+      expect(result.list).toEqual([])
+    })
+
+    it('接口返回失败码时抛出可识别的请求错误', async () => {
+      vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
+        code: 503,
+        msg: '排行榜服务暂不可用'
+      }), { status: 200 }))
+
+      await expect(getToolRankingList({ period: 'week', limit: 4 })).rejects.toThrow('排行榜服务暂不可用')
+    })
+
+    it('请求超过超时时间时抛出超时错误', async () => {
+      vi.useFakeTimers()
+      vi.stubGlobal('fetch', vi.fn((_input: RequestInfo | URL, init?: RequestInit) => new Promise<Response>((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const abortError = new Error('aborted')
+          abortError.name = 'AbortError'
+          reject(abortError)
+        })
+      })))
+
+      try {
+        const request = getToolRankingList({ period: 'week', limit: 4 })
+        const result = expect(request).rejects.toThrow('超时')
+        await vi.advanceTimersByTimeAsync(8000)
+        await result
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+  })
 })
