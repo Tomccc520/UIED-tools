@@ -22,7 +22,12 @@ const outputFile = path.resolve(process.argv[2] || path.join(import.meta.dirname
 const buildNginxAllowlist = (routePaths) => {
   const generatedAt = new Date().toISOString()
   const locations = routePaths
-    .map((routePath) => `location = ${routePath} {\n    try_files $uri $uri/ /index.html;\n}`)
+    .map((routePath) => {
+      if (['/404', '/login', '/register'].includes(routePath)) {
+        return `location = ${routePath} {\n    add_header X-Robots-Tag "noindex, nofollow" always;\n    return 404;\n}`
+      }
+      return `location = ${routePath} {\n    try_files $uri $uri/ /index.html;\n}`
+    })
     .join('\n\n')
 
   return `# 此文件由 scripts/release/generate-frontend-route-allowlist.mjs 自动生成，请勿手工编辑。\n# 生成时间: ${generatedAt}\n\n${locations}\n`

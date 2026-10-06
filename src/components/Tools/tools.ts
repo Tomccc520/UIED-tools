@@ -5,7 +5,7 @@ import {
   AI_RESUME_STANDALONE_TOOL,
   filterToolCategoriesForRelease
 } from '@/config/standaloneTools'
-import { IMAGE_COMPRESS_MAX_FILE_SIZE_MB } from '@/constants/imageCompress'
+import { getImageCompressToolDescription } from '@/constants/imageCompress'
 
 const toolsCategories: ToolCategory[] = [
     {
@@ -2418,7 +2418,7 @@ const toolsCategories: ToolCategory[] = [
               id: 514,
               title: '图片压缩',
               logo: { type: 'svg', name: 'imageCompress' },
-              desc: `支持JPG、PNG、GIF等格式图片压缩，最大支持${IMAGE_COMPRESS_MAX_FILE_SIZE_MB}MB`,
+              desc: getImageCompressToolDescription(),
               url: '/tools/image-compress',
               cate: '图片工具'
             },

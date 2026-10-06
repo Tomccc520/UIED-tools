@@ -332,6 +332,8 @@ main() {
   test -x "${release_dir}/backend/uiedtool-api"
   test -f "${release_dir}/frontend/site/index.html"
   test -f "${release_dir}/frontend/admin/index.html"
+  test -f "${release_dir}/frontend/site/404.html"
+  test -f "${release_dir}/nginx/uiedtool.com.fullstack.locations.conf"
   chmod 755 "${release_dir}/backend/uiedtool-api"
 
   log_step '数据库变更策略'

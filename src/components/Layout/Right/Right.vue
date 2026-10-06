@@ -38,6 +38,7 @@ import {
   getRandomToolsFromCategories,
   getRelatedToolsFromCategories
 } from '@/services/toolCatalog'
+import { getImageCompressToolDescription } from '@/constants/imageCompress'
 
 const route = useRoute()
 const { isToolDisabled, openToolEntry } = useToolRuntimeGate()
@@ -56,6 +57,18 @@ const randomTools = ref<Tool[]>([])
 // 最近使用的工具
 const recentTools = ref<Tool[]>([])
 const siteConfig = ref<SitePublicConfig | null>(null)
+
+/**
+ * 函数说明：修正本地最近使用记录中的动态工具描述，确保限制文案与真实配置一致。
+ * @param tool 最近使用工具记录
+ * @returns 规范化后的工具记录
+ */
+const normalizeRecentTool = (tool: Tool): Tool => {
+  if (tool.url !== '/tools/image-compress') {
+    return tool
+  }
+  return { ...tool, desc: getImageCompressToolDescription() }
+}
 
 /**
  * 函数说明：处理右侧推荐工具点击，停用状态阻断并提示，其余按内链/外链正常跳转。
@@ -98,7 +111,11 @@ const getRecentTools = () => {
   try {
     const stored = localStorage.getItem('recentTools')
     if (stored) {
-      recentTools.value = JSON.parse(stored).slice(0, 5) // 只显示最近5个工具
+      const parsed = JSON.parse(stored)
+      recentTools.value = (Array.isArray(parsed) ? parsed : [])
+        .filter((tool: unknown): tool is Tool => Boolean(tool && typeof tool === 'object'))
+        .map(normalizeRecentTool)
+        .slice(0, 5) // 只显示最近5个工具
     }
   } catch (error) {
     console.error('获取最近使用工具失败:', error)
@@ -114,6 +131,7 @@ const addToRecentTools = (currentPath: string) => {
 
   const currentTool = findToolByUrl(toolsStore.cates, currentPath)
   if (!currentTool) return
+  const normalizedCurrentTool = normalizeRecentTool(currentTool)
 
   try {
     // 获取已有记录
@@ -124,10 +142,10 @@ const addToRecentTools = (currentPath: string) => {
     }
 
     // 移除已存在的相同工具（避免重复）
-    recent = recent.filter(tool => tool.url !== currentTool.url)
+    recent = recent.filter(tool => tool.url !== normalizedCurrentTool.url)
 
     // 添加到数组开头
-    recent.unshift(currentTool)
+    recent.unshift(normalizedCurrentTool)
 
     // 只保留最近10个
     if (recent.length > 10) {
@@ -138,7 +156,7 @@ const addToRecentTools = (currentPath: string) => {
     localStorage.setItem('recentTools', JSON.stringify(recent))
 
     // 更新当前显示
-    recentTools.value = recent.slice(0, 5)
+    recentTools.value = recent.map(normalizeRecentTool).slice(0, 5)
   } catch (error) {
     console.error('保存最近使用工具失败:', error)
   }

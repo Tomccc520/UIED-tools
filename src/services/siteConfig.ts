@@ -14,6 +14,7 @@ import {
   normalizeSafeAdvertisingUrl,
   sanitizeAdvertisingHtml
 } from '@/utils/safeAdvertisingHtml'
+import { getImageCompressToolDescription } from '@/constants/imageCompress'
 
 export interface SiteLinkItem {
   name: string
@@ -999,7 +1000,11 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
                   ? toolIdRaw
                   : categoryId * 10000 + subCategoryId * 100 + toolIndex + 1
 
-              const toolDesc = String(toolRecord.desc || toolTitle).trim() || toolTitle
+              const rawToolDesc = String(toolRecord.desc || toolTitle).trim() || toolTitle
+              // 图片压缩限制是浏览器本地能力，后台旧文案不能覆盖前端真实上限。
+              const toolDesc = toolUrl === '/tools/image-compress'
+                ? getImageCompressToolDescription()
+                : rawToolDesc
               const isExternal = /^https?:\/\//i.test(toolUrl)
               const cate = String(toolRecord.cate || subCategoryTitle).trim() || subCategoryTitle
               const releaseDate = String(toolRecord.releaseDate || '').trim()

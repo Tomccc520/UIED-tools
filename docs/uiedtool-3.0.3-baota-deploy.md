@@ -28,6 +28,14 @@ uiedtool-3.0.3/
 
 发布包中的 `web/frontend-route-allowlist.conf` 由 Vue Router 自动生成。Nginx 仅对已注册的前台路由回退到 `index.html`，未知路径返回 HTTP 404，避免搜索引擎把不存在页面识别为正常页面。独立 AI 简历代理、`/api/`、`/admin/` 和静态资源仍按各自 location 处理。`/assets/` 下的构建产物带内容哈希，按一年期不可变缓存下发。
 
+扩展配置同时将 404 请求转发到 `web/404.html`，保留 HTTP 404、`X-Robots-Tag: noindex, nofollow` 和“页面不存在”提示。每次切换 `app/current` 后都要重新复制扩展配置并执行 `nginx -t`，否则旧配置仍可能把未知路径回退到首页：
+
+```bash
+cp "$APP_DIR/current/nginx/uiedtool.com.fullstack.locations.conf" \
+  /www/server/panel/vhost/nginx/extension/uiedtool.com/uiedtool-fullstack.conf
+/www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload
+```
+
 发布包中的 `web/sitemap.xml` 同样由 Vue Router 路由表自动生成（`scripts/release/generate-sitemap.mjs`），规范域为 `https://uiedtool.com`，404、登录、个人中心与跳转路由不参与收录。宝塔侧需确认 `www.uiedtool.com` 301 到非 www 规范域，避免双域名重复收录。
 
 ## 二、增量升级策略（重要）

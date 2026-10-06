@@ -124,13 +124,15 @@ create_runtime_archive() {
   mkdir -p \
     "${RUNTIME_DIR}/frontend/site" \
     "${RUNTIME_DIR}/frontend/admin" \
-    "${RUNTIME_DIR}/backend/static"
+    "${RUNTIME_DIR}/backend/static" \
+    "${RUNTIME_DIR}/nginx"
 
   cp -R "${RELEASE_DIR}/web/." "${RUNTIME_DIR}/frontend/site/"
   cp -R "${RELEASE_DIR}/admin/." "${RUNTIME_DIR}/frontend/admin/"
   cp -R "${RELEASE_DIR}/server/static/." "${RUNTIME_DIR}/backend/static/"
   cp "${RELEASE_DIR}/server/uiedtool-api" "${RUNTIME_DIR}/backend/"
   cp "${RELEASE_DIR}/server/.env.example" "${RUNTIME_DIR}/backend/"
+  cp "${RELEASE_DIR}/nginx/uiedtool.com.fullstack.locations.conf" "${RUNTIME_DIR}/nginx/"
 
   clean_macos_metadata "${RUNTIME_DIR}"
   rm -f "${RUNTIME_ARCHIVE_PATH}" "${RUNTIME_ARCHIVE_PATH}.sha256"

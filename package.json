@@ -33,6 +33,7 @@
     "smoke:frontend-mobile:visual": "node scripts/smoke-frontend-mobile-visual.mjs",
     "smoke:ai-resume-integration": "node scripts/smoke-ai-resume-integration.mjs",
     "smoke:ai-perler-integration": "node scripts/smoke-ai-perler-integration.mjs",
+    "smoke:search-navigation": "node scripts/smoke-search-navigation.mjs",
     "preview": "vite preview",
     "test:unit": "vitest"
   },

@@ -31,7 +31,7 @@
     >
       <template #meta>
         <span class="image-meta">本地处理</span>
-        <span class="image-meta">最多 30 个文件</span>
+        <span class="image-meta">最多 {{ IMAGE_COMPRESS_MAX_FILE_COUNT }} 个文件</span>
         <span class="image-meta">单个不超过 {{ IMAGE_COMPRESS_MAX_FILE_SIZE_MB }}MB</span>
       </template>
 
@@ -58,10 +58,10 @@
               </div>
               <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽图片到这里</div>
               <p class="text-xs text-gray-400 mb-1">
-                最多选择 30 个图片，单个文件最大 {{ IMAGE_COMPRESS_MAX_FILE_SIZE_MB }}MB
+                最多选择 {{ IMAGE_COMPRESS_MAX_FILE_COUNT }} 个图片，单个文件最大 {{ IMAGE_COMPRESS_MAX_FILE_SIZE_MB }}MB
               </p>
               <p class="text-xs text-gray-400">
-                支持 JPG、PNG、WebP 格式
+                支持 {{ IMAGE_COMPRESS_SUPPORTED_FORMATS }} 格式
               </p>
             </div>
           </div>
@@ -328,7 +328,12 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import StandardToolPageTemplate from '@/components/Common/PageTemplates/StandardToolPageTemplate.vue'
 import { useRoute } from 'vue-router'
 import JSZip from 'jszip'
-import { IMAGE_COMPRESS_MAX_FILE_SIZE_MB } from '@/constants/imageCompress'
+import {
+  IMAGE_COMPRESS_MAX_FILE_COUNT,
+  IMAGE_COMPRESS_MAX_FILE_SIZE_MB,
+  IMAGE_COMPRESS_SUPPORTED_FORMATS,
+  IMAGE_COMPRESS_SUPPORTED_MIME_TYPES
+} from '@/constants/imageCompress'
 
 interface JSZipInstance {
   file: (path: string, data: Blob, options?: { binary: boolean }) => void;
@@ -427,9 +432,9 @@ const handleUpload = (file: UploadRawFile) => {
     return false
   }
 
-  if (!file.type.startsWith('image/')) {
+  if (!(IMAGE_COMPRESS_SUPPORTED_MIME_TYPES as readonly string[]).includes(file.type)) {
     console.log('Invalid file type:', file.type)
-    ElMessage.warning('请只选择图片文件')
+    ElMessage.warning(`仅支持${IMAGE_COMPRESS_SUPPORTED_FORMATS}格式图片`)
     return false
   }
 
@@ -439,8 +444,8 @@ const handleUpload = (file: UploadRawFile) => {
     return false
   }
 
-  if (fileList.value.length >= 30) {
-    ElMessage.warning('最多只能上传30个文件')
+  if (fileList.value.length >= IMAGE_COMPRESS_MAX_FILE_COUNT) {
+    ElMessage.warning(`最多只能上传${IMAGE_COMPRESS_MAX_FILE_COUNT}个文件`)
     return false
   }
 
