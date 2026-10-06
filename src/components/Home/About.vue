@@ -9,6 +9,8 @@
  * @keywords 在线工具,图片处理,格式转换,开发工具,在线服务,免费工具
  */
 
+import { Message, User } from '@element-plus/icons-vue'
+
 // 工具特点数据
 const features = [
   {
