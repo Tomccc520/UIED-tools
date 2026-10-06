@@ -21,9 +21,15 @@ const outputFile = path.resolve(process.argv[2] || path.join(import.meta.dirname
  */
 const buildNginxAllowlist = (routePaths) => {
   const generatedAt = new Date().toISOString()
-  const locations = routePaths
+  const routeVariants = routePaths.flatMap((routePath) => {
+    if (routePath === '/') {
+      return ['/']
+    }
+    return [routePath, `${routePath}/`]
+  })
+  const locations = routeVariants
     .map((routePath) => {
-      if (['/404', '/login', '/register'].includes(routePath)) {
+      if (['/404', '/404/', '/login', '/login/', '/register', '/register/'].includes(routePath)) {
         return `location = ${routePath} {\n    add_header X-Robots-Tag "noindex, nofollow" always;\n    return 404;\n}`
       }
       return `location = ${routePath} {\n    try_files $uri $uri/ /index.html;\n}`
