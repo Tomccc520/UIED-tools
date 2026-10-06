@@ -32,7 +32,7 @@
       <template #meta>
         <span class="image-meta">本地处理</span>
         <span class="image-meta">最多 30 个文件</span>
-        <span class="image-meta">单个不超过 25MB</span>
+        <span class="image-meta">单个不超过 {{ IMAGE_COMPRESS_MAX_FILE_SIZE_MB }}MB</span>
       </template>
 
       <!-- 主要内容区域 -->
@@ -58,7 +58,7 @@
               </div>
               <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽图片到这里</div>
               <p class="text-xs text-gray-400 mb-1">
-                最多选择 30 个图片，单个文件最大 25MB
+                最多选择 30 个图片，单个文件最大 {{ IMAGE_COMPRESS_MAX_FILE_SIZE_MB }}MB
               </p>
               <p class="text-xs text-gray-400">
                 支持 JPG、PNG、WebP 格式
@@ -328,6 +328,7 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import StandardToolPageTemplate from '@/components/Common/PageTemplates/StandardToolPageTemplate.vue'
 import { useRoute } from 'vue-router'
 import JSZip from 'jszip'
+import { IMAGE_COMPRESS_MAX_FILE_SIZE_MB } from '@/constants/imageCompress'
 
 interface JSZipInstance {
   file: (path: string, data: Blob, options?: { binary: boolean }) => void;
@@ -395,7 +396,7 @@ const faq = [
   },
   {
     q: '有文件大小限制吗？',
-    a: '单个文件建议不超过20MB，如果需要压缩更大的图片，建议先裁剪或调整分辨率。'
+    a: `单个文件不能超过${IMAGE_COMPRESS_MAX_FILE_SIZE_MB}MB，如果需要压缩更大的图片，建议先裁剪或调整分辨率。`
   }
 ]
 
@@ -432,9 +433,9 @@ const handleUpload = (file: UploadRawFile) => {
     return false
   }
 
-  if (file.size > 25 * 1024 * 1024) {
+  if (file.size > IMAGE_COMPRESS_MAX_FILE_SIZE_MB * 1024 * 1024) {
     console.log('File too large:', file.size)
-    ElMessage.warning(`文件 ${file.name} 超过25MB，请选择更小的文件`)
+    ElMessage.warning(`文件 ${file.name} 超过${IMAGE_COMPRESS_MAX_FILE_SIZE_MB}MB，请选择更小的文件`)
     return false
   }
 
