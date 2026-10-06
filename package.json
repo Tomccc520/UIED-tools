@@ -11,6 +11,8 @@
     "dev:fullstack:status": "bash scripts/dev/status-fullstack.sh",
     "dev:upgrade:apply": "bash scripts/dev/apply-upgrade-patches.sh",
     "dev:delivery:check": "bash scripts/dev/check-delivery-readiness.sh",
+    "check:http-status": "bash scripts/dev/check-http-status.sh",
+    "gen:sitemap": "node scripts/release/generate-sitemap.mjs public/sitemap.xml",
     "deploy:config:check": "bash scripts/dev/check-production-config.sh",
     "release:production": "bash scripts/release/package-fullstack.sh",
     "dev:business:smoke": "bash scripts/dev/check-business-smoke.sh",

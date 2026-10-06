@@ -37,7 +37,8 @@ export const constantRoute: RouteRecordRaw[] = [
     component: () => import('../components/User/Login.vue'),
     name: 'userLogin',
     meta: {
-      hideToolsRecommend: true
+      hideToolsRecommend: true,
+      robots: 'noindex,nofollow'
     }
   },
   {
@@ -45,7 +46,8 @@ export const constantRoute: RouteRecordRaw[] = [
     component: () => import('../components/User/Center.vue'),
     name: 'userCenter',
     meta: {
-      hideToolsRecommend: true
+      hideToolsRecommend: true,
+      robots: 'noindex,nofollow'
     }
   },
   // 图片处理工具
@@ -1086,7 +1088,28 @@ export const constantRoute: RouteRecordRaw[] = [
     component: () => import('../components/404/404.vue'),
     name: '404',
     meta: {
-      title: "404"
+      title: '页面不存在',
+      description: '你访问的页面不存在，返回 UIED Tools 首页或浏览工具分类。',
+      keywords: '页面不存在,404,UIED Tools,在线工具',
+      robots: 'noindex,nofollow'
+    }
+  },
+  {
+    path: '/login',
+    redirect: '/404',
+    name: 'loginUnavailable',
+    meta: {
+      title: '登录功能暂未开放',
+      robots: 'noindex,nofollow'
+    }
+  },
+  {
+    path: '/register',
+    redirect: '/404',
+    name: 'registerUnavailable',
+    meta: {
+      title: '注册功能暂未开放',
+      robots: 'noindex,nofollow'
     }
   },
   {

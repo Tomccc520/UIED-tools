@@ -41,4 +41,21 @@ describe('siteSeo', () => {
       inLanguage: 'zh-CN'
     })
   })
+
+  it('应为 404 页面输出唯一描述并禁止索引', () => {
+    applyRouteSeoFallback({
+      path: '/404',
+      fullPath: '/404',
+      meta: {
+        title: '页面不存在',
+        description: '你访问的页面不存在，返回 UIED Tools 首页或浏览工具分类。',
+        keywords: '页面不存在,404,UIED Tools,在线工具',
+        robots: 'noindex,nofollow'
+      }
+    })
+
+    expect(document.title).toBe('页面不存在 - UIED-Tools')
+    expect(document.querySelector('meta[name="description"]')?.getAttribute('content')).toContain('你访问的页面不存在')
+    expect(document.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe('noindex,nofollow')
+  })
 })

@@ -26,6 +26,10 @@ uiedtool-3.0.3/
 └── RELEASE-MANIFEST.txt         文件 SHA-256 清单
 ```
 
+发布包中的 `web/frontend-route-allowlist.conf` 由 Vue Router 自动生成。Nginx 仅对已注册的前台路由回退到 `index.html`，未知路径返回 HTTP 404，避免搜索引擎把不存在页面识别为正常页面。独立 AI 简历代理、`/api/`、`/admin/` 和静态资源仍按各自 location 处理。`/assets/` 下的构建产物带内容哈希，按一年期不可变缓存下发。
+
+发布包中的 `web/sitemap.xml` 同样由 Vue Router 路由表自动生成（`scripts/release/generate-sitemap.mjs`），规范域为 `https://uiedtool.com`，404、登录、个人中心与跳转路由不参与收录。宝塔侧需确认 `www.uiedtool.com` 301 到非 www 规范域，避免双域名重复收录。
+
 ## 二、增量升级策略（重要）
 
 宝塔包中的 `deploy-update.sh` 默认采用“仅更新代码”模式：只切换主站、管理端和 Go API，不执行 SQL，不会因为普通页面发布重复改动数据库。
@@ -163,6 +167,7 @@ curl -fsSI https://uiedtool.com/
 curl -fsSI https://uiedtool.com/admin/
 curl -fsS https://uiedtool.com/api/health
 curl -fsS https://uiedtool.com/api/common/index/config
+curl -sS -o /dev/null -w 'unknown route: %{http_code}\n' https://uiedtool.com/this-route-does-not-exist-xyz
 docker logs --tail 100 uiedtool-api-v303-live
 ```
 

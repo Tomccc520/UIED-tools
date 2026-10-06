@@ -34,6 +34,8 @@ interface RouteStructuredDataPayload {
   geoQuestions: string
 }
 
+let seoRequestSerial = 0
+
 /**
  * 函数说明：统一规范路由路径，去掉 hash 与末尾斜杠，便于匹配后台 SEO 配置。
  */
@@ -269,7 +271,8 @@ const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConf
   document.title = resolvedSeo.title
   upsertMetaTag('meta[name="keywords"]', 'name', resolvedSeo.keywords)
   upsertMetaTag('meta[name="description"]', 'name', resolvedSeo.description)
-  upsertMetaTag('meta[name="robots"]', 'name', 'index,follow,max-image-preview:large')
+  const robotsDirective = String(route.meta?.robots || '').trim() || 'index,follow,max-image-preview:large'
+  upsertMetaTag('meta[name="robots"]', 'name', robotsDirective)
   upsertMetaTag('meta[property="og:title"]', 'property', resolvedSeo.title)
   upsertMetaTag('meta[property="og:site_name"]', 'property', siteName)
   upsertMetaTag('meta[property="og:description"]', 'property', resolvedSeo.description)
@@ -321,7 +324,11 @@ export const applyRouteSeo = async (route: RouteLike): Promise<void> => {
   if (typeof document === 'undefined') {
     return
   }
+  const requestSerial = ++seoRequestSerial
   const siteConfig = await getSitePublicConfig()
+  if (requestSerial !== seoRequestSerial) {
+    return
+  }
   const resolvedSeo = resolveRouteSeoPayload(route, siteConfig)
   applyResolvedSeoToDocument(route, siteConfig, resolvedSeo)
 }

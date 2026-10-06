@@ -79,6 +79,10 @@ assemble_release_files() {
     "${RELEASE_DIR}/docs"
 
   cp -R "${ROOT_DIR}/dist/." "${RELEASE_DIR}/web/"
+  node "${ROOT_DIR}/scripts/release/generate-frontend-route-allowlist.mjs" \
+    "${RELEASE_DIR}/web/frontend-route-allowlist.conf"
+  node "${ROOT_DIR}/scripts/release/generate-sitemap.mjs" \
+    "${RELEASE_DIR}/web/sitemap.xml"
   cp -R "${BACKEND_DIR}/admin/dist/." "${RELEASE_DIR}/admin/"
   cp -R "${SERVER_DIR}/static/." "${RELEASE_DIR}/server/static/"
   cp "${ROOT_DIR}/deploy/env/uiedtool-api.env.example" "${RELEASE_DIR}/server/.env.example"

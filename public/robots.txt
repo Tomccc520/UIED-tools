@@ -1,4 +1,4 @@
-# https://www.uiedtool.com robots.txt
+# https://uiedtool.com robots.txt
 
 # 全局规则
 User-agent: *
@@ -51,4 +51,4 @@ User-agent: HTTrack
 Disallow: /
 
 # Sitemap
-Sitemap: https://www.uiedtool.com/sitemap.xml
+Sitemap: https://uiedtool.com/sitemap.xml
