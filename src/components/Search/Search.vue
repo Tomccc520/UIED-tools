@@ -920,12 +920,28 @@ const handleSearch = async () => {
 }
 
 // 处理工具点击
-const handleToolClick = async (url: string, title = '') => {
-  await openToolEntry(resolveSearchRuntimeEntry(url, title), {
-    target: 'blank',
-    action: 'open',
-    source: 'search-panel'
-  })
+/**
+ * 函数说明：打开搜索结果并在导航成功后关闭浮层，避免用户停留在旧页面。
+ * @param url 工具地址
+ * @param title 工具标题
+ * @returns 是否完成导航
+ */
+const handleToolClick = async (url: string, title = ''): Promise<boolean> => {
+  try {
+    const opened = await openToolEntry(resolveSearchRuntimeEntry(url, title), {
+      target: 'current',
+      action: 'open',
+      source: 'search-panel'
+    })
+    if (opened) {
+      handleClose()
+    }
+    return opened
+  } catch (error) {
+    debugError('搜索结果导航失败:', error)
+    ElMessage.error('工具打开失败，请稍后重试')
+    return false
+  }
 }
 
 /**
@@ -1041,7 +1057,9 @@ const handleSearchInputKeydown = (event: KeyboardEvent) => {
     return
   }
 
-  const selectedTool = localSearchResults.value[activeLocalResultIndex.value]
+  // 未使用方向键时，Enter 默认打开第一条结果，避免误触发 AI 搜索。
+  const selectedIndex = activeLocalResultIndex.value >= 0 ? activeLocalResultIndex.value : 0
+  const selectedTool = localSearchResults.value[selectedIndex]
   if (selectedTool) {
     void handleLocalResultClick(selectedTool)
     return
@@ -1088,6 +1106,12 @@ watch(
   padding: 2.5rem;
 }
 
+.search-mask {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+
 .search-wrapper {
   position: relative;
   background: white;
@@ -1100,6 +1124,7 @@ watch(
   padding: 1.5rem;
   box-shadow: 0 8px 30px rgba(108, 84, 255, 0.2);
   border: 1px solid rgba(108, 84, 255, 0.1);
+  z-index: 1;
 }
 
 /* 简化面板标题样式 */
