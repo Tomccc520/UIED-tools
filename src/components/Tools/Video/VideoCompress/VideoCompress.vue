@@ -1098,7 +1098,7 @@ const runServerCompressProcess = async () => {
         progress.value = Math.max(progress.value, Math.min(45, Math.round(uploadProgress * 0.45)))
         if (uploadProgress >= 100) {
           statusText.value = '上传完成，正在排队并压缩视频...'
-          etaText.value = '服务端按 H.264 / CRF 28 / AAC 128K 处理'
+          etaText.value = `服务端按 H.264 / CRF ${config.crf || 26} / AAC 128K 处理`
         } else {
           statusText.value = `正在上传视频（${uploadProgress}%）...`
         }
@@ -1363,7 +1363,7 @@ onBeforeRouteLeave((to, from, next) => {
                     <span>串行处理</span>
                   </div>
                   <div class="video-server-specs__list">
-                    <span>H.264 MP4 · CRF 28</span>
+                    <span>H.264 MP4 · CRF {{ serverConfig?.crf || 26 }}</span>
                     <span>最长边 1920 · 最高 30fps</span>
                     <span>AAC 128K · Fast Start</span>
                   </div>
