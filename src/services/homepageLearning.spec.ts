@@ -33,7 +33,8 @@ describe('homepageLearning', () => {
           items: [
             { title: '文章 A', link: 'https://www.uied.cn/a', pubDate: '2026-07-17' },
             { title: '文章 B', url: 'https://www.uied.cn/b', publishedAt: '2026-07-16' },
-            { title: '文章 C', url: 'https://www.uied.cn/c', publishedAt: '2026-07-15' }
+            { title: '文章 C', url: 'https://www.uied.cn/c', publishedAt: '2026-07-15' },
+            { title: '危险链接', url: 'javascript:alert(1)', publishedAt: '2026-07-14' }
           ],
           sections: {
             relax: [{ title: '摸鱼内容', url: 'https://www.uied.cn/relax', date: '2026-07-17' }],
@@ -66,6 +67,27 @@ describe('homepageLearning', () => {
     expect(result.sections.relax[0].title).toBe('摸鱼内容')
     expect(result.sections.deepseek[0].title).toBe('DeepSeek 教程')
     expect(result.sections.aigc[0].title).toBe('AIGC 学习')
+  })
+
+  it('应过滤不安全协议的 RSS 链接', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: 200,
+        data: {
+          items: [
+            { title: '站内文章', url: '/posts/1' },
+            { title: '安全外链', url: 'https://www.uied.cn/posts/2' },
+            { title: '危险链接', url: 'javascript:alert(1)' },
+            { title: '协议相对地址', url: '//evil.example/posts/3' }
+          ]
+        }
+      })
+    }))
+
+    const result = await getHomepageLearningFeed()
+
+    expect(result.items.map((item) => item.title)).toEqual(['站内文章', '安全外链'])
   })
 
   it('应在后台返回非成功 code 时抛出可读错误', async () => {

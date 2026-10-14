@@ -25,63 +25,87 @@
           </router-link>
           <span class="header-time">{{ currentTime }}</span>
           <div class="header-actions">
-            <el-icon :class="['action-icon', { refreshing: isRefreshing }]" @click="refreshList(true)">
+            <button
+              type="button"
+              class="refresh-button"
+              :class="{ refreshing: isRefreshing }"
+              :disabled="loading"
+              :aria-busy="isRefreshing"
+              aria-label="刷新今日热榜"
+              @click="refreshList(true)"
+            >
               <Refresh />
-            </el-icon>
+            </button>
           </div>
         </div>
       </div>
 
-      <div class="hot-search-content">
-        <div
-          v-for="section in hotSections"
-          :key="section.key"
-          class="hot-list-section"
-        >
-          <div class="section-header">
-            <div class="platform-info">
-              <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
-              <span class="platform-name">{{ section.platformName }}</span>
-              <span v-if="section.platformType" class="platform-type">{{ section.platformType }}</span>
-            </div>
-          </div>
+      <div v-if="loadError && !hasVisibleHotItems" class="hot-state hot-state--error" role="alert" aria-live="assertive">
+        <strong>今日热榜加载失败，请重试</strong>
+        <button type="button" class="hot-state__retry" @click="refreshList(true)">重试</button>
+      </div>
 
-          <div :id="section.domId" class="hot-list-container">
-            <div v-if="loading && section.items.length === 0" class="loading-container">
-              <div class="skeleton-list">
-                <div v-for="i in 10" :key="i" class="skeleton-item">
-                  <div class="skeleton-index" :class="i <= 3 ? `skeleton-index-${i}` : ''"></div>
-                  <div class="skeleton-content">
-                    <div class="skeleton-title"></div>
-                    <div class="skeleton-hot"></div>
-                  </div>
-                </div>
+      <div v-else-if="!loading && !loadError && !hasVisibleHotItems" class="hot-state" role="status" aria-live="polite">
+        当前暂无热榜数据
+      </div>
+
+      <template v-else>
+        <div v-if="loadError" class="hot-state hot-state--warning" role="status" aria-live="polite">
+          <span>热榜更新失败，当前显示上次数据</span>
+          <button type="button" class="hot-state__retry" @click="refreshList(true)">重试</button>
+        </div>
+
+        <div class="hot-search-content">
+          <div
+            v-for="section in hotSections"
+            :key="section.key"
+            class="hot-list-section"
+          >
+            <div class="section-header">
+              <div class="platform-info">
+                <img src="@/assets/uiedlogo.png" class="platform-icon" alt="UIED">
+                <span class="platform-name">{{ section.platformName }}</span>
+                <span v-if="section.platformType" class="platform-type">{{ section.platformType }}</span>
               </div>
             </div>
 
-            <div v-else-if="section.items.length > 0" class="io-hot-list">
-              <a
-                v-for="(item, index) in section.items"
-                :key="`${section.key}-${item.url}-${index}`"
-                class="io-hot-item"
-                :href="item.url"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <div :class="['io-hot-index', index < 3 ? `io-hot-index-${index + 1}` : '']">
-                  {{ index + 1 }}
+            <div :id="section.domId" class="hot-list-container">
+              <div v-if="loading && section.items.length === 0" class="loading-container">
+                <div class="skeleton-list">
+                  <div v-for="i in 10" :key="i" class="skeleton-item">
+                    <div class="skeleton-index" :class="i <= 3 ? `skeleton-index-${i}` : ''"></div>
+                    <div class="skeleton-content">
+                      <div class="skeleton-title"></div>
+                      <div class="skeleton-hot"></div>
+                    </div>
+                  </div>
                 </div>
-                <span class="io-hot-title">{{ item.title }}</span>
-                <span class="io-hot-num">{{ item.hot }}</span>
-              </a>
-            </div>
+              </div>
 
-            <div v-else class="hot-empty">
-              <span>当前暂无热榜数据</span>
+              <div v-else-if="section.items.length > 0" class="io-hot-list">
+                <a
+                  v-for="(item, index) in section.items"
+                  :key="`${section.key}-${item.url}-${index}`"
+                  class="io-hot-item"
+                  :href="item.url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <div :class="['io-hot-index', index < 3 ? `io-hot-index-${index + 1}` : '']">
+                    {{ index + 1 }}
+                  </div>
+                  <span class="io-hot-title">{{ item.title }}</span>
+                  <span class="io-hot-num">{{ item.hot }}</span>
+                </a>
+              </div>
+
+              <div v-else class="hot-empty">
+                <span>当前暂无热榜数据</span>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </template>
     </div>
   </div>
 </template>
@@ -118,6 +142,7 @@ interface HotSearchCacheData {
 }
 
 const loading = ref(false)
+const loadError = ref(false)
 const currentTime = ref('')
 const isRefreshing = ref(false)
 const lastRefreshTime = ref(0)
@@ -176,6 +201,46 @@ const hotSections = computed(() =>
 )
 
 /**
+ * 函数说明：判断当前是否存在可展示的热榜条目，用于区分加载失败、空数据和正常内容。
+ * @returns 是否至少有一个热榜条目
+ */
+const hasVisibleHotItems = computed(() => {
+  return Object.values(sectionArticles).some((items) => Array.isArray(items) && items.length > 0)
+})
+
+/**
+ * 函数说明：校验热榜链接协议，仅允许站内相对地址和 http(s) 外链。
+ * @param value 待校验的链接
+ * @returns 是否为可安全展示的链接
+ */
+const isSafeHotArticleUrl = (value: unknown): boolean => {
+  const url = String(value || '').trim()
+  if (!url || url.startsWith('//')) {
+    return false
+  }
+  if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
+    return true
+  }
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * 函数说明：清洗缓存中的热榜条目，避免历史缓存绕过接口层安全校验。
+ * @param items 待清洗的热榜条目
+ * @returns 仅包含安全链接和有效标题的条目
+ */
+const sanitizeHotArticles = (items: Article[]): Article[] => {
+  return (Array.isArray(items) ? items : []).filter((item) => {
+    return Boolean(String(item?.title || '').trim()) && isSafeHotArticleUrl(item?.url)
+  })
+}
+
+/**
  * 函数说明：判断热榜分组是否包含可展示数据，避免旧版空缓存阻断最新接口请求。
  */
 const hasVisibleSections = (sections: Record<string, Article[]>): boolean => {
@@ -210,8 +275,15 @@ const getCache = (): HotSearchCacheData | null => {
       localStorage.removeItem(CACHE_KEY)
       return null
     }
+    const safeSections = Object.fromEntries(
+      sectionConfigs.map((item) => [item.key, sanitizeHotArticles(cacheData.sections?.[item.key] || [])])
+    ) as Record<string, Article[]>
+    if (!hasVisibleSections(safeSections)) {
+      localStorage.removeItem(CACHE_KEY)
+      return null
+    }
     return {
-      sections: cacheData.sections,
+      sections: safeSections,
       learningConfig: cacheData.learningConfig || getDefaultHomepageLearningConfig()
     }
   } catch (error) {
@@ -300,6 +372,7 @@ const refreshList = async (forceRefresh = false) => {
   }
 
   loading.value = true
+  loadError.value = false
   isRefreshing.value = true
   lastRefreshTime.value = now
 
@@ -322,6 +395,7 @@ const refreshList = async (forceRefresh = false) => {
     }
   } catch (error) {
     console.error('刷新热榜失败:', error)
+    loadError.value = true
   } finally {
     loading.value = false
     isRefreshing.value = false
@@ -411,16 +485,36 @@ onUnmounted(() => {
   color: #666;
 }
 
-.action-icon {
-  font-size: 16px;
+.refresh-button {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
   color: #666;
+  background: transparent;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
 }
 
-.action-icon:hover {
+.refresh-button:hover:not(:disabled) {
   color: #1890ff;
+  background: #f1f5ff;
   transform: rotate(180deg);
+}
+
+.refresh-button:focus-visible,
+.hot-state__retry:focus-visible {
+  outline: 2px solid #6757ff;
+  outline-offset: 2px;
+}
+
+.refresh-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
 }
 
 @keyframes rotate {
@@ -433,9 +527,49 @@ onUnmounted(() => {
   }
 }
 
-.action-icon.refreshing {
+.refresh-button.refreshing {
   animation: rotate 1s linear infinite;
   color: #1890ff;
+}
+
+.hot-state {
+  display: flex;
+  min-height: 10rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  color: #7a8392;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.hot-state--error {
+  flex-direction: column;
+  color: #c2413c;
+}
+
+.hot-state--warning {
+  min-height: 0;
+  justify-content: flex-start;
+  padding: 0.75rem 0.5rem 0;
+  color: #a15c14;
+}
+
+.hot-state__retry {
+  min-height: 2rem;
+  padding: 0 0.75rem;
+  border: 1px solid currentColor;
+  border-radius: 0.5rem;
+  color: inherit;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 650;
+}
+
+.hot-state__retry:hover {
+  background: rgb(103 87 255 / 8%);
 }
 
 .hot-search-content {

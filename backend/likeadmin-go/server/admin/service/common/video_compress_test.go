@@ -66,3 +66,13 @@ func TestBuildCompressedVideoName(t *testing.T) {
 		t.Fatalf("压缩文件名不符合预期: %s", got)
 	}
 }
+
+// TestBuildVideoCompressError 校验 FFmpeg 失败信息会收敛为安全且可操作的提示。
+func TestBuildVideoCompressError(t *testing.T) {
+	if got := buildVideoCompressError("/tmp/private/source.mov: Invalid data found when processing input", nil); got != "视频格式或编码不受支持，请更换视频文件" {
+		t.Fatalf("格式错误提示不符合预期: %s", got)
+	}
+	if got := buildVideoCompressError("command failed at /tmp/private", nil); got != "视频压缩失败，请稍后重试" {
+		t.Fatalf("通用错误提示不符合预期: %s", got)
+	}
+}

@@ -88,6 +88,27 @@ const normalizeFilterType = (value: unknown): HomepageLearningFilterType => {
 }
 
 /**
+ * 函数说明：校验 RSS 条目链接，仅允许站内相对地址和 http(s) 外链。
+ * @param value 待校验的链接
+ * @returns 是否允许作为首页热榜链接
+ */
+const isSafeFeedUrl = (value: unknown): boolean => {
+  const url = String(value || '').trim()
+  if (!url || url.startsWith('//')) {
+    return false
+  }
+  if (url.startsWith('/') || url.startsWith('./') || url.startsWith('../')) {
+    return true
+  }
+  try {
+    const parsed = new URL(url)
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
+/**
  * 函数说明：将后台配置标准化为前端固定结构并限制合理的展示数量。
  */
 const normalizeConfig = (value: unknown): HomepageLearningFeedConfig => {
@@ -120,7 +141,7 @@ const normalizeItems = (value: unknown, limit: number): HomepageLearningFeedItem
       const record = item as Record<string, unknown>
       const title = String(record.title || '').trim()
       const url = String(record.url || record.link || '').trim()
-      if (!title || !url) {
+      if (!title || !isSafeFeedUrl(url)) {
         return null
       }
       return {

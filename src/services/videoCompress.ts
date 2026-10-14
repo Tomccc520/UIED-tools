@@ -11,6 +11,8 @@ import axios from 'axios'
 
 const VIDEO_COMPRESS_CONFIG_ENDPOINT = '/api/common/video/compress/config'
 const VIDEO_COMPRESS_ENDPOINT = '/api/common/video/compress'
+// 服务端 HTTP 写入超时为 10 分钟，前端额外保留少量收尾时间，避免网络异常时无限等待。
+export const VIDEO_COMPRESS_REQUEST_TIMEOUT_MS = 10 * 60 * 1000 + 15 * 1000
 
 export interface VideoCompressServerConfig {
   available: boolean
@@ -111,7 +113,7 @@ export const compressVideoWithServer = async (
   formData.append('file', file, file.name)
   const response = await axios.post(VIDEO_COMPRESS_ENDPOINT, formData, {
     responseType: 'blob',
-    timeout: 0,
+    timeout: VIDEO_COMPRESS_REQUEST_TIMEOUT_MS,
     signal: options.signal,
     onUploadProgress: (event) => {
       if (!event.total) return

@@ -166,8 +166,8 @@ func (ah aiModelPublicHandler) proxyChat(c *gin.Context) {
 	if contentType == "" {
 		contentType = "application/json; charset=utf-8"
 	}
-	c.Status(respObj.StatusCode)
 	c.Header("Content-Type", contentType)
+	c.Status(respObj.StatusCode)
 
 	if _, copyErr := io.Copy(c.Writer, respObj.Body); copyErr != nil {
 		c.Error(copyErr)
@@ -292,8 +292,8 @@ func (ah aiModelPublicHandler) proxyImageAbility(c *gin.Context) {
 	if contentType == "" {
 		contentType = "application/json; charset=utf-8"
 	}
-	c.Status(respObj.StatusCode)
 	c.Header("Content-Type", contentType)
+	c.Status(respObj.StatusCode)
 
 	if _, copyErr := io.Copy(c.Writer, respObj.Body); copyErr != nil {
 		c.Error(copyErr)

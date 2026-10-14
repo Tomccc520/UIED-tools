@@ -8,7 +8,11 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { parseVideoCompressBoolean, parseVideoCompressFileName } from './videoCompress'
+import {
+  parseVideoCompressBoolean,
+  parseVideoCompressFileName,
+  VIDEO_COMPRESS_REQUEST_TIMEOUT_MS
+} from './videoCompress'
 
 describe('视频压缩接口响应解析', () => {
   it('优先解析 UTF-8 下载文件名', () => {
@@ -27,5 +31,10 @@ describe('视频压缩接口响应解析', () => {
   it('仅将 true 识别为已压缩', () => {
     expect(parseVideoCompressBoolean('true')).toBe(true)
     expect(parseVideoCompressBoolean('false')).toBe(false)
+  })
+
+  it('视频压缩请求必须有有限超时，避免异常连接无限等待', () => {
+    expect(VIDEO_COMPRESS_REQUEST_TIMEOUT_MS).toBeGreaterThan(10 * 60 * 1000)
+    expect(VIDEO_COMPRESS_REQUEST_TIMEOUT_MS).toBeLessThanOrEqual(11 * 60 * 1000)
   })
 })

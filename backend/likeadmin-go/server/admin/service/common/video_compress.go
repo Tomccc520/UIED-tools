@@ -9,7 +9,7 @@ package common
 import (
 	"bytes"
 	"context"
-	"fmt"
+	"errors"
 	"io"
 	"mime/multipart"
 	"os"
@@ -24,6 +24,7 @@ import (
 const (
 	VideoCompressMaxFileSize      int64   = 500 * 1024 * 1024
 	videoCompressKeepOriginalRate float64 = 0.98
+	videoCompressTaskTimeout              = 9*time.Minute + 30*time.Second
 )
 
 var videoCompressSemaphore = make(chan struct{}, 1)
@@ -92,11 +93,13 @@ func (videoCompressService) Compress(ctx context.Context, file *multipart.FileHe
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		return VideoCompressResult{}, response.SystemError.Make("服务器未安装 FFmpeg，请先执行依赖安装脚本")
 	}
+	compressCtx, cancel := context.WithTimeout(ctx, videoCompressTaskTimeout)
+	defer cancel()
 
 	select {
 	case videoCompressSemaphore <- struct{}{}:
 		defer func() { <-videoCompressSemaphore }()
-	case <-ctx.Done():
+	case <-compressCtx.Done():
 		return VideoCompressResult{}, response.SystemError.Make("视频压缩任务已取消")
 	}
 
@@ -115,12 +118,18 @@ func (videoCompressService) Compress(ctx context.Context, file *multipart.FileHe
 
 	outputPath := filepath.Join(tempDir, "compressed.mp4")
 	startedAt := time.Now()
-	command := exec.CommandContext(ctx, "ffmpeg", buildVideoCompressArgs(inputPath, outputPath)...)
+	command := exec.CommandContext(compressCtx, "ffmpeg", buildVideoCompressArgs(inputPath, outputPath)...)
 	var commandLog bytes.Buffer
 	command.Stdout = &commandLog
 	command.Stderr = &commandLog
 	if err := command.Run(); err != nil {
 		cleanup()
+		if errors.Is(compressCtx.Err(), context.DeadlineExceeded) {
+			return VideoCompressResult{}, response.SystemError.Make("视频压缩处理超时，请尝试更小的视频文件")
+		}
+		if errors.Is(compressCtx.Err(), context.Canceled) {
+			return VideoCompressResult{}, response.SystemError.Make("视频压缩任务已取消")
+		}
 		return VideoCompressResult{}, response.SystemError.Make(buildVideoCompressError(commandLog.String(), err))
 	}
 
@@ -237,14 +246,17 @@ func resolveVideoContentType(ext string) string {
 	}
 }
 
-// buildVideoCompressError 过滤 FFmpeg 日志并返回可操作的失败原因。
+// buildVideoCompressError 根据 FFmpeg 日志归纳稳定的用户提示，避免把服务端路径和命令细节暴露给前端。
 func buildVideoCompressError(commandLog string, commandErr error) string {
-	logText := strings.TrimSpace(commandLog)
-	if len(logText) > 500 {
-		logText = logText[len(logText)-500:]
+	logText := strings.ToLower(strings.TrimSpace(commandLog))
+	if strings.Contains(logText, "invalid data") || strings.Contains(logText, "could not find codec") {
+		return "视频格式或编码不受支持，请更换视频文件"
 	}
-	if logText == "" {
-		return fmt.Sprintf("视频压缩失败：%v", commandErr)
+	if strings.Contains(logText, "no space left") {
+		return "服务器存储空间不足，请稍后重试"
 	}
-	return "视频压缩失败：" + logText
+	if commandErr == nil && logText == "" {
+		return "视频压缩失败，请稍后重试"
+	}
+	return "视频压缩失败，请稍后重试"
 }

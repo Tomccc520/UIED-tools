@@ -8,6 +8,11 @@ package common
  */
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"strings"
+	"time"
+
 	"github.com/gin-gonic/gin"
 
 	"likeadmin/admin/schemas/req"
@@ -19,6 +24,11 @@ import (
 )
 
 var ToolRankingGroup = core.Group("/common", newToolRankingHandler, regToolRanking, middleware.TokenAuth())
+
+const (
+	toolRankingTrackRateKeyPrefix = "tool-ranking:track:rate:"
+	toolRankingTrackMinuteLimit   = int64(120)
+)
 
 // newToolRankingHandler 函数说明：初始化工具排行榜公共接口处理器。
 func newToolRankingHandler(srv serviceCommon.IToolRankingService) *toolRankingHandler {
@@ -53,6 +63,36 @@ func (h toolRankingHandler) track(c *gin.Context) {
 	if response.IsFailWithResp(c, util.VerifyUtil.VerifyJSON(c, &trackReq)) {
 		return
 	}
+	if !allowToolRankingTrack(c, trackReq) {
+		return
+	}
 	res, err := h.srv.Track(trackReq)
 	response.CheckAndRespWithData(c, res, err)
+}
+
+// allowToolRankingTrack 按客户端 IP、工具和事件类型限制排行榜埋点频率，避免公开接口被刷量污染榜单。
+func allowToolRankingTrack(c *gin.Context, trackReq req.CommonToolRankingTrackReq) bool {
+	eventType := strings.TrimSpace(strings.ToLower(trackReq.EventType))
+	if eventType == "" {
+		return true
+	}
+	identitySource := strings.Join([]string{
+		strings.TrimSpace(c.ClientIP()),
+		strings.TrimSpace(strings.ToLower(trackReq.ToolKey)),
+		eventType,
+	}, "|")
+	identityHash := sha256.Sum256([]byte(identitySource))
+	identity := hex.EncodeToString(identityHash[:8])
+	bucket := time.Now().Format("200601021504")
+	key := toolRankingTrackRateKeyPrefix + identity + ":" + bucket
+	count := util.RedisUtil.IncrWithExpire(key, 60)
+	if count < 0 {
+		// 埋点属于非阻断能力，Redis 暂不可用时放行，避免影响工具主流程。
+		return true
+	}
+	if count > toolRankingTrackMinuteLimit {
+		response.FailWithMsg(c, response.AssertArgumentError, "排行榜记录过于频繁，请稍后重试")
+		return false
+	}
+	return true
 }

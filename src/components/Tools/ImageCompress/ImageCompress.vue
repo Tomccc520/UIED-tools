@@ -87,13 +87,14 @@
                 >
                   {{ isCompressing ? '压缩中...' : '开始压缩' }}
                 </button>
-                <button v-if="fileList.length > 0" type="button" @click="recompress" class="image-action flex-1 !h-10">
+                <button v-if="fileList.length > 0" type="button" :disabled="isCompressing" @click="recompress" class="image-action flex-1 !h-10">
                   重新压缩
                 </button>
                 <button
                   v-if="fileList.length > 0"
                   type="button"
                   data-smoke="image-compress-download"
+                  :disabled="isCompressing"
                   @click="downloadAll"
                   class="image-action image-action--success flex-1 !h-10"
                 >
@@ -117,7 +118,7 @@
                     </svg>
                     <span class="text-sm text-gray-600">{{ file.name }}</span>
                   </div>
-                  <button @click="removeFile(index)"
+                  <button @click="removeFile(index)" :disabled="isCompressing"
                     class="text-gray-400 hover:text-red-500 transition-colors duration-200">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -200,10 +201,10 @@
                   </span>
                 </div>
                 <div class="flex space-x-3 w-full sm:w-auto">
-                  <el-button @click="clearFiles" size="large" class="flex-1 sm:flex-none !h-10">
+                  <el-button @click="clearFiles" :disabled="isCompressing" size="large" class="flex-1 sm:flex-none !h-10">
                     清空文件列表
                   </el-button>
-                  <el-button data-smoke="image-compress-download" v-if="compressedCount > 0" type="success" size="large" @click="downloadAll"
+                  <el-button data-smoke="image-compress-download" v-if="compressedCount > 0" :disabled="isCompressing" type="success" size="large" @click="downloadAll"
                     class="flex-1 sm:flex-none !h-10">
                     打包下载 ({{ compressedCount }})
                   </el-button>
@@ -302,8 +303,8 @@
       </div>
 
       <template #actions>
-        <el-button @click="clearFiles" size="large">清空文件列表</el-button>
-        <el-button v-if="compressedCount > 0" data-smoke="image-compress-download" type="success" size="large" @click="downloadAll">
+        <el-button @click="clearFiles" :disabled="isCompressing" size="large">清空文件列表</el-button>
+        <el-button v-if="compressedCount > 0" data-smoke="image-compress-download" :disabled="isCompressing" type="success" size="large" @click="downloadAll">
           打包下载 ({{ compressedCount }})
         </el-button>
       </template>
@@ -331,8 +332,7 @@ import JSZip from 'jszip'
 import {
   IMAGE_COMPRESS_MAX_FILE_COUNT,
   IMAGE_COMPRESS_MAX_FILE_SIZE_MB,
-  IMAGE_COMPRESS_SUPPORTED_FORMATS,
-  IMAGE_COMPRESS_SUPPORTED_MIME_TYPES
+  IMAGE_COMPRESS_SUPPORTED_FORMATS
 } from '@/constants/imageCompress'
 
 interface JSZipInstance {
@@ -350,6 +350,11 @@ interface JSZipConstructor {
 const createObjectURL = (file: Blob): string => {
   return window.URL.createObjectURL(file)
 }
+
+/**
+ * 延迟释放打包下载地址，确保浏览器已经开始读取文件后再回收 Blob URL。
+ */
+const DOWNLOAD_URL_REVOKE_DELAY_MS = 1000
 
 const revokeObjectURL = (url: string) => {
   window.URL.revokeObjectURL(url)
@@ -415,6 +420,24 @@ const isDragging = ref(false)
 const processingIndex = ref(-1)
 
 /**
+ * 根据 MIME 类型和文件后缀解析图片格式，兼容拖拽文件没有正确 MIME 的浏览器场景。
+ * @param file 待校验的文件对象
+ * @returns 统一后的图片 MIME 类型，不支持时返回 null
+ */
+const resolveImageMimeType = (file: Pick<File, 'type' | 'name'>): 'image/jpeg' | 'image/png' | 'image/webp' | null => {
+  const mimeType = file.type.toLowerCase()
+  if (mimeType === 'image/jpeg' || mimeType === 'image/jpg') return 'image/jpeg'
+  if (mimeType === 'image/png') return 'image/png'
+  if (mimeType === 'image/webp') return 'image/webp'
+
+  const extension = file.name.toLowerCase().split('.').pop() || ''
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg'
+  if (extension === 'png') return 'image/png'
+  if (extension === 'webp') return 'image/webp'
+  return null
+}
+
+/**
  * 计算已压缩文件数量
  */
 const compressedCount = computed(() => {
@@ -427,13 +450,18 @@ const compressedCount = computed(() => {
 const handleUpload = (file: UploadRawFile) => {
   console.log('handleUpload called with file:', file)
 
+  if (isCompressing.value) {
+    ElMessage.info('图片正在压缩，请稍候')
+    return false
+  }
+
   if (!file) {
     console.log('No file provided')
     return false
   }
 
-  if (!(IMAGE_COMPRESS_SUPPORTED_MIME_TYPES as readonly string[]).includes(file.type)) {
-    console.log('Invalid file type:', file.type)
+  if (!resolveImageMimeType(file)) {
+    console.log('Invalid file type:', file.type, file.name)
     ElMessage.warning(`仅支持${IMAGE_COMPRESS_SUPPORTED_FORMATS}格式图片`)
     return false
   }
@@ -471,6 +499,8 @@ const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragging.value = false
 
+  if (isCompressing.value) return
+
   const files = e.dataTransfer?.files
   if (!files) {
     console.log('No files in drop event')
@@ -479,12 +509,8 @@ const handleDrop = (e: DragEvent) => {
 
   console.log('Dropped files:', files)
   Array.from(files).forEach((file: File) => {
-    if (file.type.startsWith('image/')) {
-      console.log('Processing dropped file:', file.name)
-      handleUpload(file as UploadRawFile)
-    } else {
-      console.log('Skipping non-image file:', file.name, file.type)
-    }
+    console.log('Processing dropped file:', file.name)
+    handleUpload(file as UploadRawFile)
   })
 }
 
@@ -492,6 +518,7 @@ const handleDrop = (e: DragEvent) => {
  * 移除文件
  */
 const removeFile = (index: number) => {
+  if (isCompressing.value) return
   const file = fileList.value[index]
   if (file.previewUrl) {
     revokeObjectURL(file.previewUrl)
@@ -506,6 +533,7 @@ const removeFile = (index: number) => {
  * 清空文件列表
  */
 const clearFiles = () => {
+  if (isCompressing.value) return
   fileList.value.forEach((file: CompressedFile) => {
     if (file.previewUrl) {
       revokeObjectURL(file.previewUrl)
@@ -616,19 +644,24 @@ const compressWebP = async (file: File): Promise<Blob> => {
 /**
  * 压缩单个文件
  */
-const compressFile = async (file: File, index: number) => {
-  processingIndex.value = index
+const compressFile = async (file: CompressedFile): Promise<boolean> => {
+  const fileIndex = fileList.value.indexOf(file)
+  if (fileIndex < 0) return false
+  processingIndex.value = fileIndex
 
   try {
     let result: Blob
+    const mimeType = resolveImageMimeType(file)
+    if (!mimeType) {
+      throw new Error('不支持的图片格式')
+    }
 
     // 根据文件类型选择压缩方法
-    switch (file.type.toLowerCase()) {
+    switch (mimeType) {
       case 'image/png':
         result = await compressPNG(file)
         break
       case 'image/jpeg':
-      case 'image/jpg':
         result = await compressJPEG(file)
         break
       case 'image/webp':
@@ -645,7 +678,7 @@ const compressFile = async (file: File, index: number) => {
     }
 
     // 更新文件状态
-    const compressedFile = fileList.value[index] as CompressedFile
+    const compressedFile = fileList.value.find((item) => item === file)
     if (!compressedFile) {
       throw new Error('文件不存在')
     }
@@ -660,19 +693,21 @@ const compressFile = async (file: File, index: number) => {
       revokeObjectURL(compressedFile.compressedUrl)
     }
     compressedFile.compressedUrl = createObjectURL(result)
-
+    return true
   } catch (error) {
     console.error('压缩失败:', error)
-    ElMessage.error(`文件 ${file.name} 压缩失败: ${error}`)
+    ElMessage.error(`文件 ${file.name} 压缩失败，请重试`)
+    return false
   } finally {
     processingIndex.value = -1
   }
 }
 
 /**
- * 批量压缩
+ * 按顺序压缩文件，避免多个大图同时解码造成浏览器内存峰值和进度指示错乱。
  */
 const compressAll = async () => {
+  if (isCompressing.value) return
   if (fileList.value.length === 0) {
     ElMessage.warning('请先选择要压缩的图片')
     return
@@ -682,9 +717,17 @@ const compressAll = async () => {
   processingIndex.value = -1
 
   try {
-    const promises = fileList.value.map((file: CompressedFile, index: number) => compressFile(file, index))
-    await Promise.all(promises)
-    ElMessage.success('所有图片压缩完成')
+    const filesToCompress = [...fileList.value]
+    let failedCount = 0
+    for (const file of filesToCompress) {
+      if (!(await compressFile(file))) failedCount += 1
+    }
+
+    if (failedCount > 0) {
+      ElMessage.warning(`压缩完成，${failedCount} 个文件失败，请重试`)
+    } else {
+      ElMessage.success('所有图片压缩完成')
+    }
   } catch (error) {
     console.error('压缩错误:', error)
     ElMessage.error('压缩过程中出现错误')
@@ -698,6 +741,10 @@ const compressAll = async () => {
  * 打包下载
  */
 const downloadAll = async () => {
+  if (isCompressing.value) {
+    ElMessage.info('图片正在压缩，请稍候')
+    return
+  }
   if (fileList.value.length === 0) {
     ElMessage.warning('请先选择要压缩的图片')
     return
@@ -746,7 +793,7 @@ const downloadAll = async () => {
     console.log('准备下载...')
     const zipUrl = URL.createObjectURL(content)
     autoDown(zipUrl, 'uied_compressed_images.zip')
-    URL.revokeObjectURL(zipUrl)
+    window.setTimeout(() => revokeObjectURL(zipUrl), DOWNLOAD_URL_REVOKE_DELAY_MS)
 
     ElMessage.success('打包下载成功')
   } catch (error) {
@@ -811,6 +858,7 @@ const startDragging = (e: MouseEvent | TouchEvent) => {
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
 const triggerFileInput = () => {
+  if (isCompressing.value) return
   fileInputRef.value?.click()
 }
 
@@ -830,6 +878,7 @@ const handleFileInputChange = (event: Event) => {
  * 添加重新压缩功能
  */
 const recompress = async () => {
+  if (isCompressing.value) return
   if (fileList.value.length === 0) {
     ElMessage.warning('没有可压缩的图片')
     return
