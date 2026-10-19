@@ -7,31 +7,12 @@
  */
 -->
 <template>
-    <a-card
-        class="general-card"
-        title="系统信息"
-        :header-style="{ paddingBottom: 0 }"
-        :body-style="{ paddingTop: 0 }"
-    >
-        <a-descriptions :column="1" size="large" :label-style="{ width: '84px' }" class="env-descriptions">
-            <a-descriptions-item
-                v-for="item in environmentInfoList"
-                :key="item.label"
-                :label="item.label"
-            >
-                {{ item.value }}
-            </a-descriptions-item>
-        </a-descriptions>
-        <div class="status-progress-list">
-            <div v-for="item in statusProgressList" :key="item.label" class="status-progress-item">
-                <div class="status-progress-head">
-                    <span>{{ item.label }}</span>
-                    <span>{{ item.hasData ? `${item.percent}%` : '暂无数据' }}</span>
-                </div>
-                <a-progress :percent="item.hasData ? item.percent : 0" :show-text="false" :stroke-width="8" />
-            </div>
+    <dl class="environment-info">
+        <div v-for="item in environmentInfoList" :key="item.label">
+            <dt>{{ item.label }}</dt>
+            <dd>{{ item.value }}</dd>
         </div>
-    </a-card>
+    </dl>
 </template>
 
 <script lang="ts" setup>
@@ -39,50 +20,34 @@ interface EnvironmentInfoItem {
     label: string
     value: string
 }
-
-interface StatusProgressItem {
-    label: string
-    percent: number
-    hasData: boolean
-}
-
-const props = defineProps<{
-    environmentInfoList: EnvironmentInfoItem[]
-    statusProgressList: StatusProgressItem[]
-}>()
+defineProps<{ environmentInfoList: EnvironmentInfoItem[] }>()
 </script>
 
 <style lang="scss" scoped>
-.general-card {
-    margin-top: 16px;
-    border-radius: 4px;
+.environment-info {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 24px;
+    margin: 0;
+    padding: 0 20px 20px;
 }
-
-.env-descriptions {
-    padding-top: 8px;
+.environment-info > div {
+    min-width: 0;
 }
-
-.status-progress-list {
-    padding: 8px 0 0;
-}
-
-.status-progress-item + .status-progress-item {
-    margin-top: 12px;
-}
-
-.status-progress-item {
-    padding: 10px 12px;
-    border: 1px solid var(--color-border-2, #e5e6eb);
-    border-radius: 4px;
-    background: #fff;
-}
-
-.status-progress-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 6px;
+dt {
+    color: var(--color-text-3);
     font-size: 12px;
-    color: var(--color-text-2, #4e5969);
+}
+dd {
+    margin: 4px 0 0;
+    color: var(--color-text-2);
+    overflow-wrap: anywhere;
+    line-height: 1.6;
+}
+@media (max-width: 640px) {
+    .environment-info {
+        grid-template-columns: 1fr;
+        padding: 0 16px 16px;
+    }
 }
 </style>

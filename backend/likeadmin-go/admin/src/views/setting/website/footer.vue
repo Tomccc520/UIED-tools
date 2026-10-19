@@ -16,7 +16,7 @@
                 <div class="layout-page-actions">
                     <div class="layout-status-tags">
                         <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
-                            {{ hasUnsavedChanges ? '待发布' : '已同步' }}
+                            {{ hasUnsavedChanges ? '待保存' : '已保存' }}
                         </a-tag>
                     </div>
                     <a-button data-admin-smoke="website-footer-reload" size="small" @click="reloadFooterData"
@@ -28,20 +28,11 @@
                     <a-button data-admin-smoke="website-footer-health" size="small" @click="runFooterHealthCheck"
                         >一键体检</a-button
                     >
-                    <a-button
-                        v-perms="['setting:website:footer:save']"
-                        data-admin-smoke="website-footer-save"
-                        type="primary"
-                        size="small"
-                        :loading="isSubmitting"
-                        @click="handleSubmit"
-                    >
-                        保存
-                    </a-button>
                 </div>
             </template>
         </a-page-header>
 
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadFooterData">
         <a-card class="page-card pro-panel-card" :bordered="false">
             <config-overview-collapse
                 v-model="overviewCollapseKeys"
@@ -230,9 +221,10 @@
             </div>
         </a-card>
 
-        <footer-btns :fixed="false" v-perms="['setting:website:footer:save']">
-            <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存</a-button>
-        </footer-btns>
+            <template #actions>
+                <a-button v-perms="['setting:website:footer:save']" data-admin-smoke="website-footer-save" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
+            </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -244,6 +236,8 @@ import { onBeforeRouteLeave } from 'vue-router'
 import ConfigOverviewCollapse from './components/config-overview-collapse.vue'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 import { useOperateSubmit } from './composables/use-operate-submit'
+import { useConfigLoad } from './composables/use-config-load'
+import ConfigEditFrame from './components/config-edit-frame.vue'
 import { OFFICIAL_SITE_DEFAULT_FOOTER } from './defaults/officialSite'
 
 interface ToolsLinkItem {
@@ -257,7 +251,7 @@ interface ToolsLinkSection {
 }
 
 const appStore = useAppStore()
-const { isSubmitting, runSubmit } = useOperateSubmit('页脚设置已保存')
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('页脚设置已保存')
 const baselineSnapshot = ref('')
 const simpleMode = ref(true)
 const overviewCollapseKeys = ref<(string | number)[]>([])
@@ -464,7 +458,10 @@ const footerValidationTips = computed(() => {
 /**
  * 函数说明：读取后端配置并回填页面表单，保持本页独立编辑且不覆盖其它官网设置。
  */
-const getData = async () => {
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+
+/** 读取并回填已成功返回的配置，失败时保留原编辑内容。 */
+const getData = async () => loadConfiguration(async () => {
     const data = await getWebsite()
     formData.toolsFooterIntro = String(data.toolsFooterIntro || '')
     formData.toolsFooterQuickTitle = String(data.toolsFooterQuickTitle || '')
@@ -477,13 +474,14 @@ const getData = async () => {
     footerQuickSectionsEditor.value = String(data.toolsFooterQuickSections || '[]').trim() || '[]'
     footerFriendSectionsEditor.value = String(data.toolsFooterFriendSections || '[]').trim() || '[]'
     updateBaselineSnapshot()
-}
+})
 
 /**
  * 函数说明：重新读取后台页脚配置，方便脚本导入后立即回显最新数据。
  */
 const reloadFooterData = async () => {
-    await getData()
+    if (isSubmitting.value) return
+    if (!await reloadConfiguration(getData)) return
     feedback.msgSuccess('已重新加载后台页脚配置')
 }
 
@@ -683,6 +681,7 @@ const validateBeforeSubmit = (showMessage = true): boolean => {
  * 函数说明：提交页脚设置，仅保存本页负责的字段，避免覆盖其它官网配置。
  */
 const handleSubmit = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     if (!validateBeforeSubmit(true)) {
         return
     }
@@ -700,13 +699,14 @@ const handleSubmit = async () => {
         toolsFooterFriendSections: JSON.stringify(footerFriendSectionsParseResult.value.items),
     }
 
+    const submittedSnapshot = buildFooterSnapshot()
     const success = await runSubmit(async () => {
         await setWebsite(payload)
     })
     if (!success) {
         return
     }
-    updateBaselineSnapshot()
+    baselineSnapshot.value = submittedSnapshot
 }
 
 /**

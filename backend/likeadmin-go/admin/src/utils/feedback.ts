@@ -74,12 +74,13 @@ export class Feedback {
             content: msg
         })
     }
-    // 确认窗体
+    /** 显示可确认或取消的对话框；不能使用默认隐藏取消按钮的 warning 提示框。 */
     confirm(msg: string) {
         return new Promise<void>((resolve, reject) => {
-            Modal.warning({
+            Modal.confirm({
                 title: '温馨提示',
                 content: msg,
+                hideCancel: false,
                 okText: '确定',
                 cancelText: '取消',
                 onOk: () => resolve(),

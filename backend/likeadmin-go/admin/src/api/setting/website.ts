@@ -27,13 +27,13 @@ export function getCopyright() {
 export function setCopyright(params: any) {
     return request.post({ url: '/setting/copyright/save', params })
 }
-// 获取网站信息
+/** 读取配置十秒超时后交由页面明确重试，避免首次失败后继续自动等待多轮。 */
 export function getWebsite() {
-    return request.get<WebsiteSettingPayload>({ url: '/setting/website/detail' })
+    return request.get<WebsiteSettingPayload>({ url: '/setting/website/detail', timeout: 10000 }, { isOpenRetry: false })
 }
-// 设置网站信息
+/** 保存配置不自动重复提交；失败保留页面编辑，由用户决定重试。 */
 export function setWebsite(params: WebsiteSettingPayload) {
-    return request.post<WebsiteSettingPayload>({ url: '/setting/website/save', params })
+    return request.post<WebsiteSettingPayload>({ url: '/setting/website/save', params }, { isOpenRetry: false })
 }
 
 /**

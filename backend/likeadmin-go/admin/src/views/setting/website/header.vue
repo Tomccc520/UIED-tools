@@ -16,7 +16,7 @@
                 <div class="layout-page-actions">
                     <div class="layout-status-tags">
                         <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
-                            {{ hasUnsavedChanges ? '待发布' : '已同步' }}
+                            {{ hasUnsavedChanges ? '待保存' : '已保存' }}
                         </a-tag>
                     </div>
                     <a-button data-admin-smoke="website-header-reload" size="small" @click="reloadHeaderData"
@@ -28,20 +28,11 @@
                     <a-button data-admin-smoke="website-header-health" size="small" @click="runHeaderHealthCheck"
                         >一键体检</a-button
                     >
-                    <a-button
-                        v-perms="['setting:website:header:save']"
-                        data-admin-smoke="website-header-save"
-                        type="primary"
-                        size="small"
-                        :loading="isSubmitting"
-                        @click="handleSubmit"
-                    >
-                        保存
-                    </a-button>
                 </div>
             </template>
         </a-page-header>
 
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadHeaderData">
         <a-card class="page-card pro-panel-card" :bordered="false">
             <config-overview-collapse
                 v-model="overviewCollapseKeys"
@@ -168,9 +159,10 @@
             </div>
         </a-card>
 
-        <footer-btns :fixed="false" v-perms="['setting:website:header:save']">
-            <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存</a-button>
-        </footer-btns>
+            <template #actions>
+                <a-button v-perms="['setting:website:header:save']" data-admin-smoke="website-header-save" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
+            </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -182,6 +174,8 @@ import { onBeforeRouteLeave } from 'vue-router'
 import ConfigOverviewCollapse from './components/config-overview-collapse.vue'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 import { useOperateSubmit } from './composables/use-operate-submit'
+import { useConfigLoad } from './composables/use-config-load'
+import ConfigEditFrame from './components/config-edit-frame.vue'
 import { OFFICIAL_SITE_DEFAULT_HEADER } from './defaults/officialSite'
 
 interface ToolsLinkItem {
@@ -191,7 +185,7 @@ interface ToolsLinkItem {
 }
 
 const appStore = useAppStore()
-const { isSubmitting, runSubmit } = useOperateSubmit('头部设置已保存')
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('头部设置已保存')
 const baselineSnapshot = ref('')
 const simpleMode = ref(true)
 const overviewCollapseKeys = ref<(string | number)[]>([])
@@ -337,7 +331,10 @@ const headerValidationTips = computed(() => {
 /**
  * 函数说明：读取后端配置并回填页面表单，保持本页独立编辑且不覆盖其它官网设置。
  */
-const getData = async () => {
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+
+/** 读取并回填已成功返回的配置，失败时保留原编辑内容。 */
+const getData = async () => loadConfiguration(async () => {
     const data = await getWebsite()
     formData.toolsSearchProviderLabel = String(data.toolsSearchProviderLabel || '')
     formData.toolsSearchProviderLink = String(data.toolsSearchProviderLink || '')
@@ -346,13 +343,14 @@ const getData = async () => {
     aiChatHeaderLinks.value = parseLinkItems(data.toolsAiChatHeaderLinks)
     aiCommonHeaderLinks.value = parseLinkItems(data.toolsAiCommonHeaderLinks)
     updateBaselineSnapshot()
-}
+})
 
 /**
  * 函数说明：重新读取后台头部配置，方便脚本导入后立即回显最新数据。
  */
 const reloadHeaderData = async () => {
-    await getData()
+    if (isSubmitting.value) return
+    if (!await reloadConfiguration(getData)) return
     feedback.msgSuccess('已重新加载后台头部配置')
 }
 
@@ -542,6 +540,7 @@ const validateBeforeSubmit = (showMessage = true): boolean => {
  * 函数说明：提交头部设置，仅保存本页负责的字段，避免覆盖其它官网配置。
  */
 const handleSubmit = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     if (!validateBeforeSubmit(true)) {
         return
     }
@@ -555,13 +554,14 @@ const handleSubmit = async () => {
         toolsAiCommonHeaderLinks: JSON.stringify(aiCommonHeaderLinks.value),
     }
 
+    const submittedSnapshot = buildHeaderSnapshot()
     const success = await runSubmit(async () => {
         await setWebsite(payload)
     })
     if (!success) {
         return
     }
-    updateBaselineSnapshot()
+    baselineSnapshot.value = submittedSnapshot
 }
 
 /**

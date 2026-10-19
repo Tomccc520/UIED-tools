@@ -1,6 +1,19 @@
+<!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-18
+ */
+-->
 <template>
     <template v-if="!route.meta?.hidden">
-        <a-menu-item v-if="!hasShowChild" :key="routePath" :title="String(routeMeta?.title || '')" @click="handleMenuClick">
+        <a-menu-item
+            v-if="!hasShowChild"
+            :key="routePath"
+            :title="String(routeMeta?.title || '')"
+            @click="handleMenuClick"
+        >
             <template #icon>
                 <icon class="menu-item-icon" :size="16" :name="menuIcon" />
             </template>
@@ -26,8 +39,11 @@
 
 <script lang="ts" setup>
 import { normalizeMenuIconName } from '@/components/icon'
-import { getNormalPath, objectToQuery } from '@/utils/util'
-import { isExternal } from '@/utils/validate'
+import {
+    isAdminNavigationExternal,
+    resolveAdminNavigationPath,
+    resolveAdminNavigationTarget
+} from '@/utils/admin-navigation'
 import type { RouteRecordRaw } from 'vue-router'
 
 interface Props {
@@ -59,38 +75,18 @@ const menuIcon = computed(() => {
  * 解析子路由路径，兼容外链地址与多级目录拼接。
  */
 const resolvePath = (path: string) => {
-    if (isExternal(path)) {
-        return path
-    }
-    const newPath = getNormalPath(`${props.routePath}/${path}`)
-    return newPath
+    return resolveAdminNavigationPath(props.routePath, path)
 }
-const queryStr = computed<string>(() => {
-    const query = props.route.meta?.query as string
-    try {
-        const queryObj = JSON.parse(query)
-        return objectToQuery(queryObj)
-    } catch (error) {
-        // console.log(error)
-
-        return query
-    }
-})
-
-const routeTo = computed(() => {
-    const query = queryStr.value?.trim()
-    if (!query) {
-        return props.routePath
-    }
-    return `${props.routePath}${props.routePath.includes('?') ? '&' : '?'}${query}`
-})
+const routeTo = computed(() =>
+    resolveAdminNavigationTarget(props.routePath, props.route.meta?.query)
+)
 
 /**
  * 函数说明：点击菜单后执行路由跳转，兼容外链与内部页面。
  */
 const handleMenuClick = () => {
     const target = routeTo.value
-    if (isExternal(target)) {
+    if (isAdminNavigationExternal(target)) {
         window.open(target, '_blank', 'noopener,noreferrer')
         return
     }

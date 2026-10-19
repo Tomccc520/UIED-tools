@@ -34,7 +34,11 @@
                         <img v-else class="brand-logo" alt="logo" :src="brandLogo" />
                     </div>
                     <div class="brand-copy">
-                        <a-typography-title class="brand-title" :style="{ margin: 0, fontSize: '18px' }" :heading="5">
+                        <a-typography-title
+                            class="brand-title"
+                            :style="{ margin: 0, fontSize: '18px' }"
+                            :heading="5"
+                        >
                             {{ brandTitle }}
                         </a-typography-title>
                     </div>
@@ -62,19 +66,17 @@
                     </a-tooltip>
                 </li>
                 <li>
-                    <a-tooltip content="系统通知">
+                    <a-tooltip content="通知配置">
                         <div class="message-box-trigger">
-                            <a-badge :count="noticeCount" dot>
-                                <a-button
-                                    class="nav-btn"
-                                    type="outline"
-                                    shape="circle"
-                                    aria-label="打开系统通知"
-                                    @click="openNoticeDrawer"
-                                >
-                                    <icon-notification />
-                                </a-button>
-                            </a-badge>
+                            <a-button
+                                class="nav-btn"
+                                type="outline"
+                                shape="circle"
+                                aria-label="打开通知配置"
+                                @click="openNoticeDrawer"
+                            >
+                                <icon-notification />
+                            </a-button>
                         </div>
                     </a-tooltip>
                 </li>
@@ -119,38 +121,31 @@
 
         <a-modal
             v-model:visible="searchVisible"
-            title="全局搜索"
-            width="720px"
+            title="查找功能"
+            :width="isMobile ? 'calc(100vw - 24px)' : '640px'"
             :footer="false"
             unmount-on-close
         >
             <div class="search-panel">
-                <div class="search-panel__hero">
-                    <div class="search-panel__hero-main">
-                        <div class="search-panel__eyebrow">命令搜索</div>
-                        <div class="search-panel__headline">快速跳到后台任意工作区或配置页</div>
-                        <div class="search-panel__hero-desc">
-                            支持按菜单名称、面包屑关键词检索。适合直接定位官网设置、权限页和模型配置。
-                        </div>
-                    </div>
-                    <div class="search-panel__hotkey">{{ searchHotkeyLabel }}</div>
-                </div>
                 <a-input-search
                     ref="searchInputRef"
                     v-model="searchKeyword"
                     class="search-panel__input"
                     size="large"
-                    placeholder="输入菜单名称、面包屑关键词，支持上下键选择"
+                    placeholder="搜索功能或用途，例如：广告、工具上架、备案"
+                    aria-label="搜索后台功能"
                     allow-clear
                     @keydown.down.prevent="highlightNextSearchItem"
                     @keydown.up.prevent="highlightPrevSearchItem"
                     @keydown.enter.prevent="handleSearchSubmit"
                     @search="handleSearchSubmit"
                 />
-                <div v-if="searchQuickActions.length" class="search-panel__section search-shortcuts">
+                <div
+                    v-if="!searchKeyword.trim() && searchQuickActions.length"
+                    class="search-panel__section search-shortcuts"
+                >
                     <div class="search-panel__section-head">
                         <span>常用入口</span>
-                        <span>{{ searchQuickActions.length }} 项</span>
                     </div>
                     <a-space wrap size="mini">
                         <a-button
@@ -164,13 +159,9 @@
                         </a-button>
                     </a-space>
                 </div>
-                <div class="search-panel__section-head search-panel__section-head--compact">
-                    <span>匹配结果</span>
-                    <span>{{ visibleSearchItems.length }} 项</span>
-                </div>
                 <div class="search-panel-meta">
                     <span>{{ searchResultSummary }}</span>
-                    <span class="search-panel-tip">快捷键 {{ searchHotkeyLabel }}</span>
+                    <span>↑ ↓ 选择 · 回车打开</span>
                 </div>
                 <a-empty
                     v-if="!visibleSearchItems.length"
@@ -182,84 +173,72 @@
                         </a-button>
                     </template>
                 </a-empty>
-                <a-scrollbar v-else class="search-result-scroll">
-                    <div
-                        v-for="(item, index) in visibleSearchItems"
-                        :key="item.path"
-                        class="search-item"
-                        :class="{ 'is-active': index === searchActiveIndex }"
-                        @mouseenter="searchActiveIndex = index"
-                        @click="handleSearchJump(item)"
-                    >
-                        <div class="search-item__head">
-                            <div class="search-item__title">{{ item.title }}</div>
-                            <a-tag v-if="item.external" size="small" color="orange" bordered
-                                >外链</a-tag
-                            >
-                        </div>
-                        <div class="search-item__meta">{{ item.breadcrumb }}</div>
-                        <div class="search-item__path">{{ item.path }}</div>
-                    </div>
-                </a-scrollbar>
+                <div v-else ref="searchResultRef">
+                    <a-scrollbar class="search-result-scroll">
+                        <button
+                            type="button"
+                            v-for="(item, index) in visibleSearchItems"
+                            :key="item.path"
+                            class="search-item"
+                            :class="{ 'is-active': index === searchActiveIndex }"
+                            @pointermove="highlightPointerSearchItem($event, index)"
+                            @focus="searchActiveIndex = index"
+                            @click="handleSearchJump(item)"
+                        >
+                            <div class="search-item__head">
+                                <div class="search-item__title">{{ item.title }}</div>
+                                <a-tag v-if="item.external" size="small" color="orange" bordered
+                                    >外链</a-tag
+                                >
+                            </div>
+                            <div class="search-item__meta">{{ item.breadcrumb }}</div>
+                        </button>
+                    </a-scrollbar>
+                </div>
             </div>
         </a-modal>
 
         <a-drawer
             v-model:visible="noticeDrawerVisible"
-            width="380px"
-            title="系统通知"
+            :width="isMobile ? 'calc(100vw - 24px)' : '380px'"
+            title="通知配置"
             placement="right"
             :footer="false"
             unmount-on-close
         >
             <div class="notice-panel">
-                <div class="notice-panel__hero">
-                    <div class="notice-panel__eyebrow">通知中心</div>
-                    <div class="notice-panel__headline">当前有 {{ noticeCount }} 条待处理通知</div>
-                    <div class="notice-panel__desc">
-                        这里只保留后台当前最需要处理的配置提醒，适合运营和交付阶段快速修复问题。
-                    </div>
-                    <div class="notice-panel__stats">
-                        <div class="notice-panel__stat">
-                            <span>待处理</span>
-                            <strong>{{ noticeCount }}</strong>
-                        </div>
-                        <div class="notice-panel__stat">
-                            <span>已加载</span>
-                            <strong>{{ noticeItems.length }}</strong>
-                        </div>
-                    </div>
-                </div>
-                <a-space class="mb-3 notice-toolbar" wrap fill>
+                <p class="notice-panel__desc">
+                    管理通知场景与发送规则，配置条目不代表未读消息或待办。
+                </p>
+                <a-space v-if="noticeCenter" class="mb-3 notice-toolbar" wrap fill>
                     <a-button @click="refreshNotices" :loading="noticeLoading">刷新通知</a-button>
-                    <a-button @click="markAllNoticeAsRead" :disabled="noticeCount <= 0"
-                        >全部已读</a-button
-                    >
                     <a-button type="primary" @click="goNoticeCenter">通知配置</a-button>
                 </a-space>
-                <div class="notice-panel__section-head">
-                    <span>待处理通知</span>
-                    <span>{{ noticeItems.length }} 项</span>
-                </div>
+                <a-alert v-if="noticeError" type="error">{{ noticeError }}</a-alert>
                 <a-spin :loading="noticeLoading" style="display: block">
                     <a-empty
-                        v-if="!noticeItems.length"
-                        description="当前没有待处理通知，刷新后会同步最新状态。"
+                        v-if="!noticeItems.length && !noticeError && !noticeLoading"
+                        :description="
+                            noticeCenter ? '暂无通知配置' : '当前账号暂无可用的通知配置入口'
+                        "
                     >
-                        <template #extra>
-                            <a-button type="outline" size="small" @click="refreshNotices">
-                                重新拉取
-                            </a-button>
-                        </template>
                     </a-empty>
-                    <a-list v-else :bordered="false" :split="true" :data="noticeItems">
+                    <a-list
+                        v-else-if="noticeItems.length"
+                        :bordered="false"
+                        :split="true"
+                        :data="noticeItems"
+                    >
                         <template #item="{ item }">
                             <a-list-item class="notice-item" @click="handleNoticeJump(item)">
-                                <div class="notice-item__indicator"></div>
-                                <a-space direction="vertical" :size="2" fill class="notice-item__body">
+                                <a-space
+                                    direction="vertical"
+                                    :size="2"
+                                    fill
+                                    class="notice-item__body"
+                                >
                                     <div class="notice-item__head">
                                         <a-typography-text bold>{{ item.name }}</a-typography-text>
-                                        <a-tag size="small" color="arcoblue" bordered>待处理</a-tag>
                                     </div>
                                     <a-typography-text type="secondary" :ellipsis="{ rows: 1 }">
                                         {{ item.desc }}
@@ -280,11 +259,14 @@
 <script setup lang="ts">
 import { noticeLists } from '@/api/message'
 import { getRoutePath } from '@/router'
-import { MenuEnum } from '@/enums/appEnums'
 import useAppStore from '@/stores/modules/app'
 import useSettingStore from '@/stores/modules/setting'
 import useUserStore from '@/stores/modules/user'
-import { getNormalPath } from '@/utils/util'
+import {
+    flattenAdminNavigation,
+    searchAdminNavigation,
+    type AdminNavigationItem
+} from '@/utils/admin-navigation'
 import { isExternal } from '@/utils/validate'
 import Breadcrumb from './breadcrumb.vue'
 import UserDropDown from './user-drop-down.vue'
@@ -301,12 +283,7 @@ import {
 } from '@arco-design/web-vue/es/icon'
 import { useFullscreen } from '@vueuse/core'
 
-interface SearchMenuItem {
-    title: string
-    path: string
-    breadcrumb: string
-    external: boolean
-}
+type SearchMenuItem = AdminNavigationItem
 
 interface NoticeItem {
     id: number | string
@@ -400,61 +377,20 @@ const brandLogoSvg = computed(() => {
 const searchVisible = ref(false)
 const searchKeyword = ref('')
 const searchInputRef = ref<{ focus?: () => void }>()
+const searchResultRef = ref<HTMLElement>()
 
 const noticeDrawerVisible = ref(false)
 const noticeLoading = ref(false)
 const noticeItems = ref<NoticeItem[]>([])
-const unreadNoticeIds = ref<Array<number | string>>([])
-const noticeCount = computed(() => unreadNoticeIds.value.length)
+const noticeError = ref('')
 
 /**
  * 函数说明：将菜单树拍平成可检索项，供顶部全局搜索弹层实时过滤。
  */
-const searchMenuItems = computed<SearchMenuItem[]>(() => {
-    const flattenList: SearchMenuItem[] = []
-
-    const walkRoutes = (routes: any[], parentPath = '', titleStack: string[] = []) => {
-        for (const routeItem of routes) {
-            const routePath = String(routeItem.path || '')
-            const fullPath = resolveRoutePath(parentPath, routePath)
-            const title = String(routeItem.meta?.title || '')
-            const nextTitleStack = title ? [...titleStack, title] : titleStack
-
-            if (
-                routeItem.meta?.type === MenuEnum.MENU &&
-                !routeItem.meta?.hidden &&
-                title &&
-                fullPath
-            ) {
-                flattenList.push({
-                    title,
-                    path: fullPath,
-                    breadcrumb: nextTitleStack.join(' / '),
-                    external: isExternal(fullPath)
-                })
-            }
-
-            if (Array.isArray(routeItem.children) && routeItem.children.length) {
-                walkRoutes(routeItem.children, fullPath, nextTitleStack)
-            }
-        }
-    }
-
-    walkRoutes(userStore.routes as any[])
-    return flattenList
-})
+const searchMenuItems = computed<SearchMenuItem[]>(() => flattenAdminNavigation(userStore.routes))
 
 const filteredSearchItems = computed(() => {
-    const keyword = searchKeyword.value.trim().toLowerCase()
-    if (!keyword) {
-        return searchMenuItems.value.slice(0, 30)
-    }
-    return searchMenuItems.value.filter((item) => {
-        return (
-            item.title.toLowerCase().includes(keyword) ||
-            item.breadcrumb.toLowerCase().includes(keyword)
-        )
-    })
+    return searchAdminNavigation(searchMenuItems.value, searchKeyword.value)
 })
 
 const searchActiveIndex = ref(0)
@@ -470,18 +406,17 @@ const visibleSearchItems = computed<SearchMenuItem[]>(() => {
  * 函数说明：抽取后台高频配置入口作为搜索快捷访问按钮，降低运营人员点击层级。
  */
 const searchQuickActions = computed<SearchMenuItem[]>(() => {
-    const preferredKeywords = [
-        '工作台',
-        '前端布局',
-        '热门工具',
-        '网站信息',
-        '菜单管理',
-        '角色管理',
-        '管理员'
+    const preferredPaths = [
+        '/workbench',
+        '/official_site/tools_catalog',
+        '/official_site/frontend_layout',
+        '/official_site/sidebar',
+        '/official_site/seo',
+        '/ai_model_manage/ai_model'
     ]
     const pickedItems: SearchMenuItem[] = []
-    preferredKeywords.forEach((keyword) => {
-        const matchedItem = searchMenuItems.value.find((item) => item.title.includes(keyword))
+    preferredPaths.forEach((path) => {
+        const matchedItem = searchMenuItems.value.find((item) => item.path.split('?')[0] === path)
         if (matchedItem && !pickedItems.some((item) => item.path === matchedItem.path)) {
             pickedItems.push(matchedItem)
         }
@@ -507,26 +442,18 @@ const searchResultSummary = computed(() => {
     const totalCount = searchMenuItems.value.length
     const filteredCount = filteredSearchItems.value.length
     if (!searchKeyword.value.trim()) {
-        return `共 ${totalCount} 个菜单，已展示前 ${visibleSearchItems.value.length} 项`
+        return `可访问 ${totalCount} 个功能${
+            totalCount > visibleSearchItems.value.length
+                ? `，展示前 ${visibleSearchItems.value.length} 项`
+                : ''
+        }`
     }
-    return `匹配 ${filteredCount} 项（展示前 ${visibleSearchItems.value.length} 项）`
+    return `找到 ${filteredCount} 个功能${
+        filteredCount > visibleSearchItems.value.length
+            ? `，展示前 ${visibleSearchItems.value.length} 项`
+            : ''
+    }`
 })
-
-/**
- * 函数说明：规范化路由拼接，兼容绝对路径、相对路径与外链。
- */
-const resolveRoutePath = (parentPath: string, routePath: string) => {
-    if (!routePath) {
-        return ''
-    }
-    if (isExternal(routePath)) {
-        return routePath
-    }
-    if (routePath.startsWith('/')) {
-        return routePath
-    }
-    return getNormalPath(`${parentPath}/${routePath}`)
-}
 
 /**
  * 函数说明：切换侧边栏展开状态，复用原有 store 行为。
@@ -565,6 +492,7 @@ const handleGlobalHotkey = (event: KeyboardEvent) => {
  * 函数说明：回车时优先跳转第一条匹配菜单，提高键盘操作效率。
  */
 const handleSearchSubmit = () => {
+    if (!searchVisible.value) return
     const target = visibleSearchItems.value[searchActiveIndex.value] || visibleSearchItems.value[0]
     if (!target) {
         Message.warning('未找到可跳转菜单')
@@ -595,6 +523,11 @@ const highlightPrevSearchItem = () => {
     searchActiveIndex.value = (searchActiveIndex.value - 1 + resultCount) % resultCount
 }
 
+/** 仅在指针实际移动时选中悬停条目，避免键盘滚动或列表更新把选择重置到静止鼠标下。 */
+const highlightPointerSearchItem = (event: PointerEvent, index: number) => {
+    if (event.movementX !== 0 || event.movementY !== 0) searchActiveIndex.value = index
+}
+
 /**
  * 函数说明：执行菜单跳转，支持内部路由与外链菜单。
  */
@@ -614,6 +547,20 @@ watch(
     }
 )
 
+/** 键盘切换结果时滚动到当前条目，避免较长结果列表选中了屏外功能。 */
+watch(searchActiveIndex, async () => {
+    await nextTick()
+    searchResultRef.value
+        ?.querySelector('.search-item.is-active')
+        ?.scrollIntoView({ block: 'nearest' })
+})
+
+/** 只从当前账号可见菜单查找通知配置入口，不用其他模块作为伪通知兜底。 */
+const noticeCenter = computed(() => {
+    const path = getRoutePath('setting:notice:list')
+    return searchMenuItems.value.find((item) => item.path.split('?')[0] === path)
+})
+
 /**
  * 函数说明：打开通知抽屉并自动拉取通知场景列表。
  */
@@ -626,6 +573,10 @@ const openNoticeDrawer = async () => {
  * 函数说明：拉取用户/平台通知配置作为通知列表，支持一键进入配置详情。
  */
 const refreshNotices = async () => {
+    if (noticeLoading.value) return
+    noticeError.value = ''
+    noticeItems.value = []
+    if (!noticeCenter.value) return
     try {
         noticeLoading.value = true
         const [userNoticeList, platformNoticeList] = await Promise.all([
@@ -633,7 +584,7 @@ const refreshNotices = async () => {
             noticeLists({ recipient: 2 })
         ])
         const detailRoute = getRoutePath('setting:notice:detail')
-        const listRoute = getRoutePath('setting:notice:list') || '/message/notice'
+        const listRoute = noticeCenter.value.path
         const nextItems = [...(userNoticeList || []), ...(platformNoticeList || [])]
             .slice(0, 20)
             .map((item: any) => {
@@ -641,52 +592,17 @@ const refreshNotices = async () => {
                 return {
                     id: item.id,
                     name: item.name || '未命名通知',
-                    desc: `${item.type || '未知类型'} · 点击进入配置`,
+                    desc: `${item.type || '通知场景'} · 查看发送规则`,
                     targetPath
                 } as NoticeItem
             })
-        /**
-         * 函数说明：通知接口返回空数组时回退到默认通知入口，保证右上角通知有可操作内容。
-         */
-        if (nextItems.length === 0) {
-            const fallbackNotices = getFallbackNotices()
-            noticeItems.value = fallbackNotices
-            unreadNoticeIds.value = fallbackNotices.map((item) => item.id)
-            return
-        }
         noticeItems.value = nextItems
-        unreadNoticeIds.value = nextItems.map((item) => item.id)
     } catch (error) {
-        const fallbackNotices = getFallbackNotices()
-        noticeItems.value = fallbackNotices
-        unreadNoticeIds.value = fallbackNotices.map((item) => item.id)
-        Message.warning('通知接口暂不可用，已切换为默认通知入口')
+        noticeError.value = '通知配置加载失败，请重试'
+        console.error('[admin-navigation] 通知配置加载失败', error)
     } finally {
         noticeLoading.value = false
     }
-}
-
-/**
- * 函数说明：当通知接口不可用时回退到默认通知入口，避免顶部通知抽屉空白无内容。
- */
-const getFallbackNotices = (): NoticeItem[] => {
-    const noticeCenterPath =
-        getRoutePath('setting:website:layout:detail') || '/official_site/frontend_layout'
-    const aiModelPath = getRoutePath('setting:ai:provider:detail') || '/ai_model_manage/ai_provider'
-    return [
-        {
-            id: 'fallback-notice-center',
-            name: '通知配置入口',
-            desc: '通知模块已下线，点击进入官网运营配置页',
-            targetPath: noticeCenterPath
-        },
-        {
-            id: 'fallback-ai-model',
-            name: 'AI模型管理入口',
-            desc: '建议检查模型状态与可用性配置',
-            targetPath: aiModelPath
-        }
-    ]
 }
 
 /**
@@ -694,7 +610,6 @@ const getFallbackNotices = (): NoticeItem[] => {
  */
 const handleNoticeJump = (item: NoticeItem) => {
     noticeDrawerVisible.value = false
-    unreadNoticeIds.value = unreadNoticeIds.value.filter((id) => id !== item.id)
     if (isExternal(item.targetPath)) {
         window.open(item.targetPath, '_blank', 'noopener,noreferrer')
         return
@@ -703,19 +618,12 @@ const handleNoticeJump = (item: NoticeItem) => {
 }
 
 /**
- * 函数说明：将当前通知列表全部标记为已读，仅影响前端展示计数。
- */
-const markAllNoticeAsRead = () => {
-    unreadNoticeIds.value = []
-    Message.success('已全部标记为已读')
-}
-
-/**
  * 函数说明：跳转到通知配置页，方便运营直接维护消息策略。
  */
 const goNoticeCenter = () => {
+    if (!noticeCenter.value) return
     noticeDrawerVisible.value = false
-    router.push(getRoutePath('setting:website:layout:detail') || '/official_site/frontend_layout')
+    router.push(noticeCenter.value.path)
 }
 
 /**
@@ -744,10 +652,12 @@ const openSetting = () => {
 
 onMounted(() => {
     window.addEventListener('keydown', handleGlobalHotkey)
+    window.addEventListener('uied:admin-navigation-search', openSearchModal)
 })
 
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', handleGlobalHotkey)
+    window.removeEventListener('uied:admin-navigation-search', openSearchModal)
 })
 </script>
 
@@ -903,157 +813,58 @@ onBeforeUnmount(() => {
     }
 }
 
+/* 功能搜索保持输入、结果和键盘提示三层结构，避免重复说明挤占可见结果。 */
 .search-panel {
-    padding-top: 4px;
-
-    .search-panel__hero {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 14px;
-        padding: 16px 18px;
-        border: 1px solid rgba(229, 232, 240, 0.92);
-        border-radius: 14px;
-        background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
-    }
-
-    .search-panel__hero-main {
-        min-width: 0;
-        flex: 1;
-    }
-
-    .search-panel__eyebrow {
-        display: inline-flex;
-        align-items: center;
-        height: 24px;
-        padding: 0 10px;
-        border-radius: 999px;
-        background: rgba(var(--primary-1), 0.9);
-        color: rgb(var(--primary-6));
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .search-panel__headline {
-        margin-top: 10px;
-        font-size: 18px;
-        line-height: 1.35;
-        font-weight: 700;
-        color: var(--color-text-1, #1d2129);
-    }
-
-    .search-panel__hero-desc {
-        margin-top: 6px;
-        font-size: 13px;
-        line-height: 1.7;
-        color: var(--color-text-3, #86909c);
-    }
-
-    .search-panel__hotkey {
-        flex-shrink: 0;
-        min-width: 68px;
-        padding: 10px 12px;
-        border-radius: 12px;
-        border: 1px solid rgba(229, 232, 240, 0.92);
-        background: #fff;
-        text-align: center;
-        font-size: 18px;
-        font-weight: 700;
-        color: var(--color-text-1, #1d2129);
-    }
-
     .search-panel__input {
-        :deep(.arco-input-wrapper) {
-            border-radius: 12px;
-            padding-inline: 12px;
-            min-height: 48px;
-            background: #f7f8fa;
-            border-color: transparent;
-        }
-
-        :deep(.arco-input-wrapper:hover) {
-            background: #fff;
-            border-color: rgba(22, 93, 255, 0.22);
-        }
+        width: 100%;
     }
 
     .search-panel__section {
-        margin-top: 14px;
-        padding: 14px 16px;
-        border: 1px solid rgba(229, 232, 240, 0.92);
-        border-radius: 12px;
-        background: #fff;
+        margin-top: 16px;
+    }
+
+    .search-panel__section-head,
+    .search-panel-meta {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        color: var(--color-text-3);
+        font-size: 12px;
     }
 
     .search-panel__section-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--color-text-3, #86909c);
-    }
-
-    .search-panel__section-head--compact {
-        margin-top: 14px;
         margin-bottom: 8px;
     }
 
-    .search-shortcuts {
-        display: block;
-    }
-
-    .search-shortcuts-label {
-        font-size: 12px;
-        color: var(--color-text-3, #86909c);
-        line-height: 1;
-    }
-
-    .search-shortcut-btn {
-        border-radius: 999px;
-        border-color: rgba(229, 232, 240, 0.88);
-        background: #f7f8fa;
-    }
-
     .search-panel-meta {
-        margin-bottom: 10px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        color: var(--color-text-3, #86909c);
-        font-size: 12px;
-    }
-
-    .search-panel-tip {
-        border: 1px solid rgba(229, 232, 240, 0.92);
-        border-radius: 999px;
-        padding: 4px 8px;
-        background: #fff;
-        color: var(--color-text-2, #4e5969);
+        flex-wrap: wrap;
+        margin: 16px 0 8px;
     }
 
     .search-result-scroll {
-        margin-top: 2px;
-        max-height: 356px;
+        max-height: min(440px, 50vh);
     }
 
     .search-item {
-        padding: 12px 14px;
+        display: block;
+        width: 100%;
+        padding: 10px 12px;
         border: 1px solid transparent;
-        border-radius: 12px;
+        border-radius: 4px;
+        background: transparent;
+        text-align: left;
         cursor: pointer;
-        transition: all 0.2s ease;
-        &:hover {
-            border-color: rgba(22, 93, 255, 0.14);
-            background: rgba(22, 93, 255, 0.04);
+        font: inherit;
+
+        &:hover,
+        &.is-active {
+            background: var(--color-primary-light-1);
         }
 
-        &.is-active {
-            border-color: rgba(22, 93, 255, 0.22);
-            background: rgba(60, 94, 255, 0.08);
-            box-shadow: 0 8px 18px rgba(15, 35, 95, 0.06);
+        &:focus-visible {
+            outline: 2px solid rgb(var(--primary-6));
+            outline-offset: -2px;
         }
     }
 
@@ -1065,23 +876,15 @@ onBeforeUnmount(() => {
     }
 
     .search-item__title {
+        color: var(--color-text-1);
         font-weight: 600;
-        color: var(--color-text-1, #1d2129);
     }
 
     .search-item__meta {
-        margin-top: 2px;
-        font-size: 12px;
-        color: var(--color-text-3, #86909c);
-    }
-
-    .search-item__path {
         margin-top: 4px;
-        font-size: 11px;
-        color: var(--color-text-4, #c9cdd4);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
+        color: var(--color-text-3);
+        font-size: 12px;
+        overflow-wrap: anywhere;
     }
 }
 
@@ -1104,108 +907,15 @@ onBeforeUnmount(() => {
 }
 
 .notice-panel {
-    .notice-panel__hero {
-        padding: 16px 16px 14px;
-        border: 1px solid rgba(229, 232, 240, 0.92);
-        border-radius: 14px;
-        background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
-    }
-
-    .notice-panel__eyebrow {
-        display: inline-flex;
-        align-items: center;
-        height: 24px;
-        padding: 0 10px;
-        border-radius: 999px;
-        background: rgba(var(--primary-1), 0.9);
-        color: rgb(var(--primary-6));
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .notice-panel__headline {
-        margin-top: 10px;
-        font-size: 18px;
-        line-height: 1.35;
-        font-weight: 700;
-        color: var(--color-text-1, #1d2129);
-    }
-
     .notice-panel__desc {
-        margin-top: 6px;
+        margin: 0 0 16px;
+        color: var(--color-text-3);
         font-size: 13px;
         line-height: 1.7;
-        color: var(--color-text-3, #86909c);
-    }
-
-    .notice-panel__stats {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-        margin-top: 14px;
-    }
-
-    .notice-panel__stat {
-        padding: 12px 14px;
-        border-radius: 12px;
-        background: #fff;
-        border: 1px solid rgba(229, 232, 240, 0.92);
-
-        span {
-            display: block;
-            font-size: 12px;
-            color: var(--color-text-3, #86909c);
-        }
-
-        strong {
-            display: block;
-            margin-top: 6px;
-            font-size: 18px;
-            line-height: 1;
-            color: var(--color-text-1, #1d2129);
-        }
-    }
-
-    .notice-toolbar {
-        margin-top: 14px;
-        :deep(.arco-btn) {
-            flex: 1;
-        }
-    }
-
-    .notice-panel__section-head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 8px;
-        color: var(--color-text-3, #86909c);
-        font-size: 12px;
-        font-weight: 600;
     }
 
     .notice-item {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
         cursor: pointer;
-        border: 1px solid transparent;
-        border-radius: 12px;
-        padding: 12px 14px;
-        transition: all 0.2s ease;
-        &:hover {
-            border-color: rgba(22, 93, 255, 0.14);
-            background: rgba(22, 93, 255, 0.04);
-        }
-    }
-
-    .notice-item__indicator {
-        flex-shrink: 0;
-        width: 8px;
-        height: 8px;
-        margin-top: 7px;
-        border-radius: 999px;
-        background: rgb(var(--primary-6));
-        box-shadow: 0 0 0 4px rgba(var(--primary-1), 0.9);
     }
 
     .notice-item__body {
@@ -1213,19 +923,10 @@ onBeforeUnmount(() => {
         flex: 1;
     }
 
-    .notice-item__head {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-    }
-
     .notice-item__path {
-        margin-top: 4px;
+        color: var(--color-text-3);
         font-size: 11px;
-        line-height: 1.5;
-        color: var(--color-text-4, #c9cdd4);
-        word-break: break-all;
+        overflow-wrap: anywhere;
     }
 }
 
@@ -1244,16 +945,6 @@ onBeforeUnmount(() => {
     .left-side {
         gap: 10px;
         padding-left: 14px;
-    }
-
-    .search-panel {
-        .search-panel__hero {
-            flex-direction: column;
-        }
-
-        .search-panel__hotkey {
-            width: 100%;
-        }
     }
 }
 </style>

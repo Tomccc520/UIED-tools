@@ -30,6 +30,7 @@ const resolveSubmitSuccessText = (
 export const useOperateSubmit = (defaultSuccessText = '配置已保存') => {
     const isSubmitting = ref(false)
     const lastSavedAt = ref('')
+    const submitError = ref('')
 
     /**
      * 函数说明：格式化时间文本，作为运营页“最近保存时间”展示值。
@@ -52,11 +53,16 @@ export const useOperateSubmit = (defaultSuccessText = '配置已保存') => {
             return false
         }
         isSubmitting.value = true
+        submitError.value = ''
         try {
             await executor()
             feedback.msgSuccess(resolveSubmitSuccessText(options.successText, defaultSuccessText))
             lastSavedAt.value = formatDateTimeText(new Date())
             return true
+        } catch (error) {
+            submitError.value = '配置保存失败，您的修改已保留，请重试。'
+            if (!(error as { notified?: boolean })?.notified) feedback.msgError(submitError.value)
+            return false
         } finally {
             isSubmitting.value = false
         }
@@ -65,6 +71,7 @@ export const useOperateSubmit = (defaultSuccessText = '配置已保存') => {
     return {
         isSubmitting,
         lastSavedAt,
+        submitError,
         runSubmit
     }
 }

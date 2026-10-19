@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -681,51 +680,15 @@ func (wSrv settingWebsiteService) SyncToolsCatalogSeed(syncReq req.SettingWebsit
 	return summary, nil
 }
 
-// 函数说明：读取请求字段值；若本次请求未传该字段则回退到数据库现有值，避免部分更新覆盖其它配置
-func pickWebsiteReqValue(reqVal *string, fallback string) string {
-	if reqVal == nil {
-		return fallback
-	}
-	return *reqVal
-}
-
 type websiteConfigUpdate struct {
 	name  string
 	value string
 }
 
-var sidebarWebsiteRequestFields = map[string]struct{}{
-	"ToolsSiteSlogan":            {},
-	"ToolsSidebarRecommendTitle": {},
-	"ToolsSidebarBrandLogo":      {},
-	"ToolsSidebarBrandText":      {},
-	"ToolsSidebarRecommend":      {},
-	"ToolsSidebarCategoryMenus":  {},
-	"ToolsSidebarMenuBlocks":     {},
-	"ToolsSidebarBottomLinks":    {},
-	"ToolsAiToolboxSidebarMenus": {},
-}
-
-// buildSidebarWebsiteConfigUpdates 函数说明：识别只包含侧栏字段的保存请求，并生成最小配置更新列表。
-func buildSidebarWebsiteConfigUpdates(wsReq req.SettingWebsiteReq) ([]websiteConfigUpdate, bool) {
-	reqValue := reflect.ValueOf(wsReq)
-	reqType := reqValue.Type()
-	hasSidebarField := false
-	for index := 0; index < reqValue.NumField(); index++ {
-		fieldValue := reqValue.Field(index)
-		if fieldValue.Kind() != reflect.Pointer || fieldValue.IsNil() {
-			continue
-		}
-		if _, allowed := sidebarWebsiteRequestFields[reqType.Field(index).Name]; !allowed {
-			return nil, false
-		}
-		hasSidebarField = true
-	}
-	if !hasSidebarField {
-		return nil, false
-	}
-
-	updates := make([]websiteConfigUpdate, 0, len(sidebarWebsiteRequestFields))
+// buildWebsiteConfigUpdates 函数说明：显式列出可写配置字段，只规范化本次提交的非空指针；未传字段不读取、不写回，显式空字符串仍参与保存。
+func buildWebsiteConfigUpdates(wsReq req.SettingWebsiteReq) []websiteConfigUpdate {
+	updates := make([]websiteConfigUpdate, 0, 55)
+	// 函数说明：将已提交字段规范化后追加为更新；nil 表示保持数据库原值。
 	appendUpdate := func(name string, value *string, normalize func(string) string) {
 		if value == nil {
 			return
@@ -736,21 +699,113 @@ func buildSidebarWebsiteConfigUpdates(wsReq req.SettingWebsiteReq) ([]websiteCon
 		}
 		updates = append(updates, websiteConfigUpdate{name: name, value: normalizedValue})
 	}
-	trimSpace := func(value string) string { return strings.TrimSpace(value) }
-	appendUpdate(toolsSiteSloganConfigName, wsReq.ToolsSiteSlogan, trimSpace)
-	appendUpdate(toolsSidebarRecommendTitleConfigName, wsReq.ToolsSidebarRecommendTitle, trimSpace)
+	appendUpdate("name", wsReq.Name, nil)
+	appendUpdate("logo", wsReq.Logo, util.UrlUtil.ToRelativeUrl)
+	appendUpdate("favicon", wsReq.Favicon, util.UrlUtil.ToRelativeUrl)
+	appendUpdate("backdrop", wsReq.Backdrop, util.UrlUtil.ToRelativeUrl)
+	appendUpdate("shopName", wsReq.ShopName, nil)
+	appendUpdate("shopLogo", wsReq.ShopLogo, util.UrlUtil.ToRelativeUrl)
+	appendUpdate(toolsSiteSloganConfigName, wsReq.ToolsSiteSlogan, strings.TrimSpace)
+	appendUpdate(toolsSidebarRecommendTitleConfigName, wsReq.ToolsSidebarRecommendTitle, strings.TrimSpace)
 	appendUpdate(toolsSidebarBrandLogoConfigName, wsReq.ToolsSidebarBrandLogo, normalizeToolsSidebarBrandLogoForStorage)
-	appendUpdate(toolsSidebarBrandTextConfigName, wsReq.ToolsSidebarBrandText, trimSpace)
+	appendUpdate(toolsSidebarBrandTextConfigName, wsReq.ToolsSidebarBrandText, strings.TrimSpace)
+	appendUpdate(toolsFooterIntroConfigName, wsReq.ToolsFooterIntro, nil)
+	appendUpdate(toolsFooterQuickTitleConfigName, wsReq.ToolsFooterQuickTitle, nil)
+	appendUpdate(toolsFooterFriendTitleConfigName, wsReq.ToolsFooterFriendTitle, nil)
+	appendUpdate(toolsOfficialMediaTitleConfigName, wsReq.ToolsOfficialMediaTitle, nil)
+	appendUpdate(toolsFooterSupportLabelConfigName, wsReq.ToolsFooterSupportLabel, nil)
+	appendUpdate(toolsFooterSupportLinksConfigName, wsReq.ToolsFooterSupportLinks, nil)
+	appendUpdate(toolsFooterRecordLinksConfigName, wsReq.ToolsFooterRecordLinks, nil)
+	appendUpdate(toolsHotToolsConfigName, wsReq.ToolsHotTools, normalizeHotToolsConfig)
+	appendUpdate(toolsBannerSlidesConfigName, wsReq.ToolsBannerSlides, func(value string) string { return normalizeToolsLayoutArrayConfig(value, toolsBannerSlidesDefaultJSON) })
+	appendUpdate(toolsHeaderLinksConfigName, wsReq.ToolsHeaderLinks, nil)
+	appendUpdate(toolsSearchQuickToolsConfigName, wsReq.ToolsSearchQuickTools, func(value string) string {
+		return normalizeToolsLayoutArrayConfig(value, toolsSearchQuickToolsDefaultJSON)
+	})
+	appendUpdate(toolsSearchProviderLabelConfigName, wsReq.ToolsSearchProviderLabel, strings.TrimSpace)
+	appendUpdate(toolsSearchProviderLinkConfigName, wsReq.ToolsSearchProviderLink, strings.TrimSpace)
 	appendUpdate(toolsSidebarRecommendConfigName, wsReq.ToolsSidebarRecommend, nil)
 	appendUpdate(toolsSidebarCategoryMenusConfigName, wsReq.ToolsSidebarCategoryMenus, nil)
 	appendUpdate(toolsSidebarMenuBlocksConfigName, wsReq.ToolsSidebarMenuBlocks, normalizeToolsSidebarMenuBlocksConfig)
+	appendUpdate(toolsCategoryTreeConfigName, wsReq.ToolsCategoryTree, normalizeToolsCategoryTreeConfig)
 	appendUpdate(toolsSidebarBottomLinksConfigName, wsReq.ToolsSidebarBottomLinks, nil)
 	appendUpdate(toolsAiToolboxSidebarMenusConfigName, wsReq.ToolsAiToolboxSidebarMenus, nil)
-	return updates, true
+	appendUpdate(toolsChangelogHeaderLinksConfigName, wsReq.ToolsChangelogHeaderLinks, func(value string) string {
+		return normalizeToolsLayoutArrayConfig(value, toolsChangelogHeaderLinksDefaultJSON)
+	})
+	appendUpdate(toolsChangelogIntroTextConfigName, wsReq.ToolsChangelogIntroText, strings.TrimSpace)
+	appendUpdate(toolsChangelogMetaLinksConfigName, wsReq.ToolsChangelogMetaLinks, func(value string) string {
+		return normalizeToolsLayoutArrayConfig(value, toolsChangelogMetaLinksDefaultJSON)
+	})
+	appendUpdate(toolsChangelogSplitTitleConfigName, wsReq.ToolsChangelogSplitTitle, strings.TrimSpace)
+	appendUpdate(toolsChangelogSplitDescConfigName, wsReq.ToolsChangelogSplitDesc, strings.TrimSpace)
+	appendUpdate(toolsChangelogSplitLinkConfigName, wsReq.ToolsChangelogSplitLink, strings.TrimSpace)
+	appendUpdate(toolsChangelogSplitLinkTextConfigName, wsReq.ToolsChangelogSplitLinkText, strings.TrimSpace)
+	appendUpdate(toolsChangelogStatsTextConfigName, wsReq.ToolsChangelogStatsText, func(value string) string {
+		return strings.ReplaceAll(
+			strings.TrimSpace(value),
+			"当前工具总数：333个",
+			"当前工具总数：334个",
+		)
+	})
+	appendUpdate(toolsChangelogTimelineConfigName, wsReq.ToolsChangelogTimeline, func(value string) string {
+		return defaults.NormalizeToolsChangelogTimelineJSON(
+			normalizeToolsLayoutArrayConfig(
+				value,
+				defaults.GetToolsChangelogTimelineJSON(),
+			),
+		)
+	})
+	appendUpdate(toolsAiChatHeaderLinksConfigName, wsReq.ToolsAiChatHeaderLinks, func(value string) string {
+		return normalizeToolsLayoutArrayConfig(value, toolsAiChatHeaderLinksDefaultJSON)
+	})
+	appendUpdate(toolsAiCommonHeaderLinksConfigName, wsReq.ToolsAiCommonHeaderLinks, func(value string) string {
+		return normalizeToolsLayoutArrayConfig(value, toolsAiCommonHeaderLinksDefaultJSON)
+	})
+	appendUpdate(toolsFooterQuickSectionsConfigName, wsReq.ToolsFooterQuickSections, nil)
+	appendUpdate(toolsFooterFriendSectionsConfigName, wsReq.ToolsFooterFriendSections, nil)
+	appendUpdate(toolsOfficialMediaLinksConfigName, wsReq.ToolsOfficialMediaLinks, nil)
+	appendUpdate(toolsSeoDefaultTitleConfigName, wsReq.ToolsSeoDefaultTitle, strings.TrimSpace)
+	appendUpdate(toolsSeoDefaultKeywordsConfigName, wsReq.ToolsSeoDefaultKeywords, strings.TrimSpace)
+	appendUpdate(toolsSeoDefaultDescriptionConfigName, wsReq.ToolsSeoDefaultDescription, strings.TrimSpace)
+	appendUpdate(toolsSeoDefaultImageConfigName, wsReq.ToolsSeoDefaultImage, func(value string) string { return util.UrlUtil.ToRelativeUrl(strings.TrimSpace(value)) })
+	appendUpdate(toolsSeoPagesConfigName, wsReq.ToolsSeoPages, func(value string) string { return normalizeToolsLayoutArrayConfig(value, toolsSeoPagesDefaultJSON) })
+
+	// 函数说明：复用每日学习的默认值和边界规则，但只提取本次提交的键，避免默认值覆盖其它配置。
+	learningFields := []struct {
+		name  string
+		value *string
+	}{
+		{defaults.ToolsHomepageLearningEnabledConfigName, wsReq.ToolsHomepageLearningEnabled},
+		{defaults.ToolsHomepageLearningTitleConfigName, wsReq.ToolsHomepageLearningTitle},
+		{defaults.ToolsHomepageLearningRssURLConfigName, wsReq.ToolsHomepageLearningRssURL},
+		{defaults.ToolsHomepageLearningFilterTypeConfigName, wsReq.ToolsHomepageLearningFilterType},
+		{defaults.ToolsHomepageLearningCategorySlugConfigName, wsReq.ToolsHomepageLearningCategorySlug},
+		{defaults.ToolsHomepageLearningCategoryIDsConfigName, wsReq.ToolsHomepageLearningCategoryIDs},
+		{defaults.ToolsHomepageLearningLimitConfigName, wsReq.ToolsHomepageLearningLimit},
+	}
+	learningRaw := make(map[string]string, len(learningFields))
+	for _, field := range learningFields {
+		if field.value != nil {
+			learningRaw[field.name] = *field.value
+		}
+	}
+	if len(learningRaw) > 0 {
+		normalized := defaults.HomepageLearningConfigToWebsiteValues(defaults.NormalizeHomepageLearningConfig(learningRaw))
+		for _, field := range learningFields {
+			if field.value != nil {
+				updates = append(updates, websiteConfigUpdate{name: field.name, value: normalized[field.name]})
+			}
+		}
+	}
+	return updates
 }
 
-// saveWebsiteConfigUpdates 函数说明：在同一事务内保存一组官网配置，避免部分字段成功、部分字段失败。
+// saveWebsiteConfigUpdates 函数说明：将本次请求全部配置放入同一事务，任一字段失败全部回滚；空请求不触发数据库写入。
 func saveWebsiteConfigUpdates(db *gorm.DB, updates []websiteConfigUpdate) error {
+	if len(updates) == 0 {
+		return nil
+	}
 	return db.Transaction(func(tx *gorm.DB) error {
 		for _, update := range updates {
 			if err := util.ConfigUtil.Set(tx, "website", update.name, update.value); err != nil {
@@ -761,311 +816,12 @@ func saveWebsiteConfigUpdates(db *gorm.DB, updates []websiteConfigUpdate) error 
 	})
 }
 
-// Save 保存网站信息（支持部分字段更新，未传字段保留原值）
-func (wSrv settingWebsiteService) Save(wsReq req.SettingWebsiteReq) (e error) {
-	if sidebarUpdates, sidebarOnly := buildSidebarWebsiteConfigUpdates(wsReq); sidebarOnly {
-		err := saveWebsiteConfigUpdates(wSrv.db, sidebarUpdates)
-		return response.CheckErr(err, "Save sidebar website config err")
-	}
-
-	current, err := util.ConfigUtil.Get(wSrv.db, "website")
-	if e = response.CheckErr(err, "Save Get website config err"); e != nil {
-		return
-	}
+// Save 函数说明：校验并按请求字段白名单事务保存官网配置，禁止用读取时的全量快照回写未提交字段。
+func (wSrv settingWebsiteService) Save(wsReq req.SettingWebsiteReq) error {
 	if wsReq.ToolsHomepageLearningRssURL != nil && strings.TrimSpace(*wsReq.ToolsHomepageLearningRssURL) != "" {
-		if err = defaults.ValidateHomepageLearningRSSURL(*wsReq.ToolsHomepageLearningRssURL); err != nil {
-			e = response.AssertArgumentError.Make(err.Error())
-			return
+		if err := defaults.ValidateHomepageLearningRSSURL(*wsReq.ToolsHomepageLearningRssURL); err != nil {
+			return response.AssertArgumentError.Make(err.Error())
 		}
 	}
-
-	// 函数说明：统一封装配置写入与错误处理，减少重复代码并保证错误提示一致
-	setConfig := func(name string, value string, errMsg string) bool {
-		err = util.ConfigUtil.Set(wSrv.db, "website", name, value)
-		if e = response.CheckErr(err, errMsg); e != nil {
-			return false
-		}
-		return true
-	}
-
-	if !setConfig("name", pickWebsiteReqValue(wsReq.Name, current["name"]), "Save Set name err") {
-		return
-	}
-	if !setConfig("logo", util.UrlUtil.ToRelativeUrl(pickWebsiteReqValue(wsReq.Logo, current["logo"])), "Save Set logo err") {
-		return
-	}
-	if !setConfig("favicon", util.UrlUtil.ToRelativeUrl(pickWebsiteReqValue(wsReq.Favicon, current["favicon"])), "Save Set favicon err") {
-		return
-	}
-	if !setConfig("backdrop", util.UrlUtil.ToRelativeUrl(pickWebsiteReqValue(wsReq.Backdrop, current["backdrop"])), "Save Set backdrop err") {
-		return
-	}
-	if !setConfig("shopName", pickWebsiteReqValue(wsReq.ShopName, current["shopName"]), "Save Set shopName err") {
-		return
-	}
-	if !setConfig("shopLogo", util.UrlUtil.ToRelativeUrl(pickWebsiteReqValue(wsReq.ShopLogo, current["shopLogo"])), "Save Set shopLogo err") {
-		return
-	}
-
-	if !setConfig(toolsSiteSloganConfigName, pickWebsiteReqValue(wsReq.ToolsSiteSlogan, current[toolsSiteSloganConfigName]), "Save Set toolsSiteSlogan err") {
-		return
-	}
-	if !setConfig(toolsSidebarRecommendTitleConfigName, pickWebsiteReqValue(wsReq.ToolsSidebarRecommendTitle, current[toolsSidebarRecommendTitleConfigName]), "Save Set toolsSidebarRecommendTitle err") {
-		return
-	}
-	if !setConfig(
-		toolsSidebarBrandLogoConfigName,
-		normalizeToolsSidebarBrandLogoForStorage(pickWebsiteReqValue(wsReq.ToolsSidebarBrandLogo, current[toolsSidebarBrandLogoConfigName])),
-		"Save Set toolsSidebarBrandLogo err",
-	) {
-		return
-	}
-	if !setConfig(toolsSidebarBrandTextConfigName, strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsSidebarBrandText, current[toolsSidebarBrandTextConfigName])), "Save Set toolsSidebarBrandText err") {
-		return
-	}
-	if !setConfig(toolsFooterIntroConfigName, pickWebsiteReqValue(wsReq.ToolsFooterIntro, current[toolsFooterIntroConfigName]), "Save Set toolsFooterIntro err") {
-		return
-	}
-	if !setConfig(toolsFooterQuickTitleConfigName, pickWebsiteReqValue(wsReq.ToolsFooterQuickTitle, current[toolsFooterQuickTitleConfigName]), "Save Set toolsFooterQuickTitle err") {
-		return
-	}
-	if !setConfig(toolsFooterFriendTitleConfigName, pickWebsiteReqValue(wsReq.ToolsFooterFriendTitle, current[toolsFooterFriendTitleConfigName]), "Save Set toolsFooterFriendTitle err") {
-		return
-	}
-	if !setConfig(toolsOfficialMediaTitleConfigName, pickWebsiteReqValue(wsReq.ToolsOfficialMediaTitle, current[toolsOfficialMediaTitleConfigName]), "Save Set toolsOfficialMediaTitle err") {
-		return
-	}
-	if !setConfig(toolsFooterSupportLabelConfigName, pickWebsiteReqValue(wsReq.ToolsFooterSupportLabel, current[toolsFooterSupportLabelConfigName]), "Save Set toolsFooterSupportLabel err") {
-		return
-	}
-	if !setConfig(toolsFooterSupportLinksConfigName, pickWebsiteReqValue(wsReq.ToolsFooterSupportLinks, current[toolsFooterSupportLinksConfigName]), "Save Set toolsFooterSupportLinks err") {
-		return
-	}
-	if !setConfig(toolsFooterRecordLinksConfigName, pickWebsiteReqValue(wsReq.ToolsFooterRecordLinks, current[toolsFooterRecordLinksConfigName]), "Save Set toolsFooterRecordLinks err") {
-		return
-	}
-
-	if !setConfig(
-		toolsHotToolsConfigName,
-		normalizeHotToolsConfig(pickWebsiteReqValue(wsReq.ToolsHotTools, current[toolsHotToolsConfigName])),
-		"Save Set toolsHotTools err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsBannerSlidesConfigName,
-		normalizeToolsLayoutArrayConfig(pickWebsiteReqValue(wsReq.ToolsBannerSlides, current[toolsBannerSlidesConfigName]), toolsBannerSlidesDefaultJSON),
-		"Save Set toolsBannerSlides err",
-	) {
-		return
-	}
-	if !setConfig(toolsHeaderLinksConfigName, pickWebsiteReqValue(wsReq.ToolsHeaderLinks, current[toolsHeaderLinksConfigName]), "Save Set toolsHeaderLinks err") {
-		return
-	}
-	if !setConfig(
-		toolsSearchQuickToolsConfigName,
-		normalizeToolsLayoutArrayConfig(pickWebsiteReqValue(wsReq.ToolsSearchQuickTools, current[toolsSearchQuickToolsConfigName]), toolsSearchQuickToolsDefaultJSON),
-		"Save Set toolsSearchQuickTools err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsSearchProviderLabelConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsSearchProviderLabel, current[toolsSearchProviderLabelConfigName])),
-		"Save Set toolsSearchProviderLabel err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsSearchProviderLinkConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsSearchProviderLink, current[toolsSearchProviderLinkConfigName])),
-		"Save Set toolsSearchProviderLink err",
-	) {
-		return
-	}
-	if !setConfig(toolsSidebarRecommendConfigName, pickWebsiteReqValue(wsReq.ToolsSidebarRecommend, current[toolsSidebarRecommendConfigName]), "Save Set toolsSidebarRecommend err") {
-		return
-	}
-	if !setConfig(toolsSidebarCategoryMenusConfigName, pickWebsiteReqValue(wsReq.ToolsSidebarCategoryMenus, current[toolsSidebarCategoryMenusConfigName]), "Save Set toolsSidebarCategoryMenus err") {
-		return
-	}
-	if !setConfig(
-		toolsSidebarMenuBlocksConfigName,
-		normalizeToolsSidebarMenuBlocksConfig(pickWebsiteReqValue(wsReq.ToolsSidebarMenuBlocks, current[toolsSidebarMenuBlocksConfigName])),
-		"Save Set toolsSidebarMenuBlocks err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsCategoryTreeConfigName,
-		normalizeToolsCategoryTreeConfig(pickWebsiteReqValue(wsReq.ToolsCategoryTree, current[toolsCategoryTreeConfigName])),
-		"Save Set toolsCategoryTree err",
-	) {
-		return
-	}
-	if !setConfig(toolsSidebarBottomLinksConfigName, pickWebsiteReqValue(wsReq.ToolsSidebarBottomLinks, current[toolsSidebarBottomLinksConfigName]), "Save Set toolsSidebarBottomLinks err") {
-		return
-	}
-	if !setConfig(toolsAiToolboxSidebarMenusConfigName, pickWebsiteReqValue(wsReq.ToolsAiToolboxSidebarMenus, current[toolsAiToolboxSidebarMenusConfigName]), "Save Set toolsAiToolboxSidebarMenus err") {
-		return
-	}
-
-	if !setConfig(
-		toolsChangelogHeaderLinksConfigName,
-		normalizeToolsLayoutArrayConfig(pickWebsiteReqValue(wsReq.ToolsChangelogHeaderLinks, current[toolsChangelogHeaderLinksConfigName]), toolsChangelogHeaderLinksDefaultJSON),
-		"Save Set toolsChangelogHeaderLinks err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogIntroTextConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsChangelogIntroText, current[toolsChangelogIntroTextConfigName])),
-		"Save Set toolsChangelogIntroText err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogMetaLinksConfigName,
-		normalizeToolsLayoutArrayConfig(pickWebsiteReqValue(wsReq.ToolsChangelogMetaLinks, current[toolsChangelogMetaLinksConfigName]), toolsChangelogMetaLinksDefaultJSON),
-		"Save Set toolsChangelogMetaLinks err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogSplitTitleConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsChangelogSplitTitle, current[toolsChangelogSplitTitleConfigName])),
-		"Save Set toolsChangelogSplitTitle err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogSplitDescConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsChangelogSplitDesc, current[toolsChangelogSplitDescConfigName])),
-		"Save Set toolsChangelogSplitDesc err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogSplitLinkConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsChangelogSplitLink, current[toolsChangelogSplitLinkConfigName])),
-		"Save Set toolsChangelogSplitLink err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogSplitLinkTextConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsChangelogSplitLinkText, current[toolsChangelogSplitLinkTextConfigName])),
-		"Save Set toolsChangelogSplitLinkText err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogStatsTextConfigName,
-		strings.ReplaceAll(
-			strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsChangelogStatsText, current[toolsChangelogStatsTextConfigName])),
-			"当前工具总数：333个",
-			"当前工具总数：334个",
-		),
-		"Save Set toolsChangelogStatsText err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsChangelogTimelineConfigName,
-		defaults.NormalizeToolsChangelogTimelineJSON(
-			normalizeToolsLayoutArrayConfig(
-				pickWebsiteReqValue(wsReq.ToolsChangelogTimeline, current[toolsChangelogTimelineConfigName]),
-				defaults.GetToolsChangelogTimelineJSON(),
-			),
-		),
-		"Save Set toolsChangelogTimeline err",
-	) {
-		return
-	}
-
-	if !setConfig(
-		toolsAiChatHeaderLinksConfigName,
-		normalizeToolsLayoutArrayConfig(pickWebsiteReqValue(wsReq.ToolsAiChatHeaderLinks, current[toolsAiChatHeaderLinksConfigName]), toolsAiChatHeaderLinksDefaultJSON),
-		"Save Set toolsAiChatHeaderLinks err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsAiCommonHeaderLinksConfigName,
-		normalizeToolsLayoutArrayConfig(pickWebsiteReqValue(wsReq.ToolsAiCommonHeaderLinks, current[toolsAiCommonHeaderLinksConfigName]), toolsAiCommonHeaderLinksDefaultJSON),
-		"Save Set toolsAiCommonHeaderLinks err",
-	) {
-		return
-	}
-	if !setConfig(toolsFooterQuickSectionsConfigName, pickWebsiteReqValue(wsReq.ToolsFooterQuickSections, current[toolsFooterQuickSectionsConfigName]), "Save Set toolsFooterQuickSections err") {
-		return
-	}
-	if !setConfig(toolsFooterFriendSectionsConfigName, pickWebsiteReqValue(wsReq.ToolsFooterFriendSections, current[toolsFooterFriendSectionsConfigName]), "Save Set toolsFooterFriendSections err") {
-		return
-	}
-	if !setConfig(toolsOfficialMediaLinksConfigName, pickWebsiteReqValue(wsReq.ToolsOfficialMediaLinks, current[toolsOfficialMediaLinksConfigName]), "Save Set toolsOfficialMediaLinks err") {
-		return
-	}
-	if !setConfig(
-		toolsSeoDefaultTitleConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsSeoDefaultTitle, current[toolsSeoDefaultTitleConfigName])),
-		"Save Set toolsSeoDefaultTitle err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsSeoDefaultKeywordsConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsSeoDefaultKeywords, current[toolsSeoDefaultKeywordsConfigName])),
-		"Save Set toolsSeoDefaultKeywords err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsSeoDefaultDescriptionConfigName,
-		strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsSeoDefaultDescription, current[toolsSeoDefaultDescriptionConfigName])),
-		"Save Set toolsSeoDefaultDescription err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsSeoDefaultImageConfigName,
-		util.UrlUtil.ToRelativeUrl(strings.TrimSpace(pickWebsiteReqValue(wsReq.ToolsSeoDefaultImage, current[toolsSeoDefaultImageConfigName]))),
-		"Save Set toolsSeoDefaultImage err",
-	) {
-		return
-	}
-	if !setConfig(
-		toolsSeoPagesConfigName,
-		normalizeToolsLayoutArrayConfig(pickWebsiteReqValue(wsReq.ToolsSeoPages, current[toolsSeoPagesConfigName]), toolsSeoPagesDefaultJSON),
-		"Save Set toolsSeoPages err",
-	) {
-		return
-	}
-
-	// 函数说明：统一保存首页每日学习配置，保证后台、公共配置和 RSS 代理读取同一组键值。
-	homepageLearningRaw := map[string]string{
-		defaults.ToolsHomepageLearningEnabledConfigName:      pickWebsiteReqValue(wsReq.ToolsHomepageLearningEnabled, current[defaults.ToolsHomepageLearningEnabledConfigName]),
-		defaults.ToolsHomepageLearningTitleConfigName:        pickWebsiteReqValue(wsReq.ToolsHomepageLearningTitle, current[defaults.ToolsHomepageLearningTitleConfigName]),
-		defaults.ToolsHomepageLearningRssURLConfigName:       pickWebsiteReqValue(wsReq.ToolsHomepageLearningRssURL, current[defaults.ToolsHomepageLearningRssURLConfigName]),
-		defaults.ToolsHomepageLearningFilterTypeConfigName:   pickWebsiteReqValue(wsReq.ToolsHomepageLearningFilterType, current[defaults.ToolsHomepageLearningFilterTypeConfigName]),
-		defaults.ToolsHomepageLearningCategorySlugConfigName: pickWebsiteReqValue(wsReq.ToolsHomepageLearningCategorySlug, current[defaults.ToolsHomepageLearningCategorySlugConfigName]),
-		defaults.ToolsHomepageLearningCategoryIDsConfigName:  pickWebsiteReqValue(wsReq.ToolsHomepageLearningCategoryIDs, current[defaults.ToolsHomepageLearningCategoryIDsConfigName]),
-		defaults.ToolsHomepageLearningLimitConfigName:        pickWebsiteReqValue(wsReq.ToolsHomepageLearningLimit, current[defaults.ToolsHomepageLearningLimitConfigName]),
-	}
-	homepageLearningValues := defaults.HomepageLearningConfigToWebsiteValues(defaults.NormalizeHomepageLearningConfig(homepageLearningRaw))
-	homepageLearningConfigKeys := []string{
-		defaults.ToolsHomepageLearningEnabledConfigName,
-		defaults.ToolsHomepageLearningTitleConfigName,
-		defaults.ToolsHomepageLearningRssURLConfigName,
-		defaults.ToolsHomepageLearningFilterTypeConfigName,
-		defaults.ToolsHomepageLearningCategorySlugConfigName,
-		defaults.ToolsHomepageLearningCategoryIDsConfigName,
-		defaults.ToolsHomepageLearningLimitConfigName,
-	}
-	for _, key := range homepageLearningConfigKeys {
-		if !setConfig(key, homepageLearningValues[key], "Save Set "+key+" err") {
-			return
-		}
-	}
-	return
+	return response.CheckErr(saveWebsiteConfigUpdates(wSrv.db, buildWebsiteConfigUpdates(wsReq)), "Save website config err")
 }

@@ -7,133 +7,125 @@
  */
 -->
 <template>
-    <a-card
-        class="general-card"
-        title="快捷操作"
-        :header-style="{ paddingBottom: '0' }"
-        :body-style="{ padding: '24px 20px 0 20px' }"
-    >
-        <a-row :gutter="8">
-            <a-col
+    <section v-if="menuList.length" class="task-panel" aria-labelledby="workbench-tasks-title">
+        <h2 id="workbench-tasks-title">常用任务</h2>
+        <div class="task-grid">
+            <router-link
                 v-for="item in menuList"
                 :key="item.url"
-                :xs="12"
-                :sm="8"
-                :md="8"
-                :lg="8"
-                :xl="8"
-                :xxl="8"
-                class="wrapper"
+                :to="item.url"
+                class="task-link"
+                :aria-label="`${item.name}：${item.desc}`"
+                data-admin-smoke="workbench-quick-operation"
             >
-                <router-link
-                    :to="item.url"
-                    class="wrapper-link"
-                    :aria-label="`${item.name}：${item.desc}`"
-                    :title="item.desc"
-                    data-admin-smoke="workbench-quick-operation"
+                <span class="task-icon" aria-hidden="true">{{ item.short }}</span>
+                <span class="task-copy"
+                    ><strong>{{ item.name }}</strong
+                    ><span>{{ item.desc }}</span></span
                 >
-                    <div class="icon">
-                        <img class="quick-icon" :src="item.image" :alt="item.name" />
-                    </div>
-                    <a-typography-paragraph class="text">
-                        {{ item.name }}
-                    </a-typography-paragraph>
-                </router-link>
-            </a-col>
-        </a-row>
-        <a-divider class="split-line" style="margin: 0" />
-    </a-card>
+                <span class="task-arrow" aria-hidden="true">›</span>
+            </router-link>
+        </div>
+    </section>
 </template>
 
 <script lang="ts" setup>
 interface QuickMenuCard {
     name: string
-    image: string
+    short: string
     url: string
     desc: string
 }
-
-const props = defineProps<{
-    menuList: QuickMenuCard[]
-}>()
+defineProps<{ menuList: QuickMenuCard[] }>()
 </script>
 
 <style lang="scss" scoped>
-.general-card {
-    border-radius: 12px;
+.task-panel {
+    padding: 20px;
+    background: var(--color-bg-2);
+    border: 1px solid var(--uied-admin-border);
+    border-radius: var(--uied-admin-radius);
 }
-
-.wrapper {
-    margin-bottom: 16px;
+h2 {
+    margin: 0 0 12px;
+    font-size: 16px;
+    color: var(--uied-admin-ink);
 }
-
-.wrapper-link {
+.task-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+.task-link {
     display: flex;
-    flex-direction: column;
     align-items: center;
+    gap: 12px;
+    min-height: 80px;
+    padding: 12px;
+    color: var(--color-text-1);
     text-decoration: none;
-    cursor: pointer;
-    min-height: 76px;
-    padding: 8px 4px;
-    border-radius: 10px;
-    transition: background-color 160ms ease;
+    border: 1px solid var(--uied-admin-border);
+    border-radius: 8px;
+    transition: border-color 160ms ease, background-color 160ms ease;
 }
-
-.icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    margin: 0 auto 4px;
-    color: rgb(var(--dark-gray-1));
-    line-height: 32px;
-    background-color: rgb(var(--gray-1));
-    border-radius: 4px;
-    transition: all 0.2s ease;
+.task-icon {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    width: 36px;
+    height: 36px;
+    background: var(--color-fill-2);
+    color: var(--color-text-2);
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
 }
-
-.quick-icon {
-    width: 16px;
-    height: 16px;
-    object-fit: contain;
+.task-copy {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
 }
-
-.text {
-    font-size: 13px;
+.task-copy strong {
+    font-size: 14px;
+    font-weight: 600;
+}
+.task-copy > span {
+    color: var(--color-text-3);
+    font-size: 12px;
     line-height: 1.5;
-    text-align: center;
-    color: rgb(var(--gray-8));
-    margin-bottom: 0 !important;
 }
-
-.wrapper-link:hover {
-    background: #f5f7fc;
-
-    .icon {
-        color: rgb(var(--arcoblue-6));
-        background-color: #e8f3ff;
-    }
-
-    .text {
-        color: rgb(var(--arcoblue-6));
-    }
+.task-arrow {
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--color-text-3);
 }
-
-@media (max-width: 1440px) {
-    .wrapper {
-        margin-bottom: 12px;
+.task-link:hover {
+    border-color: var(--uied-admin-accent);
+    background: var(--uied-admin-accent-soft);
+}
+.task-link:focus-visible {
+    outline: 2px solid var(--uied-admin-accent);
+    outline-offset: 2px;
+}
+@media (max-width: 1100px) {
+    .task-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
-
-@media (max-width: 768px) {
-    .general-card {
-        border-radius: 12px;
+@media (max-width: 640px) {
+    .task-panel {
+        padding: 16px;
     }
-
-    .icon {
-        width: 36px;
-        height: 36px;
+    .task-grid {
+        grid-template-columns: 1fr;
+    }
+    .task-link {
+        min-height: 68px;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .task-link {
+        transition: none;
     }
 }
 </style>

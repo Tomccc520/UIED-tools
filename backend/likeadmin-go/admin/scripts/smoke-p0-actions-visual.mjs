@@ -328,6 +328,17 @@ const prepareLoginCommerceSection = async (page, tabLabel, panelMarker) => {
  * 函数说明：按页面配置执行检查前准备动作，覆盖条件按钮等默认不可见场景。
  */
 const preparePageForCheck = async (page, prepare) => {
+  if (prepare === 'workbenchSecondary') {
+    for (const key of ['maintenance', 'release-checklist']) {
+      const details = page.locator(`details[data-workbench-section="${key}"]`)
+      if (await details.count() && !await details.getAttribute('open').then(value => value !== null)) await details.locator('summary').click()
+    }
+  }
+  if (prepare === 'toolsCatalogMaintenance') {
+    const details = page.locator('details.catalog-batch-actions')
+    if (!await details.getAttribute('open').then(value => value !== null)) await details.locator('summary').click()
+  }
+
   if (prepare === 'frontendLayoutUnsaved') {
     await prepareFrontendLayoutUnsaved(page)
   }

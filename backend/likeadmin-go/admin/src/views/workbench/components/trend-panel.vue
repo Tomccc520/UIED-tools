@@ -11,12 +11,13 @@
         class="general-card"
         :header-style="{ paddingBottom: 0 }"
         :body-style="{ paddingTop: '20px' }"
-        title="访问趋势"
+        title="工具访问趋势"
     >
         <template #extra>
             <span class="panel-extra-label">最近 15 天</span>
         </template>
-        <v-charts class="visitor-chart" :option="option" :autoresize="true" />
+        <v-charts v-if="hasData" class="visitor-chart" :option="option" :autoresize="true" />
+        <a-empty v-else class="trend-empty" description="最近 15 天暂无工具访问记录" />
     </a-card>
 </template>
 
@@ -25,17 +26,23 @@ import vCharts from 'vue-echarts'
 
 const props = defineProps<{
     option: Record<string, any>
+    hasData: boolean
 }>()
 </script>
 
 <style lang="scss" scoped>
 .general-card {
-    min-height: 380px;
+    border: 0;
+    border-top: 1px solid var(--uied-admin-border);
     border-radius: 4px;
 }
 
 .visitor-chart {
-    height: 320px;
+    height: 260px;
+}
+
+.trend-empty {
+    padding: 24px 0;
 }
 
 .panel-extra-label {
@@ -45,11 +52,11 @@ const props = defineProps<{
 
 @media (max-width: 1280px) {
     .general-card {
-        min-height: 360px;
+        min-height: auto;
     }
 
     .visitor-chart {
-        height: 300px;
+        height: 260px;
     }
 }
 

@@ -7,15 +7,7 @@
  */
 -->
 <template>
-    <a-card
-        class="general-card"
-        title="服务支持"
-        :header-style="{ paddingBottom: 0 }"
-        :body-style="{ paddingTop: 0 }"
-    >
-        <template #extra>
-            <a-link href="https://uiedtool.com" target="_blank" rel="noopener noreferrer">官方渠道</a-link>
-        </template>
+    <div class="general-card">
         <div v-if="supportList.length" class="support-list">
             <div v-for="(item, index) in supportList" :key="index" class="support-item">
                 <img class="support-image" :src="item.image" :alt="item.title" />
@@ -26,7 +18,7 @@
             </div>
         </div>
         <a-empty v-else description="暂无服务支持配置" />
-    </a-card>
+    </div>
 </template>
 
 <script lang="ts" setup>
@@ -43,17 +35,13 @@ const props = defineProps<{
 
 <style lang="scss" scoped>
 .general-card {
-    margin-top: 16px;
-    min-height: 166px;
-    border-radius: 4px;
+    padding: 0 20px 20px;
 }
 
 .support-list {
-    padding-top: 10px;
-}
-
-.support-item + .support-item {
-    margin-top: 14px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
 }
 
 .support-item {
@@ -89,5 +77,13 @@ const props = defineProps<{
     font-size: 12px;
     line-height: 1.6;
     color: var(--color-text-3, #86909c);
+}
+@media (max-width: 768px) {
+    .support-list {
+        grid-template-columns: 1fr;
+    }
+    .general-card {
+        padding: 0 16px 16px;
+    }
 }
 </style>

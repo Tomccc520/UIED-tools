@@ -8,6 +8,19 @@
 -->
 <template>
     <div class="menu" :class="themeClass" :style="isCollapsed ? '' : `--aside-width: ${width}px`">
+        <button
+            type="button"
+            class="menu-search"
+            :class="{ 'menu-search--collapsed': isCollapsed }"
+            aria-label="查找后台功能"
+            title="查找后台功能（⌘ / Ctrl + K）"
+            data-admin-navigation="search"
+            @click="openNavigationSearch"
+        >
+            <icon-search :size="16" />
+            <span v-if="!isCollapsed">查找功能</span>
+            <kbd v-if="!isCollapsed">{{ searchHotkey }}</kbd>
+        </button>
         <a-scrollbar class="menu-scroll">
             <a-menu
                 :collapsed="isCollapsed"
@@ -17,16 +30,21 @@
                 :theme="menuTheme"
                 :auto-open="false"
                 auto-open-selected
-                :level-indent="34"
+                :level-indent="24"
                 @menu-item-click="$emit('select')"
             >
-                <menu-item
-                    v-for="route in routes"
-                    :key="route.path"
-                    :route="route"
-                    :route-path="route.path"
-                    :popper-class="themeClass"
-                />
+                <template v-for="group in navigationGroups" :key="group.key">
+                    <div v-if="!isCollapsed" class="menu-group-title" aria-hidden="true">
+                        {{ group.title }}
+                    </div>
+                    <menu-item
+                        v-for="route in group.routes"
+                        :key="route.path"
+                        :route="route"
+                        :route-path="route.path"
+                        :popper-class="themeClass"
+                    />
+                </template>
             </a-menu>
         </a-scrollbar>
     </div>
@@ -36,10 +54,13 @@
 import type { PropType } from 'vue'
 import MenuItem from './menu-item.vue'
 import type { RouteRecordRaw } from 'vue-router'
+import { IconSearch } from '@arco-design/web-vue/es/icon'
+import { groupAdminNavigation } from '@/utils/admin-navigation'
 
 const props = defineProps({
     routes: {
-        type: Object as PropType<RouteRecordRaw[]>
+        type: Array as PropType<RouteRecordRaw[]>,
+        default: () => []
     },
     config: {
         type: Object
@@ -61,7 +82,7 @@ const props = defineProps({
     }
 })
 
-defineEmits(['select'])
+const emit = defineEmits(['select'])
 
 const route = useRoute()
 
@@ -72,6 +93,14 @@ const selectedKeys = computed<string[]>(() => [String(route.meta?.activeMenu || 
 
 const themeClass = computed(() => `theme-${props.theme}`)
 const menuTheme = computed<'dark' | 'light'>(() => (props.theme === 'dark' ? 'dark' : 'light'))
+const navigationGroups = computed(() => groupAdminNavigation(props.routes))
+const searchHotkey = /mac/i.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
+
+/** 复用顶栏功能搜索，手机抽屉和折叠侧栏使用同一个入口与权限范围。 */
+const openNavigationSearch = () => {
+    window.dispatchEvent(new Event('uied:admin-navigation-search'))
+    emit('select')
+}
 </script>
 
 <style lang="scss" scoped>
@@ -86,6 +115,64 @@ const menuTheme = computed<'dark' | 'light'>(() => (props.theme === 'dark' ? 'da
 .menu-scroll {
     flex: 1;
     min-height: 0;
+}
+
+.menu-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 36px;
+    margin: 12px 12px 4px;
+    padding: 0 9px;
+    border: 1px solid var(--color-border-2);
+    border-radius: 6px;
+    background: var(--color-fill-1);
+    color: var(--color-text-2);
+    cursor: pointer;
+    font: inherit;
+    font-size: 12px;
+
+    kbd {
+        margin-left: auto;
+        color: var(--color-text-3);
+        font-family: inherit;
+        font-size: 11px;
+    }
+
+    &:hover {
+        border-color: rgb(var(--primary-6));
+        color: rgb(var(--primary-6));
+    }
+
+    &:focus-visible {
+        outline: 2px solid rgb(var(--primary-6));
+        outline-offset: 2px;
+    }
+}
+
+.menu-search--collapsed {
+    justify-content: center;
+    margin: 12px 8px 4px;
+    padding: 0;
+}
+
+.menu-group-title {
+    padding: 12px 8px 4px;
+    color: var(--color-text-3);
+    font-size: 11px;
+    line-height: 24px;
+}
+
+.theme-dark .menu-search {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 900px) {
+    .menu-search {
+        min-height: 44px;
+    }
 }
 
 :deep(.arco-menu) {

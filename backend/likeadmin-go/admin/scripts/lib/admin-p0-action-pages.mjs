@@ -10,6 +10,7 @@
 export const ADMIN_P0_ACTION_PAGES = [
     {
         name: '工作台',
+        prepare: 'workbenchSecondary',
         path: '/workbench',
         file: 'src/views/workbench/index.vue',
         files: [
@@ -121,6 +122,7 @@ export const ADMIN_P0_ACTION_PAGES = [
     },
     {
         name: '工具主数据',
+        prepare: 'toolsCatalogMaintenance',
         path: '/official_site/tools_catalog',
         file: 'src/views/setting/website/tools_catalog.vue',
         markers: [
@@ -130,7 +132,6 @@ export const ADMIN_P0_ACTION_PAGES = [
             'tools-catalog-preview-quick',
             'tools-catalog-health-summary',
             'tools-catalog-policy-sync',
-            'tools-catalog-policy-switch',
             'tools-catalog-mode-switch',
             'tools-catalog-save',
         ],
@@ -150,7 +151,7 @@ export const ADMIN_P0_ACTION_PAGES = [
             {
                 name: '高级模式',
                 prepare: 'toolsCatalogAdvanced',
-                markers: ['tools-catalog-policy-sync-advanced', 'tools-catalog-policy-settings-advanced'],
+                markers: ['tools-catalog-policy-switch', 'tools-catalog-policy-sync-advanced', 'tools-catalog-policy-settings-advanced'],
             },
         ],
     },

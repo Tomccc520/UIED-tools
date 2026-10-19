@@ -26,20 +26,11 @@
                     <a-button data-admin-smoke="website-seo-health" size="small" @click="runSeoHealthCheck"
                         >一键体检</a-button
                     >
-                    <a-button
-                        v-perms="['setting:website:seo:save']"
-                        data-admin-smoke="website-seo-save"
-                        type="primary"
-                        size="small"
-                        :loading="isSubmitting"
-                        @click="handleSubmit"
-                    >
-                        保存
-                    </a-button>
                 </div>
             </template>
         </a-page-header>
 
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadSeoData">
         <a-card class="page-card pro-panel-card" :bordered="false">
             <config-overview-collapse
                 v-model="overviewCollapseKeys"
@@ -170,9 +161,10 @@
             </div>
         </a-card>
 
-        <footer-btns :fixed="false" v-perms="['setting:website:seo:save']">
-            <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存</a-button>
-        </footer-btns>
+            <template #actions>
+                <a-button v-perms="['setting:website:seo:save']" data-admin-smoke="website-seo-save" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
+            </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -184,6 +176,8 @@ import { onBeforeRouteLeave } from 'vue-router'
 import ConfigOverviewCollapse from './components/config-overview-collapse.vue'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 import { useOperateSubmit } from './composables/use-operate-submit'
+import { useConfigLoad } from './composables/use-config-load'
+import ConfigEditFrame from './components/config-edit-frame.vue'
 import { OFFICIAL_SITE_DEFAULT_SEO } from './defaults/officialSite'
 
 interface ToolsSeoPageItem {
@@ -203,7 +197,7 @@ const defaultSeoPages: ToolsSeoPageItem[] = OFFICIAL_SITE_DEFAULT_SEO.pages.map(
 }))
 
 const appStore = useAppStore()
-const { isSubmitting, runSubmit } = useOperateSubmit('SEO配置已保存')
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('SEO配置已保存')
 const baselineSnapshot = ref('')
 const simpleMode = ref(true)
 const overviewCollapseKeys = ref<(string | number)[]>([])
@@ -529,7 +523,10 @@ const validateSeoConfig = (): boolean => {
 /**
  * 函数说明：读取网站配置并回填 SEO 编辑区。
  */
-const getData = async () => {
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+
+/** 读取并回填已成功返回的配置，失败时保留原编辑内容。 */
+const getData = async () => loadConfiguration(async () => {
     const data = await getWebsite()
     formData.toolsSeoDefaultTitle = String(data.toolsSeoDefaultTitle || defaultToolsSeoDefaultTitle)
     formData.toolsSeoDefaultKeywords = String(data.toolsSeoDefaultKeywords || defaultToolsSeoDefaultKeywords)
@@ -538,13 +535,14 @@ const getData = async () => {
     formData.toolsSeoPages = String(data.toolsSeoPages || JSON.stringify(defaultSeoPages))
     seoPages.value = parseSeoPages(formData.toolsSeoPages)
     updateBaselineSnapshot()
-}
+})
 
 /**
  * 函数说明：重新读取后台 SEO 配置，方便脚本导入或多人协作后立即回显最新数据。
  */
 const reloadSeoData = async () => {
-    await getData()
+    if (isSubmitting.value) return
+    if (!await reloadConfiguration(getData)) return
     feedback.msgSuccess('已重新加载后台 SEO 配置')
 }
 
@@ -628,6 +626,7 @@ const runSeoHealthCheck = () => {
  * 函数说明：保存 SEO 配置到网站配置项，仅提交当前页面相关字段。
  */
 const handleSubmit = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     if (!validateSeoConfig()) {
         return
     }

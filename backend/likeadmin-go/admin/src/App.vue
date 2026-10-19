@@ -7,11 +7,9 @@
  */
 -->
 <script setup lang="ts">
-import { useWindowSize, useThrottleFn } from '@vueuse/core'
 import zhCn from '@arco-design/web-vue/es/locale/lang/zh-cn'
 import useAppStore from './stores/modules/app'
 import useSettingStore from './stores/modules/setting'
-import { ScreenEnum } from './enums/appEnums'
 
 const appStore = useAppStore()
 const settingStore = useSettingStore()
@@ -44,26 +42,19 @@ onMounted(async () => {
     }
 })
 
-const { width } = useWindowSize()
-watch(
-    width,
-    useThrottleFn((value) => {
-        const isMobileLayout = value <= mobileLayoutBreakpoint
-        if (!isMobileLayout) {
-            appStore.setMobile(false)
-            appStore.toggleCollapsed(false)
-        } else {
-            appStore.setMobile(true)
-            appStore.toggleCollapsed(true)
-        }
-        if (value < ScreenEnum.MD) {
-            appStore.toggleCollapsed(true)
-        }
-    }),
-    {
-        immediate: true
+let viewportInitialized = false
+/** 根据实际窗口同步桌面/抽屉布局；仅跨断点时重置折叠状态，普通缩放保留用户选择。 */
+const syncLayoutViewport = () => {
+    const isMobile = window.innerWidth <= mobileLayoutBreakpoint
+    if (!viewportInitialized || appStore.isMobile !== isMobile) {
+        appStore.setMobile(isMobile)
+        appStore.toggleCollapsed(isMobile)
+        viewportInitialized = true
     }
-)
+}
+syncLayoutViewport()
+onMounted(() => window.addEventListener('resize', syncLayoutViewport, { passive: true }))
+onBeforeUnmount(() => window.removeEventListener('resize', syncLayoutViewport))
 </script>
 
 <template>

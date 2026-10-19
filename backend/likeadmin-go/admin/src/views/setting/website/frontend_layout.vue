@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="website-frontend-layout pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 前端布局">
+        <a-page-header class="layout-page-header" title="首页内容与更新记录">
             <template #subtitle> 集中维护每日学习和更新记录；首页广告已迁移到独立的“运营管理 → 广告管理”。 </template>
             <template #extra>
                 <div class="layout-page-actions">
@@ -40,7 +40,7 @@
                         data-admin-smoke="frontend-layout-save-top"
                         type="primary"
                         :loading="isSubmitting"
-                        :disabled="isLoadingData"
+                        :disabled="isLoadingData || !hasLoadedData || Boolean(loadErrorMessage)"
                         @click="handleSubmit"
                         >保存配置</a-button
                     >
@@ -58,6 +58,7 @@
         </a-alert>
 
         <a-spin :loading="isLoadingData" tip="正在加载前端布局配置...">
+            <fieldset class="layout-edit-fields" :disabled="isLoadingData || isSubmitting || !hasLoadedData || Boolean(loadErrorMessage)" :inert="isLoadingData || isSubmitting || !hasLoadedData || Boolean(loadErrorMessage) ? '' : undefined">
             <a-card class="layout-main-card pro-panel-card general-card" :bordered="false">
                 <div class="layout-workspace">
                     <div class="layout-workspace-main">
@@ -1755,12 +1756,13 @@
                         data-admin-smoke="frontend-layout-save-floating"
                         type="primary"
                         :loading="isSubmitting"
-                        :disabled="isLoadingData"
+                        :disabled="isLoadingData || !hasLoadedData || Boolean(loadErrorMessage)"
                         @click="handleSubmit"
                         >立即保存</a-button
                     >
                 </a-space>
             </div>
+            </fieldset>
         </a-spin>
     </div>
 </template>
@@ -2604,6 +2606,7 @@ const lastSavedAt = ref('')
 const baselineLayoutSnapshot = ref('')
 const isSubmitting = ref(false)
 const isLoadingData = ref(false)
+const hasLoadedData = ref(false)
 const loadErrorMessage = ref('')
 const simpleMode = ref(true)
 const layoutContextCollapseKeys = ref<(string | number)[]>([])
@@ -2904,6 +2907,15 @@ const buildLayoutSnapshot = (): string => {
 const updateBaselineLayoutSnapshot = () => {
     baselineLayoutSnapshot.value = buildLayoutSnapshot()
 }
+
+/** 高级链接与版本提示有修改时，即使切回简版也必须一同校验和保存。 */
+const hasAdvancedLayoutChanges = computed(() => {
+    if (!baselineLayoutSnapshot.value) return false
+    const before = JSON.parse(baselineLayoutSnapshot.value)
+    const after = JSON.parse(buildLayoutSnapshot())
+    return JSON.stringify(before.layout) !== JSON.stringify(after.layout)
+        || ['toolsChangelogSplitTitle', 'toolsChangelogSplitDesc', 'toolsChangelogSplitLink', 'toolsChangelogSplitLinkText'].some(key => before.text[key] !== after.text[key])
+})
 
 /**
  * 函数说明：格式化时间显示文本，用于提示最近保存时间
@@ -5231,7 +5243,7 @@ const validateLayoutForm = (): boolean => {
         return false
     }
 
-    if (!simpleMode.value) {
+    if (!simpleMode.value || hasAdvancedLayoutChanges.value) {
         if (
             !validateLinkItems(layoutForm.changelogHeaderLinks, '更新记录页顶部链接', {
                 allowHash: false,
@@ -5286,7 +5298,7 @@ const syncLayoutFormToJson = (): boolean => {
         .trim()
         .replace(/当前工具总数：333个/g, '当前工具总数：334个')
     formData.toolsChangelogTimeline = JSON.stringify(changelogTimelineItems.value, null, 2)
-    if (!simpleMode.value) {
+    if (!simpleMode.value || hasAdvancedLayoutChanges.value) {
         formData.toolsChangelogSplitTitle = formData.toolsChangelogSplitTitle.trim()
         formData.toolsChangelogSplitDesc = formData.toolsChangelogSplitDesc.trim()
         formData.toolsChangelogSplitLink = formData.toolsChangelogSplitLink.trim()
@@ -5629,10 +5641,10 @@ const getData = async () => {
         }
         applyLayoutFormFromJson()
         updateBaselineLayoutSnapshot()
+        hasLoadedData.value = true
     } catch {
         loadErrorMessage.value = '前端布局配置加载失败，请检查接口连通性或重新登录后重试。'
         feedback.msgError('前端布局配置加载失败，请检查接口或登录状态')
-        updateBaselineLayoutSnapshot()
     } finally {
         isLoadingData.value = false
     }
@@ -5642,6 +5654,10 @@ const getData = async () => {
  * 函数说明：手动重试读取前端布局配置，减少偶发网络失败时的刷新成本。
  */
 const retryLoadData = async () => {
+    if (isSubmitting.value || isLoadingData.value) return
+    if (hasUnsavedChanges.value) {
+        try { await feedback.confirm('重新加载会放弃当前未保存更改，确定继续吗？') } catch { return }
+    }
     await getData()
 }
 
@@ -5677,7 +5693,7 @@ const buildFrontendLayoutPayload = (): Record<string, string> => {
         toolsChangelogStatsText: formData.toolsChangelogStatsText,
         toolsChangelogTimeline: formData.toolsChangelogTimeline,
     }
-    if (!simpleMode.value) {
+    if (!simpleMode.value || hasAdvancedLayoutChanges.value) {
         Object.assign(payload, {
             toolsChangelogHeaderLinks: formData.toolsChangelogHeaderLinks,
             toolsChangelogMetaLinks: formData.toolsChangelogMetaLinks,
@@ -5694,7 +5710,7 @@ const buildFrontendLayoutPayload = (): Record<string, string> => {
  * 函数说明：校验并保存前端布局配置
  */
 const handleSubmit = async () => {
-    if (isSubmitting.value || isLoadingData.value) {
+    if (isSubmitting.value || isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value) {
         return
     }
     if (!validateHomepageLearningForm()) {
@@ -5711,6 +5727,8 @@ const handleSubmit = async () => {
         lastSavedAt.value = formatDateTimeText(new Date())
         await getConfig()
         await getData()
+    } catch {
+        feedback.msgError('配置保存失败，您的修改已保留，请重试。')
     } finally {
         isSubmitting.value = false
     }
@@ -5753,6 +5771,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
+.layout-edit-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
 .website-frontend-layout {
     padding-bottom: 12px;
 

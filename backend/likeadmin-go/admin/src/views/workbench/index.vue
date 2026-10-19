@@ -8,89 +8,102 @@
 -->
 <template>
     <div class="container workbench-page">
-        <a-spin :loading="loading" tip="正在加载工作台数据..." style="display: block">
-            <div class="workbench-shell">
-                <div class="left-side">
-                    <banner-panel
-                        :admin-name="adminName"
-                        :period-greeting="periodGreeting"
-                        :version-text="versionText"
-                        :highlight-list="welcomeHighlightList"
-                    />
-
-                    <div class="panel">
-                        <data-panel :metric-items="todayCards" />
-                        <trend-panel :option="workbenchData.visitorOption" />
-                    </div>
-
-                    <a-grid :cols="24" :col-gap="16" :row-gap="16" class="left-bottom-grid">
-                        <a-grid-item :span="{ xs: 24, sm: 24, md: 24, lg: 12, xl: 12, xxl: 12 }">
-                            <operation-tips-panel :tips="operationTips" />
-                        </a-grid-item>
-                        <a-grid-item :span="{ xs: 24, sm: 24, md: 24, lg: 12, xl: 12, xxl: 12 }">
-                            <release-todo-panel
-                                :todo-list="releaseTodoList"
-                                :pending-count="releaseTodoStats.pendingCount"
-                                :percent="releaseChecklistPercent"
-                                @mark-all="markAllTodoDone"
-                                @reset="resetTodoList"
-                            />
-                        </a-grid-item>
-                    </a-grid>
-                </div>
-
-                <div class="right-side">
-                    <div class="panel moduler-wrap action-hub-panel">
-                        <quick-operation-panel :menu-list="quickMenuCards" />
-                        <shortcut-panel :items="actionButtonList" />
-                    </div>
-                    <system-status-panel
-                        :environment-info-list="environmentInfoList"
-                        :status-progress-list="statusProgressList"
-                    />
-                    <support-panel :support-list="supportList" />
-                </div>
+        <header class="workbench-heading">
+            <div>
+                <h1>工作台</h1>
+                <p>{{ adminName }}，从常用任务开始管理站点。</p>
             </div>
-        </a-spin>
+            <div class="heading-actions">
+                <span v-if="versionText" class="version-text">v{{ versionText }}</span>
+                <a-button :loading="loading" data-admin-smoke="workbench-refresh" @click="getData">
+                    刷新数据
+                </a-button>
+            </div>
+        </header>
+
+        <quick-operation-panel :menu-list="quickMenuCards" />
+
+        <section class="data-section" aria-labelledby="workbench-data-title" :aria-busy="loading">
+            <div class="section-heading">
+                <h2 id="workbench-data-title">今日概况</h2>
+                <span v-if="lastUpdated">统计时间 {{ lastUpdated }}</span>
+            </div>
+            <div v-if="errorMessage" class="data-error" role="alert">
+                <div>
+                    <strong>{{ errorMessage }}</strong>
+                    <p v-if="hasLoaded">下方保留上次成功读取的数据，可能不是最新状态。</p>
+                </div>
+                <a-button :loading="loading" data-admin-smoke="workbench-retry" @click="getData"
+                    >重试</a-button
+                >
+            </div>
+            <a-spin :loading="loading" tip="正在读取统计数据..." class="data-loading">
+                <div v-if="hasLoaded && hasMetrics" class="panel">
+                    <data-panel :metric-items="todayCards" />
+                    <trend-panel :option="visitorOption" :has-data="hasVisitorData" />
+                    <p class="metric-note">
+                        工具访问来自工具页访问统计；订单量包含已创建订单，销售额仅统计已支付订单。
+                    </p>
+                </div>
+                <a-empty
+                    v-else-if="hasLoaded && !errorMessage"
+                    class="data-empty"
+                    description="暂无统计数据，站点产生访问或订单后将在这里显示。"
+                />
+                <p v-else-if="!errorMessage" class="loading-placeholder" role="status">
+                    正在读取统计数据...
+                </p>
+            </a-spin>
+        </section>
+
+        <div class="secondary-sections">
+            <details
+                v-if="maintenanceLinks.length"
+                class="secondary-section"
+                data-workbench-section="maintenance"
+            >
+                <summary>系统维护 <span>账号、权限与开发工具</span></summary>
+                <shortcut-panel :items="maintenanceLinks" />
+            </details>
+            <details class="secondary-section" data-workbench-section="system">
+                <summary>系统信息 <span>版本与统计来源</span></summary>
+                <system-status-panel :environment-info-list="environmentInfoList" />
+            </details>
+            <details class="secondary-section" data-workbench-section="release-checklist">
+                <summary>发布自查 <span>临时清单，不代表实际部署状态</span></summary>
+                <release-todo-panel
+                    :todo-list="releaseTodoList"
+                    @mark-all="markAllTodoDone"
+                    @reset="resetTodoList"
+                />
+            </details>
+            <details
+                v-if="supportList.length"
+                class="secondary-section"
+                data-workbench-section="support"
+            >
+                <summary>服务支持 <span>联系与帮助</span></summary>
+                <support-panel :support-list="supportList" />
+            </details>
+        </div>
     </div>
 </template>
 
 <script lang="ts" setup name="workbench">
 import { Message } from '@arco-design/web-vue'
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getWorkbench } from '@/api/app'
 import useUserStore from '@/stores/modules/user'
-import menu_admin from './image/menu_admin.png'
-import menu_role from './image/menu_role.png'
-import menu_dept from './image/menu_dept.png'
-import menu_dict from './image/menu_dict.png'
-import menu_generator from './image/menu_generator.png'
-import menu_file from './image/menu_file.png'
-import menu_auth from './image/menu_auth.png'
-import menu_web from './image/menu_web.png'
-import qq_group from './image/qq_group.png'
-import customer_service from './image/customer_service.png'
-import BannerPanel from './components/banner-panel.vue'
+import { flattenAdminNavigation } from '@/utils/admin-navigation'
+import qqGroup from './image/qq_group.png'
+import customerService from './image/customer_service.png'
 import DataPanel from './components/data-panel.vue'
 import TrendPanel from './components/trend-panel.vue'
 import QuickOperationPanel from './components/quick-operation-panel.vue'
-import OperationTipsPanel from './components/operation-tips-panel.vue'
 import ShortcutPanel from './components/shortcut-panel.vue'
 import ReleaseTodoPanel from './components/release-todo-panel.vue'
 import SystemStatusPanel from './components/system-status-panel.vue'
 import SupportPanel from './components/support-panel.vue'
-
-interface WorkbenchQuickMenuItem {
-    name: string
-    image: string
-    url: string
-}
-
-interface WorkbenchSupportItem {
-    image: string
-    title: string
-    desc: string
-}
 
 interface ReleaseTodoItem {
     key: string
@@ -100,465 +113,435 @@ interface ReleaseTodoItem {
 
 const userStore = useUserStore()
 const loading = ref(false)
-
-const actionButtonList = [
-    { label: '前端布局', to: '/official_site/frontend_layout', short: '布局' },
-    { label: '工具主数据', to: '/official_site/tools_catalog', short: '工具' },
-    { label: 'SEO设置', to: '/official_site/seo', short: '优化' }
-]
-
-const quickLinkDescMap: Record<string, string> = {
-    管理员: '账号与权限维护',
-    角色管理: '权限组与能力分配',
-    部门管理: '组织架构配置',
-    字典管理: '基础枚举配置',
-    代码生成器: '模块快速搭建',
-    素材中心: '图片与图标资产',
-    图标库: 'SVG 菜单图标维护',
-    菜单权限: '路由与按钮权限',
-    网站信息: '官网基础信息设置'
-}
-
-/**
- * 函数说明：把接口返回的数值统一转成可读字符串，避免直接出现空值。
- */
-const formatMetricValue = (value: unknown): string => {
-    if (value === null || value === undefined || value === '') {
-        return '--'
-    }
-    return String(value)
-}
-
-/**
- * 函数说明：把任意输入安全转成数字，供工作台统计计算使用。
- */
-const toNumber = (value: unknown): number => {
-    const numericValue = Number(value)
-    return Number.isFinite(numericValue) ? numericValue : 0
-}
-
-/**
- * 函数说明：根据当前小时返回问候语，增强工作台首屏的亲和感。
- */
-const getPeriodGreeting = (): string => {
-    const hour = new Date().getHours()
-    if (hour < 6) return '凌晨好'
-    if (hour < 12) return '上午好'
-    if (hour < 18) return '下午好'
-    return '晚上好'
-}
-
-/**
- * 函数说明：从用户信息中提取展示名称，兼容 nickname、name、username 等字段。
- */
-const pickUserDisplayName = (userInfo: Record<string, any>): string => {
-    return (
-        String(userInfo?.nickname || '') ||
-        String(userInfo?.name || '') ||
-        String(userInfo?.username || '') ||
-        '管理员'
-    )
-}
-
-/**
- * 函数说明：输出快捷入口说明文案，保证工作台入口语义清晰。
- */
-const resolveQuickDesc = (name: string): string => {
-    return quickLinkDescMap[name] || '进入该模块继续配置'
-}
-
+const hasLoaded = ref(false)
+const errorMessage = ref('')
 const workbenchData = reactive({
-    version: {
-        version: '',
-        website: '',
-        based: '',
-        channel: {
-            gitee: '',
-            website: ''
-        }
-    },
-    support: [
-        {
-            image: qq_group,
-            title: '扫码进入 QQ 交流群',
-            desc: '技术问题、版本动态、功能建议可在群内实时沟通。'
-        },
-        {
-            image: customer_service,
-            title: '添加企业客服微信',
-            desc: '商务合作、私有部署、售后支持可通过客服一对一沟通。'
-        }
-    ] as WorkbenchSupportItem[],
+    version: {} as Record<string, any>,
     today: {} as Record<string, any>,
-    menu: [
-        { name: '管理员', image: menu_admin, url: '/permission/admin' },
-        { name: '角色管理', image: menu_role, url: '/permission/role' },
-        { name: '部门管理', image: menu_dept, url: '/organization/department' },
-        { name: '字典管理', image: menu_dict, url: '/dev_tools/dict' },
-        { name: '代码生成器', image: menu_generator, url: '/dev_tools/code' },
-        { name: '素材中心', image: menu_file, url: '/material/index' },
-        { name: '图标库', image: menu_file, url: '/material/icons' },
-        { name: '菜单权限', image: menu_auth, url: '/permission/menu' },
-        { name: '网站信息', image: menu_web, url: '/official_site/information' }
-    ] as WorkbenchQuickMenuItem[],
-    visitor: {},
-    visitorOption: {
-        grid: {
-            left: 40,
-            right: 20,
-            top: 26,
-            bottom: 30
-        },
-        xAxis: {
-            type: 'category',
-            data: [0],
-            boundaryGap: false
-        },
-        yAxis: {
-            type: 'value',
-            splitLine: {
-                lineStyle: {
-                    color: '#edf0f5'
-                }
-            }
-        },
-        tooltip: {
-            trigger: 'axis'
-        },
-        series: [
-            {
-                name: '访问量',
-                data: [0],
-                type: 'line',
-                smooth: true,
-                symbol: 'circle',
-                symbolSize: 7,
-                lineStyle: {
-                    width: 3,
-                    color: '#6c54ff'
-                },
-                itemStyle: {
-                    color: '#6c54ff'
-                },
-                areaStyle: {
-                    color: 'rgba(108, 84, 255, 0.16)'
-                }
-            }
-        ]
-    }
+    visitor: {} as Record<string, any>
 })
+let requestSequence = 0
+let requestTimer: ReturnType<typeof setTimeout> | undefined
 
-const defaultReleaseTodoTemplate: ReleaseTodoItem[] = [
-    { key: 'navbar-check', label: '检查顶部导航按钮交互（搜索 / 通知 / 设置）', done: true },
-    { key: 'official-check', label: '核对官网设置中的菜单、头部、页脚、SEO 配置', done: false },
-    { key: 'model-check', label: '检查 AI 模型管理配置与前端调用状态', done: false },
-    { key: 'publish-check', label: '发布前执行菜单和官网设置冒烟回归', done: false }
+const quickTasks = [
+    {
+        path: '/official_site/tools_catalog',
+        name: '工具管理',
+        desc: '编辑工具信息、分类与使用规则',
+        short: '工具'
+    },
+    {
+        path: '/official_site/sidebar',
+        name: '站点导航',
+        desc: '调整分类、侧栏菜单与展示顺序',
+        short: '导航'
+    },
+    {
+        path: '/official_site/frontend_layout',
+        name: '首页与广告',
+        desc: '维护首页内容、推荐位和广告',
+        short: '首页'
+    },
+    {
+        path: '/official_site/seo',
+        name: '搜索优化',
+        desc: '维护站点与工具的 SEO、GEO',
+        short: '搜索'
+    },
+    {
+        path: '/ai_model_manage/ai_ability',
+        name: 'AI 能力',
+        desc: '配置模型、提供商与能力调用',
+        short: 'AI'
+    },
+    {
+        path: '/material/index',
+        name: '素材中心',
+        desc: '管理图片、图标等站点素材',
+        short: '素材'
+    }
 ]
-const releaseTodoList = reactive(defaultReleaseTodoTemplate.map((item) => ({ ...item })))
-
-const adminName = computed(() => pickUserDisplayName(userStore.userInfo))
-const periodGreeting = computed(() => getPeriodGreeting())
-const versionText = computed(() => formatMetricValue(workbenchData.version.version))
+const maintenancePaths = [
+    '/permission/admin',
+    '/permission/role',
+    '/permission/menu',
+    '/organization/department',
+    '/dev_tools/dict',
+    '/dev_tools/code',
+    '/material/icons'
+]
+const supportList = [
+    {
+        image: qqGroup,
+        title: 'QQ 交流群',
+        desc: '技术问题、版本动态与功能建议。'
+    },
+    {
+        image: customerService,
+        title: '企业客服微信',
+        desc: '商务合作、私有部署与售后支持。'
+    }
+]
+const releaseTodoList = reactive<ReleaseTodoItem[]>([
+    { key: 'website', label: '核对本次调整的官网配置与工具页面', done: false },
+    { key: 'models', label: '验证受影响的接口、AI 模型与权限', done: false },
+    { key: 'checks', label: '完成类型检查、构建与关键流程回归', done: false },
+    { key: 'deploy', label: '部署后验证版本、接口与线上页面', done: false }
+])
+const navigationItems = computed(() => flattenAdminNavigation(userStore.routes))
+const adminName = computed(() =>
+    String(
+        userStore.userInfo?.nickname ||
+            userStore.userInfo?.name ||
+            userStore.userInfo?.username ||
+            '管理员'
+    )
+)
+const versionText = computed(() => String(workbenchData.version.version || '').trim())
+const lastUpdated = computed(() => String(workbenchData.today.time || '').trim())
 
 /**
- * 函数说明：工作台顶部的关键指标卡，保持官方 Workplace 首屏四列节奏。
+ * 函数说明：查找当前用户已授权且可见的目标页面，保留菜单自带查询参数，不生成无权入口。
+ * @param path 运营任务对应的菜单路径。
+ * @returns 当前用户可访问的菜单；未授权时返回 undefined。
  */
+const findAccessibleEntry = (path: string) =>
+    navigationItems.value.find((item) => !item.external && item.path.split('?')[0] === path)
+
+const quickMenuCards = computed(() =>
+    quickTasks.flatMap((item) => {
+        const entry = findAccessibleEntry(item.path)
+        return entry ? [{ ...item, url: entry.path }] : []
+    })
+)
+const maintenanceLinks = computed(() =>
+    navigationItems.value
+        .filter((item) => !item.external && maintenancePaths.includes(item.path.split('?')[0]))
+        .map((item) => ({
+            label: item.title,
+            to: item.path,
+            short: item.title.slice(0, 2)
+        }))
+)
+
+/**
+ * 函数说明：校验接口统计值；缺失、空值和非法数值保持未知，不推算成零。
+ * @param value 接口中的原始统计字段。
+ * @returns 有效非负数值；字段不可用时返回 null。
+ */
+const readMetric = (value: unknown): number | null => {
+    if ((typeof value !== 'number' && typeof value !== 'string') || (typeof value === 'string' && !value.trim()))
+        return null
+    const result = Number(value)
+    return Number.isFinite(result) && result >= 0 ? result : null
+}
+
+/**
+ * 函数说明：格式化真实统计值，金额保留两位小数，字段缺失时明确说明暂无数据。
+ * @param value 接口统计值。
+ * @param currency 是否为人民币金额。
+ * @returns 供指标卡展示的中文数值文本。
+ */
+const formatMetric = (value: unknown, currency = false): string => {
+    const result = readMetric(value)
+    if (result === null) return '暂无数据'
+    return currency ? `¥${result.toFixed(2)}` : result.toLocaleString('zh-CN')
+}
+
+const hasMetrics = computed(() =>
+    [
+        'todayVisits',
+        'totalVisits',
+        'todaySales',
+        'totalSales',
+        'todayOrder',
+        'totalOrder',
+        'todayUsers',
+        'totalUsers'
+    ].some((key) => readMetric(workbenchData.today[key]) !== null)
+)
 const todayCards = computed(() => [
     {
         key: 'visits',
-        icon: '访问',
-        label: '今日访问量',
-        value: formatMetricValue(workbenchData.today.todayVisits),
-        totalLabel: '累计访问',
-        totalValue: formatMetricValue(workbenchData.today.totalVisits)
-    },
-    {
-        key: 'sales',
-        icon: '销售',
-        label: '今日销售额',
-        value: formatMetricValue(workbenchData.today.todaySales),
-        totalLabel: '累计销售',
-        totalValue: formatMetricValue(workbenchData.today.totalSales)
-    },
-    {
-        key: 'orders',
-        icon: '订单',
-        label: '今日订单量',
-        value: formatMetricValue(workbenchData.today.todayOrder),
-        totalLabel: '累计订单',
-        totalValue: formatMetricValue(workbenchData.today.totalOrder)
+        label: '今日工具访问',
+        value: formatMetric(workbenchData.today.todayVisits),
+        totalLabel: '累计工具访问',
+        totalValue: formatMetric(workbenchData.today.totalVisits)
     },
     {
         key: 'users',
-        icon: '用户',
-        label: '新增用户',
-        value: formatMetricValue(workbenchData.today.todayUsers),
+        label: '今日新增用户',
+        value: formatMetric(workbenchData.today.todayUsers),
         totalLabel: '累计用户',
-        totalValue: formatMetricValue(workbenchData.today.totalUsers)
+        totalValue: formatMetric(workbenchData.today.totalUsers)
+    },
+    {
+        key: 'orders',
+        label: '今日订单量',
+        value: formatMetric(workbenchData.today.todayOrder),
+        totalLabel: '累计订单',
+        totalValue: formatMetric(workbenchData.today.totalOrder)
+    },
+    {
+        key: 'sales',
+        label: '今日销售额',
+        value: formatMetric(workbenchData.today.todaySales, true),
+        totalLabel: '累计销售额',
+        totalValue: formatMetric(workbenchData.today.totalSales, true)
     }
 ])
-
-/**
- * 函数说明：控制工作台快捷入口数量，避免左下角区域信息过载。
- */
-const quickMenuList = computed<WorkbenchQuickMenuItem[]>(() => {
-    const list = Array.isArray(workbenchData.menu) ? workbenchData.menu : []
-    return list.slice(0, 6)
+const visitorRows = computed(() => {
+    const dates = Array.isArray(workbenchData.visitor.date) ? workbenchData.visitor.date : []
+    const values = Array.isArray(workbenchData.visitor.list) ? workbenchData.visitor.list : []
+    return dates.flatMap((date, index) => {
+        const value = readMetric(values[index])
+        return typeof date === 'string' && value !== null ? [{ date, value }] : []
+    })
 })
-
-/**
- * 函数说明：将快捷入口转换为展示卡片，提前补齐描述文案。
- */
-const quickMenuCards = computed(() => {
-    return quickMenuList.value.map((item) => ({
-        ...item,
-        desc: resolveQuickDesc(item.name)
-    }))
-})
-
-const supportList = computed<WorkbenchSupportItem[]>(() => {
-    return Array.isArray(workbenchData.support) ? workbenchData.support : []
-})
-
-/**
- * 函数说明：输出系统环境信息，方便工作台右栏快速确认版本状态。
- */
+const hasVisitorData = computed(() => visitorRows.value.some((item) => item.value > 0))
+const visitorOption = computed(() => ({
+    grid: { left: 42, right: 20, top: 24, bottom: 28 },
+    tooltip: { trigger: 'axis' },
+    xAxis: {
+        type: 'category',
+        data: visitorRows.value.map((item) => item.date),
+        boundaryGap: false
+    },
+    yAxis: { type: 'value', minInterval: 1 },
+    series: [
+        {
+            name: '工具访问',
+            data: visitorRows.value.map((item) => item.value),
+            type: 'line',
+            smooth: false,
+            symbol: 'circle',
+            symbolSize: 5,
+            lineStyle: { width: 2 }
+        }
+    ]
+}))
 const environmentInfoList = computed(() => [
+    { label: '当前版本', value: versionText.value || '尚未读取' },
     {
         label: '运行框架',
-        value: formatMetricValue(workbenchData.version.based)
+        value: String(workbenchData.version.based || '尚未读取')
     },
-    {
-        label: '当前版本',
-        value: formatMetricValue(workbenchData.version.version)
-    },
-    {
-        label: '发布渠道',
-        value: '官网 / Gitee / GitHub'
-    },
-    {
-        label: '最后更新',
-        value: formatMetricValue(workbenchData.today.time)
-    }
+    { label: '统计时间', value: lastUpdated.value || '尚未读取' },
+    { label: '数据来源', value: '用户、订单及工具访问统计' }
 ])
 
 /**
- * 函数说明：根据当日核心指标生成运营建议，增强工作台可操作性。
- */
-const operationTips = computed(() => {
-    const tips: string[] = []
-    const todayVisits = toNumber(workbenchData.today.todayVisits)
-    const todayUsers = toNumber(workbenchData.today.todayUsers)
-    const todayOrder = toNumber(workbenchData.today.todayOrder)
-    const todaySales = toNumber(workbenchData.today.todaySales)
-
-    if (todayVisits <= 0) {
-        tips.push('今日访问量暂无增长，建议先检查首页 Banner 和热门工具位配置。')
-    } else {
-        tips.push(`今日访问量 ${todayVisits}，建议继续优化高转化工具页首屏文案。`)
-    }
-
-    if (todayUsers <= 0) {
-        tips.push('新增用户为 0，建议重点检查登录入口与会员引导链路。')
-    } else {
-        tips.push(`新增用户 ${todayUsers}，可同步评估会员转化漏斗表现。`)
-    }
-
-    if (todayOrder <= 0) {
-        tips.push('当前订单较低，建议在首页增加商业版升级引导与促销位。')
-    } else {
-        tips.push(`今日订单 ${todayOrder} 笔，建议持续观察支付成功率与退款率。`)
-    }
-
-    if (todaySales <= 0) {
-        tips.push('当前销售额为 0，建议复核付费页和购买闭环是否正常。')
-    }
-
-    return tips.slice(0, 4)
-})
-
-/**
- * 函数说明：欢迎区保留两条最关键的运营提示，避免首屏文案过长。
- */
-const welcomeHighlightList = computed(() => {
-    const list = operationTips.value.slice(0, 1)
-    if (list.length > 0) {
-        return list
-    }
-    return ['建议先完成官网设置中的菜单、头部和页脚配置。']
-})
-
-/**
- * 函数说明：将原始指标转换为可解释的进度状态，零值明确标记为暂无数据。
- */
-const createStatusProgress = (label: string, value: number, ratio: number): { label: string; percent: number; hasData: boolean } => {
-    if (value <= 0) {
-        return { label, percent: 0, hasData: false }
-    }
-    return { label, percent: Math.min(100, Math.round(value * ratio)), hasData: true }
-}
-
-const statusProgressList = computed(() => {
-    const todayVisits = toNumber(workbenchData.today.todayVisits)
-    const todayUsers = toNumber(workbenchData.today.todayUsers)
-    const todayOrder = toNumber(workbenchData.today.todayOrder)
-    const todaySales = toNumber(workbenchData.today.todaySales)
-
-    return [
-        createStatusProgress('访问健康度', todayVisits, 0.5),
-        createStatusProgress('用户增长度', todayUsers, 0.5),
-        createStatusProgress('订单转化度', todayOrder, 4),
-        createStatusProgress('营收完成度', todaySales, 0.2)
-    ]
-})
-
-/**
- * 函数说明：统计待办完成情况，供右栏发布进度展示。
- */
-const releaseTodoStats = computed(() => {
-    const pendingCount = releaseTodoList.filter((item) => !item.done).length
-    return {
-        totalCount: releaseTodoList.length,
-        pendingCount
-    }
-})
-
-/**
- * 函数说明：计算发布待办完成度百分比，用于右栏标签展示。
- */
-const releaseChecklistPercent = computed(() => {
-    const { totalCount, pendingCount } = releaseTodoStats.value
-    if (!totalCount) {
-        return 0
-    }
-    return Math.round(((totalCount - pendingCount) / totalCount) * 100)
-})
-
-/**
- * 函数说明：将待办项全部标记完成，便于发版前快速收口。
+ * 函数说明：只标记当前页面的临时自查项，不修改服务器发布状态。
  */
 const markAllTodoDone = () => {
     releaseTodoList.forEach((item) => {
         item.done = true
     })
-    Message.success('今日待办已全部标记完成')
+    Message.success('临时自查项已全部勾选；部署状态请在线上验收。')
 }
 
 /**
- * 函数说明：恢复默认待办清单，避免误操作后无法回退。
+ * 函数说明：清空当前页面的临时自查勾选，所有检查项均恢复为未确认。
  */
 const resetTodoList = () => {
-    const initialTodoList = defaultReleaseTodoTemplate.map((item) => ({ ...item }))
-    releaseTodoList.splice(0, releaseTodoList.length, ...initialTodoList)
-    Message.success('已恢复默认待办清单')
+    releaseTodoList.forEach((item) => {
+        item.done = false
+    })
+    Message.success('已清空临时自查勾选')
 }
 
 /**
- * 函数说明：获取工作台核心数据并同步写入趋势图，保留原有接口契约不变。
+ * 函数说明：读取真实工作台数据，12 秒内给出结果；失败保留已加载数据，并提供页面级重试。
  */
 const getData = async () => {
+    if (loading.value) return
+    const sequence = ++requestSequence
     loading.value = true
+    errorMessage.value = ''
     try {
-        const res = await getWorkbench()
-        workbenchData.version = res.version || workbenchData.version
-        workbenchData.today = res.today || {}
-        workbenchData.visitor = res.visitor || {}
-
-        if (Array.isArray(res.menu) && res.menu.length) {
-            workbenchData.menu = res.menu
-        }
-        if (Array.isArray(res.support) && res.support.length) {
-            workbenchData.support = res.support
-        }
-
-        const visitorDate = Array.isArray(res.visitor?.date) ? res.visitor.date : []
-        const visitorList = Array.isArray(res.visitor?.list) ? res.visitor.list : []
-        workbenchData.visitorOption.xAxis.data = visitorDate.length ? visitorDate : ['--']
-        workbenchData.visitorOption.series[0].data = visitorList.length ? visitorList : [0]
+        const timeout = new Promise<never>((_, reject) => {
+            requestTimer = setTimeout(() => reject(new Error('WORKBENCH_TIMEOUT')), 12000)
+        })
+        const response = await Promise.race([getWorkbench(), timeout])
+        if (sequence !== requestSequence) return
+        if (!response || typeof response !== 'object' || Array.isArray(response))
+            throw new Error('WORKBENCH_INVALID_RESPONSE')
+        workbenchData.version =
+            response.version && typeof response.version === 'object' ? response.version : {}
+        workbenchData.today =
+            response.today && typeof response.today === 'object' ? response.today : {}
+        workbenchData.visitor =
+            response.visitor && typeof response.visitor === 'object' ? response.visitor : {}
+        hasLoaded.value = true
     } catch (error) {
-        Message.error('获取工作台数据失败，请稍后重试')
+        if (sequence !== requestSequence) return
+        console.error('[workbench] 统计数据读取失败', error)
+        errorMessage.value = '工作台数据加载失败，请重试'
     } finally {
-        loading.value = false
+        if (requestTimer) clearTimeout(requestTimer)
+        requestTimer = undefined
+        if (sequence === requestSequence) loading.value = false
     }
 }
 
 onMounted(() => {
     void getData()
 })
+onBeforeUnmount(() => {
+    requestSequence += 1
+    if (requestTimer) clearTimeout(requestTimer)
+})
 </script>
 
 <style lang="scss" scoped>
 .container {
-    /* 大屏限制工作台内容宽度并居中，避免 2K/4K 屏幕卡片被无限拉宽。 */
     width: 100%;
-    max-width: 1840px;
+    max-width: 1600px;
     margin: 0 auto;
+    padding: 24px;
     box-sizing: border-box;
-    background-color: var(--color-fill-2);
-    padding: 16px 20px;
-    padding-bottom: 0;
 }
-
-.workbench-shell {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 296px;
+.workbench-heading,
+.heading-actions,
+.section-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     gap: 16px;
-    align-items: flex-start;
 }
-
-.left-side {
-    flex: 1;
-    min-width: 0;
+.workbench-heading {
+    margin-bottom: 24px;
 }
-
-.right-side {
-    width: 296px;
-    flex-shrink: 0;
+h1,
+h2,
+p {
+    margin: 0;
 }
-
-.panel {
-    background-color: var(--color-bg-2);
-    border-radius: 4px;
+h1 {
+    color: var(--uied-admin-ink);
+    font-size: 24px;
+    line-height: 32px;
+}
+.workbench-heading p {
+    margin-top: 4px;
+    color: var(--color-text-3);
+}
+.heading-actions {
+    justify-content: flex-end;
+}
+.version-text {
+    color: var(--color-text-3);
+    white-space: nowrap;
+}
+.data-section {
+    margin-top: 24px;
+}
+.section-heading {
+    margin-bottom: 12px;
+}
+h2 {
+    font-size: 16px;
+    color: var(--uied-admin-ink);
+}
+.section-heading > span {
+    color: var(--color-text-3);
+    font-size: 12px;
+}
+.panel,
+.data-empty {
+    background: var(--color-bg-2);
+    border: 1px solid var(--uied-admin-border);
+    border-radius: var(--uied-admin-radius);
     overflow: hidden;
 }
-
-.moduler-wrap {
-    border-radius: 4px;
-    background-color: var(--color-bg-2);
+.data-empty {
+    padding: 32px 16px;
 }
-
-.left-bottom-grid {
-    margin-top: 16px;
+.data-loading {
+    display: block;
 }
-
-.action-hub-panel {
+.loading-placeholder {
+    min-height: 160px;
+    padding: 32px 0;
+    color: var(--color-text-3);
+}
+.metric-note {
+    padding: 12px 20px 20px;
+    color: var(--color-text-3);
+    font-size: 12px;
+    line-height: 1.6;
+}
+.data-error {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--color-danger-light-4);
+    border-radius: 8px;
+    background: var(--color-danger-light-1);
+    color: var(--color-danger-6);
+}
+.data-error p {
+    margin-top: 4px;
+    font-size: 12px;
+}
+.secondary-sections {
+    margin-top: 24px;
+    display: grid;
+    gap: 12px;
+}
+.secondary-section {
+    border: 1px solid var(--uied-admin-border);
+    border-radius: 8px;
+    background: var(--color-bg-2);
     overflow: hidden;
 }
-
-@media (max-width: 1220px) {
-    .right-side {
-        width: 272px;
-    }
+.secondary-section > summary {
+    padding: 16px 20px;
+    min-height: 48px;
+    cursor: pointer;
+    color: var(--color-text-1);
+    font-weight: 600;
 }
-
-@media (max-width: 1120px) {
-    .workbench-shell {
-        display: block;
-    }
-
-    .right-side {
-        width: 100%;
-        margin-top: 16px;
-    }
+.secondary-section > summary span {
+    padding-left: 12px;
+    color: var(--color-text-3);
+    font-size: 12px;
+    font-weight: 400;
 }
-
-@media (max-width: 960px) {
+.secondary-section > summary:hover {
+    background: var(--color-fill-1);
+}
+.secondary-section > summary:focus-visible {
+    outline: 2px solid var(--uied-admin-accent);
+    outline-offset: -3px;
+}
+@media (max-width: 768px) {
     .container {
-        padding: 12px 12px 0;
+        padding: 16px;
     }
-
-    .left-bottom-grid {
-        margin-top: 12px;
+    .workbench-heading {
+        align-items: flex-start;
+    }
+    .heading-actions {
+        flex-direction: column;
+        gap: 8px;
+        align-items: flex-end;
+    }
+    .section-heading {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 4px;
+    }
+    .secondary-section > summary {
+        padding: 12px 16px;
+    }
+    .secondary-section > summary span {
+        display: block;
+        padding-left: 16px;
+        margin-top: 4px;
     }
 }
 </style>

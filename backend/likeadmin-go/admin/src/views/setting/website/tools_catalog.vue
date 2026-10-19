@@ -8,9 +8,9 @@
 -->
 <template>
     <div class="website-tools-catalog pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 工具主数据">
+        <a-page-header class="layout-page-header" title="工具管理">
             <template #subtitle>
-                维护工具分类树、基础信息、SEO、GEO 和计费策略字段。
+                搜索并编辑工具信息、SEO 与 GEO；分类结构与批量操作放在高级编辑。
             </template>
             <template #extra>
                 <div class="layout-page-actions">
@@ -22,21 +22,12 @@
                     >
                         一键体检
                     </a-button>
-                    <a-button
-                        v-perms="['setting:website:catalog:save']"
-                        data-admin-smoke="tools-catalog-save"
-                        type="primary"
-                        size="small"
-                        :loading="isSubmitting"
-                        @click="handleSubmit"
-                    >
-                        保存
-                    </a-button>
                 </div>
             </template>
         </a-page-header>
 
-        <a-card class="page-card pro-panel-card general-card" title="工具主数据配置" :bordered="false">
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadCatalogData">
+        <a-card class="page-card pro-panel-card general-card"  :bordered="false">
             <section class="catalog-command-bar">
                 <div class="catalog-command-bar__status">
                     <a-tag color="arcoblue" bordered>一级分类 {{ toolsCategoryCount }}</a-tag>
@@ -48,10 +39,10 @@
                 </div>
                 <div class="catalog-command-bar__actions">
                     <a-radio-group v-model="simpleMode" type="button" size="small">
-                        <a-radio :value="true">简版</a-radio>
-                        <a-radio :value="false" data-admin-smoke="tools-catalog-mode-switch">高级</a-radio>
+                        <a-radio :value="true">工具列表</a-radio>
+                        <a-radio :value="false" data-admin-smoke="tools-catalog-mode-switch">高级编辑</a-radio>
                     </a-radio-group>
-                    <a-checkbox
+                    <a-checkbox v-if="!simpleMode"
                         v-model="syncToolConsumeRulesOnSeed"
                         data-admin-smoke="tools-catalog-policy-switch"
                     >
@@ -132,33 +123,27 @@
                 </span>
             </a-alert>
 
-            <section v-if="simpleMode" class="catalog-simple-workspace mt-4">
-                <div class="catalog-simple-workspace__main">
-                    <div>
-                        <div class="catalog-simple-workspace__title">工具运营中心</div>
-                        <div class="catalog-simple-workspace__desc">
-                            日常运营优先使用同步、体检、策略同步和前端预览。只有需要调整分类树或单个工具字段时，再进入高级模式编辑 JSON。
-                        </div>
-                    </div>
-                    <a-button type="outline" @click="simpleMode = false">进入高级编辑</a-button>
-                </div>
+            <catalog-tool-editor v-if="simpleMode" v-model="toolsCategoryTreeEditor" :disabled="isSubmitting || isLoadingData || !hasLoadedData" />
+            <details v-if="simpleMode" class="catalog-batch-actions mt-4">
+                <summary>批量维护与同步</summary>
+                <p class="form-tips">补齐内容会先加入待保存更改；同步计费策略和同步高频工具会单独保存，请先保存正在编辑的目录。</p>
                 <div class="catalog-simple-workspace__actions">
                     <a-button
-                        status="success"
+                        type="outline"
                         data-admin-smoke="tools-catalog-seed-sync-quick"
                         @click="syncFrontendToolCatalogSeed"
                     >
                         同步高频工具
                     </a-button>
                     <a-button
-                        status="success"
+                        type="outline"
                         data-admin-smoke="tools-catalog-seo-fill-quick"
                         @click="fillMissingToolSeo"
                     >
                         补齐工具 SEO
                     </a-button>
                     <a-button
-                        status="success"
+                        type="outline"
                         data-admin-smoke="tools-catalog-geo-fill-quick"
                         @click="fillMissingToolGeo"
                     >
@@ -177,25 +162,7 @@
                         查看前端效果
                     </a-button>
                 </div>
-                <div class="catalog-simple-workspace__metrics">
-                    <div>
-                        <span>数据规模</span>
-                        <strong>{{ toolsTotalCount }} 个工具</strong>
-                    </div>
-                    <div>
-                        <span>会员核心</span>
-                        <strong>{{ memberCoreHealthWarnings.length > 0 ? '待完善' : '20 个已通过' }}</strong>
-                    </div>
-                    <div>
-                        <span>toolKey 冲突</span>
-                        <strong :class="{ 'is-danger': toolKeyConflictCount > 0 }">{{ toolKeyConflictCount }} 项</strong>
-                    </div>
-                    <div>
-                        <span>SEO / GEO</span>
-                        <strong>{{ toolsSeoConfiguredCount }} / {{ toolsGeoConfiguredCount }}</strong>
-                    </div>
-                </div>
-            </section>
+            </details>
 
             <div v-if="!simpleMode" class="stats-grid mt-4">
                 <div class="stat-card">
@@ -395,9 +362,8 @@
             </div>
         </a-card>
 
-        <footer-btns v-if="!simpleMode" :fixed="false" v-perms="['setting:website:catalog:save']">
-            <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存</a-button>
-        </footer-btns>
+            <template #actions><a-button v-perms="['setting:website:catalog:save']" data-admin-smoke="tools-catalog-save" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button></template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -414,6 +380,10 @@ import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 import { useOperateSubmit } from './composables/use-operate-submit'
+import { useConfigLoad } from './composables/use-config-load'
+import ConfigEditFrame from './components/config-edit-frame.vue'
+import CatalogToolEditor from './components/catalog-tool-editor.vue'
+import { readCatalogEditorTree } from './composables/tool-catalog-editor'
 
 interface ToolsCatalogToolItem {
     id?: number
@@ -539,9 +509,9 @@ const router = useRouter()
 const pageTab = ref<
     'hot_tools' | 'frontend_layout' | 'sidebar' | 'header' | 'footer' | 'tools_catalog' | 'seo'
 >('tools_catalog')
-const { isSubmitting, lastSavedAt, runSubmit } = useOperateSubmit('工具主数据配置已保存')
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('工具主数据配置已保存')
 /**
- * 函数说明：控制工具主数据页运营模式。简版仅保留核心 JSON 维护，高级模式显示策略与冲突排查面板。
+ * 函数说明：控制工具主数据页运营模式。默认提供工具搜索列表，高级模式保留分类 JSON、策略与冲突排查。
  */
 const simpleMode = ref(true)
 const toolPolicySyncMode = ref<'append' | 'overwrite'>('append')
@@ -1369,6 +1339,8 @@ const toolPolicyOverrideCount = computed<number>(() => {
  * 函数说明：校验工具分类树配置，确保分类/分组/工具的核心字段完整。
  */
 const validateToolsCategoryTree = (): boolean => {
+    try { readCatalogEditorTree(toolsCategoryTreeEditor.value) }
+    catch (error) { feedback.msgError(error instanceof Error ? error.message : '工具目录结构错误'); return false }
     const result = parseToolsCategoryTree(toolsCategoryTreeEditor.value)
     if (result.error) {
         feedback.msgError(result.error)
@@ -1448,11 +1420,17 @@ const validateToolsCategoryTree = (): boolean => {
     return true
 }
 
+/** 读取原始目录供批量维护；保留扩展字段，非法层级明确报错并保留输入。 */
+const readRawCatalogForMaintenance = (): ToolsCategoryTreeParseResult => {
+    try { return { items: readCatalogEditorTree(toolsCategoryTreeEditor.value) as ToolsCatalogCategoryItem[], error: '' } }
+    catch (error) { return { items: [], error: error instanceof Error ? error.message : '工具目录格式错误' } }
+}
+
 /**
  * 函数说明：格式化工具分类树 JSON，便于运营编辑与排查。
  */
 const formatToolsCategoryTreeEditor = () => {
-    const result = parseToolsCategoryTree(toolsCategoryTreeEditor.value)
+    const result = readRawCatalogForMaintenance()
     if (result.error) {
         feedback.msgError(result.error)
         return
@@ -1470,19 +1448,23 @@ const resetToolsCategoryTreeEditor = () => {
 /**
  * 函数说明：读取网站配置并回填工具分类树编辑区。
  */
-const getData = async () => {
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+
+/** 仅在读取成功后回填目录与保存基线，失败时保留编辑并禁用发布。 */
+const getData = async () => loadConfiguration(async () => {
     const data = await getWebsite()
     formData.toolsCategoryTree = String(data.toolsCategoryTree || defaultToolsCategoryTreeJson)
     toolsCategoryTreeEditor.value =
         formData.toolsCategoryTree.trim() || defaultToolsCategoryTreeJson
     updateBaselineSnapshot()
-}
+})
 
 /**
  * 函数说明：重新读取后台工具主数据配置，方便脚本导入或多人协作后立即回显最新数据。
  */
 const reloadCatalogData = async () => {
-    await getData()
+    if (isSubmitting.value) return
+    if (!await reloadConfiguration(getData)) return
     feedback.msgSuccess('已重新加载后台工具主数据配置')
 }
 
@@ -1497,7 +1479,7 @@ const openToolsPreview = () => {
  * 函数说明：为缺少 SEO 字段的工具生成可编辑的基础标题、关键词、描述和分享图。
  */
 const fillMissingToolSeo = () => {
-    const result = toolsCategoryTreeParseResult.value
+    const result = readRawCatalogForMaintenance()
     if (result.error) {
         feedback.msgError(result.error)
         return
@@ -1545,7 +1527,7 @@ const fillMissingToolSeo = () => {
  * 为缺少 GEO 字段的工具生成答案优先摘要和常见问题，供 AI 搜索引用。
  */
 const fillMissingToolGeo = () => {
-    const result = toolsCategoryTreeParseResult.value
+    const result = readRawCatalogForMaintenance()
     if (result.error) {
         feedback.msgError(result.error)
         return
@@ -1583,11 +1565,13 @@ const fillMissingToolGeo = () => {
  * 函数说明：从后台工具主数据页直接触发前端高频工具批量同步，避免后续继续依赖命令行脚本。
  */
 const syncFrontendToolCatalogSeed = async () => {
-    await feedback.confirm(
+    if (isSubmitting.value || isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value) return
+    if (hasUnsavedChanges.value) { feedback.msgWarning('请先保存或重新加载当前更改，再同步高频工具，避免丢失编辑。'); return }
+    try { await feedback.confirm(
         syncToolConsumeRulesOnSeed.value
             ? '将按当前前端默认工具树批量同步高频工具主数据，并把策略字段写入登录与积分策略，是否继续？'
             : '将按当前前端默认工具树批量同步高频工具主数据，本次不写入登录与积分策略，是否继续？'
-    )
+    ) } catch { return }
     let successText = '高频工具主数据同步完成'
     await runSubmit(
         async () => {
@@ -1810,14 +1794,13 @@ const syncToolPoliciesToLoginConfig = async () => {
  * 函数说明：保存工具分类树配置到网站配置项，仅提交当前页面相关字段。
  */
 const handleSubmit = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     if (!validateToolsCategoryTree()) {
         return
     }
     await runSubmit(async () => {
         await setWebsite({
-            toolsCategoryTree: JSON.stringify(
-                parseToolsCategoryTree(toolsCategoryTreeEditor.value).items
-            )
+            toolsCategoryTree: JSON.stringify(JSON.parse(toolsCategoryTreeEditor.value))
         })
         await getConfig()
         await getData()

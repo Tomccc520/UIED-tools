@@ -203,11 +203,11 @@ const collectFrontendLayoutScopeErrors = () => {
     )
     const errors = []
 
-    if (!syncBlock.includes('if (!simpleMode.value)')) {
-        errors.push(`${relativePath}: 简洁模式保存必须跳过隐藏高级字段校验`)
+    if (!syncBlock.includes('if (!simpleMode.value || hasAdvancedLayoutChanges.value)')) {
+        errors.push(`${relativePath}: 简洁模式仅跳过未改动的高级字段，已编辑高级草稿必须继续校验`)
     }
-    if (!payloadBlock.includes('if (!simpleMode.value)')) {
-        errors.push(`${relativePath}: 简洁模式提交必须排除隐藏高级字段`)
+    if (!payloadBlock.includes('if (!simpleMode.value || hasAdvancedLayoutChanges.value)')) {
+        errors.push(`${relativePath}: 简洁模式仅排除未改动的高级字段，已编辑高级草稿必须保留`)
     }
 
     const forbiddenFields = [
@@ -275,13 +275,13 @@ const collectCatalogAndSidebarScopeErrors = () => {
         'const buildSidebarPayload = (): Record<string, string> => {',
         'const handleSubmit = '
     )
-    if (!validateBlock.includes('if (!simpleMode.value)')) {
-        errors.push(`${sidebarPath}: 简版校验必须跳过隐藏高级菜单配置`)
+    if (!validateBlock.includes('if (!simpleMode.value || hasAdvancedSidebarChanges.value)')) {
+        errors.push(`${sidebarPath}: 简版校验必须保护已编辑的高级菜单草稿`)
     }
-    if (!payloadBlock.includes('if (!simpleMode.value)')) {
-        errors.push(`${sidebarPath}: 简版提交必须排除隐藏高级菜单配置`)
+    if (!payloadBlock.includes('if (!simpleMode.value || hasAdvancedSidebarChanges.value)')) {
+        errors.push(`${sidebarPath}: 简版提交必须保留已编辑的高级菜单草稿`)
     }
-    const simplePayloadBlock = payloadBlock.split('if (!simpleMode.value)')[0]
+    const simplePayloadBlock = payloadBlock.split('if (!simpleMode.value || hasAdvancedSidebarChanges.value)')[0]
     const advancedSidebarFields = ['toolsSidebarMenuBlocks', 'toolsAiToolboxSidebarMenus']
     advancedSidebarFields.forEach((fieldName) => {
         if (simplePayloadBlock.includes(fieldName)) {

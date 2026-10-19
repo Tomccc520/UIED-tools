@@ -16,19 +16,12 @@
                 <div class="layout-page-actions">
                     <div class="layout-status-tags">
                         <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
-                            {{ hasUnsavedChanges ? '待发布' : '已同步' }}
+                            {{ hasUnsavedChanges ? '待保存' : '已保存' }}
                         </a-tag>
                     </div>
                     <a-button size="small" data-admin-smoke="sidebar-reload" @click="reloadSidebarData">重新加载</a-button>
                     <a-button size="small" data-admin-smoke="sidebar-preview" @click="openToolsPreview">前端预览</a-button>
                     <a-button size="small" data-admin-smoke="sidebar-health-check" @click="runSidebarHealthCheck">一键体检</a-button>
-                    <a-button
-                        v-perms="['setting:website:sidebar:save']"
-                        data-admin-smoke="sidebar-save-top"
-                        type="primary"
-                        :loading="isSubmitting"
-                        @click="handleSubmit"
-                    >保存</a-button>
                 </div>
             </template>
         </a-page-header>
@@ -43,6 +36,7 @@
             {{ saveResultText }}
         </a-alert>
 
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadSidebarData">
         <a-card class="page-card pro-panel-card" :bordered="false">
             <div class="mode-toolbar">
                 <a-space>
@@ -73,7 +67,10 @@
                 </div>
             </div>
 
-            <div class="layout-group mt-5">
+            <a-radio-group v-model="activeSidebarSection" type="button" class="sidebar-section-tabs" aria-label="菜单配置分组">
+                <a-radio value="brand">品牌文案</a-radio><a-radio value="recommend">推荐链接</a-radio><a-radio value="categories">一级菜单</a-radio><a-radio value="bottom">底部入口</a-radio>
+            </a-radio-group>
+            <div v-show="activeSidebarSection === 'brand'" class="layout-group mt-5">
                 <div class="group-head">
                     <span>品牌文案</span>
                 </div>
@@ -130,7 +127,7 @@
                 </a-form>
             </div>
 
-            <div class="layout-group mt-5">
+            <div v-show="activeSidebarSection === 'recommend'" class="layout-group mt-5">
                 <div class="group-head">
                     <span>推荐链接</span>
                     <div class="group-actions">
@@ -170,7 +167,7 @@
                 </div>
             </div>
 
-            <div class="layout-group mt-5">
+            <div v-show="activeSidebarSection === 'categories'" class="layout-group mt-5">
                 <div class="group-head">
                     <span>前端一级菜单</span>
                     <div class="group-actions">
@@ -258,7 +255,7 @@
                 </div>
             </div>
 
-            <div class="layout-group mt-5">
+            <div v-show="activeSidebarSection === 'bottom'" class="layout-group mt-5">
                 <div class="group-head">
                     <span>底部入口</span>
                     <div class="group-actions">
@@ -343,9 +340,10 @@
             </div>
         </a-card>
 
-        <footer-btns :fixed="false" v-perms="['setting:website:sidebar:save']">
-            <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存</a-button>
-        </footer-btns>
+            <template #actions>
+                <a-button v-perms="['setting:website:sidebar:save']" data-admin-smoke="sidebar-save-top" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
+            </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -357,6 +355,8 @@ import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 import { useOperateSubmit } from './composables/use-operate-submit'
+import { useConfigLoad } from './composables/use-config-load'
+import ConfigEditFrame from './components/config-edit-frame.vue'
 
 interface ToolsLinkItem {
     name: string
@@ -391,9 +391,10 @@ interface ToolsSidebarMenuBlockEditor {
 
 const appStore = useAppStore()
 const router = useRouter()
-const { isSubmitting, lastSavedAt, runSubmit } = useOperateSubmit('菜单设置已保存')
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('菜单设置已保存')
 const baselineSnapshot = ref('')
 const simpleMode = ref(true)
+const activeSidebarSection = ref('brand')
 const saveResultText = ref('')
 const saveResultType = ref<'success' | 'error'>('success')
 
@@ -559,6 +560,14 @@ const buildSidebarSnapshot = (): string => {
     })
 }
 
+/** 检查高级草稿是否有变化，切回简版后保存仍保留这些更改。 */
+const hasAdvancedSidebarChanges = computed(() => {
+    if (!baselineSnapshot.value) return false
+    const before = JSON.parse(baselineSnapshot.value)
+    const after = JSON.parse(buildSidebarSnapshot())
+    return ['toolsSidebarMenuBlocks', 'toolsAiToolboxSidebarMenus'].some(key => JSON.stringify(before[key]) !== JSON.stringify(after[key]))
+})
+
 /**
  * 函数说明：更新基线快照，表示页面当前状态已与后端同步。
  */
@@ -611,10 +620,13 @@ const applySidebarWebsiteData = (data: WebsiteSettingPayload) => {
 /**
  * 函数说明：读取后端配置并回填页面表单，保持本页独立编辑且不覆盖其它官网设置。
  */
-const getData = async () => {
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+
+/** 读取并回填已成功返回的配置，失败时保留原编辑内容。 */
+const getData = async () => loadConfiguration(async () => {
     const data = await getWebsite()
     applySidebarWebsiteData(data)
-}
+})
 
 /**
  * 函数说明：核对保存接口回传的关键文案，避免接口被拦截或未落库时仍显示保存成功。
@@ -636,7 +648,8 @@ const assertSidebarSaveReadback = (
  * 函数说明：手动从后台重新拉取菜单设置，便于执行脚本导入后立即回显最新结果。
  */
 const reloadSidebarData = async () => {
-    await getData()
+    if (isSubmitting.value) return
+    if (!await reloadConfiguration(getData)) return
     feedback.msgSuccess('已重新加载后台菜单配置')
 }
 
@@ -845,7 +858,7 @@ const validateBeforeSubmit = (showMessage = true): boolean => {
         showMessage && feedback.msgError('底部入口需同时填写名称与合法链接')
         return false
     }
-    if (!simpleMode.value) {
+    if (!simpleMode.value || hasAdvancedSidebarChanges.value) {
         if (sidebarMenuBlocksParseError.value) {
             showMessage && feedback.msgError(sidebarMenuBlocksParseError.value)
             return false
@@ -862,7 +875,7 @@ const validateBeforeSubmit = (showMessage = true): boolean => {
 }
 
 /**
- * 函数说明：按当前运营模式组装侧栏保存载荷，简版不提交隐藏的高级菜单配置。
+ * 函数说明：组装侧栏保存载荷；简版不提交未改动的高级项，但保留切换模式前已编辑的草稿。
  */
 const buildSidebarPayload = (): Record<string, string> => {
     const payload: Record<string, string> = {
@@ -874,7 +887,7 @@ const buildSidebarPayload = (): Record<string, string> => {
         toolsSidebarCategoryMenus: JSON.stringify(sidebarCategoryMenus.value),
         toolsSidebarBottomLinks: JSON.stringify(sidebarBottomLinks.value)
     }
-    if (!simpleMode.value) {
+    if (!simpleMode.value || hasAdvancedSidebarChanges.value) {
         Object.assign(payload, {
             toolsSidebarMenuBlocks: JSON.stringify(sidebarMenuBlocksParseResult.value.items),
             toolsAiToolboxSidebarMenus: JSON.stringify(aiToolboxSidebarMenus.value)
@@ -887,6 +900,7 @@ const buildSidebarPayload = (): Record<string, string> => {
  * 函数说明：提交菜单设置，仅保存本页负责的字段，避免覆盖其它官网配置。
  */
 const handleSubmit = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     if (!validateBeforeSubmit(true)) {
         return
     }
@@ -952,6 +966,7 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
+.sidebar-section-tabs { margin-top: 16px; display: flex; flex-wrap: wrap; }
 .pro-page-shell {
     padding-bottom: 24px;
 }
