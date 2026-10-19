@@ -1,5 +1,12 @@
 <script setup lang="ts">
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-19
+ */
 import { reactive } from '@vue/runtime-core'
+import { ElMessage } from 'element-plus'
 
 const info: {
   [key: string]: string | number
@@ -11,7 +18,7 @@ const info: {
   r: '',
 })
 
-//clear
+/** 清空所有温度单位的输入和换算结果。 */
 const clear = () => {
   for (let item in info) {
     info[item] = ''
@@ -19,37 +26,46 @@ const clear = () => {
 }
 
 /**
- * 转换
- * @param type
+ * 将指定单位的完整有限数值换算为其他单位；非法输入保留原结果并提示。
+ * @param key 作为换算起点的温度单位。
  */
 const tran = (key: string) => {
+  const input = String(info[key]).trim()
+  const value = Number(input)
+  if (!/^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?$/i.test(input) || !Number.isFinite(value)) {
+    ElMessage.error('请输入有效的温度数值')
+    return
+  }
+
   //转换成摄氏度
+  let val: number
   switch (key) {
     case 'c':
-      info.c = parseFloat(info[key] as string) * 1
+      val = value
       break;
     case 'f':
-      info.c = parseFloat(info[key] as string) * -17.2222222
+      val = (value - 32) * 5 / 9
       break;
     case 'k':
-      info.c = parseFloat(info[key] as string) * -272.15
+      val = value - 273.15
       break;
     case 're':
-      info.c = parseFloat(info[key] as string) * 1.25
+      val = value * 1.25
       break;
     case 'r':
-      info.c = parseFloat(info[key] as string) * -272.5944444
+      val = value * 5 / 9 - 273.15
       break;
     default:
-      break;
+      return
   }
 
   //转换成其他单位
-  let val = info.c as number
-  info.f = 32 + (val * 1.8)
-  info.k = 273.15 + val
-  info.re = val / 1.25
-  info.r = (val + 273.15) * 1.8
+  const converted = { c: val, f: 32 + val * 1.8, k: 273.15 + val, re: val / 1.25, r: (val + 273.15) * 1.8 }
+  if (!Object.values(converted).every(Number.isFinite)) {
+    ElMessage.error('温度数值过大，请缩小后重试')
+    return
+  }
+  Object.assign(info, converted)
 }
 
 </script>

@@ -118,14 +118,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { calculateAgeCalendar, getConstellation } from '@/utils/ageCalculation'
 
 const route = useRoute()
-const today = new Date().toISOString().split('T')[0]
+const currentDate = new Date()
+const today = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(currentDate.getDate()).padStart(2, '0')}`
 const birthDate = ref('')
 
 interface CalculationResult {
@@ -146,47 +148,29 @@ interface CalculationResult {
 
 const result = ref<CalculationResult | null>(null)
 
-// 星座数据
-const constellations = [
-  { name: "摩羯座", startMonth: 1, startDay: 1, endMonth: 1, endDay: 19 },
-  { name: "水瓶座", startMonth: 1, startDay: 20, endMonth: 2, endDay: 18 },
-  { name: "双鱼座", startMonth: 2, startDay: 19, endMonth: 3, endDay: 20 },
-  { name: "白羊座", startMonth: 3, startDay: 21, endMonth: 4, endDay: 19 },
-  { name: "金牛座", startMonth: 4, startDay: 20, endMonth: 5, endDay: 20 },
-  { name: "双子座", startMonth: 5, startDay: 21, endMonth: 6, endDay: 21 },
-  { name: "巨蟹座", startMonth: 6, startDay: 22, endMonth: 7, endDay: 22 },
-  { name: "狮子座", startMonth: 7, startDay: 23, endMonth: 8, endDay: 22 },
-  { name: "处女座", startMonth: 8, startDay: 23, endMonth: 9, endDay: 22 },
-  { name: "天秤座", startMonth: 9, startDay: 23, endMonth: 10, endDay: 23 },
-  { name: "天蝎座", startMonth: 10, startDay: 24, endMonth: 11, endDay: 22 },
-  { name: "射手座", startMonth: 11, startDay: 23, endMonth: 12, endDay: 21 },
-  { name: "摩羯座", startMonth: 12, startDay: 22, endMonth: 12, endDay: 31 }
-]
-
 // 生肖数据
 const zodiacs = ['猴', '鸡', '狗', '猪', '鼠', '牛', '虎', '兔', '龙', '蛇', '马', '羊']
 const weekDays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六']
 
+/** 根据公历出生年份返回页面采用的简化生肖。 */
 const getZodiac = (year: number) => {
   return zodiacs[year % 12]
 }
 
-const getConstellation = (month: number, day: number) => {
-  const match = constellations.find(c =>
-    (month === c.startMonth && day >= c.startDay) ||
-    (month === c.endMonth && day <= c.endDay)
-  )
-  return match ? match.name : ''
-}
-
+/** 校验本地出生日期，计算日历年龄和时间详情并更新展示结果。 */
 const calculateAge = () => {
   if (!birthDate.value) {
     ElMessage.warning('请选择出生日期')
     return
   }
 
-  const birth = new Date(birthDate.value)
+  const birth = new Date(`${birthDate.value}T00:00:00`)
   const now = new Date()
+
+  if (!Number.isFinite(birth.getTime())) {
+    ElMessage.warning('请选择有效的出生日期')
+    return
+  }
 
   if (birth > now) {
     ElMessage.warning('出生日期不能晚于今天')
@@ -194,11 +178,7 @@ const calculateAge = () => {
   }
 
   // 基础计算
-  let age = now.getFullYear() - birth.getFullYear()
-  const m = now.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
-    age--
-  }
+  const { age, totalMonths, nextBirthdayDays } = calculateAgeCalendar(birth, now)
 
   // 虚岁 (当前年份 - 出生年份 + 1)
   const nominalAge = now.getFullYear() - birth.getFullYear() + 1
@@ -207,16 +187,7 @@ const calculateAge = () => {
   const diffTime = Math.abs(now.getTime() - birth.getTime())
   const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
-  // 下一个生日
-  const nextBirthday = new Date(now.getFullYear(), birth.getMonth(), birth.getDate())
-  if (now > nextBirthday) {
-    nextBirthday.setFullYear(now.getFullYear() + 1)
-  }
-  const diffNextBirthday = Math.abs(nextBirthday.getTime() - now.getTime())
-  const nextBirthdayDays = Math.ceil(diffNextBirthday / (1000 * 60 * 60 * 24))
-
   // 详细时间
-  const totalMonths = (age * 12) + (now.getMonth() - birth.getMonth()) + (now.getDate() < birth.getDate() ? -1 : 0)
   const totalWeeks = Math.floor(totalDays / 7)
   const totalHours = Math.floor(diffTime / (1000 * 60 * 60))
   const totalMinutes = Math.floor(diffTime / (1000 * 60))

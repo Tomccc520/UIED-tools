@@ -100,7 +100,9 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { calculateMortgage } from '@/utils/mortgage'
 
 const route = useRoute()
 
@@ -116,23 +118,22 @@ const result = reactive({
   totalSave: '0'
 })
 
-// 计算等额本息月供
-const calculatePMT = (rate: number, nper: number, pv: number) => {
-  const r = rate / 100 / 12
-  const n = nper * 12
-  const p = pv * 10000
-  return (p * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1)
-}
-
-// 计算结果
+/** 对比新旧年利率的等额本息月供；任一输入无效时保留原结果并提示。 */
 const calculate = () => {
-  const oldMonthly = calculatePMT(oldRate.value, years.value, loanAmount.value)
-  const newMonthly = calculatePMT(newRate.value, years.value, loanAmount.value)
-
-  result.oldMonthlyPayment = oldMonthly.toFixed(2)
-  result.newMonthlyPayment = newMonthly.toFixed(2)
-  result.monthlySave = (oldMonthly - newMonthly).toFixed(2)
-  result.totalSave = ((oldMonthly - newMonthly) * years.value * 12).toFixed(2)
+  try {
+    if (!Number.isFinite(loanAmount.value)) throw new Error('请输入有效的贷款金额')
+    if (!Number.isFinite(years.value)) throw new Error('请输入有效的贷款期限')
+    const principal = loanAmount.value * 10000
+    const months = years.value * 12
+    const oldLoan = calculateMortgage(principal, months, oldRate.value)
+    const newLoan = calculateMortgage(principal, months, newRate.value)
+    result.oldMonthlyPayment = oldLoan.monthlyPayment.toFixed(2)
+    result.newMonthlyPayment = newLoan.monthlyPayment.toFixed(2)
+    result.monthlySave = (oldLoan.monthlyPayment - newLoan.monthlyPayment).toFixed(2)
+    result.totalSave = (oldLoan.totalRepayment - newLoan.totalRepayment).toFixed(2)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '计算失败，请检查输入后重试')
+  }
 }
 
 // 初始化计算

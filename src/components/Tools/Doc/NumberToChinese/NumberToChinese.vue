@@ -2,6 +2,7 @@
  * @file NumberToChinese.vue
  * @description 数字转中文大写工具，支持金额转换
  * @author UIED技术团队
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @createDate 2024-03-20
  *
@@ -32,7 +33,7 @@
           <div class="max-w-2xl mx-auto bg-gray-50 rounded-xl p-6">
             <div class="mb-6">
               <label class="block text-sm font-medium text-gray-700 mb-2">数字输入</label>
-              <el-input type="number" v-model="info.content" placeholder="请输入数字，最高13位数字" size="large"
+              <el-input inputmode="numeric" v-model="info.content" placeholder="请输入数字，最高13位数字" size="large"
                 class="!text-lg !bg-white shadow-sm hover:shadow transition-shadow duration-300" />
             </div>
 
@@ -115,7 +116,7 @@
                 <h4 class="text-base font-medium text-gray-800 mb-3">注意事项</h4>
                 <div class="text-sm text-gray-600 space-y-2">
                   <p>- 仅支持数字输入，最多13位</p>
-                  <p>- 支持正整数的转换</p>
+                  <p>- 支持零和正整数，不支持小数或科学计数法</p>
                   <p>- 转换结果自动格式化为标准中文大写格式</p>
                 </div>
               </div>
@@ -171,19 +172,28 @@ const usageScenarios = [
   '办公：各类正式文件中的数字大写转换'
 ]
 
+/** 校验完整输入后转换中文大写，非法输入保留原文并清除过期结果。 */
 const tran = () => {
-  if (!info.content) {
+  if (!info.content.trim()) {
+    info.tranRes = ''
     ElMessage.warning('请输入需要转换的数字')
     return
   }
-  info.tranRes = numberToChinese(parseInt(info.content))
+  try {
+    info.tranRes = numberToChinese(info.content)
+  } catch (error) {
+    info.tranRes = ''
+    ElMessage.error(error instanceof Error ? error.message : '数字转换失败，请检查输入')
+  }
 }
 
+/** 清空输入与结果，准备下一次转换。 */
 const clear = () => {
   info.content = ''
   info.tranRes = ''
 }
 
+/** 复制当前中文结果；空结果不触发剪贴板操作。 */
 const copyRes = async (resStr: string) => {
   if (!resStr) {
     ElMessage.warning('暂无内容可复制')

@@ -108,11 +108,13 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { useRoute } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { calculateMortgage, type MortgageRepaymentType } from '@/utils/mortgage'
 
 const route = useRoute()
 
-const type = ref('principalInterest')
+const type = ref<MortgageRepaymentType>('principalInterest')
 const amount = ref(100) // 万元
 const years = ref(30)
 const rate = ref(3.25)
@@ -124,39 +126,18 @@ const result = reactive({
   totalRepayment: '0'
 })
 
+/** 校验表单并计算两种还款方式；失败时保留上次有效结果并展示中文提示。 */
 const calculate = () => {
-  const principal = amount.value * 10000
-  const months = years.value * 12
-  const monthlyRate = rate.value / 100 / 12
-
-  if (type.value === 'principalInterest') {
-    // 等额本息
-    const x = Math.pow(1 + monthlyRate, months)
-    const monthly = (principal * monthlyRate * x) / (x - 1)
-    const total = monthly * months
-
-    result.monthlyPayment = monthly.toFixed(2)
-    result.monthlyDecrease = '0'
-    result.totalRepayment = total.toFixed(2)
-    result.totalInterest = (total - principal).toFixed(2)
-  } else {
-    // 等额本金
-    const monthlyPrincipal = principal / months
-    const firstMonthInterest = principal * monthlyRate
-    const firstMonthTotal = monthlyPrincipal + firstMonthInterest
-
-    const secondMonthInterest = (principal - monthlyPrincipal) * monthlyRate
-    const secondMonthTotal = monthlyPrincipal + secondMonthInterest
-
-    const decrease = firstMonthTotal - secondMonthTotal
-
-    const totalInterest = (months + 1) * principal * monthlyRate / 2
-    const total = principal + totalInterest
-
-    result.monthlyPayment = firstMonthTotal.toFixed(2)
-    result.monthlyDecrease = decrease.toFixed(2)
-    result.totalRepayment = total.toFixed(2)
-    result.totalInterest = totalInterest.toFixed(2)
+  try {
+    if (!Number.isFinite(amount.value)) throw new Error('请输入有效的贷款金额')
+    if (!Number.isFinite(years.value)) throw new Error('请输入有效的贷款期限')
+    const calculated = calculateMortgage(amount.value * 10000, years.value * 12, rate.value, type.value)
+    result.monthlyPayment = calculated.monthlyPayment.toFixed(2)
+    result.monthlyDecrease = calculated.monthlyDecrease.toFixed(2)
+    result.totalRepayment = calculated.totalRepayment.toFixed(2)
+    result.totalInterest = calculated.totalInterest.toFixed(2)
+  } catch (error) {
+    ElMessage.error(error instanceof Error ? error.message : '计算失败，请检查输入后重试')
   }
 }
 

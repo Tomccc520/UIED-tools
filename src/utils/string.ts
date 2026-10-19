@@ -68,50 +68,59 @@ export function genRandomStrByChars(chars: string, length: number): string {
 }
 
 /**
- * 数字转中文
- * @param num 
- * @returns 
+ * 将 0 至 9999 的单个四位分组转为中文大写，不附带万、亿等组单位。
+ * @param group 已校验的非负四位整数
+ * @returns 省略首尾零、保留组内间隔零的中文数字
  */
-export function numberToChinese(num: number): string {
-  // const units = ['', '拾', '佰', '仟', '万', '亿'];  
-  const units = ['', '拾', '佰', '仟', '万', '拾', '佰', '仟', '亿', '拾', '佰', '仟', '万'];  
-  const chars = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖'];  
-  let numStr = num.toString()
-  let len = numStr.length
-  if (len > 13) {
-    ElMessage({
-      message: "金额太大无法转换",
-      type: "error",
-      duration: 1500
-    })
-    return ''
+function chineseFourDigits(group: number): string {
+  const digits = ['零', '壹', '贰', '叁', '肆', '伍', '陆', '柒', '捌', '玖']
+  const units = ['', '拾', '佰', '仟']
+  const text = String(group)
+  let result = ''
+  let pendingZero = false
+  for (let index = 0; index < text.length; index++) {
+    const digit = Number(text[index])
+    if (digit === 0) {
+      pendingZero = result.length > 0
+    } else {
+      if (pendingZero) result += '零'
+      result += digits[digit] + units[text.length - index - 1]
+      pendingZero = false
+    }
   }
-  let isZero = false;  
-  let zeroCount = 0;  
-  let chinese = ''
+  return result
+}
 
-  for (let i = 0; i < len; i++) {  
-    let n = parseInt(numStr[i]);  
-    if (n === 0) {  
-      isZero = true;  
-      zeroCount++;  
-    } else {  
-      if (isZero) {  
-        chinese += chars[0];  
-      }  
-      chinese += chars[n] + units[len - i - 1];  
-      isZero = false;  
-      zeroCount = 0;  
-    }  
-    // debugger
+/**
+ * 将最多 13 位的非负整数按四位分组转换为中文大写，保留万、亿、万亿及跨组零。
+ * @param num 整数或仅含十进制数字的字符串；不接受小数和科学计数法
+ * @returns 中文大写整数（零返回“零”）
+ * @throws 输入非法或超出页面支持范围时抛出中文错误
+ */
+export function numberToChinese(num: number | string): string {
+  const text = typeof num === 'string' ? num.trim() : String(num)
+  if (!/^\d{1,13}$/.test(text)) {
+    throw new Error('请输入最多13位的非负整数，不支持小数或科学计数法')
   }
-
-
-  if (chinese.endsWith(chars[0])) {  
-    chinese = chinese.substring(0, chinese.length - 1);  
-  }  
-  
-  return chinese;  
+  if (Number(text) === 0) return '零'
+  const groups: number[] = []
+  for (let end = text.length; end > 0; end -= 4) {
+    groups.push(Number(text.slice(Math.max(0, end - 4), end)))
+  }
+  const groupUnits = ['', '万', '亿', '万亿']
+  let result = ''
+  let skippedGroup = false
+  for (let index = groups.length - 1; index >= 0; index--) {
+    const group = groups[index]
+    if (group === 0) {
+      if (result) skippedGroup = true
+      continue
+    }
+    if (result && (skippedGroup || group < 1000)) result += '零'
+    result += chineseFourDigits(group) + groupUnits[index]
+    skippedGroup = false
+  }
+  return result
 }
 
 //rtrim: 删除右侧指定字符， 默认删除空格

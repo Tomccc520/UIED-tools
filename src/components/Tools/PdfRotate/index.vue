@@ -51,15 +51,15 @@
             <span class="text-xs text-gray-500">共 {{ pageCount }} 页</span>
           </div>
           <!-- 操作按钮 -->
-          <div class="flex justify-between items-center mb-6">
-            <div class="flex items-center gap-4">
+          <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+            <div class="flex flex-wrap items-center gap-4">
               <h2 class="text-lg font-medium">已选择的页面</h2>
               <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                 共 {{ pageCount }} 页，已旋转 {{ rotatedPages }} 页
               </span>
             </div>
-            <div class="flex space-x-3">
-              <button @click="rotateAll(-90)"
+            <div class="flex flex-wrap gap-2">
+              <button @click="rotateAll(-90)" :disabled="processing || loading"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -67,7 +67,7 @@
                 </svg>
                 逆时针旋转 90°
               </button>
-              <button @click="resetRotation"
+              <button @click="resetRotation" :disabled="processing || loading"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -75,7 +75,7 @@
                 </svg>
                 重置
               </button>
-              <button @click="rotateAll(90)"
+              <button @click="rotateAll(90)" :disabled="processing || loading"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -86,7 +86,7 @@
 
               <div class="flex-1"></div>
 
-              <button @click="clearFile"
+              <button @click="clearFile" :disabled="processing"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -94,7 +94,7 @@
                 </svg>
                 清除文件
               </button>
-              <button @click="savePDF" :disabled="processing"
+              <button @click="savePDF" :disabled="processing || loading || !pages.length"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -105,24 +105,26 @@
             </div>
           </div>
 
+          <p v-if="loading" role="status" class="mb-4 text-sm text-gray-500">正在加载 PDF 页面预览...</p>
+
           <!-- 页面网格 -->
           <VueDraggable v-model="pages" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6" :item-key="'id'"
-            :animation="300" @start="isDragging = true" @end="isDragging = false">
+            :animation="300" :disabled="processing || loading" @start="isDragging = true" @end="isDragging = false">
             <template #item="{ element, index }">
-              <div class="relative bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all group">
+              <div class="relative bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all group" :data-source-page="element.id + 1">
                 <!-- 页面预览 -->
                 <div class="relative aspect-[1/1.414] bg-gray-50 rounded-lg overflow-hidden cursor-move">
-                  <canvas :ref="(el) => { if (el) pageCanvases[index] = el as HTMLCanvasElement }"
-                    class="w-full h-full object-contain transition-transform duration-300"
-                    :style="{ transform: `rotate(${element.rotation}deg)` }"></canvas>
+                  <canvas :ref="(el) => setCanvasRef(el, element.id)"
+                    :aria-label="`源 PDF 第 ${element.id + 1} 页预览`"
+                    class="w-full h-full object-contain"></canvas>
                   <div class="absolute inset-0 flex items-center justify-center text-gray-500 text-sm font-medium">
-                    第 {{ index + 1 }} 页
+                    源第 {{ element.id + 1 }} 页
                   </div>
                 </div>
 
                 <!-- 操作按钮 -->
                 <div class="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button @click="rotatePage(index, -90)"
+                  <button @click="rotatePage(index, -90)" :disabled="processing || loading"
                     class="p-2 rounded-lg bg-white shadow-sm hover:shadow-md hover:bg-gray-50 transition-all"
                     title="逆时针旋转">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -130,7 +132,7 @@
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                   </button>
-                  <button @click="rotatePage(index, 90)"
+                  <button @click="rotatePage(index, 90)" :disabled="processing || loading"
                     class="p-2 rounded-lg bg-white shadow-sm hover:shadow-md hover:bg-gray-50 transition-all"
                     title="顺时针旋转">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,39 +196,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import { formatFileSize } from '@/utils/file'
 import VueDraggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
+import { cancelPdfPagePreview, getPdfPageRotation, renderPdfPagePreview } from '@/utils/pdfPagePreview'
+import type { PDFDocumentProxy } from 'pdfjs-dist'
 
 const route = useRoute()
 
-// 初始化状态
-const pdfJsReady = ref(true)
-
-// 注册组件
-const components = {
-  'vue-draggable': VueDraggable
-}
-
-/**
- * 打开 PDF.js 文档实例
- * 统一通过运行时懒加载获取 pdfjs-dist，避免页面初始化时引入重依赖
- */
-const openPdfDocument = async (arrayBuffer: ArrayBuffer) => {
-  const pdfjsLib = await ensurePdfjsRuntime()
-  return pdfjsLib.getDocument(arrayBuffer).promise
-}
-
 interface Page {
+  /** 不随拖拽顺序变化的源 PDF 零基页索引。 */
   id: number
+  /** 用户相对源页面的旋转增量。 */
   rotation: number
-  canvas: HTMLCanvasElement | null
 }
 
 const info = reactive({
@@ -287,382 +274,163 @@ const currentFile = ref<File | null>(null)
 const pages = ref<Page[]>([])
 const pageCount = ref(0)
 const processing = ref(false)
+const loading = ref(false)
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
-const pageCanvases = ref<{ [key: number]: HTMLCanvasElement }>({})
+const pageCanvases = new Map<number, HTMLCanvasElement>()
+let previewDocument: PDFDocumentProxy | null = null
+let documentVersion = 0
 
-// 计算属性
-const deletedPages = computed(() => {
-  return pageCount.value - pages.value.length
-})
+const rotatedPages = computed(() => pages.value.filter(page => page.rotation !== 0).length)
 
-const rotatedPages = computed(() => {
-  return pages.value.filter(page => page.rotation !== 0).length
-})
+/** 按源页面 ID 保存画布引用，拖拽后不因列表位置改变关联。 */
+const setCanvasRef = (element: unknown, id: number) => {
+  if (element instanceof HTMLCanvasElement) pageCanvases.set(id, element)
+  else pageCanvases.delete(id)
+}
 
-// 处理文件拖放
-const handleDrop = (e: DragEvent) => {
-  e.preventDefault()
+/** 从拖放事件读取首个 PDF，保存过程中不接受新文件。 */
+const handleDrop = (event: DragEvent) => {
   isDragging.value = false
-  const droppedFiles = e.dataTransfer?.files
-  if (!droppedFiles || droppedFiles.length === 0) return
-
-  const file = droppedFiles[0]
-  handleFile(file)
+  const file = event.dataTransfer?.files[0]
+  if (file && !processing.value) void handleFile(file)
 }
 
-// 触发文件选择
-const triggerFileInput = () => {
-  fileInputRef.value?.click()
-}
-
-// 处理文件选择
+/** 从文件选择框加载 PDF，并清空选择值以支持重复选择同一文件。 */
 const handleFileInputChange = (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (!input.files || input.files.length === 0) return
-
-  const file = input.files[0]
-  handleFile(file)
-
-  // 清空 input 值，允许重复选择文件
+  const file = input.files?.[0]
   input.value = ''
+  if (file && !processing.value) void handleFile(file)
 }
 
-// 处理文件
+/** 取消旧预览并释放文档，使清除、换文件及离开页面后的异步结果失效。 */
+const releasePreview = () => {
+  documentVersion += 1
+  pageCanvases.forEach(canvas => cancelPdfPagePreview(canvas))
+  pageCanvases.clear()
+  const previous = previewDocument
+  previewDocument = null
+  void previous?.destroy().catch(error => console.error('释放 PDF 预览失败:', error))
+}
+
+/** 打开 PDF 并按源页面创建稳定标识，DOM 就绪后绘制原始方向的预览。 */
 const handleFile = async (file: File) => {
-  const err = getPdfFileError(file, maxFileSizeMB)
-  if (err) {
-    ElMessage.error(err)
-    return
-  }
-
-  if (!pdfJsReady.value) {
-    ElMessage.error('PDF.js 正在加载中，请稍后再试')
-    return
-  }
-
+  if (processing.value) return
+  const error = getPdfFileError(file, maxFileSizeMB)
+  if (error) { ElMessage.error(error); return }
+  releasePreview()
+  const version = documentVersion
+  currentFile.value = file
+  pages.value = []
+  pageCount.value = 0
+  loading.value = true
   try {
-    currentFile.value = file
-    const arrayBuffer = await file.arrayBuffer()
-
-    // 先用 pdf.js 检查文件是否可以正常打开
-    const pdfDoc = await openPdfDocument(arrayBuffer)
-    pageCount.value = pdfDoc.numPages
-
-    // 初始化页面数据
-    pages.value = Array(pageCount.value).fill(null).map((_, index) => ({
-      id: index,
-      rotation: 0,
-      canvas: null
-    }))
-
-    // 渲染页面预览
-    await renderPages(pdfDoc)
+    const bytes = await file.arrayBuffer()
+    const pdfjs = await ensurePdfjsRuntime()
+    if (version !== documentVersion) return
+    const pdf = await pdfjs.getDocument({ data: bytes }).promise
+    if (version !== documentVersion) { await pdf.destroy(); return }
+    previewDocument = pdf
+    pageCount.value = pdf.numPages
+    pages.value = Array.from({ length: pdf.numPages }, (_, id) => ({ id, rotation: 0 }))
+    await nextTick()
+    await renderPages()
   } catch (error) {
+    if (version !== documentVersion) return
     console.error('加载PDF失败:', error)
     ElMessage.error('PDF文件加载失败，请确保文件未损坏')
-    currentFile.value = null
-    pages.value = []
-    pageCount.value = 0
+    clearFile()
+  } finally {
+    if (version === documentVersion) loading.value = false
   }
 }
 
-// 渲染页面预览
-const renderPages = async (pdfDoc: any) => {
+/** 使用源页面及增量的快照渲染预览，过时任务不会覆盖新角度或新文件。 */
+const renderPages = async (selected = pages.value) => {
+  const pdf = previewDocument
+  const version = documentVersion
+  if (!pdf) return
+  const snapshot = selected.map(({ id, rotation }) => ({ id, rotation }))
   try {
-    for (let i = 0; i < pdfDoc.numPages; i++) {
-      const page = await pdfDoc.getPage(i + 1)
-      const canvas = pageCanvases.value[i]
-      if (!canvas) continue
-
-      // 获取原始页面尺寸
-      const viewport = page.getViewport({ scale: 1.0, rotation: pages.value[i].rotation })
-
-      // 计算缩放比例以适应预览区域
-      const containerSize = 200 // 预览容器的大小
-      const scale = Math.min(
-        containerSize / viewport.width,
-        containerSize / viewport.height
-      )
-
-      // 设置画布尺寸
-      const scaledViewport = page.getViewport({ scale, rotation: pages.value[i].rotation })
-      canvas.width = scaledViewport.width
-      canvas.height = scaledViewport.height
-
-      // 渲染页面
-      const context = canvas.getContext('2d')
-      if (!context) continue
-
-      try {
-        await page.render({
-          canvasContext: context,
-          viewport: scaledViewport
-        }).promise
-      } catch (renderError) {
-        console.error('渲染页面失败:', renderError)
-        // 清除画布
-        context.clearRect(0, 0, canvas.width, canvas.height)
-        // 显示错误提示
-        context.fillStyle = '#f56c6c'
-        context.font = '14px Arial'
-        context.textAlign = 'center'
-        context.textBaseline = 'middle'
-        context.fillText('页面渲染失败', canvas.width / 2, canvas.height / 2)
-      }
-    }
+    await Promise.all(snapshot.map(async ({ id, rotation }) => {
+      const canvas = pageCanvases.get(id)
+      if (canvas) await renderPdfPagePreview(pdf, id, rotation, canvas, () => version === documentVersion)
+    }))
   } catch (error) {
+    if (version !== documentVersion) return
     console.error('渲染PDF预览失败:', error)
-    ElMessage.error('PDF预览加载失败，请确保文件未损坏')
+    ElMessage.error('PDF预览加载失败，请重试')
   }
 }
 
-// 旋转单个页面
+/** 旋转当前位置对应的稳定源页面，预览只通过 PDF.js 绘制一次旋转。 */
 const rotatePage = async (index: number, angle: number) => {
-  if (!pdfJsReady.value) {
-    ElMessage.error('PDF.js 正在加载中，请稍后再试')
-    return
-  }
-
-  if (index >= 0 && index < pages.value.length) {
-    pages.value[index].rotation = (pages.value[index].rotation + angle) % 360
-
-    // 重新渲染该页面
-    try {
-      const arrayBuffer = await currentFile.value?.arrayBuffer()
-      if (!arrayBuffer) return
-
-      const pdfDoc = await openPdfDocument(arrayBuffer)
-      const page = await pdfDoc.getPage(index + 1)
-      const canvas = pageCanvases.value[index]
-      if (!canvas) return
-
-      const viewport = page.getViewport({ scale: 1.0, rotation: pages.value[index].rotation })
-      const containerSize = 200
-      const scale = Math.min(
-        containerSize / viewport.width,
-        containerSize / viewport.height
-      )
-
-      const scaledViewport = page.getViewport({ scale, rotation: pages.value[index].rotation })
-      canvas.width = scaledViewport.width
-      canvas.height = scaledViewport.height
-
-      const context = canvas.getContext('2d')
-      if (!context) return
-
-      await page.render({
-        canvasContext: context,
-        viewport: scaledViewport
-      }).promise
-    } catch (error) {
-      console.error('重新渲染页面失败:', error)
-      ElMessage.error('页面旋转失败')
-    }
-  }
+  if (processing.value || loading.value) return
+  const page = pages.value[index]
+  if (!page) return
+  page.rotation = getPdfPageRotation(page.rotation, angle)
+  await renderPages([page])
 }
 
-// 旋转所有页面
+/** 批量更新页面旋转增量，再绘制最新快照。 */
 const rotateAll = async (angle: number) => {
-  if (!pdfJsReady.value) {
-    ElMessage.error('PDF.js 正在加载中，请稍后再试')
-    return
-  }
-
-  pages.value.forEach((page, index) => {
-    page.rotation = (page.rotation + angle) % 360
-  })
-
-  // 重新渲染所有页面
-  try {
-    const arrayBuffer = await currentFile.value?.arrayBuffer()
-    if (!arrayBuffer) return
-
-    const pdfDoc = await openPdfDocument(arrayBuffer)
-
-    for (let i = 0; i < pdfDoc.numPages; i++) {
-      const page = await pdfDoc.getPage(i + 1)
-      const canvas = pageCanvases.value[i]
-      if (!canvas) continue
-
-      const viewport = page.getViewport({ scale: 1.0, rotation: pages.value[i].rotation })
-      const containerSize = 200
-      const scale = Math.min(
-        containerSize / viewport.width,
-        containerSize / viewport.height
-      )
-
-      const scaledViewport = page.getViewport({ scale, rotation: pages.value[i].rotation })
-      canvas.width = scaledViewport.width
-      canvas.height = scaledViewport.height
-
-      const context = canvas.getContext('2d')
-      if (!context) continue
-
-      try {
-        await page.render({
-          canvasContext: context,
-          viewport: scaledViewport
-        }).promise
-      } catch (renderError) {
-        console.error('渲染页面失败:', renderError)
-        // 清除画布
-        context.clearRect(0, 0, canvas.width, canvas.height)
-        // 显示错误提示
-        context.fillStyle = '#f56c6c'
-        context.font = '14px Arial'
-        context.textAlign = 'center'
-        context.textBaseline = 'middle'
-        context.fillText('页面渲染失败', canvas.width / 2, canvas.height / 2)
-      }
-    }
-  } catch (error) {
-    console.error('重新渲染页面失败:', error)
-    ElMessage.error('页面旋转失败')
-  }
+  if (processing.value || loading.value) return
+  pages.value.forEach(page => { page.rotation = getPdfPageRotation(page.rotation, angle) })
+  await renderPages()
 }
 
-// 删除页面
-const deletePage = async (index: number) => {
-  if (!pdfJsReady.value) {
-    ElMessage.error('PDF.js 正在加载中，请稍后再试')
-    return
-  }
-
-  if (index >= 0 && index < pages.value.length) {
-    // 删除页面数据
-    pages.value.splice(index, 1)
-
-    // 重新渲染所有页面
-    try {
-      const arrayBuffer = await currentFile.value?.arrayBuffer()
-      if (!arrayBuffer) return
-
-      const pdfDoc = await openPdfDocument(arrayBuffer)
-
-      // 清除所有画布
-      Object.values(pageCanvases.value).forEach(canvas => {
-        const ctx = canvas.getContext('2d')
-        if (ctx) {
-          ctx.clearRect(0, 0, canvas.width, canvas.height)
-        }
-      })
-      pageCanvases.value = {}
-
-      // 重新渲染剩余页面
-      for (let i = 0; i < pages.value.length; i++) {
-        const page = await pdfDoc.getPage(i + 1)
-        const canvas = pageCanvases.value[i]
-        if (!canvas) continue
-
-        const viewport = page.getViewport({ scale: 1.0, rotation: pages.value[i].rotation })
-        const containerSize = 200
-        const scale = Math.min(
-          containerSize / viewport.width,
-          containerSize / viewport.height
-        )
-
-        const scaledViewport = page.getViewport({ scale, rotation: pages.value[i].rotation })
-        canvas.width = scaledViewport.width
-        canvas.height = scaledViewport.height
-
-        const context = canvas.getContext('2d')
-        if (!context) continue
-
-        try {
-          await page.render({
-            canvasContext: context,
-            viewport: scaledViewport
-          }).promise
-        } catch (renderError) {
-          console.error('渲染页面失败:', renderError)
-          // 清除画布
-          context.clearRect(0, 0, canvas.width, canvas.height)
-          // 显示错误提示
-          context.fillStyle = '#f56c6c'
-          context.font = '14px Arial'
-          context.textAlign = 'center'
-          context.textBaseline = 'middle'
-          context.fillText('页面渲染失败', canvas.width / 2, canvas.height / 2)
-        }
-      }
-    } catch (error) {
-      console.error('重新渲染页面失败:', error)
-      ElMessage.error('页面删除失败')
-    }
-  }
-}
-
-// 保存PDF
+/** 在首次异步等待前快照文件、源页顺序和角度，按快照顺序串行生成 PDF。 */
 const savePDF = async () => {
-  if (!currentFile.value) return
-
+  if (!currentFile.value || processing.value || loading.value || !pages.value.length) return
+  const file = currentFile.value
+  const snapshot = pages.value.map(({ id, rotation }) => ({ id, rotation }))
   processing.value = true
   try {
     const { PDFDocument, degrees } = await ensurePdfLibRuntime()
-    const arrayBuffer = await currentFile.value.arrayBuffer()
-    const pdfDoc = await PDFDocument.load(arrayBuffer)
-
-    // 创建新的PDF文档
+    const pdfDoc = await PDFDocument.load(await file.arrayBuffer())
     const newPdfDoc = await PDFDocument.create()
-
-    // 复制页面到新文档
-    for (let i = 0; i < pages.value.length; i++) {
-      const [copiedPage] = await newPdfDoc.copyPages(pdfDoc, [i])
-      copiedPage.setRotation(degrees(pages.value[i].rotation))
-      newPdfDoc.addPage(copiedPage)
+    for (const { id, rotation } of snapshot) {
+      const [page] = await newPdfDoc.copyPages(pdfDoc, [id])
+      page.setRotation(degrees(getPdfPageRotation(page.getRotation().angle, rotation)))
+      newPdfDoc.addPage(page)
     }
-
-    const pdfBytes = await newPdfDoc.save()
-    const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
-    const url = URL.createObjectURL(blob)
+    const bytes = await newPdfDoc.save()
+    const url = URL.createObjectURL(new Blob([bytes as BlobPart], { type: 'application/pdf' }))
     const link = document.createElement('a')
     link.href = url
-    link.download = currentFile.value.name.replace('.pdf', '') + '_旋转.pdf'
+    link.download = `${file.name.replace(/\.pdf$/i, '')}_旋转.pdf`
     document.body.appendChild(link)
     link.click()
-    document.body.removeChild(link)
+    link.remove()
     URL.revokeObjectURL(url)
-
     ElMessage.success('PDF保存成功')
   } catch (error) {
     console.error('保存PDF失败:', error)
-    ElMessage.error('PDF保存失败')
+    ElMessage.error('PDF保存失败，请重试')
   } finally {
     processing.value = false
   }
 }
 
-// 重置旋转
-const resetRotation = () => {
-  pages.value.forEach(page => {
-    page.rotation = 0
-  })
+/** 清空用户的旋转增量并重绘，保留源 PDF 自身已有的页面方向。 */
+const resetRotation = async () => {
+  if (processing.value || loading.value) return
+  pages.value.forEach(page => { page.rotation = 0 })
+  await renderPages()
 }
 
-// 清除文件
+/** 清除当前文件并使未完成的预览任务失效。 */
 const clearFile = () => {
+  if (processing.value) return
+  releasePreview()
   currentFile.value = null
   pages.value = []
   pageCount.value = 0
-  Object.values(pageCanvases.value).forEach(canvas => {
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-    }
-  })
-  pageCanvases.value = {}
+  loading.value = false
 }
 
-// 清理资源
-onUnmounted(() => {
-  Object.values(pageCanvases.value).forEach(canvas => {
-    const ctx = canvas.getContext('2d')
-    if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-    }
-  })
-})
+onUnmounted(releasePreview)
 </script>
 
 <style scoped>
