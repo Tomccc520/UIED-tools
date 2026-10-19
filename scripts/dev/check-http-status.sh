@@ -8,6 +8,8 @@ set -euo pipefail
 # @createDate 2026-10-05
 
 BASE_URL="${UIEDTOOL_HTTP_BASE_URL:-https://uiedtool.com}"
+WWW_BASE_URL="${UIEDTOOL_HTTP_WWW_BASE_URL:-https://www.uiedtool.com}"
+CANONICAL_BASE_URL="${UIEDTOOL_HTTP_CANONICAL_BASE_URL:-https://uiedtool.com}"
 KNOWN_ROUTE="${UIEDTOOL_HTTP_KNOWN_ROUTE:-/tools/json}"
 UNKNOWN_ROUTE="${UIEDTOOL_HTTP_UNKNOWN_ROUTE:-/this-route-does-not-exist-xyz}"
 
@@ -35,11 +37,14 @@ assert_status() {
 }
 
 assert_status '已知前台路由' "${KNOWN_ROUTE}" '200'
+assert_status '已知前台路由尾斜杠' "${KNOWN_ROUTE%/}/" '200'
 assert_status '未知前台路由' "${UNKNOWN_ROUTE}" '404'
+assert_status '未知工具路由' '/tools/qa-missing-20261018' '404'
+assert_status '明确 404 地址' '/404' '404'
 
 # 函数说明：检查错误页响应头，避免 404 页面继续被搜索引擎索引。
 assert_noindex() {
-  local url="${BASE_URL%/}${UNKNOWN_ROUTE}"
+  local url="${BASE_URL%/}${1:-${UNKNOWN_ROUTE}}"
   local headers
   headers="$(curl -sS --max-time 10 -D - -o /dev/null "${url}")"
   if ! grep -qi 'x-robots-tag:.*noindex' <<<"${headers}"; then
@@ -50,6 +55,7 @@ assert_noindex() {
 }
 
 assert_noindex
+assert_noindex '/404'
 
 # 函数说明：检查统一错误页正文，确保用户能确认地址不存在且不会看到首页文案。
 assert_error_body() {
@@ -68,3 +74,30 @@ assert_error_body() {
 }
 
 assert_error_body
+
+# 函数说明：使用真实 HTTP 请求确认历史地址和 www 域永久跳转，并保留路径和查询参数。
+# 参数：url 请求地址；expected 完整跳转地址；host 可选 Host 请求头。
+assert_redirect() {
+  local url="$1" expected="$2" host="${3:-}" headers status location
+  if [[ -n "${host}" ]]; then
+    headers="$(curl -sS --max-time 10 -D - -o /dev/null -H "Host: ${host}" "${url}")"
+  else
+    headers="$(curl -sS --max-time 10 -D - -o /dev/null "${url}")"
+  fi
+  status="$(awk '/^HTTP\// {code=$2} END {print code}' <<<"${headers}")"
+  location="$(awk 'tolower($1)=="location:" {sub(/\r$/, "", $2); print $2}' <<<"${headers}")"
+  if [[ ! "${status}" =~ ^(301|308)$ || "${location}" != "${expected}" ]]; then
+    printf '[FAIL] 永久跳转: %s -> %s %s，期望 301/308 %s\n' "${url}" "${status}" "${location}" "${expected}" >&2
+    return 1
+  fi
+  printf '[PASS] 永久跳转: %s -> %s\n' "${url}" "${location}"
+}
+
+assert_redirect "${BASE_URL%/}/tools/css-format?source=seo&value=1" \
+  "${BASE_URL%/}/tools/cssformat?source=seo&value=1"
+assert_redirect "${BASE_URL%/}/tools/random-password" "${BASE_URL%/}/tools/randompassword"
+assert_redirect "${BASE_URL%/}/tools/ai/outsource-quote" "${BASE_URL%/}/tools/ai-outsource-quote"
+assert_redirect "${WWW_BASE_URL%/}/tools/json?source=seo&value=1" \
+  "${CANONICAL_BASE_URL%/}/tools/json?source=seo&value=1" 'www.uiedtool.com'
+
+node "$(dirname "${BASH_SOURCE[0]}")/check-sitemap-http.mjs"

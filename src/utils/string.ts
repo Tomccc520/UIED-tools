@@ -5,6 +5,7 @@ import clipboard3 from 'vue-clipboard3'
  * 转义特殊字符
  * str: string: 需处理的字符串
  * reg: string: 需转义的特殊字符
+ * @deprecated 仅用于逐字符前缀处理；JSON 编码请使用 textEscaping 的配对方法。
  * 
  * @param reg 
  */

@@ -10,27 +10,30 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
-import { extractStaticRoutePaths, readRouterSource } from './lib/vue-router-paths.mjs'
+import { extractStaticRouteInfos, readRouterSource } from './lib/vue-router-paths.mjs'
 
 const outputFile = path.resolve(process.argv[2] || path.join(import.meta.dirname, '../../output/frontend-route-allowlist.conf'))
 
 /**
  * 函数说明：生成 Nginx 精确 location 配置，让已注册的 Vue 路由继续使用 SPA 入口。
- * @param routePaths 已注册的静态路由路径
+ * @param routeInfos 已注册的静态路由信息
  * @returns Nginx 配置文本
  */
-const buildNginxAllowlist = (routePaths) => {
+const buildNginxAllowlist = (routeInfos) => {
   const generatedAt = new Date().toISOString()
-  const routeVariants = routePaths.flatMap((routePath) => {
-    if (routePath === '/') {
-      return ['/']
+  const routeVariants = routeInfos.flatMap((info) => {
+    if (info.path === '/') {
+      return [info]
     }
-    return [routePath, `${routePath}/`]
+    return [info, { ...info, path: `${info.path}/` }]
   })
   const locations = routeVariants
-    .map((routePath) => {
+    .map(({ path: routePath, redirectTo }) => {
       if (['/404', '/404/', '/login', '/login/', '/register', '/register/'].includes(routePath)) {
         return `location = ${routePath} {\n    add_header X-Robots-Tag "noindex, nofollow" always;\n    return 404;\n}`
+      }
+      if (redirectTo?.startsWith('/') && !/[\s;{}$]/.test(redirectTo)) {
+        return `location = ${routePath} {\n    return 301 ${redirectTo}$is_args$args;\n}`
       }
       return `location = ${routePath} {\n    try_files $uri $uri/ /index.html;\n}`
     })
@@ -43,10 +46,10 @@ const buildNginxAllowlist = (routePaths) => {
  * 函数说明：生成并写入路由白名单文件，供正式 Nginx 配置 include。
  */
 const main = () => {
-  const routePaths = extractStaticRoutePaths(readRouterSource())
+  const routeInfos = extractStaticRouteInfos(readRouterSource())
   fs.mkdirSync(path.dirname(outputFile), { recursive: true })
-  fs.writeFileSync(outputFile, buildNginxAllowlist(routePaths), 'utf8')
-  process.stdout.write(`前台 Nginx 路由白名单已生成：${routePaths.length} 条 -> ${outputFile}\n`)
+  fs.writeFileSync(outputFile, buildNginxAllowlist(routeInfos), 'utf8')
+  process.stdout.write(`前台 Nginx 路由白名单已生成：${routeInfos.length} 条 -> ${outputFile}\n`)
 }
 
 main()

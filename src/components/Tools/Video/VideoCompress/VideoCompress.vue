@@ -25,6 +25,7 @@ import VideoUploadZone from '@/components/Tools/Video/Shared/VideoUploadZone.vue
 import VideoWorkspaceIntro from '@/components/Tools/Video/Shared/VideoWorkspaceIntro.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
+import { seekVideoForCompression } from '@/utils/videoCompressionLifecycle'
 import { useToolConsume } from '@/composables/useToolConsume'
 import {
   compressVideoWithServer,
@@ -186,6 +187,7 @@ let lastPlaybackUpdateAt = 0
 let finalizeStartedAt = 0
 const FINALIZE_RETRY_INTERVAL_MS = 12000
 const FINALIZE_HARD_TIMEOUT_MS = 180000
+const PLAYBACK_STALL_TIMEOUT_MS = 30000
 const MAX_COMPAT_RETRY_COUNT = 2
 const OUTPUT_SIZE_GUARD_RATIO = 0.98
 let compatRetryCount = 0
@@ -197,6 +199,19 @@ let activeAudioBitrateKbps = 0
 let activeKeepAudio = true
 let activeFrameRate = 24
 let serverAbortController: AbortController | null = null
+let processingRunId = 0
+let compatibilityRetryTimer: number | null = null
+
+/** 判断回调是否属于仍在运行的任务，防止取消、换文件或离开后旧回调写入结果。 */
+const isCurrentRun = (runId: number) => runId === processingRunId && !isCancelRequested.value
+
+/** 清理待执行的自动重试，确保取消不会在稍后重新启动录制。 */
+const clearCompatibilityRetryTimer = () => {
+  if (compatibilityRetryTimer !== null) {
+    window.clearTimeout(compatibilityRetryTimer)
+    compatibilityRetryTimer = null
+  }
+}
 
 const sourceSizeMB = computed(() => {
   if (!videoFile.value) return 0
@@ -215,6 +230,9 @@ const sourceBitrateKbps = computed(() => {
   if (!videoFile.value || !sourceMeta.duration) return 0
   return (videoFile.value.size * 8) / sourceMeta.duration / 1000
 })
+
+const hasLocalVideoMetadata = computed(() => Number.isFinite(sourceMeta.duration)
+  && sourceMeta.duration > 0 && sourceMeta.width > 0 && sourceMeta.height > 0)
 
 const estimatedVideoBitrateKbps = computed(() => {
   return calculateTargetVideoBitrateKbps()
@@ -350,7 +368,6 @@ const forceCleanupForRetry = () => {
   mediaRecorder = null
   clearCaptureStreams()
   isFinalizingOutput = false
-  isProcessing.value = false
   outputCompleted = false
   latestRecordedChunks = []
 }
@@ -360,7 +377,7 @@ const forceCleanupForRetry = () => {
  * @returns 兼容模式覆盖参数
  */
 const buildCompatibilityOverrides = (): CompressRuntimeOverrides => {
-  const keepAudio = false
+  const keepAudio = settings.keepAudio
   const frameRate = Math.min(settings.frameRate, 24)
   const outputFormat: OutputFormat = 'webm'
   const audioBitrateKbps = 96
@@ -396,7 +413,7 @@ const buildSmallerSizeRetryOverrides = (): CompressRuntimeOverrides => {
   const reducedAudioBitrate = Math.min(activeAudioBitrateKbps || settings.audioBitrateKbps, 96)
 
   return {
-    keepAudio: false,
+    keepAudio: activeKeepAudio,
     frameRate: Math.min(activeFrameRate || settings.frameRate, 24),
     outputFormat: 'webm',
     videoBitrateKbps: reducedVideoBitrate,
@@ -431,8 +448,11 @@ const triggerCompatibilityRetry = (reason: string, customOverrides?: CompressRun
   console.warn(`[VideoCompress] 触发兼容重试：${reason}`, retryOverrides)
 
   forceCleanupForRetry()
-  window.setTimeout(() => {
-    void runCompressProcess(retryOverrides, true)
+  const runId = processingRunId
+  clearCompatibilityRetryTimer()
+  compatibilityRetryTimer = window.setTimeout(() => {
+    compatibilityRetryTimer = null
+    if (isCurrentRun(runId)) void runCompressProcess(retryOverrides, true, runId)
   }, 80)
 
   return true
@@ -541,28 +561,36 @@ const finalizeOutputFromChunks = (isTimeoutFallback = false) => {
     return
   }
 
-  if (videoFile.value && blob.size >= videoFile.value.size * OUTPUT_SIZE_GUARD_RATIO) {
+  const keepOriginal = Boolean(videoFile.value && blob.size >= videoFile.value.size * OUTPUT_SIZE_GUARD_RATIO)
+  if (keepOriginal) {
     if (triggerCompatibilityRetry('output-size-not-reduced', buildSmallerSizeRetryOverrides())) {
       return
     }
 
-    ElMessage.warning('当前参数下压缩体积未明显下降，建议提高压缩比例或关闭保留音频后再试')
+    ElMessage.warning('压缩后体积没有明显下降，已自动保留原视频')
   }
 
-  resultVideoUrl.value = URL.createObjectURL(blob)
-  resultFileSizeMB.value = blob.size / 1024 / 1024
-  resultDownloadName.value = `${videoFile.value?.name.replace(/\.[^/.]+$/, '') || 'video'}_compressed.${resultFileExt.value}`
-  serverResultCompressed.value = null
+  const output = keepOriginal && videoFile.value ? videoFile.value : blob
+  if (keepOriginal && videoFile.value) resultFileExt.value = getFileExtension(videoFile.value.name)
+  resultVideoUrl.value = URL.createObjectURL(output)
+  resultFileSizeMB.value = output.size / 1024 / 1024
+  resultDownloadName.value = keepOriginal && videoFile.value
+    ? videoFile.value.name
+    : `${videoFile.value?.name.replace(/\.[^/.]+$/, '') || 'video'}_compressed.${resultFileExt.value}`
+  serverResultCompressed.value = keepOriginal ? false : null
   progress.value = 100
-  statusText.value = '压缩完成'
+  statusText.value = keepOriginal ? '原视频体积更优，已保留原文件' : '压缩完成'
   etaText.value = '预计剩余时间：约 0 秒'
   isProcessing.value = false
   isFinalizingOutput = false
   compatRetryCount = 0
   clearCaptureStreams()
   mediaRecorder = null
+  latestRecordedChunks = []
 
-  if (isTimeoutFallback) {
+  if (keepOriginal) {
+    return
+  } else if (isTimeoutFallback) {
     ElMessage.warning('封装耗时较长，已导出当前可用结果')
   } else {
     ElMessage.success('视频压缩完成')
@@ -596,6 +624,8 @@ const scheduleFinalizeMonitor = () => {
  * 停止当前压缩任务
  */
 const stopCurrentProcessing = () => {
+  processingRunId += 1
+  clearCompatibilityRetryTimer()
   if (serverAbortController) {
     serverAbortController.abort()
     serverAbortController = null
@@ -611,11 +641,19 @@ const stopCurrentProcessing = () => {
     previewVideoRef.value.onended = null
   }
 
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-    mediaRecorder.stop()
-  } else {
-    clearCaptureStreams()
+  if (mediaRecorder) {
+    mediaRecorder.ondataavailable = null
+    mediaRecorder.onstop = null
+    mediaRecorder.onerror = null
+    if (mediaRecorder.state !== 'inactive') {
+      try {
+        mediaRecorder.stop()
+      } catch {
+        // 录制器可能已被浏览器关闭，仍需继续释放捕获流。
+      }
+    }
   }
+  clearCaptureStreams()
 
   mediaRecorder = null
   isProcessing.value = false
@@ -821,36 +859,22 @@ const resolveRecorderPreset = (outputFormat: OutputFormat = settings.outputForma
 }
 
 /**
- * 等待视频定位完成
- * @param video 视频元素
- * @param time 目标时间
- */
-const seekVideo = (video: HTMLVideoElement, time: number) => {
-  return new Promise<void>((resolve) => {
-    const onSeeked = () => {
-      video.removeEventListener('seeked', onSeeked)
-      resolve()
-    }
-
-    video.addEventListener('seeked', onSeeked)
-    video.currentTime = time
-  })
-}
-
-/**
  * 执行视频压缩流程
  * @param runtimeOverrides 运行时覆盖参数
  * @param isAutoRetry 是否为兼容模式自动重试
  */
-const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | null = null, isAutoRetry = false) => {
+const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | null = null, isAutoRetry = false, runId = processingRunId) => {
+  if (!isCurrentRun(runId)) return
   const sourceVideo = previewVideoRef.value
   if (!sourceVideo || !videoFile.value) {
     ElMessage.warning('请先上传视频文件')
     return
   }
 
-  if (!sourceMeta.duration || !sourceMeta.width || !sourceMeta.height) {
-    ElMessage.warning('视频还在加载中，请稍后再试')
+  if (!hasLocalVideoMetadata.value) {
+    isProcessing.value = false
+    errorText.value = '浏览器尚无法读取此视频，请等待加载完成，或使用专业 H.264 模式重试'
+    ElMessage.warning(errorText.value)
     return
   }
 
@@ -871,7 +895,10 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
     clearResultUrl()
 
     sourceVideo.pause()
-    await seekVideo(sourceVideo, 0)
+    const controller = serverAbortController
+    if (!controller) return
+    await seekVideoForCompression(sourceVideo, 0, controller.signal)
+    if (!isCurrentRun(runId)) return
 
     const runtimeKeepAudio = runtimeOverrides?.keepAudio ?? settings.keepAudio
     const runtimeFrameRate = runtimeOverrides?.frameRate ?? settings.frameRate
@@ -952,30 +979,21 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
     resultFileExt.value = ext
 
     mediaRecorder.ondataavailable = (event) => {
+      if (!isCurrentRun(runId)) return
       if (event.data.size > 0) {
         chunks.push(event.data)
       }
     }
 
     mediaRecorder.onstop = () => {
+      if (!isCurrentRun(runId)) return
       clearFinalizeFallbackTimer()
 
-      if (isCancelRequested.value) {
-        isCancelRequested.value = false
-        progress.value = 0
-        statusText.value = '已取消处理'
-        etaText.value = ''
-        mediaRecorder = null
-        isFinalizingOutput = false
-        outputCompleted = false
-        latestRecordedChunks = []
-        clearCaptureStreams()
-        return
-      }
       finalizeOutputFromChunks(false)
     }
 
     mediaRecorder.onerror = (event) => {
+      if (!isCurrentRun(runId)) return
       if (triggerCompatibilityRetry('recorder-error')) {
         return
       }
@@ -1002,7 +1020,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
     }
 
     const drawFrame = () => {
-      if (!isProcessing.value || !previewVideoRef.value) return
+      if (!isCurrentRun(runId) || !isProcessing.value || !previewVideoRef.value) return
 
       if (drawCtx) {
         drawCtx.drawImage(previewVideoRef.value, 0, 0, sourceMeta.width, sourceMeta.height)
@@ -1019,6 +1037,17 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
         lastPlaybackUpdateAt = now
       }
       const stalledMs = now - lastPlaybackUpdateAt
+
+      if (stalledMs >= PLAYBACK_STALL_TIMEOUT_MS) {
+        if (triggerCompatibilityRetry('playback-stalled')) return
+        forceCleanupForRetry()
+        isProcessing.value = false
+        statusText.value = '压缩失败'
+        etaText.value = ''
+        errorText.value = '视频播放长时间中断，请保持视频播放，或使用专业 H.264 模式重试'
+        ElMessage.error(errorText.value)
+        return
+      }
 
       const reachedTailByProgress = currentProgress >= 99
       const reachedTailByTime = sourceMeta.duration > 0 && current >= sourceMeta.duration - 0.08
@@ -1039,12 +1068,12 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
 
     drawRafId = requestAnimationFrame(drawFrame)
 
-    await sourceVideo.play()
-
     sourceVideo.onended = () => {
-      finalizeRecording()
+      if (isCurrentRun(runId)) finalizeRecording()
     }
+    await sourceVideo.play()
   } catch (error) {
+    if (!isCurrentRun(runId)) return
     if (triggerCompatibilityRetry('compress-catch-error')) {
       return
     }
@@ -1067,21 +1096,29 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
  * 函数说明：调用服务端 FFmpeg 执行标准 H.264 MP4 压缩，失败时允许回退浏览器引擎。
  * @returns 是否已在服务端完成或被用户取消
  */
-const runServerCompressProcess = async () => {
+const runServerCompressProcess = async (runId: number) => {
   if (!videoFile.value) {
     return false
   }
 
   const currentFile = videoFile.value
-  const config = await getVideoCompressServerConfig()
+  const controller = serverAbortController
+  if (!controller) return true
+  const config = await getVideoCompressServerConfig(controller.signal)
+  if (!isCurrentRun(runId)) return true
   serverConfig.value = config
   if (!config.available) {
+    if (!hasLocalVideoMetadata.value) {
+      isProcessing.value = false
+      statusText.value = '压缩服务暂不可用'
+      errorText.value = '专业压缩服务暂不可用，浏览器也无法读取此视频，请稍后重试或更换为 MP4 视频'
+      ElMessage.error(errorText.value)
+      return true
+    }
     ElMessage.warning('服务端 FFmpeg 暂不可用，已自动切换浏览器本地压缩')
     return false
   }
 
-  const controller = new AbortController()
-  serverAbortController = controller
   isCancelRequested.value = false
   isProcessing.value = true
   progress.value = 2
@@ -1095,6 +1132,7 @@ const runServerCompressProcess = async () => {
     const result = await compressVideoWithServer(currentFile, {
       signal: controller.signal,
       onUploadProgress: (uploadProgress) => {
+        if (!isCurrentRun(runId)) return
         progress.value = Math.max(progress.value, Math.min(45, Math.round(uploadProgress * 0.45)))
         if (uploadProgress >= 100) {
           statusText.value = '上传完成，正在排队并压缩视频...'
@@ -1104,6 +1142,8 @@ const runServerCompressProcess = async () => {
         }
       }
     })
+
+    if (!isCurrentRun(runId)) return true
 
     resultVideoUrl.value = URL.createObjectURL(result.blob)
     resultFileSizeMB.value = result.outputSize / 1024 / 1024
@@ -1123,6 +1163,7 @@ const runServerCompressProcess = async () => {
     }
     return true
   } catch (error) {
+    if (!isCurrentRun(runId)) return true
     if (controller.signal.aborted) {
       isProcessing.value = false
       progress.value = 0
@@ -1135,13 +1176,15 @@ const runServerCompressProcess = async () => {
     isProcessing.value = false
     progress.value = 0
     etaText.value = ''
+    if (!hasLocalVideoMetadata.value) {
+      statusText.value = '压缩失败'
+      errorText.value = '专业压缩失败，浏览器也无法读取此视频，请检查文件是否损坏或稍后重试'
+      ElMessage.error(errorText.value)
+      return true
+    }
     statusText.value = '服务端压缩失败，正在切换浏览器本地模式...'
     ElMessage.warning('服务端压缩失败，已自动切换浏览器本地压缩')
     return false
-  } finally {
-    if (serverAbortController === controller) {
-      serverAbortController = null
-    }
   }
 }
 
@@ -1149,34 +1192,54 @@ const runServerCompressProcess = async () => {
  * 开始执行视频压缩
  */
 const compressVideo = async () => {
+  if (isProcessing.value) return
   if (!previewVideoRef.value || !videoFile.value) {
     ElMessage.warning('请先上传视频文件')
     return
   }
-  if (!sourceMeta.duration || !sourceMeta.width || !sourceMeta.height) {
+  const engine = settings.engine
+  if (engine === 'browser' && !hasLocalVideoMetadata.value) {
     ElMessage.warning('视频还在加载中，请稍后再试')
     return
   }
 
-  const canConsume = await ensureToolConsume({
-    toolKey: getVideoCompressConsumeToolKey(),
-    action: 'compress',
-    loginWarningText: '请先登录后再使用视频压缩',
-    showConsumeSuccessToast: true
-  })
-  if (!canConsume) {
-    return
-  }
-
-  if (settings.engine === 'server') {
-    const completedByServer = await runServerCompressProcess()
-    if (completedByServer) {
+  const runId = ++processingRunId
+  isCancelRequested.value = false
+  serverAbortController = new AbortController()
+  isProcessing.value = true
+  statusText.value = '正在检查压缩任务...'
+  errorText.value = ''
+  progress.value = 0
+  etaText.value = ''
+  try {
+    const canConsume = await ensureToolConsume({
+      toolKey: getVideoCompressConsumeToolKey(),
+      action: 'compress',
+      loginWarningText: '请先登录后再使用视频压缩',
+      showConsumeSuccessToast: true
+    })
+    if (!isCurrentRun(runId)) return
+    if (!canConsume) {
+      isProcessing.value = false
       return
     }
-  }
 
-  compatRetryCount = 0
-  await runCompressProcess(null, false)
+    if (engine === 'server') {
+      const completedByServer = await runServerCompressProcess(runId)
+      if (completedByServer) {
+        return
+      }
+    }
+
+    compatRetryCount = 0
+    await runCompressProcess(null, false, runId)
+  } catch (error) {
+    if (!isCurrentRun(runId)) return
+    isProcessing.value = false
+    errorText.value = getFriendlyVideoError(error, '压缩失败，请稍后重试')
+    statusText.value = '压缩失败'
+    ElMessage.error(errorText.value)
+  }
 }
 
 /**
@@ -1196,20 +1259,23 @@ const handleBeforeUnload = (event: BeforeUnloadEvent) => {
  * 下载压缩后视频
  */
 const downloadResult = async () => {
-  if (!resultVideoUrl.value || !videoFile.value) return
+  const currentUrl = resultVideoUrl.value
+  const currentFile = videoFile.value
+  if (!currentUrl || !currentFile) return
+  const currentDownloadName = resultDownloadName.value || `${currentFile.name.replace(/\.[^/.]+$/, '')}_compressed.${resultFileExt.value}`
   const canDownload = await ensureToolConsume({
     toolKey: getVideoCompressConsumeToolKey(),
     action: 'download',
     mode: 'check-login',
     loginWarningText: '请先登录后再下载压缩视频'
   })
-  if (!canDownload) {
+  if (!canDownload || currentUrl !== resultVideoUrl.value || currentFile !== videoFile.value) {
     return
   }
 
   const link = document.createElement('a')
-  link.href = resultVideoUrl.value
-  link.download = resultDownloadName.value || `${videoFile.value.name.replace(/\.[^/.]+$/, '')}_compressed.${resultFileExt.value}`
+  link.href = currentUrl
+  link.download = currentDownloadName
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)

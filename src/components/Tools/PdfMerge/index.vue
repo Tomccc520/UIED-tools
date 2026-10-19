@@ -52,6 +52,8 @@
                   {{ files.length }} 个文件
                 </span>
               </div>
+              <input ref="fileInputRef" type="file" multiple accept=".pdf,application/pdf" class="hidden" @change="handleFileInputChange" />
+              <button @click="triggerFileInput" :disabled="merging || files.length >= maxFiles" class="text-sm text-blue-600">添加文件</button>
               <button @click="clearFiles" class="text-sm text-gray-500 hover:text-red-500 transition-colors"
                 :disabled="merging">
                 清空队列
@@ -59,14 +61,14 @@
             </div>
 
             <!-- 文件列表 -->
-            <draggable v-model="files" item-key="id" @start="drag = true" @end="drag = false" class="space-y-4"
+            <draggable v-model="files" item-key="id" @start="drag = true" @end="drag = false" class="space-y-4" :disabled="merging"
               handle=".drag-handle">
               <template #item="{ element }">
                 <div
                   class="relative group bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all"
                   :class="{ 'border-2 border-blue-500 shadow-lg': drag }">
                   <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
+                    <div class="flex items-center space-x-3 min-w-0 flex-1">
                       <!-- 拖拽手柄 -->
                       <div class="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
                         <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -84,8 +86,8 @@
                           </svg>
                         </div>
                       </div>
-                      <div>
-                        <p class="text-sm text-gray-700 font-medium">{{ element.name }}</p>
+                      <div class="min-w-0">
+                        <p class="text-sm text-gray-700 font-medium break-all">{{ element.name }}</p>
                         <p class="text-xs text-gray-500">{{ formatFileSize(element.size) }}</p>
                       </div>
                     </div>
@@ -213,7 +215,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import draggable from 'vuedraggable'
@@ -232,9 +234,10 @@ const info = reactive({
 const maxFileSizeMB = 500
 const maxFiles = 30
 const minFiles = 2
-const files = ref<File[]>([])
+interface MergeFile { id: string; file: File; name: string; size: number; thumbnail: string }
+const files = ref<MergeFile[]>([])
+let disposed = false
 const merging = ref(false)
-const uploadRef = ref()
 const drag = ref(false)
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -317,11 +320,13 @@ const handleFileInputChange = (event: Event) => {
   input.value = ''
 }
 
+/** 生成首页缩略图，读取失败不阻塞入队，并始终释放 PDF.js worker。 */
 const generateThumbnail = async (file: File) => {
+  let loadingTask: import('pdfjs-dist').PDFDocumentLoadingTask | undefined
   try {
     const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await file.arrayBuffer()
-    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
+    loadingTask = pdfjsLib.getDocument(arrayBuffer)
     const pdf = await loadingTask.promise
     const page = await pdf.getPage(1)
     const viewport = page.getViewport({ scale: 0.5 })
@@ -339,49 +344,38 @@ const generateThumbnail = async (file: File) => {
       return canvas.toDataURL('image/jpeg')
     }
   } catch (error) {
-    console.error('Thumbnail generation failed:', error)
+    console.error('[pdf-merge] 缩略图生成失败')
+  } finally {
+    await loadingTask?.destroy().catch(() => undefined)
   }
   return ''
 }
 
-// 处理文件
-const handleFiles = async (newFiles: File[]) => {
-  const validFiles: File[] = []
+/** 先同步校验并入队，再异步补缩略图，清空队列后不会重新出现旧文件。 */
+const handleFiles = (newFiles: File[]) => {
+  if (merging.value || disposed) return
   for (const file of newFiles) {
     const err = getPdfFileError(file, maxFileSizeMB)
-    if (err) {
-      ElMessage.error(`${file.name} ${err}`)
-      continue
+    if (err) { ElMessage.error(`${file.name} ${err}`); continue }
+    if (files.value.length >= maxFiles) {
+      ElMessage.warning(`最多只能选择${maxFiles}个文件`)
+      break
     }
-    validFiles.push(file)
-  }
-  if (validFiles.length === 0) return
-
-  // 处理每个文件，生成缩略图
-  const filesWithThumbnails = await Promise.all(validFiles.map(async (file) => {
-    const thumbnail = await generateThumbnail(file)
-    return {
-      file,
-      id: Math.random().toString(36).substr(2, 9),
-      name: file.name,
-      size: file.size,
-      thumbnail
+    const item: MergeFile = {
+      file, id: crypto.randomUUID(), name: file.name, size: file.size, thumbnail: ''
     }
-  }))
-
-  // 添加文件到列表
-  // @ts-ignore
-  files.value.push(...filesWithThumbnails)
-
-  // 检查文件数量
-  if (files.value.length > maxFiles) {
-    files.value = files.value.slice(0, maxFiles)
-    ElMessage.warning(`最多只能选择${maxFiles}个文件`)
+    files.value.push(item)
+    void generateThumbnail(file).then((thumbnail) => {
+      const queued = files.value.find((entry) => entry.id === item.id)
+      if (!disposed && queued) queued.thumbnail = thumbnail
+    })
   }
 }
 
 // 移除文件
-const removeFile = (item: any) => {
+/** 移除尚未合并的队列项。 */
+const removeFile = (item: MergeFile) => {
+  if (merging.value) return
   const index = files.value.indexOf(item)
   if (index > -1) {
     files.value.splice(index, 1)
@@ -391,13 +385,12 @@ const removeFile = (item: any) => {
 // 清空文件列表
 const clearFiles = () => {
   files.value = []
-  if (uploadRef.value) {
-    uploadRef.value.clearFiles()
-  }
 }
 
 // 合并PDF
 const mergePDFs = async () => {
+  if (merging.value || disposed) return
+  const selectedFiles = [...files.value]
   if (files.value.length < 2) {
     ElMessage.warning('请至少选择2个PDF文件')
     return
@@ -408,8 +401,8 @@ const mergePDFs = async () => {
     const { PDFDocument } = await ensurePdfLibRuntime()
     const mergedPdf = await PDFDocument.create()
 
-    for (const item of files.value) {
-      // @ts-ignore
+    for (const item of selectedFiles) {
+      if (disposed) return
       const file = item.file
       const arrayBuffer = await file.arrayBuffer()
       const pdf = await PDFDocument.load(arrayBuffer)
@@ -420,6 +413,7 @@ const mergePDFs = async () => {
     }
 
     const mergedPdfFile = await mergedPdf.save()
+    if (disposed) return
 
     // 创建下载链接
     const blob = new Blob([mergedPdfFile as BlobPart], { type: 'application/pdf' })
@@ -430,7 +424,7 @@ const mergePDFs = async () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
 
     ElMessage.success('PDF合并成功')
     clearFiles()
@@ -448,7 +442,9 @@ const previewFile = ref<File | null>(null)
 const previewUrl = ref('')
 
 // 预览PDF
-const previewPDF = (item: any) => {
+/** 打开文件预览，替换预览前释放旧地址。 */
+const previewPDF = (item: MergeFile) => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
   previewFile.value = item.file
   previewUrl.value = URL.createObjectURL(item.file)
   previewDialogVisible.value = true
@@ -461,6 +457,11 @@ watch(previewDialogVisible, (newVal: boolean) => {
     previewUrl.value = ''
     previewFile.value = null
   }
+})
+/** 卸载时使未完成合并失效，并释放预览地址。 */
+onUnmounted(() => {
+  disposed = true
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
 })
 </script>
 

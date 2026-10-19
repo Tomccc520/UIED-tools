@@ -8,39 +8,33 @@
  -->
 <script setup lang="ts">
 // import { Star } from '@element-plus/icons-vue'
-import { computed, onMounted, reactive, watch } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useRoute } from 'vue-router'
 import { useToolsStore } from '@/store/modules/tools'
 // import { ElMessageBox } from 'element-plus'
-import { ensureFreeToolTitle, rtrim } from '@/utils/string'
+import { ensureFreeToolTitle } from '@/utils/string'
+import { findToolByUrl } from '@/services/toolCatalog'
 const props = defineProps({
   title: String,
   subtitle: String,
+  primaryHeading: Boolean,
   id: Number
 })
 const route = useRoute()
-//查询参数
-const searchParam = reactive({
-  cateId: 0,
-  title: '',
-  route: ''
-})
 //store
 const toolsStore = useToolsStore()
 
 /**
- * 函数说明：读取当前路由对应的工具配置，优先让页头文案跟随后台工具分类树。
+ * 函数说明：缺少工具目录时加载配置；路由切换直接复用目录，避免旧页面请求覆盖当前标题。
  */
-const loadToolInfo = async () => {
-  const routeStr = route.path
-  searchParam.route = rtrim(routeStr, '/')
-  await toolsStore.getToolInfo(searchParam)
+const loadToolCatalog = async () => {
+  if (!toolsStore.cates.length) await toolsStore.getToolCate()
 }
 
 /**
- * 函数说明：提取当前工具配置，供标题和简介优先使用后台化数据。
+ * 函数说明：按当前路由实时查找标题和简介，不读取可能被旧页面异步请求覆盖的共享详情。
  */
-const currentToolInfo = computed(() => toolsStore.toolInfo)
+const currentToolInfo = computed(() => findToolByUrl(toolsStore.cates, route.fullPath || route.path))
 
 /**
  * 函数说明：工具页头部标题统一补齐“免费”前缀，优先读取后台工具标题。
@@ -65,23 +59,16 @@ const displaySubtitle = computed(() => {
 // }
 
 onMounted(() => {
-  void loadToolInfo()
+  void loadToolCatalog()
 })
-
-watch(
-  () => route.path,
-  () => {
-    void loadToolInfo()
-  }
-)
 
 </script>
 
 <template>
   <div class="uied-tool-card flex flex-col rounded-lg bg-white p-4 mt-4 mb-4">
-    <div class="text-xl font-medium">
+    <component :is="primaryHeading ? 'h1' : 'div'" class="text-xl font-medium">
       {{ displayTitle }}
-    </div>
+    </component>
     <div v-if="displaySubtitle" class="text-sm text-gray-600 mt-2">
       {{ displaySubtitle }}
     </div>

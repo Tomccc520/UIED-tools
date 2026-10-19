@@ -1,6 +1,7 @@
 <!--
  * @file ScaleTran.vue
  * @description 进制转换工具
+ * @copyright Tomda (https://www.tomda.top)
  * @author UIED技术团队
  * @copyright UIED技术团队 (https://fsuied.com)
  * @createDate 2024-03-20
@@ -72,6 +73,8 @@
               </div>
             </div>
 
+            <p v-if="conversionError" class="mb-4 text-sm text-red-600" role="alert">{{ conversionError }}</p>
+
             <!-- 清空按钮 -->
             <div class="flex justify-center">
               <el-button @click="clear" class="px-6 h-10">清空所有</el-button>
@@ -142,11 +145,13 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from '@vue/runtime-core'
+import { reactive, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { convertIntegerRadix, type IntegerRadix } from '@/utils/radixConversion'
 
 const route = useRoute()
+const conversionError = ref('')
 
 const info = reactive({
   title: '进制转换工具',
@@ -180,38 +185,22 @@ const usageScenarios = [
   '日常计算：快速进行进制转换'
 ]
 
-const tran = (type: string) => {
-  let val = info[type]
-  if (val === '') {
-    return
-  }
-  switch (type) {
-    case 'bin':
-      info.oct = parseInt(val, 2).toString(8)
-      info.dec = parseInt(val, 2).toString(10)
-      info.hex = parseInt(val, 2).toString(16)
-      break;
-    case 'oct':
-      info.bin = parseInt(val, 8).toString(2)
-      info.dec = parseInt(val, 8).toString(10)
-      info.hex = parseInt(val, 8).toString(16)
-      break;
-    case 'dec':
-      info.bin = parseInt(val, 10).toString(2)
-      info.oct = parseInt(val, 10).toString(8)
-      info.hex = parseInt(val, 10).toString(16)
-      break;
-    case 'hex':
-      info.bin = parseInt(val, 16).toString(2)
-      info.oct = parseInt(val, 16).toString(8)
-      info.dec = parseInt(val, 16).toString(10)
-      break;
-    default:
-      break;
+/** 根据来源进制转换完整整数；输入无效时清除旧结果并显示可读错误。 */
+const tran = (type: IntegerRadix) => {
+  conversionError.value = ''
+  try {
+    Object.assign(info, convertIntegerRadix(info[type], type))
+  } catch (error) {
+    for (const key of ['bin', 'oct', 'dec', 'hex'] as const) {
+      if (key !== type) info[key] = ''
+    }
+    conversionError.value = error instanceof Error ? error.message : '输入无效，请检查整数格式'
   }
 }
 
+/** 清空四种进制输入和转换错误，恢复初始状态。 */
 const clear = () => {
+  conversionError.value = ''
   info.bin = ''
   info.oct = ''
   info.dec = ''

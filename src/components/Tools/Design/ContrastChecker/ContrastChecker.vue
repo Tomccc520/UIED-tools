@@ -106,11 +106,11 @@ const copyColor = (color: string) => {
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <span class="relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">色彩对比度检测</span>
-            </div>
-          </h2>
+            </span>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">检查前景色和背景色的对比度，确保符合 WCAG 可访问性标准</p>
         </div>
 

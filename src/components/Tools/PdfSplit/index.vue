@@ -41,6 +41,11 @@
           </div>
         </div>
 
+        <div v-if="currentFile && previewLoading && pdfPages.length === 0" class="mt-6" role="status">
+          正在加载 PDF，请稍候…
+          <button @click="clearFile" class="ml-3 text-blue-600">取消加载</button>
+        </div>
+
         <!-- PDF页面预览和操作区域 -->
         <div v-if="currentFile && pdfPages.length > 0" class="mt-6">
           <div class="flex flex-col md:flex-row gap-6">
@@ -52,21 +57,21 @@
                 <!-- 拆分模式选择 -->
                 <div class="space-y-3" :class="processing ? 'opacity-50 pointer-events-none' : ''">
                   <label class="flex items-center space-x-3 cursor-pointer">
-                    <input type="radio" v-model="splitMode" value="extract"
+                    <input type="radio" v-model="splitMode" :disabled="processing || previewLoading" value="extract"
                       class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
                     <span class="text-gray-700">提取为单个PDF</span>
                   </label>
                   <p class="text-xs text-gray-500 ml-7">将选中的页面或指定范围的页面合并为一个新的PDF文件。</p>
 
                   <label class="flex items-center space-x-3 cursor-pointer mt-4">
-                    <input type="radio" v-model="splitMode" value="split_every"
+                    <input type="radio" v-model="splitMode" :disabled="processing || previewLoading" value="split_every"
                       class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
                     <span class="text-gray-700">每一页单独拆分</span>
                   </label>
                   <p class="text-xs text-gray-500 ml-7">将PDF的每一页保存为一个单独的PDF文件，打包下载。</p>
 
                   <label class="flex items-center space-x-3 cursor-pointer mt-4">
-                    <input type="radio" v-model="splitMode" value="split_range"
+                    <input type="radio" v-model="splitMode" :disabled="processing || previewLoading" value="split_range"
                       class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
                     <span class="text-gray-700">按范围拆分为多个PDF</span>
                   </label>
@@ -76,7 +81,7 @@
                 <!-- 范围输入 -->
                 <div v-if="splitMode !== 'split_every'" class="mt-6">
                   <label class="block text-sm font-medium text-gray-700 mb-2">页面范围</label>
-                  <input type="text" v-model="rangeInput" placeholder="例如: 1-3, 5, 8-10"
+                  <input type="text" v-model="rangeInput" :disabled="processing || previewLoading" aria-label="PDF 页面范围" placeholder="例如: 1-3, 5, 8-10"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
                   <p class="text-xs text-gray-500 mt-2">
                     输入要提取/拆分的页面页码或范围，用逗号分隔。
@@ -85,10 +90,12 @@
                   </p>
                 </div>
 
+                <p v-if="rangeError && rangeInput.trim()" role="alert" class="mt-2 text-sm text-red-600">{{ rangeError }}</p>
+
                 <!-- 操作按钮 -->
                 <div class="mt-8 space-y-3">
                   <button @click="processPdf"
-                    :disabled="processing || (splitMode !== 'split_every' && !rangeInput.trim())"
+                    :disabled="processing || previewLoading || (splitMode !== 'split_every' && !rangeInput.trim())"
                     class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     <svg v-if="processing" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                       xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -100,7 +107,7 @@
                     {{ processing ? '处理中...' : '开始拆分/提取' }}
                   </button>
 
-                  <button @click="clearFile"
+                  <button @click="clearFile" :disabled="processing"
                     class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                     清除文件
                   </button>
@@ -216,7 +223,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist'
+import { parsePdfPageRanges } from '@/utils/pdfPageRanges'
 import { useRoute } from 'vue-router'
 import JSZip from 'jszip'
 import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
@@ -280,6 +289,14 @@ const previewLoading = ref(false)
 const previewProgress = ref(0)
 const splitMode = ref<'extract' | 'split_every' | 'split_range'>('extract')
 const rangeInput = ref('')
+let previewRequestId = 0
+let previewTask: PDFDocumentLoadingTask | null = null
+let disposed = false
+const rangeError = computed(() => {
+  if (!rangeInput.value.trim() || previewLoading.value || splitMode.value === 'split_every') return ''
+  try { parsePdfPageRanges(rangeInput.value, pdfPages.value.length); return '' }
+  catch (error) { return error instanceof Error ? error.message : '页面范围无效' }
+})
 
 // 指南内容
 const guideSteps = [
@@ -336,8 +353,13 @@ const handleFileInputChange = (e: Event) => {
   target.value = ''
 }
 
-// 处理文件加载和预览
+/** 加载文档预览；请求编号阻止清除、换文件后的旧任务回写页面。 */
 const processFile = async (file: File) => {
+  if (processing.value) return
+  const requestId = ++previewRequestId
+  const oldTask = previewTask
+  previewTask = null
+  void oldTask?.destroy().catch(() => undefined)
   currentFile.value = file
   pdfPages.value = []
   previewLoading.value = true
@@ -346,13 +368,17 @@ const processFile = async (file: File) => {
   try {
     const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await file.arrayBuffer()
+    if (disposed || requestId !== previewRequestId) return
     const loadingTask = pdfjsLib.getDocument(arrayBuffer)
+    previewTask = loadingTask
     const pdf = await loadingTask.promise
+    if (disposed || requestId !== previewRequestId) return
 
     // 生成缩略图
     const scale = 0.3 // 缩略图比例
 
     for (let i = 1; i <= pdf.numPages; i++) {
+      if (disposed || requestId !== previewRequestId) return
       const page = await pdf.getPage(i)
       const viewport = page.getViewport({ scale })
 
@@ -366,27 +392,44 @@ const processFile = async (file: File) => {
         viewport: viewport
       }).promise
 
+      if (disposed || requestId !== previewRequestId) return
       pdfPages.value.push({
         pageIndex: i - 1,
         pageNumber: i,
         thumbnail: canvas.toDataURL('image/jpeg')
       })
       previewProgress.value = Math.round((i / pdf.numPages) * 100)
+      canvas.width = 1
+      canvas.height = 1
+      page.cleanup()
     }
 
+    if (disposed || requestId !== previewRequestId) return
     // 默认全选范围
     rangeInput.value = `1-${pdf.numPages}`
 
   } catch (error) {
-    console.error('Error loading PDF:', error)
+    if (disposed || requestId !== previewRequestId) return
+    console.error('[pdf-split] 文档预览失败')
     ElMessage.error('PDF文件加载失败，可能是文件损坏或加密')
     clearFile()
+  } finally {
+    if (requestId === previewRequestId) {
+      previewLoading.value = false
+      const task = previewTask
+      previewTask = null
+      await task?.destroy().catch(() => undefined)
+    }
   }
-  previewLoading.value = false
 }
 
-// 清除文件
+/** 清除文件并终止预览；处理输出期间保持源文件稳定。 */
 const clearFile = () => {
+  if (processing.value) return
+  previewRequestId += 1
+  const task = previewTask
+  previewTask = null
+  void task?.destroy().catch(() => undefined)
   currentFile.value = null
   pdfPages.value = []
   rangeInput.value = ''
@@ -397,37 +440,9 @@ const clearFile = () => {
   previewLoading.value = false
 }
 
-// 解析范围字符串
+/** 预览选择状态允许暂时不完整的输入，实际导出使用严格校验。 */
 const parseRange = (rangeStr: string, totalPages: number): number[][] => {
-  const ranges: number[][] = []
-  const parts = rangeStr.split(/[,，]/) // 支持中文逗号
-
-  for (const part of parts) {
-    const trimmed = part.trim()
-    if (!trimmed) continue
-
-    if (trimmed.includes('-')) {
-      const [start, end] = trimmed.split('-').map(n => parseInt(n))
-      if (!isNaN(start) && !isNaN(end)) {
-        const validStart = Math.max(1, Math.min(start, totalPages))
-        const validEnd = Math.max(1, Math.min(end, totalPages))
-        // 生成该范围内的所有页码
-        const rangePages = []
-        for (let i = Math.min(validStart, validEnd); i <= Math.max(validStart, validEnd); i++) {
-          rangePages.push(i)
-        }
-        ranges.push(rangePages)
-      }
-    } else {
-      const page = parseInt(trimmed)
-      if (!isNaN(page)) {
-        if (page >= 1 && page <= totalPages) {
-          ranges.push([page])
-        }
-      }
-    }
-  }
-  return ranges
+  try { return parsePdfPageRanges(rangeStr, totalPages) } catch { return [] }
 }
 
 // 判断页面是否在当前输入范围内
@@ -440,14 +455,9 @@ const isPageSelected = (pageNumber: number) => {
   return ranges.some(range => range.includes(pageNumber))
 }
 
-// 点击页面切换选中状态 (简单实现：添加到范围字符串或移除)
-// 这是一个比较复杂的交互，为了简单起见，这里只做追加逻辑，或者不做复杂交互
-// 更好的做法是维护一个 selectedPages 数组，然后同步到 rangeInput
-// 但这里 rangeInput 是主数据源。
-// 让我们做一个简单的交互：点击页面，如果不在范围内，则追加 ", N"。如果在，则不处理或尝试移除（移除很难解析）。
-// 简化：点击页面将其页码追加到输入框
+/** 点击预览页切换选中状态，并把连续页重新合并为范围。 */
 const togglePageSelection = (pageNumber: number) => {
-  if (splitMode.value === 'split_every') return
+  if (processing.value || previewLoading.value || splitMode.value === 'split_every') return
 
   const currentRanges = parseRange(rangeInput.value, pdfPages.value.length)
   const isSelected = currentRanges.some(range => range.includes(pageNumber))
@@ -493,30 +503,29 @@ const togglePageSelection = (pageNumber: number) => {
 
 // 处理PDF拆分/提取
 const processPdf = async () => {
-  if (!currentFile.value) return
+  if (!currentFile.value || processing.value || previewLoading.value) return
+  const sourceFile = currentFile.value
+  const selectedMode = splitMode.value
+  const selectedRange = rangeInput.value
 
   processing.value = true
   try {
     const { PDFDocument } = await ensurePdfLibRuntime()
-    const arrayBuffer = await currentFile.value.arrayBuffer()
+    const arrayBuffer = await sourceFile.arrayBuffer()
     const srcDoc = await PDFDocument.load(arrayBuffer)
+    if (disposed) return
     const totalPages = srcDoc.getPageCount()
 
     // 准备要处理的页面组
     let pageGroups: number[][] = []
 
-    if (splitMode.value === 'split_every') {
+    if (selectedMode === 'split_every') {
       for (let i = 1; i <= totalPages; i++) {
         pageGroups.push([i])
       }
-    } else if (splitMode.value === 'split_range') {
-      // 解析输入，每个逗号分隔的部分作为一个组
-      // parseRange 返回的是 number[][]，每个元素是一个组包含的页码数组
-      // 但我之前的 parseRange 实现是将所有解析出的页码都扁平化处理了吗？
-      // 并没有，parseRange 返回的是 number[][]，其中每个子数组是一个范围块解析出的页码
-      // 例如 "1-3, 5" -> [[1,2,3], [5]]
-      // 这正好符合 split_range 的需求：每个范围块生成一个文件
-      const ranges = parseRange(rangeInput.value, totalPages)
+    } else if (selectedMode === 'split_range') {
+      // 每个逗号分隔的范围生成独立文件。
+      const ranges = parsePdfPageRanges(selectedRange, totalPages)
       if (ranges.length === 0) {
         ElMessage.warning('请输入有效的页面范围')
         processing.value = false
@@ -525,7 +534,7 @@ const processPdf = async () => {
       pageGroups = ranges
     } else {
       // extract: 所有选中的页面合并为一个组
-      const ranges = parseRange(rangeInput.value, totalPages)
+      const ranges = parsePdfPageRanges(selectedRange, totalPages)
       const allPages = new Set<number>()
       ranges.forEach(range => range.forEach(p => allPages.add(p)))
       if (allPages.size === 0) {
@@ -546,15 +555,16 @@ const processPdf = async () => {
       copiedPages.forEach(page => newDoc.addPage(page))
 
       const pdfBytes = await newDoc.save()
+      if (disposed) return
       const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `extracted_${currentFile.value.name}`
+      link.download = `extracted_${sourceFile.name}`
       document.body.appendChild(link)
-      link.click()
+      if (!disposed) link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
       ElMessage.success('提取成功')
     } else {
       // 多个组，生成ZIP
@@ -562,6 +572,7 @@ const processPdf = async () => {
       const folder = zip.folder('split_files')
 
       for (let i = 0; i < pageGroups.length; i++) {
+        if (disposed) return
         const pages = pageGroups[i]
         const newDoc = await PDFDocument.create()
         const pageIndices = pages.map(p => p - 1)
@@ -586,24 +597,32 @@ const processPdf = async () => {
       }
 
       const content = await zip.generateAsync({ type: 'blob' })
+      if (disposed) return
       const url = URL.createObjectURL(content)
       const link = document.createElement('a')
       link.href = url
-      link.download = `split_${currentFile.value.name.replace('.pdf', '')}.zip`
+      link.download = `split_${sourceFile.name.replace(/\.pdf$/i, '')}.zip`
       document.body.appendChild(link)
-      link.click()
+      if (!disposed) link.click()
       document.body.removeChild(link)
-      URL.revokeObjectURL(url)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
       ElMessage.success('拆分成功')
     }
 
   } catch (error) {
-    console.error('Split error:', error)
-    ElMessage.error('处理失败，请重试')
+    console.error('[pdf-split] 文档处理失败')
+    if (!disposed) ElMessage.error(error instanceof Error && /页码|页面范围/.test(error.message) ? error.message : '处理失败，请确认文件未加密后重试')
   } finally {
     processing.value = false
   }
 }
+/** 卸载后停止预览，避免离开页面后继续渲染和下载。 */
+onUnmounted(() => {
+  disposed = true
+  previewRequestId += 1
+  void previewTask?.destroy().catch(() => undefined)
+  previewTask = null
+})
 </script>
 
 <style scoped>

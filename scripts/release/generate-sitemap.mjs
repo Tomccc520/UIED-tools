@@ -80,7 +80,7 @@ const buildSitemapXml = (routePaths) => {
  */
 const main = () => {
   const routePaths = extractStaticRouteInfos(readRouterSource())
-    .filter((info) => !info.isRedirect)
+    .filter((info) => !info.isRedirect && info.isIndexable)
     .map((info) => info.path)
     .filter((routePath) => !EXCLUDED_PATHS.has(routePath))
 

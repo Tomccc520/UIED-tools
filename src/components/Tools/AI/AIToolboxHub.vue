@@ -284,7 +284,7 @@ watch(
       <div class="ai-main">
         <section id="recommend">
           <div id="ai-highlight" class="section-title">
-            <div class="title-text">免费AI工具箱</div>
+            <h1 class="title-text">免费AI工具箱</h1>
             <div class="title-line"></div>
           </div>
           <div class="summary-chip">{{ summaryText }}</div>

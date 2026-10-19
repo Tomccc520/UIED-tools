@@ -28,7 +28,7 @@ uiedtool-3.0.3/
 
 发布包中的 `web/frontend-route-allowlist.conf` 由 Vue Router 自动生成。Nginx 仅对已注册的前台路由回退到 `index.html`，未知路径返回 HTTP 404，避免搜索引擎把不存在页面识别为正常页面。独立 AI 简历代理、`/api/`、`/admin/` 和静态资源仍按各自 location 处理。`/assets/` 下的构建产物带内容哈希，按一年期不可变缓存下发。
 
-扩展配置同时将 404 请求转发到 `web/404.html`，保留 HTTP 404、`X-Robots-Tag: noindex, nofollow` 和“页面不存在”提示。每次切换 `app/current` 后都要重新复制扩展配置并执行 `nginx -t`，否则旧配置仍可能把未知路径回退到首页：
+扩展配置同时将 404 请求转发到 `web/404.html`，保留 HTTP 404、`X-Robots-Tag: noindex, nofollow` 和“页面不存在”提示。本轮升级脚本会备份旧扩展配置，在切换 `app/current` 和 API 健康检查成功后自动安装新配置、执行 `nginx -t` 并 reload；配置校验或加载失败会恢复旧配置、前端和 API。首次初始化或手工修复时可执行以下命令：
 
 ```bash
 cp "$APP_DIR/current/nginx/uiedtool.com.fullstack.locations.conf" \
@@ -36,11 +36,26 @@ cp "$APP_DIR/current/nginx/uiedtool.com.fullstack.locations.conf" \
 /www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload
 ```
 
-发布包中的 `web/sitemap.xml` 同样由 Vue Router 路由表自动生成（`scripts/release/generate-sitemap.mjs`），规范域为 `https://uiedtool.com`，404、登录、个人中心与跳转路由不参与收录。宝塔侧需确认 `www.uiedtool.com` 301 到非 www 规范域，避免双域名重复收录。
+发布包中的 `web/sitemap.xml` 同样由 Vue Router 路由表自动生成（`scripts/release/generate-sitemap.mjs`），规范域为 `https://uiedtool.com`，404、登录、个人中心、未发布工具和跳转路由不参与收录。扩展配置会将 `www.uiedtool.com` 以 HTTP 301 跳转到非 www 规范域，完整保留路径与参数；宝塔站点必须绑定两个域名，HTTPS 证书也要覆盖两个域名。
+
+旧 sitemap 中 20 个有效工具旧地址已在路由表注册重定向，生成的 Nginx 白名单会直接返回 301，例如 `/tools/css-format` → `/tools/cssformat`、`/tools/random-password` → `/tools/randompassword`、`/tools/ai/outsource-quote` → `/tools/ai-outsource-quote`。`/tools/ip` 没有对应的现役 IP 查询页面，已从 sitemap 排除，保持明确 404，避免误导用户跳转到不相关工具。
+
+Nginx reload 后先在服务器执行 HTTP 验收（不能只看浏览器里的 404 文案）：
+
+```bash
+curl -sS -o /dev/null -w '有效工具: %{http_code}\n' https://uiedtool.com/tools/json
+curl -sS -o /dev/null -w '有效工具尾斜杠: %{http_code}\n' https://uiedtool.com/tools/json/
+curl -sS -D - -o /dev/null https://uiedtool.com/tools/qa-missing-20261018
+curl -sS -D - -o /dev/null https://uiedtool.com/404
+curl -sS -D - -o /dev/null 'https://uiedtool.com/tools/css-format?source=seo&value=1'
+curl -sS -D - -o /dev/null 'https://www.uiedtool.com/tools/json?source=seo&value=1'
+```
+
+两个有效工具地址应为 200；不存在路径与 `/404` 应为 404，并含 `X-Robots-Tag: noindex, nofollow`；后两个请求应为 301，`Location` 分别为 `https://uiedtool.com/tools/cssformat?source=seo&value=1` 和 `https://uiedtool.com/tools/json?source=seo&value=1`。随后在项目根目录执行 `npm run check:http-status`，脚本还会逐条请求 sitemap 中所有地址，确认它们匹配可索引路由并返回 200。如果线上启用了 CDN，应刷新旧的 HTML、robots、sitemap 缓存后复查。
 
 ## 二、增量升级策略（重要）
 
-宝塔包中的 `deploy-update.sh` 默认采用“仅更新代码”模式：只切换主站、管理端和 Go API，不执行 SQL，不会因为普通页面发布重复改动数据库。
+宝塔包中的 `deploy-update.sh` 默认采用“仅更新代码”模式：切换主站、管理端、Go API 和配套 Nginx 路由配置，不执行 SQL，不会因为普通页面发布重复改动数据库。执行前会先校验当前 Nginx 配置，避免发布途中才发现其他站点已有的配置错误。默认 Nginx 路径为 `/www/server/nginx/sbin/nginx`，托管扩展文件为 `/www/server/panel/vhost/nginx/extension/uiedtool.com/uiedtool-fullstack.conf`；自定义宝塔安装目录可通过 `UIEDTOOL_NGINX_BIN`、`UIEDTOOL_NGINX_EXTENSION_FILE` 显式指定。
 
 需要新增菜单、工具或配置时，再显式执行数据库迁移。脚本会先导出数据库到本次备份目录，然后按 `la_system_upgrade_log` 校验补丁哈希，已成功且内容未变化的补丁会自动跳过：
 

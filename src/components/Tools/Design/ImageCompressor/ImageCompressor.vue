@@ -104,7 +104,9 @@
           <div class="lg:col-span-2 space-y-6">
             <div
               class="bg-gray-100 rounded-xl shadow-inner border border-gray-200 overflow-hidden min-h-[500px] flex items-center justify-center bg-checkered relative">
-              <div v-if="!originalImage" class="text-center text-gray-400">
+              <div v-if="errorMessage" class="text-center text-red-600 p-4" role="alert">{{ errorMessage }}</div>
+              <div v-else-if="isProcessing" class="text-center text-gray-500" role="status">图片处理中...</div>
+              <div v-else-if="!originalImage" class="text-center text-gray-400">
                 <p>暂无预览</p>
               </div>
               <div v-else class="relative w-full h-full p-4 flex flex-col items-center">
@@ -175,13 +177,18 @@
  * @author UIED技术团队
  * @createDate 2025-12-13
  */
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const originalImage = ref<string>('')
 const compressedUrl = ref<string>('')
+const resultFormat = ref('jpeg')
+const isProcessing = ref(false)
+const errorMessage = ref('')
+let fileRevision = 0
+let compressionRevision = 0
 const originalSize = ref(0)
 const compressedSize = ref(0)
 const quality = ref(0.8)
@@ -197,75 +204,107 @@ const compressionRate = computed(() => {
   return Math.round((1 - compressedSize.value / originalSize.value) * 100)
 })
 
+/** 打开文件选择器，可通过重新选择替换当前图片。 */
 const triggerUpload = () => {
   fileInput.value?.click()
 }
 
+/** 接收选中文件并重置输入，使同一文件可以在失败后重新选择。 */
 const handleFileChange = (e: Event) => {
-  const files = (e.target as HTMLInputElement).files
-  if (files && files.length > 0) {
-    processFile(files[0])
-  }
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (file) processFile(file)
 }
 
+/** 读取拖入的首张图片。 */
 const handleDrop = (e: DragEvent) => {
-  const files = e.dataTransfer?.files
-  if (files && files.length > 0) {
-    processFile(files[0])
-  }
+  const file = e.dataTransfer?.files[0]
+  if (file) processFile(file)
 }
 
+/** 清除失效的预览和结果；错误只显示可理解提示，不保留旧图的下载按钮。 */
+const showImageError = (message: string) => {
+  originalImage.value = ''
+  compressedUrl.value = ''
+  compressedSize.value = 0
+  isProcessing.value = false
+  errorMessage.value = message
+}
+
+/** 读取新图片并废弃之前的异步回调，防止快速重选时旧文件覆盖新文件。 */
 const processFile = (file: File) => {
-  if (!file.type.startsWith('image/')) {
-    ElMessage.warning('请上传图片文件')
+  const revision = ++fileRevision
+  compressionRevision += 1
+  showImageError('')
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+    showImageError('请选择 JPG、PNG 或 WebP 格式的图片')
     return
   }
-
   originalSize.value = file.size
+  isProcessing.value = true
   const reader = new FileReader()
-  reader.onload = (e) => {
-    originalImage.value = e.target?.result as string
+  reader.onload = () => {
+    if (revision !== fileRevision) return
+    originalImage.value = reader.result as string
     compressImage()
+  }
+  reader.onerror = () => {
+    if (revision === fileRevision) showImageError('图片读取失败，请重新选择')
   }
   reader.readAsDataURL(file)
 }
 
+/** 固定本次编码参数并仅提交最新结果，格式后缀按浏览器实际生成的 MIME 确定。 */
 const compressImage = () => {
   if (!originalImage.value) return
-
+  const revision = ++compressionRevision
+  const source = originalImage.value
+  const outputFormat = format.value
+  const outputQuality = quality.value
+  const outputScale = scale.value
+  compressedUrl.value = ''
+  compressedSize.value = 0
+  isProcessing.value = true
+  errorMessage.value = ''
   const img = new Image()
-  img.src = originalImage.value
   img.onload = () => {
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const w = img.width * scale.value
-    const h = img.height * scale.value
-
-    canvas.width = w
-    canvas.height = h
-
-    // Fill white background for JPEG (transparency turns black otherwise)
-    if (format.value === 'jpeg') {
-      ctx.fillStyle = '#FFFFFF'
-      ctx.fillRect(0, 0, w, h)
+    if (revision !== compressionRevision) return
+    try {
+      const canvas = document.createElement('canvas')
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('无法创建画布')
+      const width = Math.max(1, Math.round(img.width * outputScale))
+      const height = Math.max(1, Math.round(img.height * outputScale))
+      canvas.width = width
+      canvas.height = height
+      if (outputFormat === 'jpeg') {
+        ctx.fillStyle = '#FFFFFF'
+        ctx.fillRect(0, 0, width, height)
+      }
+      ctx.drawImage(img, 0, 0, width, height)
+      const dataUrl = canvas.toDataURL(`image/${outputFormat}`, outputQuality)
+      if (dataUrl === 'data:,') throw new Error('图片尺寸超出浏览器限制')
+      const actualMime = dataUrl.match(/^data:image\/(png|jpeg|webp);base64,/)?.[1]
+      if (!actualMime) throw new Error('图片编码失败')
+      resultFormat.value = actualMime
+      compressedUrl.value = dataUrl
+      const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+      const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
+      compressedSize.value = base64.length * 0.75 - padding
+      isProcessing.value = false
+    } catch (error) {
+      console.error('[图片压缩] 编码失败', error instanceof Error ? error.message : '未知错误')
+      showImageError('图片处理失败，请换一张图片或降低缩放比例后重试')
     }
-
-    ctx.drawImage(img, 0, 0, w, h)
-
-    const mimeType = `image/${format.value}`
-    const dataUrl = canvas.toDataURL(mimeType, quality.value)
-
-    compressedUrl.value = dataUrl
-
-    // Calculate approximate size
-    const base64Length = dataUrl.length - (dataUrl.indexOf(',') + 1)
-    const padding = (dataUrl.charAt(dataUrl.length - 2) === '=') ? 2 : ((dataUrl.charAt(dataUrl.length - 1) === '=') ? 1 : 0)
-    compressedSize.value = base64Length * 0.75 - padding
   }
+  img.onerror = () => {
+    if (revision === compressionRevision) showImageError('图片无法读取，文件可能已损坏，请重新选择')
+  }
+  img.src = source
 }
 
+/** 按指针位置更新前后对比的分割位置。 */
 const handleCompareMove = (e: MouseEvent | TouchEvent) => {
   if (!compareContainer.value) return
 
@@ -283,6 +322,7 @@ const handleCompareMove = (e: MouseEvent | TouchEvent) => {
   comparePosition.value = pos
 }
 
+/** 将字节数转为适合界面阅读的文件大小。 */
 const formatSize = (bytes: number) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -291,13 +331,22 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
+/** 下载最新编码结果，后缀与实际图片数据一致。 */
 const downloadImage = () => {
-  if (!compressedUrl.value) return
+  if (isProcessing.value || !compressedUrl.value) return
   const link = document.createElement('a')
-  link.download = `compressed_${Date.now()}.${format.value}`
+  link.download = `compressed_${Date.now()}.${resultFormat.value}`
   link.href = compressedUrl.value
+  document.body.appendChild(link)
   link.click()
+  link.remove()
 }
+
+/** 页面离开后废弃未完成的文件读取和图片加载回调。 */
+onBeforeUnmount(() => {
+  fileRevision += 1
+  compressionRevision += 1
+})
 </script>
 
 <style scoped>

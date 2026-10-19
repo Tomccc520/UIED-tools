@@ -16,6 +16,8 @@ CONTAINER_IMAGE="${UIEDTOOL_CONTAINER_IMAGE:-node:20}"
 CONTAINER_ENV="${APP_ROOT}/shared/.env.container"
 RUNTIME_ARCHIVE="$(find "${SCRIPT_DIR}" -maxdepth 1 -type f -name 'uiedtool-*-runtime.tar.gz' | sort | head -n 1)"
 APPLY_DB_PATCHES="${UIEDTOOL_APPLY_DB_PATCHES:-0}"
+NGINX_BIN="${UIEDTOOL_NGINX_BIN:-/www/server/nginx/sbin/nginx}"
+NGINX_EXTENSION_FILE="${UIEDTOOL_NGINX_EXTENSION_FILE:-/www/server/panel/vhost/nginx/extension/uiedtool.com/uiedtool-fullstack.conf}"
 
 DB_USER=""
 DB_PASSWORD=""
@@ -64,6 +66,65 @@ check_requirements() {
       return 1
     }
   done
+
+  [[ -x "${NGINX_BIN}" ]] || {
+    printf '未找到 Nginx 可执行文件: %s\n' "${NGINX_BIN}" >&2
+    return 1
+  }
+  # 先确认已有配置可用，避免发布中途才发现其他站点的历史配置错误。
+  "${NGINX_BIN}" -t
+}
+
+# 函数说明：备份当前托管的 Nginx 扩展文件，并记录首次部署时文件不存在的状态。
+# 参数：backup_dir 本次版本的备份目录。
+backup_nginx_config() {
+  local backup_dir="$1"
+  if [[ -f "${NGINX_EXTENSION_FILE}" ]]; then
+    cp -p "${NGINX_EXTENSION_FILE}" "${backup_dir}/nginx-extension.conf" || return 1
+    printf '1\n' > "${backup_dir}/nginx-extension.existed"
+  else
+    printf '0\n' > "${backup_dir}/nginx-extension.existed"
+  fi
+}
+
+# 函数说明：恢复升级前的扩展配置；首次安装失败时删除本轮新建文件，不遗留无效 include。
+# 参数：backup_dir 本次版本的备份目录。
+restore_nginx_config() {
+  local backup_dir="$1"
+  [[ -f "${backup_dir}/nginx-extension.existed" ]] || return 0
+  if [[ "$(cat "${backup_dir}/nginx-extension.existed")" == "1" ]]; then
+    cp -p "${backup_dir}/nginx-extension.conf" "${NGINX_EXTENSION_FILE}"
+  else
+    rm -f "${NGINX_EXTENSION_FILE}"
+  fi
+}
+
+# 函数说明：安装新版本路由与 SEO 配置，只有通过完整 Nginx 校验后才 reload。
+# 参数：release_dir 已切换为 current 的发布目录；失败时由发布流程恢复旧版本及配置。
+publish_nginx_config() {
+  local release_dir="$1"
+  mkdir -p "$(dirname "${NGINX_EXTENSION_FILE}")" || return 1
+  cp "${release_dir}/nginx/uiedtool.com.fullstack.locations.conf" "${NGINX_EXTENSION_FILE}" || return 1
+  "${NGINX_BIN}" -t || return 1
+  "${NGINX_BIN}" -s reload
+}
+
+# 函数说明：发布静态文件，逐步返回失败，让调用方能在复制或权限设置中断时恢复备份。
+# 参数：release_dir 本次已解压并校验的发布目录。
+publish_frontend_files() {
+  local release_dir="$1"
+  ln -sfn "${release_dir}" "${APP_ROOT}/current" || return 1
+  rsync -a --delete \
+    --exclude='.well-known/' \
+    --exclude='admin/' \
+    "${release_dir}/frontend/site/" \
+    "${PUBLIC_DIR}/" || return 1
+  rsync -a --delete \
+    "${release_dir}/frontend/admin/" \
+    "${PUBLIC_DIR}/admin/" || return 1
+  chown -R www:www "${PUBLIC_DIR}" "${APP_ROOT}/shared/uploads" || return 1
+  chown www:www "${APP_ROOT}/shared/.env" || return 1
+  chmod 640 "${APP_ROOT}/shared/.env"
 }
 
 # 函数说明：解析宝塔升级参数，默认仅发布代码，只有显式参数才执行数据库补丁。
@@ -79,7 +140,7 @@ parse_arguments() {
         ;;
       -h|--help)
         printf '用法: bash deploy-update.sh [--code-only|--apply-db-patches]\n'
-        printf '默认模式: 仅更新主站、管理端和 Go API，不执行数据库补丁。\n'
+        printf '默认模式: 更新主站、管理端、Go API 和 Nginx 路由配置，不执行数据库补丁。\n'
         printf '数据库模式: 先备份数据库，再按 la_system_upgrade_log 跳过已成功补丁。\n'
         exit 0
         ;;
@@ -228,15 +289,15 @@ apply_database_patches() {
 start_api_container() {
   local attempt
 
-  cp "${APP_ROOT}/shared/.env" "${CONTAINER_ENV}"
-  sed -i "s#^UPLOAD_DIRECTORY=.*#UPLOAD_DIRECTORY='/app/uploads/'#" "${CONTAINER_ENV}"
-  chown www:www "${CONTAINER_ENV}"
-  chmod 640 "${CONTAINER_ENV}"
+  cp "${APP_ROOT}/shared/.env" "${CONTAINER_ENV}" || return 1
+  sed -i "s#^UPLOAD_DIRECTORY=.*#UPLOAD_DIRECTORY='/app/uploads/'#" "${CONTAINER_ENV}" || return 1
+  chown www:www "${CONTAINER_ENV}" || return 1
+  chmod 640 "${CONTAINER_ENV}" || return 1
 
   if docker container inspect "${CONTAINER_NAME}" >/dev/null 2>&1; then
-    docker update --restart=no "${CONTAINER_NAME}" >/dev/null
+    docker update --restart=no "${CONTAINER_NAME}" >/dev/null || return 1
     docker stop --time 10 "${CONTAINER_NAME}" >/dev/null 2>&1 || true
-    docker rm -f "${CONTAINER_NAME}" >/dev/null
+    docker rm -f "${CONTAINER_NAME}" >/dev/null || return 1
   fi
 
   for attempt in $(seq 1 10); do
@@ -287,17 +348,27 @@ print_release_fingerprint() {
   printf 'API 二进制 SHA256: %s\n' "${api_sha}"
 }
 
-# 函数说明：当新 API 启动失败时恢复上一版本链接和静态文件。
+# 函数说明：发布失败时恢复上一版本、静态文件、API 和路由配置，避免保留半发布状态。
 rollback_release() {
   local previous_release="$1"
   local backup_dir="$2"
 
-  [[ -n "${previous_release}" && -d "${previous_release}" ]] || return 0
-  printf '新版本健康检查失败，正在回滚到: %s\n' "${previous_release}" >&2
-  ln -sfn "${previous_release}" "${APP_ROOT}/current"
-  tar -xzf "${backup_dir}/public.tar.gz" -C "${SITE_ROOT}"
-  chown -R www:www "${PUBLIC_DIR}"
-  start_api_container
+  # 没有历史 release 时也恢复原公开文件与配置，并明确提示 API 无法自动切回。
+  restore_nginx_config "${backup_dir}" || return 1
+  tar -xzf "${backup_dir}/public.tar.gz" -C "${SITE_ROOT}" || return 1
+  chown -R www:www "${PUBLIC_DIR}" || return 1
+  if [[ -z "${previous_release}" || ! -d "${previous_release}" ]]; then
+    printf '没有可切回的历史 release，已恢复原公开文件与 Nginx 配置，请人工核对 API 状态。\n' >&2
+    return 1
+  fi
+  printf '新版本发布失败，正在回滚到: %s\n' "${previous_release}" >&2
+  ln -sfn "${previous_release}" "${APP_ROOT}/current" || return 1
+  start_api_container || return 1
+  "${NGINX_BIN}" -t && "${NGINX_BIN}" -s reload || return 1
+  if ! wait_for_health; then
+    printf '旧版本 API 尚未恢复健康，请检查容器日志；本次发布未完成。\n' >&2
+    return 1
+  fi
 }
 
 # 函数说明：执行校验、备份、解压、可选数据库补丁、静态发布与 API 切换的完整升级。
@@ -325,6 +396,7 @@ main() {
   mkdir -p "${release_dir}" "${backup_dir}" "${APP_ROOT}/shared/uploads"
   printf '%s\n' "${previous_release}" > "${backup_dir}/previous-release.txt"
   tar -czf "${backup_dir}/public.tar.gz" -C "${SITE_ROOT}" public
+  backup_nginx_config "${backup_dir}"
   docker inspect "${CONTAINER_NAME}" > "${backup_dir}/docker-inspect.json" 2>/dev/null || true
 
   log_step '解压新版本'
@@ -333,6 +405,7 @@ main() {
   test -f "${release_dir}/frontend/site/index.html"
   test -f "${release_dir}/frontend/admin/index.html"
   test -f "${release_dir}/frontend/site/404.html"
+  test -f "${release_dir}/frontend/site/frontend-route-allowlist.conf"
   test -f "${release_dir}/nginx/uiedtool.com.fullstack.locations.conf"
   chmod 755 "${release_dir}/backend/uiedtool-api"
 
@@ -346,23 +419,22 @@ main() {
   fi
 
   log_step '发布主站和管理端'
-  ln -sfn "${release_dir}" "${APP_ROOT}/current"
-  rsync -a --delete \
-    --exclude='.well-known/' \
-    --exclude='admin/' \
-    "${release_dir}/frontend/site/" \
-    "${PUBLIC_DIR}/"
-  rsync -a --delete \
-    "${release_dir}/frontend/admin/" \
-    "${PUBLIC_DIR}/admin/"
-  chown -R www:www "${PUBLIC_DIR}" "${APP_ROOT}/shared/uploads"
-  chown www:www "${APP_ROOT}/shared/.env"
-  chmod 640 "${APP_ROOT}/shared/.env"
+  if ! publish_frontend_files "${release_dir}"; then
+    printf '静态文件发布失败，开始恢复上一版本。\n' >&2
+    rollback_release "${previous_release}" "${backup_dir}"
+    return 1
+  fi
 
   log_step '切换 Go API'
-  start_api_container
-  if ! wait_for_health; then
+  if ! start_api_container || ! wait_for_health; then
     docker logs --tail 80 "${CONTAINER_NAME}" >&2 || true
+    rollback_release "${previous_release}" "${backup_dir}"
+    return 1
+  fi
+
+  log_step '发布路由与 SEO 配置'
+  if ! publish_nginx_config "${release_dir}"; then
+    printf 'Nginx 配置发布失败，开始恢复上一版本。\n' >&2
     rollback_release "${previous_release}" "${backup_dir}"
     return 1
   fi
@@ -376,4 +448,6 @@ main() {
   printf '验收地址: https://uiedtool.com/  https://uiedtool.com/admin/\n'
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

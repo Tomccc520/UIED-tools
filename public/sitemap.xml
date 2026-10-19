@@ -47,11 +47,6 @@
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://uiedtool.com/tools/ai-ranking</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
     <loc>https://uiedtool.com/tools/ai/analysis/activity-plan</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
@@ -388,11 +383,6 @@
   </url>
   <url>
     <loc>https://uiedtool.com/tools/ai/remove-watermark</loc>
-    <changefreq>weekly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  <url>
-    <loc>https://uiedtool.com/tools/ai/resume</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -1203,6 +1193,11 @@
   </url>
   <url>
     <loc>https://uiedtool.com/tools/img-watermark</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://uiedtool.com/tools/jsformat</loc>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>

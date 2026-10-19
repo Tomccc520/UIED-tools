@@ -916,6 +916,15 @@ export const constantRoute: RouteRecordRaw[] = [
     name: 'htmlformat',
   },
   {
+    path: '/tools/jsformat',
+    component: () => import('../components/Tools/JSFormat/JSFormat.vue'),
+    name: 'jsformat',
+    meta: {
+      title: 'JavaScript 代码格式化与压缩',
+      description: '在线格式化 JavaScript 代码，支持代码压缩和混淆，所有处理均在浏览器本地完成。'
+    }
+  },
+  {
     path: '/tools/cssformat',
     component: () => import('../components/Tools/CssFormat/CssFormat.vue'),
     name: 'cssformat',
@@ -1081,6 +1090,107 @@ export const constantRoute: RouteRecordRaw[] = [
       description: '了解 UIED Tools 在线工具平台、产品能力、服务方向与开发团队。平台提供 AI、设计、图片处理、办公和开发等实用在线工具。',
       image: '/favicon.ico',
     }
+  },
+  // 历史 sitemap 地址保留重定向；发布脚本复用 redirect 生成 HTTP 301，并保留查询参数。
+  {
+    path: '/tools/css-format',
+    redirect: '/tools/cssformat',
+    name: 'legacySitemapRedirect1',
+  },
+  {
+    path: '/tools/js-format',
+    redirect: '/tools/jsformat',
+    name: 'legacySitemapRedirect2',
+  },
+  {
+    path: '/tools/html-format',
+    redirect: '/tools/htmlformat',
+    name: 'legacySitemapRedirect3',
+  },
+  {
+    path: '/tools/number-to-chinese',
+    redirect: '/tools/doc/number-chinese',
+    name: 'legacySitemapRedirect4',
+  },
+  {
+    path: '/tools/random-password',
+    redirect: '/tools/randompassword',
+    name: 'legacySitemapRedirect5',
+  },
+  {
+    path: '/tools/scale-tran',
+    redirect: '/tools/scaletran',
+    name: 'legacySitemapRedirect6',
+  },
+  {
+    path: '/tools/text-edit',
+    redirect: '/tools/textedit',
+    name: 'legacySitemapRedirect7',
+  },
+  {
+    path: '/tools/text-remove-duplicate',
+    redirect: '/tools/textremoveduplicate',
+    name: 'legacySitemapRedirect8',
+  },
+  {
+    path: '/tools/url-encode',
+    redirect: '/tools/urlencode',
+    name: 'legacySitemapRedirect9',
+  },
+  {
+    path: '/tools/web-info',
+    redirect: '/tools/web/info',
+    name: 'legacySitemapRedirect10',
+  },
+  {
+    path: '/tools/ascii-word-pic',
+    redirect: '/tools/asciiwordpic',
+    name: 'legacySitemapRedirect11',
+  },
+  {
+    path: '/tools/color-picker',
+    redirect: '/tools/colorpicker',
+    name: 'legacySitemapRedirect12',
+  },
+  {
+    path: '/tools/html-entity',
+    redirect: '/tools/htmlentity',
+    name: 'legacySitemapRedirect13',
+  },
+  {
+    path: '/tools/http-status-code',
+    redirect: '/tools/httpstatuscode',
+    name: 'legacySitemapRedirect14',
+  },
+  {
+    path: '/tools/chart',
+    redirect: '/tools/bar',
+    name: 'legacySitemapRedirect15',
+  },
+  {
+    path: '/tools/grid',
+    redirect: '/tools/design/grid',
+    name: 'legacySitemapRedirect16',
+  },
+  {
+    path: '/tools/ai/xiaohongshu',
+    redirect: '/tools/xiaohongshu',
+    name: 'legacySitemapRedirect17',
+  },
+  {
+    path: '/tools/ai/ai-ranking',
+    redirect: '/tools/ai-ranking',
+    name: 'legacySitemapRedirect18',
+  },
+  {
+    path: '/tools/ai/outsource-quote',
+    redirect: '/tools/ai-outsource-quote',
+    name: 'legacySitemapRedirect19',
+  },
+  {
+    path: '/tools/ai/design-cover',
+    redirect: '/tools/ai-design-cover',
+    name: 'legacySitemapRedirect20',
   },
   //其他路由
   {
@@ -1414,6 +1524,7 @@ export const constantRoute: RouteRecordRaw[] = [
     path: '/tools/ai-ranking',
     component: { render: () => null },
     name: 'airanking',
+    meta: { robots: 'noindex,nofollow' },
     /**
      * AI产品榜已下线，保留原路由并跳转到外部导航站
      */
@@ -1564,6 +1675,7 @@ export const constantRoute: RouteRecordRaw[] = [
     path: '/tools/ai/resume',
     component: standaloneRedirectComponent,
     name: 'aiResume',
+    meta: { robots: 'noindex,nofollow' },
     beforeEnter: () => AI_RESUME_RELEASE_ENABLED
       ? redirectToStandaloneTool('/tools/ai-resume')
       : '/',

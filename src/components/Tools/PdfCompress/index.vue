@@ -8,7 +8,7 @@
 -->
 
 <script setup lang="ts">
-import { ref, reactive, watch, onUnmounted, computed } from 'vue'
+import { ref, reactive, watch, onUnmounted, h } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import JSZip from 'jszip'
@@ -59,7 +59,7 @@ const isProcessing = ref(false)
 const isDragging = ref(false)
 const dataFileRef = ref()
 const processedFiles = ref<Map<string, ProcessedFile>>(new Map())
-const showAdvanced = ref(false)
+let disposed = false
 
 const guideSteps = [
   { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，支持批量上传。' },
@@ -158,7 +158,7 @@ const features = [
   {
     icon: 'Quality',
     title: '批量处理',
-    desc: '支持多线程异步处理多个PDF文件，实时显示压缩进度与体积对比'
+    desc: '依次处理多个PDF文件，实时显示压缩进度与体积对比，控制内存占用'
   },
   {
     icon: 'Batch',
@@ -251,10 +251,12 @@ const getCurrentJpegCompression = (): JsPdfImageCompression => {
  * 生成文件缩略图（取第一页）
  */
 const generateThumbnail = async (file: File): Promise<string> => {
+  let loadingTask: import('pdfjs-dist').PDFDocumentLoadingTask | undefined
   try {
     const pdfjsLib = await ensurePdfjsRuntime()
     const arrayBuffer = await file.arrayBuffer()
-    const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
+    loadingTask = pdfjsLib.getDocument(arrayBuffer)
+    const pdf = await loadingTask.promise
     const page = await pdf.getPage(1)
     const scale = 0.5 // 缩略图不需要太高清
     const viewport = page.getViewport({ scale })
@@ -269,8 +271,10 @@ const generateThumbnail = async (file: File): Promise<string> => {
     await page.render({ canvasContext: ctx, viewport }).promise
     return canvas.toDataURL('image/jpeg', 0.8)
   } catch (e) {
-    console.error('缩略图生成失败', e)
+    console.error('[pdf-compress] 缩略图生成失败')
     return ''
+  } finally {
+    await loadingTask?.destroy().catch(() => undefined)
   }
 }
 
@@ -288,6 +292,9 @@ const handleChange = async (uploadFile: any, _uploadFiles: any[]) => {
   } catch (error) {
     console.error('文件处理失败:', error)
     ElMessage.error('文件加载失败')
+  } finally {
+    // 上传组件只负责获取文件，业务队列必须在校验通过后单独添加。
+    dataFileRef.value?.handleRemove(uploadFile)
   }
 }
 
@@ -298,6 +305,7 @@ const handleChange = async (uploadFile: any, _uploadFiles: any[]) => {
  * @param uid 外部传入的唯一标识
  */
 const addFileToQueue = async (file: File, uid?: string) => {
+  if (disposed || isProcessing.value) return
   if (!validateFile(file)) {
     return
   }
@@ -328,7 +336,8 @@ const addFileToQueue = async (file: File, uid?: string) => {
 
   // 缩略图异步生成，失败不影响主流程
   generateThumbnail(file).then(img => {
-    newFile.previewImage = img
+    const queued = fileList.value.find((item) => item.uid === fileUid)
+    if (!disposed && queued) queued.previewImage = img
   }).catch(() => {
     newFile.previewImage = ''
   })
@@ -350,9 +359,13 @@ const handleDrop = (e: DragEvent) => {
   })
 }
 
+/** 删除队列项，同时释放源文件与处理结果地址，处理中禁止删除。 */
 const handleRemove = (file: UploadFile) => {
+  if (isProcessing.value) return
   const index = fileList.value.findIndex(item => item.uid === file.uid)
   if (index !== -1) {
+    const processed = processedFiles.value.get(file.uid)
+    if (processed) URL.revokeObjectURL(processed.url)
     processedFiles.value.delete(file.uid)
     if (file.url) URL.revokeObjectURL(file.url)
     fileList.value.splice(index, 1)
@@ -397,35 +410,36 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
     data: arrayBuffer,
     useSystemFonts: true
   } as any)
-  const pdf = await loadingTask.promise
-  const totalPages = pdf.numPages
-
-  const firstPage = await pdf.getPage(1)
-  const firstViewport = firstPage.getViewport({ scale: 1.0 })
-  const { jsPDF } = await ensureJsPdfRuntime()
-
-  const doc = new jsPDF({
-    orientation: firstViewport.width > firstViewport.height ? 'l' : 'p',
-    unit: 'pt',
-    format: [firstViewport.width, firstViewport.height],
-    compress: true,
-    putOnlyUsedFonts: true,
-    precision: 2
-  })
-
-  // 可选移除元数据，降低信息暴露并减少少量冗余字节
-  if (config.removeMetadata) {
-    doc.setProperties({
-      title: '',
-      subject: '',
-      author: '',
-      keywords: '',
-      creator: ''
-    })
-  }
-
   try {
+    const pdf = await loadingTask.promise
+    const totalPages = pdf.numPages
+
+    const firstPage = await pdf.getPage(1)
+    const firstViewport = firstPage.getViewport({ scale: 1.0 })
+    const { jsPDF } = await ensureJsPdfRuntime()
+
+    const doc = new jsPDF({
+      orientation: firstViewport.width > firstViewport.height ? 'l' : 'p',
+      unit: 'pt',
+      format: [firstViewport.width, firstViewport.height],
+      compress: true,
+      putOnlyUsedFonts: true,
+      precision: 2
+    })
+
+    // 可选移除元数据，降低信息暴露并减少少量冗余字节
+    if (config.removeMetadata) {
+      doc.setProperties({
+        title: '',
+        subject: '',
+        author: '',
+        keywords: '',
+        creator: ''
+      })
+    }
+
     for (let i = 1; i <= totalPages; i++) {
+      if (disposed) throw new Error('处理已取消')
       file.progress = 10 + Math.floor((i / totalPages) * 80)
 
       const page = await pdf.getPage(i)
@@ -486,35 +500,36 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
       }
     }
-  } finally {
-    pdf.cleanup()
-    await pdf.destroy()
-  }
 
-  const blob = doc.output('blob')
-  file.endTime = Date.now()
-  file.logs.push(`处理完成，耗时 ${((file.endTime - file.startTime!) / 1000).toFixed(1)}s`)
+    const blob = doc.output('blob')
+    file.endTime = Date.now()
+    file.logs.push(`处理完成，耗时 ${((file.endTime - file.startTime!) / 1000).toFixed(1)}s`)
 
-  // 体积检查
-  if (blob.size >= file.size) {
-    file.logs.push('警告: 压缩后体积未减小，回退至原文件')
-    ElMessage.warning(`文件 ${file.name} 已是最佳压缩状态，保留原文件`)
-    file.progress = 100
-    return {
-      blob: file.raw!,
-      url: URL.createObjectURL(file.raw!),
-      size: file.size
+    if (disposed) throw new Error('处理已取消')
+    // 体积检查
+    if (blob.size >= file.size) {
+      file.logs.push('警告: 压缩后体积未减小，回退至原文件')
+      ElMessage.warning(`文件 ${file.name} 已是最佳压缩状态，保留原文件`)
+      file.progress = 100
+      return {
+        blob: file.raw!,
+        url: URL.createObjectURL(file.raw!),
+        size: file.size
+      }
     }
-  }
 
-  file.progress = 100
-  return { blob, url: URL.createObjectURL(blob), size: blob.size }
+    file.progress = 100
+    return { blob, url: URL.createObjectURL(blob), size: blob.size }
+  } finally {
+    await loadingTask.destroy().catch(() => undefined)
+  }
 }
 
 /**
  * 批量压缩
  */
 const compressPDF = async () => {
+  if (isProcessing.value || disposed) return
   if (fileList.value.length === 0) {
     ElMessage.warning('请先上传PDF文件')
     return
@@ -534,29 +549,40 @@ const compressPDF = async () => {
     f.progress = 0
   })
 
+  let failedCount = 0
   for (const file of filesToProcess) {
+    if (disposed) break
     try {
       const result = await compressFile(file)
+      if (disposed) { URL.revokeObjectURL(result.url); break }
       processedFiles.value.set(file.uid, result)
       file.status = 'success'
     } catch (error) {
-      console.error(error)
+      if (disposed) break
+      failedCount += 1
+      console.error('[pdf-compress] 文档压缩失败')
       file.status = 'error'
       file.progress = 0
-      file.logs?.push(`错误: ${error}`)
+      file.logs?.push('压缩失败，请确认文件未损坏且没有打开密码后重试')
       ElMessage.error(`文件 ${file.name} 压缩失败`)
     }
   }
 
   isProcessing.value = false
-  ElMessage.success('处理完成')
+  if (!disposed) {
+    if (failedCount === 0) ElMessage.success('处理完成')
+    else ElMessage.warning(`${filesToProcess.length - failedCount} 个文件处理成功，${failedCount} 个文件失败，请重试`)
+  }
 }
 
 /**
  * 重新压缩
  */
 const recompressFile = async (file: UploadFile) => {
-  if (file.status === 'processing') return
+  if (isProcessing.value || disposed) return
+  isProcessing.value = true
+  const previousResult = processedFiles.value.get(file.uid)
+  if (previousResult) URL.revokeObjectURL(previousResult.url)
 
   file.status = 'processing'
   file.progress = 0
@@ -564,14 +590,18 @@ const recompressFile = async (file: UploadFile) => {
 
   try {
     const result = await compressFile(file)
+    if (disposed) { URL.revokeObjectURL(result.url); return }
     processedFiles.value.set(file.uid, result)
     file.status = 'success'
-    ElMessage.success(`文件 ${file.name} 重新压缩完成`)
+    if (!disposed) ElMessage.success(`文件 ${file.name} 重新压缩完成`)
   } catch (error) {
-    console.error(error)
+    if (disposed) return
+    console.error('[pdf-compress] 文档重新压缩失败')
     file.status = 'error'
     file.progress = 0
     ElMessage.error(`文件 ${file.name} 重新压缩失败`)
+  } finally {
+    isProcessing.value = false
   }
 }
 
@@ -623,22 +653,31 @@ const downloadAllFiles = async () => {
   const zip = new JSZip()
   const folder = zip.folder('compressed_pdfs')
 
-  successFiles.forEach(file => {
+  const usedNames = new Set<string>()
+  successFiles.forEach((file, index) => {
     const processed = processedFiles.value.get(file.uid)
     if (processed && folder) {
-      folder.file(getOutputFilename(file.name), processed.blob)
+      const originalName = getOutputFilename(file.name)
+      let filename = originalName
+      let suffix = index + 1
+      while (usedNames.has(filename)) filename = `${suffix++}_${originalName}`
+      usedNames.add(filename)
+      folder.file(filename, processed.blob)
     }
   })
 
   const content = await zip.generateAsync({ type: 'blob' })
   const link = document.createElement('a')
-  link.href = URL.createObjectURL(content)
+  const zipUrl = URL.createObjectURL(content)
+  link.href = zipUrl
   link.download = `batch_compressed_${Date.now()}.zip`
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
+  setTimeout(() => URL.revokeObjectURL(zipUrl), 1000)
 }
 
+/** 释放本页队列及输出文件的 Blob 地址。 */
 const clearAll = () => {
   fileList.value.forEach(f => {
     if (f.url) URL.revokeObjectURL(f.url)
@@ -688,15 +727,19 @@ const getCompressionRatio = (file: UploadFile) => {
 
 const showLogs = (file: UploadFile) => {
   ElMessageBox.alert(
-    (file.logs || []).join('<br>'),
+    h('pre', { style: 'white-space:pre-wrap;overflow-wrap:anywhere' }, (file.logs || []).join('\n')),
     '处理日志',
     {
-      dangerouslyUseHTMLString: true,
       customClass: 'log-message-box'
     }
   )
 }
 
+/** 离开页面后停止后续处理并释放已生成的文件地址。 */
+onUnmounted(() => {
+  disposed = true
+  clearAll()
+})
 </script>
 
 <template>
@@ -714,7 +757,7 @@ const showLogs = (file: UploadFile) => {
           class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
           :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
           @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
-          <el-upload v-model:file-list="fileList" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
+          <el-upload :disabled="isProcessing" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
             accept="application/pdf" :auto-upload="false" :on-change="handleChange" :show-file-list="false" multiple
             drag>
             <div class="flex flex-col items-center justify-center h-full py-10">
@@ -739,10 +782,10 @@ const showLogs = (file: UploadFile) => {
 
             <!-- 预设选择 -->
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-              <div class="flex items-center gap-2">
+              <div class="flex flex-wrap items-center gap-2 min-w-0">
                 <span class="text-sm font-bold text-gray-700">压缩模式：</span>
-                <div class="flex bg-gray-100 rounded-lg p-1">
-                  <button v-for="(preset, key) in presets" :key="key" @click="currentPreset = key"
+                <div class="flex flex-wrap bg-gray-100 rounded-lg p-1">
+                  <button v-for="(preset, key) in presets" :key="key" @click="currentPreset = key" :disabled="isProcessing"
                     class="px-4 py-1.5 rounded-md text-sm font-medium transition-all"
                     :class="currentPreset === key ? 'bg-white text-blue-600' : 'text-gray-500 hover:text-gray-700'">
                     {{ preset.name }}
@@ -760,7 +803,7 @@ const showLogs = (file: UploadFile) => {
                   DPI (分辨率)
                   <span class="text-blue-600">{{ config.dpi }}</span>
                 </label>
-                <el-input-number v-model="config.dpi" :min="72" :max="600" :step="10" class="w-full" />
+                <el-input-number :disabled="isProcessing" v-model="config.dpi" :min="72" :max="600" :step="10" class="w-full" />
                 <p class="text-xs text-gray-400">屏幕72，Web 150，打印300+</p>
               </div>
 
@@ -770,14 +813,14 @@ const showLogs = (file: UploadFile) => {
                   图片质量
                   <span class="text-blue-600">{{ config.imageQuality }}%</span>
                 </label>
-                <el-slider v-model="config.imageQuality" :min="10" :max="100" :step="5" />
+                <el-slider :disabled="isProcessing" v-model="config.imageQuality" :min="10" :max="100" :step="5" />
                 <p class="text-xs text-gray-400">数值越低体积越小，建议 50-85</p>
               </div>
 
               <!-- 颜色模式 -->
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700">颜色模式</label>
-                <el-select v-model="config.colorMode" class="w-full">
+                <el-select :disabled="isProcessing" v-model="config.colorMode" class="w-full">
                   <el-option label="彩色 (Color)" value="color" />
                   <el-option label="灰度 (Grayscale)" value="grayscale" />
                 </el-select>
@@ -787,7 +830,7 @@ const showLogs = (file: UploadFile) => {
               <!-- 文件命名 -->
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700">输出文件名规则</label>
-                <el-input v-model="config.filenamePattern" placeholder="例如: compressed_{name}" />
+                <el-input :disabled="isProcessing" v-model="config.filenamePattern" placeholder="例如: compressed_{name}" />
                 <p class="text-xs text-gray-400">支持变量: {name}, {date}</p>
               </div>
 
@@ -795,7 +838,7 @@ const showLogs = (file: UploadFile) => {
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700">移除元数据</label>
                 <div class="h-[32px] flex items-center">
-                  <el-switch v-model="config.removeMetadata" />
+                  <el-switch :disabled="isProcessing" v-model="config.removeMetadata" />
                 </div>
                 <p class="text-xs text-gray-400">开启后将清空作者、主题等文档属性</p>
               </div>
@@ -901,7 +944,7 @@ const showLogs = (file: UploadFile) => {
                   </path>
                 </svg>
               </button>
-              <button v-if="file.status === 'success'" @click="recompressFile(file)"
+              <button v-if="file.status === 'success'" @click="recompressFile(file)" :disabled="isProcessing"
                 class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="重新压缩">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -917,7 +960,7 @@ const showLogs = (file: UploadFile) => {
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
               </button>
-              <button @click="handleRemove(file)"
+              <button @click="handleRemove(file)" :disabled="isProcessing"
                 class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="删除">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

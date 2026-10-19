@@ -9,6 +9,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import ts from 'typescript'
 
 const routerFile = path.resolve(import.meta.dirname, '../../../src/router/router.ts')
 
@@ -19,33 +20,47 @@ const routerFile = path.resolve(import.meta.dirname, '../../../src/router/router
 export const readRouterSource = () => fs.readFileSync(routerFile, 'utf8')
 
 /**
- * 函数说明：剥离源码中的块注释与行注释，避免被注释掉的路由混入生成结果；
- *          行注释剥离时排除协议分隔符（如 https://），防止破坏字符串内容。
- * @param source 路由源码文本
- * @returns 去除注释后的源码文本
+ * 函数说明：读取对象的指定静态属性，避免注释、函数体或相邻路由中的属性污染解析结果。
+ * @param object 对象语法节点；name 属性名
+ * @returns 属性值语法节点，不存在时返回 undefined
  */
-const stripComments = (source) => source
-  .replace(/\/\*[\s\S]*?\*\//g, '')
-  .replace(/(^|[^:])\/\/[^\n]*/g, '$1')
+const readProperty = (object, name) => object.properties
+  .find((property) => ts.isPropertyAssignment(property) && property.name.getText().replace(/['"]/g, '') === name)
+  ?.initializer
 
 /**
  * 函数说明：提取静态注册的路由信息；动态参数、通配符与正则路径无法被站点地图或 Nginx 精确匹配，直接过滤。
  * @param source 路由源码文本
- * @returns 数组元素为 { path, isRedirect }，按路径去重并排序
+ * @returns 静态路由、跳转目标与可索引状态，按路径去重并排序
  */
 export const extractStaticRouteInfos = (source) => {
-  const matches = [...stripComments(source).matchAll(/path:\s*['"]([^'"]+)['"]([\s\S]*?)(?=path:\s*['"]|$)/g)]
-  const infos = matches
-    .map((match) => ({
-      rawPath: String(match[1] || '').trim(),
-      routeBody: String(match[2] || '')
-    }))
-    .filter((info) => info.rawPath.startsWith('/'))
-    .filter((info) => !/[:*()]/.test(info.rawPath))
-    .map((info) => ({
-      path: info.rawPath === '/' ? '/' : info.rawPath.replace(/\/+$/g, ''),
-      isRedirect: /(^|[^\w$])redirect\s*:/.test(info.routeBody)
-    }))
+  const sourceFile = ts.createSourceFile('router.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+  const infos = []
+
+  /** 函数说明：递归收集带静态绝对 path 的路由对象，跳过动态参数路径。 */
+  const visit = (node) => {
+    if (ts.isObjectLiteralExpression(node)) {
+      const pathNode = readProperty(node, 'path')
+      if (pathNode && ts.isStringLiteralLike(pathNode)) {
+        const rawPath = pathNode.text.trim()
+        if (rawPath.startsWith('/') && !/[:*()]/.test(rawPath)) {
+          const redirectNode = readProperty(node, 'redirect')
+          const metaNode = readProperty(node, 'meta')
+          const robotsNode = metaNode && ts.isObjectLiteralExpression(metaNode)
+            ? readProperty(metaNode, 'robots')
+            : undefined
+          infos.push({
+            path: rawPath === '/' ? '/' : rawPath.replace(/\/+$/g, ''),
+            isRedirect: Boolean(redirectNode),
+            redirectTo: redirectNode && ts.isStringLiteralLike(redirectNode) ? redirectNode.text : null,
+            isIndexable: !(robotsNode && ts.isStringLiteralLike(robotsNode) && /\bnoindex\b/i.test(robotsNode.text))
+          })
+        }
+      }
+    }
+    ts.forEachChild(node, visit)
+  }
+  visit(sourceFile)
 
   // 同一路径保留首个定义，与 Vue Router 先注册先生效的行为一致。
   const seen = new Set()

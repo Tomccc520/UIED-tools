@@ -9,8 +9,8 @@
 -->
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { CopyDocument, Refresh, VideoPause, VideoPlay } from '@element-plus/icons-vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
+import { CopyDocument, VideoPause, VideoPlay } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import dayjs from 'dayjs'
@@ -21,52 +21,51 @@ const { toClipboard } = useClipboard()
 // Current Time
 const now = ref(dayjs())
 const isPaused = ref(false)
-let timer: any = null
+let timer: ReturnType<typeof setInterval> | null = null
 
 // Converter
 const timestampInput = ref('')
 const dateOutput = ref('')
 const dateInput = ref('')
 const timestampOutput = ref('')
-const unit = ref<'s' | 'ms'>('s')
+const timestampUnit = ref<'s' | 'ms'>('s')
+const dateUnit = ref<'s' | 'ms'>('s')
 
+/** 未暂停时刷新当前时间。 */
 const updateNow = () => {
   if (!isPaused.value) {
     now.value = dayjs()
   }
 }
 
+/** 切换当前时间的自动刷新状态。 */
 const togglePause = () => {
   isPaused.value = !isPaused.value
 }
 
+/** 按上半区独立单位解析完整整数时间戳并校验日期范围。 */
 const convertTimestamp = () => {
   if (!timestampInput.value) {
     dateOutput.value = ''
     return
   }
   
-  let ts = parseInt(timestampInput.value)
-  if (isNaN(ts)) {
+  const input = timestampInput.value.trim()
+  let ts = Number(input)
+  if (!/^[+-]?\d+$/.test(input) || !Number.isSafeInteger(ts)) {
     dateOutput.value = '无效的时间戳'
     return
   }
   
-  // Auto detect unit if not specified (rough guess)
-  // If > 10 digits, assume ms, else s
-  if (timestampInput.value.length > 10 && unit.value === 's') {
-    // User might have pasted ms but unit is s
-    // Let's respect unit selector primarily, but maybe show warning?
-    // For now, simple logic based on unit selector
-  }
-  
-  if (unit.value === 's') {
+  if (timestampUnit.value === 's') {
     ts *= 1000
   }
   
-  dateOutput.value = dayjs(ts).format('YYYY-MM-DD HH:mm:ss')
+  const date = dayjs(ts)
+  dateOutput.value = date.isValid() ? date.format('YYYY-MM-DD HH:mm:ss') : '无效的时间戳'
 }
 
+/** 按下半区独立单位生成时间戳，确保输出数值与单位标签同步。 */
 const convertDate = () => {
   if (!dateInput.value) {
     timestampOutput.value = ''
@@ -80,13 +79,17 @@ const convertDate = () => {
   }
   
   let ts = d.valueOf()
-  if (unit.value === 's') {
+  if (dateUnit.value === 's') {
     ts = Math.floor(ts / 1000)
   }
   
   timestampOutput.value = ts.toString()
 }
 
+watch(timestampUnit, convertTimestamp)
+watch(dateUnit, convertDate)
+
+/** 复制当前结果并提示成功或失败。 */
 const copyText = async (text: string) => {
   if (!text) return
   try {
@@ -149,7 +152,7 @@ onUnmounted(() => {
                 <div class="flex-1 flex gap-2">
                   <el-input v-model="timestampInput" placeholder="请输入时间戳" @input="convertTimestamp">
                     <template #append>
-                      <el-select v-model="unit" placeholder="单位" style="width: 80px" @change="convertTimestamp">
+                      <el-select v-model="timestampUnit" aria-label="时间戳输入单位" placeholder="单位" style="width: 80px">
                         <el-option label="秒(s)" value="s" />
                         <el-option label="毫秒(ms)" value="ms" />
                       </el-select>
@@ -178,9 +181,12 @@ onUnmounted(() => {
                 </div>
                 <div class="text-gray-400 hidden md:block">👉</div>
                 <div class="flex-1 flex gap-2">
-                  <el-input v-model="timestampOutput" readonly placeholder="转换结果">
+                  <el-input v-model="timestampOutput" aria-label="日期转换结果" readonly placeholder="转换结果">
                      <template #append>
-                      <span class="text-gray-500 text-xs">{{ unit === 's' ? '秒' : '毫秒' }}</span>
+                      <el-select v-model="dateUnit" aria-label="日期转换结果单位" placeholder="单位" style="width: 80px">
+                        <el-option label="秒(s)" value="s" />
+                        <el-option label="毫秒(ms)" value="ms" />
+                      </el-select>
                     </template>
                   </el-input>
                   <el-button @click="copyText(timestampOutput)">

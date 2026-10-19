@@ -50,26 +50,28 @@
             <div class="mt-4 text-center">
               <p class="text-gray-700 font-medium">{{ file.name }}</p>
               <p class="text-sm text-gray-500 mt-1">{{ (file.size / 1024 / 1024).toFixed(2) }} MB</p>
+              <p v-if="previewError" role="alert" class="text-sm text-red-600 mt-2">{{ previewError }}</p>
             </div>
           </div>
 
           <div class="w-full lg:w-96 space-y-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">打开密码 (用户密码)</label>
-              <el-input v-model="userPassword" type="password" show-password placeholder="请输入打开文件所需的密码" />
+              <el-input v-model="userPassword" :disabled="processing" type="password" show-password placeholder="请输入打开文件所需的密码" />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">权限密码 (所有者密码)</label>
-              <el-input v-model="ownerPassword" type="password" show-password placeholder="请输入修改权限所需的密码" />
+              <el-input v-model="ownerPassword" :disabled="processing" type="password" show-password placeholder="不填写时自动生成随机权限密码" />
+              <p class="text-xs text-gray-500 mt-2">只设置权限密码时，打开文件无需密码；如需保护内容，请填写打开密码。</p>
             </div>
 
             <div class="pt-4 space-y-3">
               <el-button type="primary" class="w-full" :loading="processing" @click="encryptPdf"
-                :disabled="!userPassword && !ownerPassword">
+                :disabled="!previewReady || (!userPassword && !ownerPassword)">
                 加密并下载
               </el-button>
-              <el-button class="w-full" @click="clearFile">
+              <el-button class="w-full" :disabled="processing" @click="clearFile">
                 重新上传
               </el-button>
             </div>
@@ -134,10 +136,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, nextTick, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
+import { getPdfFileError, ensurePdfjsRuntime } from '@/utils/pdf'
+import { encryptPdfLocally } from '@/services/pdfEncryption'
+import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
@@ -152,7 +156,7 @@ const features = [
   {
     icon: 'Lock',
     title: '强力加密',
-    desc: '采用标准的PDF加密算法，有效防止未经授权的访问，保护文档内容安全'
+    desc: '使用 AES-256 加密保护原始 PDF，保留页面、文本和文档内容'
   },
   {
     icon: 'Key',
@@ -162,7 +166,7 @@ const features = [
   {
     icon: 'Shield',
     title: '权限控制',
-    desc: '通过设置权限密码，可以限制文档的打印、复制、编辑等操作，防止内容被滥用'
+    desc: '允许打印，限制复制、编辑、批注和表单修改；权限限制取决于阅读器是否遵守'
   },
   {
     icon: 'Safety',
@@ -182,7 +186,7 @@ const faqs = [
   },
   {
     question: '加密后的文件安全吗？',
-    answer: '是的，加密后的文件需要密码才能打开，即使被他人获取，没有密码也无法查看内容。'
+    answer: '设置打开密码后，阅读器需要正确密码才能查看内容；仅设置权限密码时可以直接打开文件。请使用较长且难以猜测的密码。'
   }
 ]
 
@@ -195,18 +199,46 @@ const rendering = ref(false)
 const pdfPreviewCanvas = ref<HTMLCanvasElement | null>(null)
 const userPassword = ref('')
 const ownerPassword = ref('')
+const previewReady = ref(false)
+const previewError = ref('')
+let previewTask: PDFDocumentLoadingTask | null = null
+let previewDocument: PDFDocumentProxy | null = null
+let previewRequestId = 0
+let encryptionController: AbortController | null = null
 
 /**
  * 加载PDF预览缩略图
  * @param f 选择的PDF文件
  */
 const loadPdfPreview = async (f: File) => {
+  const requestId = ++previewRequestId
   rendering.value = true
+  previewReady.value = false
+  previewError.value = ''
   try {
+    await previewTask?.destroy()
+    await previewDocument?.destroy()
+    previewTask = null
+    previewDocument = null
     const pdfjsLib = await ensurePdfjsRuntime()
+    if (requestId !== previewRequestId) return
     const arrayBuffer = await f.arrayBuffer()
+    if (requestId !== previewRequestId) return
     const loadingTask = pdfjsLib.getDocument(arrayBuffer)
+    // 已有加密文件必须明确终止密码等待，避免预览一直转圈。
+    loadingTask.onPassword = () => {
+      if (requestId !== previewRequestId) return
+      previewError.value = '此 PDF 已有打开密码，请先解密后再加密'
+      rendering.value = false
+      void loadingTask.destroy()
+    }
+    previewTask = loadingTask
     const pdf = await loadingTask.promise
+    if (requestId !== previewRequestId) {
+      await pdf.destroy()
+      return
+    }
+    previewDocument = pdf
     const page = await pdf.getPage(1)
     const viewport = page.getViewport({ scale: 1.0 })
 
@@ -215,6 +247,8 @@ const loadPdfPreview = async (f: File) => {
     const scale = maxWidth / viewport.width
     const scaledViewport = page.getViewport({ scale })
 
+    await nextTick()
+    if (requestId !== previewRequestId) return
     if (pdfPreviewCanvas.value) {
       pdfPreviewCanvas.value.width = scaledViewport.width
       pdfPreviewCanvas.value.height = scaledViewport.height
@@ -227,11 +261,15 @@ const loadPdfPreview = async (f: File) => {
         }).promise
       }
     }
+    if (requestId === previewRequestId) previewReady.value = true
   } catch (error) {
-    console.error(error)
-    ElMessage.error('预览生成失败，可能是加密文件')
+    if (requestId === previewRequestId) {
+      console.error('[pdf-encrypt] preview failed')
+      previewError.value ||= '无法读取此 PDF，请确认文件未损坏且没有打开密码'
+      ElMessage.error(previewError.value)
+    }
   } finally {
-    rendering.value = false
+    if (requestId === previewRequestId) rendering.value = false
   }
 }
 
@@ -249,10 +287,13 @@ const guideSteps = [
 
 const guideNotes = [
   '请务必记住您设置的密码，一旦丢失将无法找回。',
-  '如果只设置了用户密码，所有者密码将默认与用户密码相同。'
+  '未填写权限密码时会自动生成随机所有者密码，打开文件请使用您设置的打开密码。',
+  '只设置权限密码时不限制打开文件，复制和编辑限制由阅读器执行。'
 ]
 
+/** 函数说明：校验拖入的 PDF 文件，并启动本地预览。 */
 const handleDrop = (e: DragEvent) => {
+  if (processing.value) return
   isDragging.value = false
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
@@ -266,7 +307,9 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
+/** 函数说明：读取文件选择器中的 PDF，清空选择器以允许重新选择同名文件。 */
 const handleFileInputChange = (e: Event) => {
+  if (processing.value) return
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
     const pickedFile = target.files[0]
@@ -284,6 +327,15 @@ const handleFileInputChange = (e: Event) => {
  * 清空当前文件与输入状态
  */
 const clearFile = () => {
+  if (processing.value) return
+  previewRequestId += 1
+  void previewTask?.destroy()
+  void previewDocument?.destroy()
+  previewTask = null
+  previewDocument = null
+  previewReady.value = false
+  previewError.value = ''
+  rendering.value = false
   file.value = null
   userPassword.value = ''
   ownerPassword.value = ''
@@ -296,45 +348,47 @@ const clearFile = () => {
  * 执行PDF加密并下载
  */
 const encryptPdf = async () => {
-  if (!file.value) return
+  if (!file.value || processing.value) return
+  if (!previewReady.value) {
+    ElMessage.warning(previewError.value || '请等待 PDF 读取完成')
+    return
+  }
 
+  const currentFile = file.value
+  const controller = new AbortController()
+  encryptionController = controller
   processing.value = true
   try {
-    const { PDFDocument } = await ensurePdfLibRuntime()
-    const arrayBuffer = await file.value.arrayBuffer()
-    const pdfDoc = await PDFDocument.load(arrayBuffer)
-
-    // pdf-lib encrypt method
-    // @ts-ignore
-    pdfDoc.encrypt({
+    const blob = await encryptPdfLocally(currentFile, {
       userPassword: userPassword.value,
-      ownerPassword: ownerPassword.value || userPassword.value, // Fallback owner password to user password if not set
-      permissions: {
-        printing: 'highResolution',
-        modifying: false,
-        copying: false,
-        annotating: false,
-        fillingForms: false,
-        contentAccessibility: false,
-        documentAssembly: false,
-      }
-    })
-
-    const pdfBytes = await pdfDoc.save()
-    const blob = new Blob([pdfBytes as BlobPart], { type: 'application/pdf' })
+      ownerPassword: ownerPassword.value
+    }, controller.signal)
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `encrypted_${file.value.name}`
+    link.download = `encrypted_${currentFile.name}`
+    document.body.appendChild(link)
     link.click()
-    URL.revokeObjectURL(url)
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 
     ElMessage.success('加密成功')
   } catch (error) {
-    console.error(error)
-    ElMessage.error('加密失败，请重试')
+    if (!controller.signal.aborted) {
+      console.error('[pdf-encrypt] encryption failed')
+      ElMessage.error(error instanceof Error ? error.message : '加密失败，请重试')
+    }
   } finally {
     processing.value = false
+    if (encryptionController === controller) encryptionController = null
   }
 }
+
+/** 函数说明：离开页面时取消加密并销毁 PDF.js 预览，释放文档和密码所在内存。 */
+onUnmounted(() => {
+  previewRequestId += 1
+  encryptionController?.abort()
+  void previewTask?.destroy()
+  void previewDocument?.destroy()
+})
 </script>

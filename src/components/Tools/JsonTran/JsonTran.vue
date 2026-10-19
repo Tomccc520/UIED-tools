@@ -1,6 +1,7 @@
 <!--
  * @file JsonTran.vue
  * @description JSON在线转换工具，支持格式化、压缩、转义等功能
+ * @copyright Tomda (https://www.tomda.top)
  * @author UIED技术团队
  * @copyright UIED技术团队 (https://fsuied.com)
  * @createDate 2024-03-20
@@ -19,11 +20,11 @@
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 标题区域 -->
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <span class="relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
-            </div>
-          </h2>
+            </span>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">专业的JSON格式化工具，支持语法高亮、校验、压缩等功能</p>
         </div>
 
@@ -56,8 +57,10 @@
             <el-button type="danger" plain @click="clear" class="px-6 h-10">清空</el-button>
           </div>
 
+          <p class="text-xs text-gray-500">转义生成不含外层双引号的 JSON 字符串内容；去转义只还原一层，格式错误时保留原文。</p>
+
           <!-- 错误提示 -->
-          <div v-show="info.isParseErr" class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div v-show="info.isParseErr" role="alert" class="bg-red-50 border border-red-200 rounded-lg p-4">
             <div class="flex">
               <div class="w-6 h-6 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
                 <svg class="w-4 h-4 text-red-500" viewBox="0 0 20 20" fill="currentColor">
@@ -135,7 +138,8 @@
 import { reactive, onMounted } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import AsyncCodemirror from '@/components/Common/AsyncCodemirror.vue'
-import { transferred, copy } from '@/utils/string'
+import { copy } from '@/utils/string'
+import { encodeJsonStringContent, decodeJsonStringContent } from '@/utils/textEscaping'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 
@@ -227,6 +231,8 @@ const compress = () => {
   try {
     const parsed = JSON.parse(info.code)
     info.code = JSON.stringify(parsed)
+    info.isParseErr = false
+    info.parseErr = ''
     ElMessage({
       message: "压缩成功",
       type: "success",
@@ -238,9 +244,9 @@ const compress = () => {
   }
 }
 
-//转义
+/** 编码一层 JSON 字符串内容，保留路径、换行、反斜杠及字面 Unicode 序列。 */
 const tran = () => {
-  if (!info.code.trim()) {
+  if (info.code.length === 0) {
     ElMessage({
       message: "请输入需要转义的内容",
       type: "warning",
@@ -248,7 +254,9 @@ const tran = () => {
     })
     return
   }
-  info.code = transferred(info.code, "\"")
+  info.code = encodeJsonStringContent(info.code)
+  info.isParseErr = false
+  info.parseErr = ''
   ElMessage({
     message: "转义成功",
     type: "success",
@@ -256,9 +264,9 @@ const tran = () => {
   })
 }
 
-//去转义
+/** 严格解码一层转义；失败时显示错误，保留编辑器原文供用户修正。 */
 const unTransferred = () => {
-  if (!info.code.trim()) {
+  if (info.code.length === 0) {
     ElMessage({
       message: "请输入需要去转义的内容",
       type: "warning",
@@ -266,12 +274,16 @@ const unTransferred = () => {
     })
     return
   }
-  info.code = info.code.replace(/[\\]/g, ``)
-  ElMessage({
-    message: "去转义成功",
-    type: "success",
-    duration: 1500
-  })
+  try {
+    const decoded = decodeJsonStringContent(info.code)
+    info.code = decoded
+    info.isParseErr = false
+    info.parseErr = ''
+    ElMessage({ message: '去转义成功', type: 'success', duration: 1500 })
+  } catch (error) {
+    info.isParseErr = true
+    info.parseErr = error instanceof Error ? error.message : '去转义失败，原文已保留'
+  }
 }
 
 //清空输入框

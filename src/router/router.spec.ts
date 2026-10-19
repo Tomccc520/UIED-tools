@@ -33,4 +33,30 @@ describe('前台异常路由', () => {
     const resolved = router.resolve('/404')
     expect(resolved.meta.robots).toBe('noindex,nofollow')
   })
+
+  it.each([
+    ['/tools/css-format', '/tools/cssformat'],
+    ['/tools/js-format', '/tools/jsformat'],
+    ['/tools/html-format', '/tools/htmlformat'],
+    ['/tools/number-to-chinese', '/tools/doc/number-chinese'],
+    ['/tools/random-password', '/tools/randompassword'],
+    ['/tools/scale-tran', '/tools/scaletran'],
+    ['/tools/text-edit', '/tools/textedit'],
+    ['/tools/text-remove-duplicate', '/tools/textremoveduplicate'],
+    ['/tools/url-encode', '/tools/urlencode'],
+    ['/tools/web-info', '/tools/web/info'],
+    ['/tools/ascii-word-pic', '/tools/asciiwordpic'],
+    ['/tools/color-picker', '/tools/colorpicker'],
+    ['/tools/html-entity', '/tools/htmlentity'],
+    ['/tools/http-status-code', '/tools/httpstatuscode'],
+    ['/tools/chart', '/tools/bar'],
+    ['/tools/grid', '/tools/design/grid'],
+    ['/tools/ai/xiaohongshu', '/tools/xiaohongshu'],
+    ['/tools/ai/ai-ranking', '/tools/ai-ranking'],
+    ['/tools/ai/outsource-quote', '/tools/ai-outsource-quote'],
+    ['/tools/ai/design-cover', '/tools/ai-design-cover']
+  ])('历史 sitemap 地址 %s 明确跳转到 %s', (legacyPath, targetPath) => {
+    expect(router.resolve(legacyPath).matched.at(-1)?.redirect).toBe(targetPath)
+    expect(router.resolve(targetPath).matched.at(-1)?.name).not.toBe('Any')
+  })
 })

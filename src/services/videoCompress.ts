@@ -81,9 +81,9 @@ export const parseVideoCompressBoolean = (value: unknown) => {
 /**
  * 函数说明：读取服务端 FFmpeg 视频压缩能力，失败时返回不可用配置。
  */
-export const getVideoCompressServerConfig = async (): Promise<VideoCompressServerConfig> => {
+export const getVideoCompressServerConfig = async (signal?: AbortSignal): Promise<VideoCompressServerConfig> => {
   try {
-    const response = await axios.get(VIDEO_COMPRESS_CONFIG_ENDPOINT, { timeout: 5000 })
+    const response = await axios.get(VIDEO_COMPRESS_CONFIG_ENDPOINT, { timeout: 5000, signal })
     const payload = response.data?.data || response.data || {}
     return {
       available: Boolean(payload.available),
@@ -122,8 +122,8 @@ export const compressVideoWithServer = async (
     }
   })
 
-  const contentType = String(response.headers['content-type'] || '')
-  if (contentType.includes('application/json')) {
+  const contentType = String(response.headers['content-type'] || '').toLowerCase()
+  if (contentType.includes('json')) {
     const text = await response.data.text()
     let message = '服务端视频压缩失败'
     try {
@@ -132,6 +132,9 @@ export const compressVideoWithServer = async (
       message = text || message
     }
     throw new Error(message)
+  }
+  if (!(response.data instanceof Blob) || response.data.size === 0 || contentType.includes('text/')) {
+    throw new Error('服务端未返回有效视频，请稍后重试')
   }
 
   const fallbackBaseName = file.name.replace(/\.[^/.]+$/, '') || 'video'

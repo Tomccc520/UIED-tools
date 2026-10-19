@@ -36,7 +36,7 @@
       </template>
 
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-4 sm:p-8 mb-4 shadow-sm">
         <!-- 配置区域 -->
         <div class="grid grid-cols-1 gap-8">
           <!-- 上传区域 -->
@@ -67,7 +67,7 @@
           </div>
 
           <!-- 压缩质量控制面板 -->
-          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6">
+          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-3 sm:p-6">
             <div class="mb-4 text-gray-700 font-medium">压缩设置</div>
             <div class="space-y-6">
               <div class="flex-1">
@@ -75,50 +75,50 @@
                   <span class="text-sm font-medium text-gray-600">压缩质量</span>
                   <span class="text-sm text-gray-500">{{ quality }}%</span>
                 </div>
-                <el-slider v-model="quality" :min="1" :max="100" :step="1" />
+                <el-slider v-model="quality" :min="1" :max="100" :step="1" :disabled="isBusy" />
               </div>
-              <div class="flex space-x-3">
+              <div class="flex flex-col gap-3 sm:flex-row">
                 <button
                   type="button"
                   data-smoke="image-compress-start"
-                  :disabled="isCompressing"
+                  :disabled="isBusy"
                   @click="compressAll"
                   class="image-action image-action--primary flex-1 !h-10"
                 >
                   {{ isCompressing ? '压缩中...' : '开始压缩' }}
                 </button>
-                <button v-if="fileList.length > 0" type="button" :disabled="isCompressing" @click="recompress" class="image-action flex-1 !h-10">
+                <button v-if="fileList.length > 0" type="button" :disabled="isBusy" @click="recompress" class="image-action flex-1 !h-10">
                   重新压缩
                 </button>
                 <button
                   v-if="fileList.length > 0"
                   type="button"
                   data-smoke="image-compress-download"
-                  :disabled="isCompressing"
+                  :disabled="isBusy"
                   @click="downloadAll"
                   class="image-action image-action--success flex-1 !h-10"
                 >
-                  打包下载
+                  {{ isPackaging ? '打包中...' : '打包下载' }}
                 </button>
               </div>
             </div>
           </div>
 
           <!-- 文件列表展示区域 -->
-          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6">
+          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-3 sm:p-6">
             <div class="mb-4 text-gray-700 font-medium">文件列表</div>
             <div class="border border-gray-100 rounded-lg divide-y divide-gray-100 bg-white shadow-sm">
-              <div v-for="(file, index) in fileList" :key="index" class="p-3 hover:bg-gray-50">
+              <div v-for="(file, index) in fileList" :key="index" class="p-3 hover:bg-gray-50" data-smoke="image-compress-file">
                 <!-- 文件名称和删除按钮 -->
                 <div class="flex items-center justify-between mb-2">
-                  <div class="flex items-center space-x-2">
+                  <div class="flex items-center space-x-2 min-w-0">
                     <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                         d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <span class="text-sm text-gray-600">{{ file.name }}</span>
+                    <span class="text-sm text-gray-600 break-all">{{ file.name }}</span>
                   </div>
-                  <button @click="removeFile(index)" :disabled="isCompressing"
+                  <button type="button" :aria-label="`移除 ${file.name}`" @click="removeFile(index)" :disabled="isBusy"
                     class="text-gray-400 hover:text-red-500 transition-colors duration-200">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -128,7 +128,7 @@
                 </div>
 
                 <!-- 压缩进度和结果展示 -->
-                <div class="flex items-center justify-between">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <!-- 左侧：原始文件大小和预览 -->
                   <div class="flex flex-col min-w-[120px]">
                     <span class="text-xs text-gray-400 mb-1">压缩前</span>
@@ -142,7 +142,7 @@
                   </div>
 
                   <!-- 中间：箭头或加载状态 -->
-                  <div class="flex items-center px-4">
+                  <div class="hidden sm:flex items-center px-4">
                     <template v-if="processingIndex === index">
                       <svg class="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" />
@@ -159,7 +159,7 @@
                   </div>
 
                   <!-- 右：压缩后大小和预览 -->
-                  <div class="flex flex-col min-w-[180px] items-end">
+                  <div class="flex flex-col sm:min-w-[180px] sm:items-end">
                     <span class="text-xs text-gray-400 mb-1">压缩后</span>
                     <div class="flex items-center space-x-4">
                       <template v-if="file.compressedSize">
@@ -174,7 +174,7 @@
                             </span>
                           </div>
                         </div>
-                        <a v-if="file.compressedUrl" :href="file.compressedUrl" :download="`uied_${file.name}`"
+                        <a v-if="file.compressedUrl" :href="file.compressedUrl" :download="downloadNames[index]" :aria-label="`下载 ${file.name}`"
                           class="text-blue-500 hover:text-blue-600">
                           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -182,6 +182,7 @@
                           </svg>
                         </a>
                       </template>
+                      <p v-else-if="file.error" class="text-xs text-red-600" role="alert">{{ file.error }}</p>
                       <template v-else>
                         <span class="text-xs text-gray-400">
                           {{ processingIndex === index ? '压缩中...' : '等待压缩' }}
@@ -201,10 +202,10 @@
                   </span>
                 </div>
                 <div class="flex space-x-3 w-full sm:w-auto">
-                  <el-button @click="clearFiles" :disabled="isCompressing" size="large" class="flex-1 sm:flex-none !h-10">
+                  <el-button @click="clearFiles" :disabled="isBusy" size="large" class="flex-1 sm:flex-none !h-10">
                     清空文件列表
                   </el-button>
-                  <el-button data-smoke="image-compress-download" v-if="compressedCount > 0" :disabled="isCompressing" type="success" size="large" @click="downloadAll"
+                  <el-button data-smoke="image-compress-download" v-if="compressedCount > 0" :disabled="isBusy" type="success" size="large" @click="downloadAll"
                     class="flex-1 sm:flex-none !h-10">
                     打包下载 ({{ compressedCount }})
                   </el-button>
@@ -227,7 +228,7 @@
                   <h4 class="text-base font-medium text-gray-900">JPG/JPEG</h4>
                 </div>
                 <p class="text-sm text-gray-600 leading-relaxed">
-                  使用智能压缩算法，在保持图片清晰度的同时，可实现60%-80%的压缩率，适合照片等复杂图像
+                  使用智能压缩算法，在保持图片清晰度的同时，压缩效果取决于原图，适合照片等复杂图像
                 </p>
               </div>
 
@@ -242,7 +243,7 @@
                   <h4 class="text-base font-medium text-gray-900">PNG</h4>
                 </div>
                 <p class="text-sm text-gray-600 leading-relaxed">
-                  通过优化颜色数量和无损压缩，可实现40%-60%的压缩率，适合图标、截图等简单图像
+                  通过颜色量化减小文件，保留透明通道；100% 质量使用无损编码，适合图标、截图等图像
                 </p>
               </div>
 
@@ -257,7 +258,7 @@
                   <h4 class="text-base font-medium text-gray-900">WebP</h4>
                 </div>
                 <p class="text-sm text-gray-600 leading-relaxed">
-                  采用先进的WebP格式压缩，在保持原有质量的同时，可实现30%-50%的压缩率，适合网页图片
+                  采用先进的WebP格式压缩，可通过质量调节减小体积，压缩效果取决于原图，适合网页图片
                 </p>
               </div>
             </div>
@@ -303,8 +304,8 @@
       </div>
 
       <template #actions>
-        <el-button @click="clearFiles" :disabled="isCompressing" size="large">清空文件列表</el-button>
-        <el-button v-if="compressedCount > 0" data-smoke="image-compress-download" :disabled="isCompressing" type="success" size="large" @click="downloadAll">
+        <el-button @click="clearFiles" :disabled="isBusy" size="large">清空文件列表</el-button>
+        <el-button v-if="compressedCount > 0" data-smoke="image-compress-download" :disabled="isBusy" type="success" size="large" @click="downloadAll">
           打包下载 ({{ compressedCount }})
         </el-button>
       </template>
@@ -318,9 +319,8 @@
 /**
  * 组件依赖导入
  */
-import { ref, reactive, computed, watch } from '@vue/runtime-core'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { UploadRawFile } from 'element-plus'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import Compressor from 'compressorjs'
 import { autoDown } from '@/utils/file'
 import { ElMessage } from 'element-plus'
@@ -329,20 +329,12 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import StandardToolPageTemplate from '@/components/Common/PageTemplates/StandardToolPageTemplate.vue'
 import { useRoute } from 'vue-router'
 import JSZip from 'jszip'
+import { createImageArchiveEntries, createImageArchiveNames } from '@/utils/imageCompressionArchive'
 import {
   IMAGE_COMPRESS_MAX_FILE_COUNT,
   IMAGE_COMPRESS_MAX_FILE_SIZE_MB,
   IMAGE_COMPRESS_SUPPORTED_FORMATS
 } from '@/constants/imageCompress'
-
-interface JSZipInstance {
-  file: (path: string, data: Blob, options?: { binary: boolean }) => void;
-  generateAsync: (options: { type: string; compression?: string; compressionOptions?: { level: number } }) => Promise<Blob>;
-}
-
-interface JSZipConstructor {
-  new(): JSZipInstance;
-}
 
 /**
  * 工具函数：URL对象管理
@@ -356,6 +348,7 @@ const createObjectURL = (file: Blob): string => {
  */
 const DOWNLOAD_URL_REVOKE_DELAY_MS = 1000
 
+/** 释放预览或下载使用的对象地址。 */
 const revokeObjectURL = (url: string) => {
   window.URL.revokeObjectURL(url)
 }
@@ -363,30 +356,19 @@ const revokeObjectURL = (url: string) => {
 /**
  * 类型定义
  */
-interface CompressedFile extends File {
+interface CompressedFile {
+  source: File
+  name: string
+  type: string
+  size: number
   compressedSize?: number
   compressedUrl?: string
   compressionRatio?: number
   originalSize?: number
   previewUrl?: string
+  compressedBlob?: Blob
+  error?: string
 }
-
-/**
- * 组件配置信息
- */
-const info = reactive({
-  title: "免费在线压缩图片",
-  subtitle: "免费在线图片压缩工具，支持批量压缩、格式转换等多种功能"
-})
-
-/**
- * 功能特点描述
- */
-const features = [
-  '智能压缩算法：保持图片清晰度的同时，最大程度减小文件体积',
-  '灵活压缩选项：提供多档压缩质量，满足不同场景需求',
-  '安全本地处理：所有压缩过程在浏览器本地完成，保数据安全'
-]
 
 /**
  * 常见问题
@@ -414,8 +396,12 @@ const faq = [
  * 状态管理
  */
 const fileList = ref<CompressedFile[]>([])
+const downloadNames = computed(() => createImageArchiveNames(fileList.value))
 const quality = ref(80)
 const isCompressing = ref(false)
+const isPackaging = ref(false)
+const isBusy = computed(() => isCompressing.value || isPackaging.value)
+let disposed = false
 const isDragging = ref(false)
 const processingIndex = ref(-1)
 
@@ -448,26 +434,21 @@ const compressedCount = computed(() => {
  * 处理文件上传
  */
 const handleUpload = (file: UploadRawFile) => {
-  console.log('handleUpload called with file:', file)
-
-  if (isCompressing.value) {
-    ElMessage.info('图片正在压缩，请稍候')
+  if (isBusy.value) {
+    ElMessage.info('图片正在处理，请稍候')
     return false
   }
 
   if (!file) {
-    console.log('No file provided')
     return false
   }
 
   if (!resolveImageMimeType(file)) {
-    console.log('Invalid file type:', file.type, file.name)
     ElMessage.warning(`仅支持${IMAGE_COMPRESS_SUPPORTED_FORMATS}格式图片`)
     return false
   }
 
   if (file.size > IMAGE_COMPRESS_MAX_FILE_SIZE_MB * 1024 * 1024) {
-    console.log('File too large:', file.size)
     ElMessage.warning(`文件 ${file.name} 超过${IMAGE_COMPRESS_MAX_FILE_SIZE_MB}MB，请选择更小的文件`)
     return false
   }
@@ -478,11 +459,8 @@ const handleUpload = (file: UploadRawFile) => {
   }
 
   try {
-    console.log('Creating preview URL for file:', file.name)
-    const uploadedFile = file as CompressedFile
-    uploadedFile.previewUrl = createObjectURL(file)
-    fileList.value.push(uploadedFile)
-    console.log('File added to list:', uploadedFile)
+    // 使用普通响应式条目保存状态，File 的自定义属性不会被 Vue 追踪。
+    fileList.value.push({ source: file, name: file.name, type: file.type, size: file.size, previewUrl: createObjectURL(file) })
     return false
   } catch (error) {
     console.error('Error handling file upload:', error)
@@ -495,21 +473,17 @@ const handleUpload = (file: UploadRawFile) => {
  * 处理文件拖放
  */
 const handleDrop = (e: DragEvent) => {
-  console.log('handleDrop called')
   e.preventDefault()
   isDragging.value = false
 
-  if (isCompressing.value) return
+  if (isBusy.value) return
 
   const files = e.dataTransfer?.files
   if (!files) {
-    console.log('No files in drop event')
     return
   }
 
-  console.log('Dropped files:', files)
   Array.from(files).forEach((file: File) => {
-    console.log('Processing dropped file:', file.name)
     handleUpload(file as UploadRawFile)
   })
 }
@@ -518,7 +492,7 @@ const handleDrop = (e: DragEvent) => {
  * 移除文件
  */
 const removeFile = (index: number) => {
-  if (isCompressing.value) return
+  if (isBusy.value) return
   const file = fileList.value[index]
   if (file.previewUrl) {
     revokeObjectURL(file.previewUrl)
@@ -533,7 +507,7 @@ const removeFile = (index: number) => {
  * 清空文件列表
  */
 const clearFiles = () => {
-  if (isCompressing.value) return
+  if (isBusy.value) return
   fileList.value.forEach((file: CompressedFile) => {
     if (file.previewUrl) {
       revokeObjectURL(file.previewUrl)
@@ -548,7 +522,7 @@ const clearFiles = () => {
 /**
  * 压缩PNG图片
  */
-const compressPNG = async (file: File): Promise<Blob> => {
+const compressPNG = async (file: File, batchQuality: number): Promise<Blob> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = async (e) => {
@@ -571,10 +545,11 @@ const compressPNG = async (file: File): Promise<Blob> => {
 
             // 根据质量选择颜色数量
             let colors = 256
-            if (quality.value < 30) colors = 32
-            else if (quality.value < 50) colors = 64
-            else if (quality.value < 70) colors = 128
-            else if (quality.value < 90) colors = 256
+            if (batchQuality < 30) colors = 32
+            else if (batchQuality < 50) colors = 64
+            else if (batchQuality < 70) colors = 128
+            else if (batchQuality < 100) colors = 256
+            else colors = 0
 
             const pngData = UPNG.encode(
               [imageData.data.buffer],
@@ -602,10 +577,10 @@ const compressPNG = async (file: File): Promise<Blob> => {
 /**
  * 压缩JPEG/JPG图片
  */
-const compressJPEG = async (file: File): Promise<Blob> => {
+const compressJPEG = async (file: File, batchQuality: number): Promise<Blob> => {
   return new Promise((resolve, reject) => {
-    new Compressor(file, {
-      quality: quality.value / 100,
+    new Compressor(new Blob([file], { type: resolveImageMimeType(file) || file.type }), {
+      quality: batchQuality / 100,
       maxWidth: 4096,
       maxHeight: 4096,
       convertSize: 5000000,
@@ -623,10 +598,10 @@ const compressJPEG = async (file: File): Promise<Blob> => {
 /**
  * 压缩WebP图片
  */
-const compressWebP = async (file: File): Promise<Blob> => {
+const compressWebP = async (file: File, batchQuality: number): Promise<Blob> => {
   return new Promise((resolve, reject) => {
-    new Compressor(file, {
-      quality: quality.value / 100,
+    new Compressor(new Blob([file], { type: resolveImageMimeType(file) || file.type }), {
+      quality: batchQuality / 100,
       maxWidth: 4096,
       maxHeight: 4096,
       convertSize: 5000000,
@@ -644,10 +619,11 @@ const compressWebP = async (file: File): Promise<Blob> => {
 /**
  * 压缩单个文件
  */
-const compressFile = async (file: CompressedFile): Promise<boolean> => {
+const compressFile = async (file: CompressedFile, batchQuality: number): Promise<boolean> => {
   const fileIndex = fileList.value.indexOf(file)
   if (fileIndex < 0) return false
   processingIndex.value = fileIndex
+  file.error = undefined
 
   try {
     let result: Blob
@@ -659,22 +635,23 @@ const compressFile = async (file: CompressedFile): Promise<boolean> => {
     // 根据文件类型选择压缩方法
     switch (mimeType) {
       case 'image/png':
-        result = await compressPNG(file)
+        result = await compressPNG(file.source, batchQuality)
         break
       case 'image/jpeg':
-        result = await compressJPEG(file)
+        result = await compressJPEG(file.source, batchQuality)
         break
       case 'image/webp':
-        result = await compressWebP(file)
+        result = await compressWebP(file.source, batchQuality)
         break
       default:
         throw new Error('不支持的图片格式')
     }
 
+    if (disposed) return false
+
     // 检查压缩结果
     if (result.size >= file.size) {
-      console.log(`文件 ${file.name} 无法进一步压缩，将保持原始大小`)
-      result = file
+      result = file.source
     }
 
     // 更新文件状态
@@ -684,6 +661,7 @@ const compressFile = async (file: CompressedFile): Promise<boolean> => {
     }
 
     // 更新压缩信息
+    compressedFile.compressedBlob = result
     compressedFile.compressedSize = result.size
     compressedFile.originalSize = file.size
     compressedFile.compressionRatio = ((file.size - result.size) / file.size) * 100
@@ -695,7 +673,10 @@ const compressFile = async (file: CompressedFile): Promise<boolean> => {
     compressedFile.compressedUrl = createObjectURL(result)
     return true
   } catch (error) {
-    console.error('压缩失败:', error)
+    if (disposed) return false
+    console.error('[图片压缩] 文件处理失败', error instanceof Error ? error.message : '未知错误')
+    clearCompressedResult(file)
+    file.error = '压缩失败，图片可能已损坏，请移除后重新选择或重试'
     ElMessage.error(`文件 ${file.name} 压缩失败，请重试`)
     return false
   } finally {
@@ -703,102 +684,80 @@ const compressFile = async (file: CompressedFile): Promise<boolean> => {
   }
 }
 
-/**
- * 按顺序压缩文件，避免多个大图同时解码造成浏览器内存峰值和进度指示错乱。
- */
-const compressAll = async () => {
-  if (isCompressing.value) return
-  if (fileList.value.length === 0) {
-    ElMessage.warning('请先选择要压缩的图片')
-    return
-  }
+/** 清理单张图片的旧结果，避免重试失败后仍下载上次结果。 */
+const clearCompressedResult = (file: CompressedFile) => {
+  if (file.compressedUrl) revokeObjectURL(file.compressedUrl)
+  file.compressedUrl = undefined
+  file.compressedBlob = undefined
+  file.compressedSize = undefined
+  file.compressionRatio = undefined
+}
 
+/** 按顺序压缩给定图片，并固定本批质量，避免中途修改导致不同图片使用不同设置。 */
+const compressBatch = async (files: CompressedFile[]) => {
   isCompressing.value = true
-  processingIndex.value = -1
-
+  const batchQuality = quality.value
+  let failedCount = 0
   try {
-    const filesToCompress = [...fileList.value]
-    let failedCount = 0
-    for (const file of filesToCompress) {
-      if (!(await compressFile(file))) failedCount += 1
+    for (const file of files) {
+      if (disposed) break
+      if (!(await compressFile(file, batchQuality))) failedCount += 1
     }
-
-    if (failedCount > 0) {
-      ElMessage.warning(`压缩完成，${failedCount} 个文件失败，请重试`)
-    } else {
-      ElMessage.success('所有图片压缩完成')
-    }
-  } catch (error) {
-    console.error('压缩错误:', error)
-    ElMessage.error('压缩过程中出现错误')
   } finally {
     isCompressing.value = false
     processingIndex.value = -1
   }
+  return failedCount
 }
 
-/**
- * 打包下载
- */
-const downloadAll = async () => {
-  if (isCompressing.value) {
-    ElMessage.info('图片正在压缩，请稍候')
-    return
-  }
+/** 按顺序压缩全部图片；单张失败不会阻止后续图片，并保留可重试的错误状态。 */
+const compressAll = async () => {
+  if (isBusy.value) return
   if (fileList.value.length === 0) {
     ElMessage.warning('请先选择要压缩的图片')
     return
   }
+  const failedCount = await compressBatch([...fileList.value])
+  if (disposed) return
+  if (failedCount > 0) ElMessage.warning(`压缩完成，${failedCount} 个文件失败，请重试`)
+  else ElMessage.success('所有图片压缩完成')
+}
 
-  // 如果还没有压缩，先进行压缩
-  if (compressedCount.value === 0) {
-    await compressAll()
+/** 打包全部有效结果；先压缩新增图片，并锁定文件列表直到下载文件生成完毕。 */
+const downloadAll = async () => {
+  if (isBusy.value) return
+  if (fileList.value.length === 0) {
+    ElMessage.warning('请先选择要压缩的图片')
+    return
   }
-
+  isPackaging.value = true
   try {
-    const zip = new JSZip()
-    const compressedFiles = fileList.value.filter((file: CompressedFile) => file.compressedUrl)
-
+    const pendingFiles = fileList.value.filter((file) => !file.compressedBlob)
+    if (pendingFiles.length > 0) await compressBatch(pendingFiles)
+    if (disposed) return
+    const compressedFiles = fileList.value.filter((file) => file.compressedBlob)
     if (compressedFiles.length === 0) {
-      ElMessage.warning('没有可下载的压缩文件')
+      ElMessage.warning('没有可下载的压缩文件，请检查图片后重试')
       return
     }
-
-    // 逐个添加文件
-    for (const file of compressedFiles) {
-      if (file.compressedUrl) {
-        try {
-          const response = await fetch(file.compressedUrl)
-          const blob = await response.blob()
-          zip.file(`uied_${file.name}`, blob, { binary: true })
-        } catch (error) {
-          console.error('添加文件到压缩包失败:', error)
-          continue
-        }
-      }
+    const zip = new JSZip()
+    for (const entry of createImageArchiveEntries(fileList.value)) {
+      zip.file(entry.name, entry.blob)
     }
-
-    // 生成压缩包
-    console.log('开始生成压缩包...')
-    const content = await zip.generateAsync({
-      type: 'blob',
-      compression: 'DEFLATE',
-      compressionOptions: {
-        level: 6
-      }
-    })
-    console.log('压缩包生成完成')
-
-    // 下载
-    console.log('准备下载...')
+    const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
+    if (disposed) return
     const zipUrl = URL.createObjectURL(content)
     autoDown(zipUrl, 'uied_compressed_images.zip')
     window.setTimeout(() => revokeObjectURL(zipUrl), DOWNLOAD_URL_REVOKE_DELAY_MS)
-
-    ElMessage.success('打包下载成功')
+    const failedCount = fileList.value.length - compressedFiles.length
+    if (failedCount > 0) ElMessage.warning(`已下载 ${compressedFiles.length} 张图片，${failedCount} 张失败未打包，请检查列表后重试`)
+    else ElMessage.success('打包下载成功')
   } catch (error) {
-    console.error('打包下载失败:', error)
+    if (disposed) return
+    console.error('[图片压缩] 打包失败', error instanceof Error ? error.message : '未知错误')
     ElMessage.error('打包下载失败，请重试')
+  } finally {
+    isPackaging.value = false
   }
 }
 
@@ -814,54 +773,17 @@ const formatFileSize = (bytes: number) => {
 }
 
 /**
- * 图片对比相关
- */
-const comparePosition = ref(50)
-const isDraggingSlider = ref(false)
-const sliderRef = ref<HTMLElement | null>(null)
-
-const startDragging = (e: MouseEvent | TouchEvent) => {
-  e.preventDefault()
-  isDraggingSlider.value = true
-
-  const handleMove = (e: MouseEvent | TouchEvent) => {
-    if (!isDraggingSlider.value || !sliderRef.value) return
-
-    const container = sliderRef.value.parentElement
-    if (!container) return
-
-    const rect = container.getBoundingClientRect()
-    const clientX = e instanceof MouseEvent ? e.clientX : e.touches[0].clientX
-    const x = clientX - rect.left
-    const percentage = Math.min(Math.max((x / rect.width) * 100, 0), 100)
-
-    comparePosition.value = percentage
-  }
-
-  const stopDragging = () => {
-    isDraggingSlider.value = false
-    document.removeEventListener('mousemove', handleMove)
-    document.removeEventListener('touchmove', handleMove)
-    document.removeEventListener('mouseup', stopDragging)
-    document.removeEventListener('touchend', stopDragging)
-  }
-
-  document.addEventListener('mousemove', handleMove)
-  document.addEventListener('touchmove', handleMove)
-  document.addEventListener('mouseup', stopDragging)
-  document.addEventListener('touchend', stopDragging)
-}
-
-/**
  * 添加新的文件上传处理方法
  */
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
+/** 打开文件选择器，处理任务期间禁止修改批次。 */
 const triggerFileInput = () => {
-  if (isCompressing.value) return
+  if (isBusy.value) return
   fileInputRef.value?.click()
 }
 
+/** 接收整批选择并重置 input，使移除后可以再次选择同一图片。 */
 const handleFileInputChange = (event: Event) => {
   const input = event.target as HTMLInputElement
   if (!input.files) return
@@ -878,27 +800,28 @@ const handleFileInputChange = (event: Event) => {
  * 添加重新压缩功能
  */
 const recompress = async () => {
-  if (isCompressing.value) return
+  if (isBusy.value) return
   if (fileList.value.length === 0) {
     ElMessage.warning('没有可压缩的图片')
     return
   }
 
-  // 清除之前的压缩结果
-  fileList.value.forEach((file: CompressedFile) => {
-    if (file.compressedUrl) {
-      revokeObjectURL(file.compressedUrl)
-      file.compressedUrl = undefined
-      file.compressedSize = undefined
-      file.compressionRatio = undefined
-    }
-  })
+  // 清除之前的压缩结果。
+  fileList.value.forEach(clearCompressedResult)
 
   // 重新压缩
   await compressAll()
 }
 
-// Get current route
+/** 页面卸载时释放预览及结果地址，并阻止未完成任务回写和继续处理下一张。 */
+onBeforeUnmount(() => {
+  disposed = true
+  for (const file of fileList.value) {
+    if (file.previewUrl) revokeObjectURL(file.previewUrl)
+    clearCompressedResult(file)
+  }
+})
+
 const route = useRoute()
 </script>
 

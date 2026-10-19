@@ -50,14 +50,9 @@
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
             <div class="relative shadow-lg max-w-full">
-              <canvas ref="pdfPreviewCanvas" class="max-w-full h-auto block"></canvas>
-              <!-- 水印预览层 -->
-              <div class="absolute inset-0 pointer-events-none overflow-hidden" :style="{ opacity: settings.opacity }">
-                <div class="absolute flex items-center justify-center origin-center whitespace-nowrap"
-                  :style="watermarkStyle">
-                  {{ settings.text }}
-                </div>
-              </div>
+              <canvas ref="pdfPreviewCanvas" aria-label="PDF 页面预览" class="max-w-full h-auto block"></canvas>
+              <canvas ref="watermarkPreviewCanvas" aria-label="水印预览"
+                class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
             </div>
             <div class="mt-4 flex gap-4 items-center">
               <button @click="changePage(-1)" :disabled="currentPage <= 1"
@@ -72,22 +67,22 @@
           <div class="w-full lg:w-80 space-y-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">水印文字</label>
-              <el-input v-model="settings.text" placeholder="请输入水印文字" />
+              <el-input v-model="settings.text" aria-label="水印文字" placeholder="请输入水印文字" />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">字体大小 ({{ settings.size }}px)</label>
-              <el-slider v-model="settings.size" :min="10" :max="200" />
+              <el-slider v-model="settings.size" aria-label="字体大小" :min="10" :max="200" />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">透明度 ({{ settings.opacity }})</label>
-              <el-slider v-model="settings.opacity" :min="0" :max="1" :step="0.1" />
+              <el-slider v-model="settings.opacity" aria-label="透明度" :min="0" :max="1" :step="0.1" />
             </div>
 
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">旋转角度 ({{ settings.rotate }}°)</label>
-              <el-slider v-model="settings.rotate" :min="-180" :max="180" />
+              <el-slider v-model="settings.rotate" aria-label="旋转角度" :min="-180" :max="180" />
             </div>
 
             <div>
@@ -176,10 +171,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, shallowRef, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
+import { createPdfWatermarkCanvas, drawPdfWatermark, type PdfWatermarkSettings } from '@/utils/pdfWatermarkLayout'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
 
@@ -234,42 +230,20 @@ const file = ref<File | null>(null)
 const processing = ref(false)
 const rendering = ref(false)
 const pdfPreviewCanvas = ref<HTMLCanvasElement | null>(null)
-const pdfDoc = ref<any>(null)
+const watermarkPreviewCanvas = ref<HTMLCanvasElement | null>(null)
+const pdfDoc = shallowRef<any>(null)
+const previewPage = shallowRef<any>(null)
 const currentPage = ref(1)
 const totalPages = ref(0)
 const previewScale = ref(1)
 
-const settings = reactive({
+const settings = reactive<PdfWatermarkSettings>({
   text: 'UIED Tools',
   size: 50,
   opacity: 0.5,
   rotate: -45,
   color: '#FF0000',
-  layout: 'center' // 'center' | 'tile'
-})
-
-const watermarkStyle = computed(() => {
-  const style: any = {
-    fontSize: `${settings.size * previewScale.value}px`,
-    color: settings.color,
-    transform: `rotate(${settings.rotate}deg)`,
-  }
-
-  if (settings.layout === 'center') {
-    style.top = '50%'
-    style.left = '50%'
-    style.transform += ' translate(-50%, -50%)'
-  } else {
-    // Tile logic handled by repeating elements or canvas pattern,
-    // for simplicity in CSS preview, we might just show one centered for now or improve tile preview
-    // For better tile preview, we really should use a canvas overlay.
-    // Let's stick to simple CSS for single, but for tile we might need a different approach.
-    // Reverting tile preview to center for this iteration to ensure stability, or implement tile logic.
-    style.top = '50%'
-    style.left = '50%'
-    style.transform += ' translate(-50%, -50%)'
-  }
-  return style
+  layout: 'center'
 })
 
 const guideSteps = [
@@ -280,9 +254,13 @@ const guideSteps = [
 
 const guideNotes = [
   '建议上传未加密的PDF文件，加密文件可能无法正常处理。',
-  '水印将默认添加到每一页的中心位置，您可以通过设置调整。'
+  '水印将添加到每一页，可选择居中或平铺布局。'
 ]
 
+/**
+ * 校验并读取拖入的首个 PDF 文件。
+ * @param e 拖拽事件
+ */
 const handleDrop = (e: DragEvent) => {
   isDragging.value = false
   const droppedFiles = e.dataTransfer?.files
@@ -297,6 +275,10 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
+/**
+ * 校验并读取文件选择器中的 PDF 文件。
+ * @param e 文件选择事件
+ */
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
@@ -319,6 +301,7 @@ const handleFileInputChange = (e: Event) => {
 const handleFile = async (f: File) => {
   file.value = f
   currentPage.value = 1
+  await nextTick()
   await loadPdfPreview(f)
 }
 
@@ -352,7 +335,7 @@ const renderPage = async (pageNum: number) => {
   const page = await pdfDoc.value.getPage(pageNum)
   const viewport = page.getViewport({ scale: 1.0 })
 
-  // Calculate scale to fit container (max width 600px)
+  // 页面与水印画布共用同一预览比例，窄屏通过 CSS 同步缩小。
   const maxWidth = 600
   const scale = maxWidth / viewport.width
   previewScale.value = scale
@@ -361,6 +344,8 @@ const renderPage = async (pageNum: number) => {
 
   pdfPreviewCanvas.value.width = scaledViewport.width
   pdfPreviewCanvas.value.height = scaledViewport.height
+  previewPage.value = page
+  renderWatermarkPreview()
 
   const context = pdfPreviewCanvas.value.getContext('2d')
   if (context) {
@@ -370,6 +355,27 @@ const renderPage = async (pageNum: number) => {
     }).promise
   }
 }
+
+/**
+ * 使用导出共用布局绘制预览，映射 PDF 的裁剪框和页面旋转。
+ */
+const renderWatermarkPreview = () => {
+  const canvas = watermarkPreviewCanvas.value
+  const page = previewPage.value
+  if (!canvas || !page || !pdfPreviewCanvas.value) return
+  canvas.width = pdfPreviewCanvas.value.width
+  canvas.height = pdfPreviewCanvas.value.height
+  const context = canvas.getContext('2d')
+  if (!context) return
+  const viewport = page.getViewport({ scale: previewScale.value })
+  const [left, bottom, right, top] = page.view
+  context.transform(...viewport.transform as [number, number, number, number, number, number])
+  context.translate(left, top)
+  context.scale(1, -1)
+  drawPdfWatermark(context, right - left, top - bottom, settings)
+}
+
+watch(settings, renderWatermarkPreview, { flush: 'post' })
 
 /**
  * 切换预览页
@@ -388,79 +394,37 @@ const changePage = async (delta: number) => {
  */
 const clearFile = () => {
   file.value = null
+  void pdfDoc.value?.destroy()
   pdfDoc.value = null
+  previewPage.value = null
+  totalPages.value = 0
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }
 }
 
-/**
- * 创建包含水印的画布
- * @param width 画布宽度
- * @param height 画布高度
- * @returns 生成的画布
- */
-const createWatermarkCanvas = (width: number, height: number) => {
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return null
-
-  ctx.globalAlpha = settings.opacity
-  ctx.fillStyle = settings.color
-  ctx.font = `${settings.size}px sans-serif`
-  ctx.textAlign = 'center'
-  ctx.textBaseline = 'middle'
-
-  // Move to center
-  ctx.translate(width / 2, height / 2)
-  ctx.rotate((settings.rotate * Math.PI) / 180)
-
-  if (settings.layout === 'center') {
-    ctx.fillText(settings.text, 0, 0)
-  } else {
-    // Tile logic - simplified for now, just draw multiple
-    // For robust tile, we need a pattern or loop
-    // Let's stick to center for now to ensure quality
-    ctx.fillText(settings.text, 0, 0)
-  }
-
-  return canvas
-}
+onBeforeUnmount(clearFile)
 
 /**
  * 为PDF添加水印并触发下载
  */
 const processWatermark = async () => {
-  if (!file.value) return
+  if (!file.value || processing.value) return
 
+  const sourceFile = file.value
+  const watermarkSettings = { ...settings }
   processing.value = true
   try {
     const { PDFDocument } = await ensurePdfLibRuntime()
-    const arrayBuffer = await file.value.arrayBuffer()
+    const arrayBuffer = await sourceFile.arrayBuffer()
     const pdfDoc = await PDFDocument.load(arrayBuffer)
     const pages = pdfDoc.getPages()
 
     for (const page of pages) {
-      const { width, height } = page.getSize()
-
-      // Create a high-res canvas for the watermark
-      // We use a scale factor to ensure text is crisp
-      const scaleFactor = 2
-      const canvas = createWatermarkCanvas(width * scaleFactor, height * scaleFactor)
-
-      if (canvas) {
-        const watermarkDataUrl = canvas.toDataURL('image/png')
-        const watermarkImage = await pdfDoc.embedPng(watermarkDataUrl)
-
-        page.drawImage(watermarkImage, {
-          x: 0,
-          y: 0,
-          width: width,
-          height: height,
-        })
-      }
+      const { x, y, width, height } = page.getCropBox()
+      const canvas = createPdfWatermarkCanvas(width, height, watermarkSettings, 2)
+      const watermarkImage = await pdfDoc.embedPng(canvas.toDataURL('image/png'))
+      page.drawImage(watermarkImage, { x, y, width, height })
     }
 
     const pdfBytes = await pdfDoc.save()
@@ -468,7 +432,7 @@ const processWatermark = async () => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `watermarked_${file.value.name}`
+    link.download = `watermarked_${sourceFile.name}`
     link.click()
     URL.revokeObjectURL(url)
 

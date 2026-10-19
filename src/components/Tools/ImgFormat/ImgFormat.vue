@@ -6,7 +6,7 @@
  * @createDate 2024-12-22
  *
  * 功能特性：
- * 1. 支持多种常见图片格式转换（JPEG、PNG、GIF、BMP、WebP等）
+ * 1. 支持浏览器可读取图片转换为 JPEG、PNG、WebP
  * 2. 支持批量上传和处理
  * 3. 支持质量和大小调整
  * 4. 本地处理，保护图片隐私
@@ -14,6 +14,12 @@
 -->
 
 <script setup lang="ts">
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2024-12-22
+ */
 import { ref, reactive, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -21,6 +27,7 @@ import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import JSZip from 'jszip'
+import { createConvertedImageNames, encodeImageCanvas, type ImageOutputFormat } from '@/utils/imageFormatConversion'
 
 // Get current route
 const route = useRoute()
@@ -28,7 +35,7 @@ const route = useRoute()
 // 组件配置信息
 const info = reactive({
   title: "免费图片格式转换",
-  subtitle: "适合摄影师、设计师、市场运营、白领文员等各类职业使用的图片格式转换工具。批量上传图片，将图片从 PNG、WebP、TIFF 格式转换为 JPG 格式，降低图片大小，适用更多场景。"
+  subtitle: "适合摄影师、设计师、市场运营、白领文员等各类职业使用的图片格式转换工具。批量上传浏览器可读取的图片，转换为 JPG、PNG 或 WebP 格式，适用更多场景。"
 })
 
 // 转换配置
@@ -59,19 +66,19 @@ const uploadedFiles = new Set() // 用于跟踪已上传的文件
 const isProcessing = ref(false) // 处理状态
 const isDragging = ref(false) // 拖拽状态
 const dataFileRef = ref() // 上传组件引用
-const processedFiles = ref<Map<string, { blob: Blob, url: string }>>(new Map()) // 处理后的文件
+const processedFiles = ref<Map<string, { blob: Blob, url: string, format: ImageOutputFormat }>>(new Map()) // 处理后的文件
 
 // 支持的格式
 const supportedFormats = {
   input: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff', 'gif'],
-  output: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'tiff']
+  output: ['jpg', 'png', 'webp']
 }
 
 // 功能特点
 const features = [
   {
     title: '多格式转换',
-    desc: '支持 PNG、WebP、TIFF、GIF 等多种格式互转，满足各类场景需求',
+    desc: '将浏览器可读取的图片转换为 JPG、PNG、WebP，满足常见导出需求',
     icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10'
   },
   {
@@ -103,7 +110,7 @@ const features = [
 
 // 使用场景
 const usageScenarios = [
-  '摄影后期：将 RAW、TIFF 等专业格式转换为社交媒体适用的格式',
+  '摄影后期：将浏览器可读取的照片转换为社交媒体适用的格式',
   '设计交付：快速转换设计稿格式，满足不同客户的交付要求',
   '内容创作：批量处理素材图片，优化尺寸和大小，提升发布效率',
   '文档处理：优化文档中的图片格式，减小文件体积，提升传输效率'
@@ -113,7 +120,7 @@ const usageScenarios = [
 const faqs = [
   {
     question: '支持哪些图片格式？',
-    answer: '支持主流图片格式互转，包括 JPEG、PNG、WebP、GIF、BMP、TIFF 等，满足各类专业需求。'
+    answer: '支持导出 JPG、PNG、WebP；输入图片需能够被当前浏览器读取。BMP、TIFF 不能作为导出格式，GIF 输入仅转换静态帧。若浏览器不支持目标编码，会明确提示失败。'
   },
   {
     question: '如何保证转换质量？',
@@ -234,14 +241,14 @@ const convertFormat = async () => {
     // 逐个处理文件，避免并发导致的问题
     for (const file of filesToProcess) {
       try {
-        const sourceFile = file.raw || file
+        const sourceFile = file.raw
         const result = await convertImage(sourceFile)
         processedFiles.value.set(file.uid, result)
         file.status = 'success'
       } catch (error) {
         console.error(`处理文件失败: ${file.name}`, error)
         file.status = 'error'
-        ElMessage.error(`处理文件 ${file.name} 失败`)
+        ElMessage.error(`处理文件 ${file.name} 失败：${error instanceof Error ? error.message : '请重试'}`)
       }
     }
 
@@ -259,13 +266,23 @@ const convertFormat = async () => {
   }
 }
 
+/** 汇总成功转换的结果与真实格式，并生成单张下载和 ZIP 共用的唯一文件名。 */
+const getDownloadEntries = () => {
+  const results = fileList.value.flatMap((file) => {
+    const result = processedFiles.value.get(file.uid)
+    return file.status === 'success' && result ? [{ ...result, uid: file.uid, name: file.name }] : []
+  })
+  const names = createConvertedImageNames(results)
+  return results.map((result, index) => ({ ...result, name: names[index] }))
+}
+
 /**
  * 下载单个文件
  * @param file 文件信息
  */
 const downloadFile = async (file: any) => {
   try {
-    const processed = processedFiles.value.get(file.uid)
+    const processed = getDownloadEntries().find((entry) => entry.uid === file.uid)
     if (!processed) {
       ElMessage.error('文件未转换或转换失败')
       return
@@ -275,7 +292,7 @@ const downloadFile = async (file: any) => {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${file.name.split('.')[0]}.${config.outputFormat}`
+    link.download = processed.name
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -298,7 +315,7 @@ const downloadAllImages = async () => {
     isProcessing.value = true
 
     // 检查是否有文件需要下载
-    const successFiles = fileList.value.filter(file => file.status === 'success')
+    const successFiles = getDownloadEntries()
     if (successFiles.length === 0) {
       ElMessage.warning('没有可下载的文件')
       return
@@ -317,15 +334,8 @@ const downloadAllImages = async () => {
     // 添加进度提示
     ElMessage.info('正在打包文件，请稍候...')
 
-    // 使用Promise.all并行处理所有文件
-    await Promise.all(successFiles.map(async (file) => {
-      const processed = processedFiles.value.get(file.uid)
-      if (processed) {
-        const { blob } = processed
-        const fileName = `${file.name.split('.')[0]}.${config.outputFormat}`
-        folder?.file(fileName, blob)
-      }
-    }))
+    // 唯一名称在打包前统一分配，确保每个成功结果占据一个 ZIP 条目。
+    successFiles.forEach(({ name, blob }) => folder?.file(name, blob))
 
     // 生成zip文件
     const content = await zip.generateAsync({
@@ -431,11 +441,15 @@ const getStatusText = (status: string) => {
   }
 }
 
-// 修改 convertImage 函数
-const convertImage = async (file: any): Promise<{ blob: Blob, url: string }> => {
+/** 读取一张本地图片，按本次参数绘制并编码；返回经 MIME 和文件头校验的 Blob、预览地址及真实格式。 */
+const convertImage = async (file: File): Promise<{ blob: Blob, url: string, format: ImageOutputFormat }> => {
+  const options = { ...config }
   return new Promise((resolve, reject) => {
     const img = new Image()
-    const handleLoad = () => {
+    let imageUrl: string
+    /** 图片读取成功后释放输入地址，并按快照参数生成真实目标格式。 */
+    const handleLoad = async () => {
+      URL.revokeObjectURL(imageUrl)
       try {
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
@@ -444,15 +458,15 @@ const convertImage = async (file: any): Promise<{ blob: Blob, url: string }> => 
         }
 
         // 设置输出尺寸
-        let outputWidth = config.width || img.naturalWidth
-        let outputHeight = config.height || img.naturalHeight
+        let outputWidth = options.width || img.naturalWidth
+        let outputHeight = options.height || img.naturalHeight
 
         // 如果需要保持比例
-        if (config.keepRatio && (config.width || config.height)) {
+        if (options.keepRatio && (options.width || options.height)) {
           const ratio = img.naturalWidth / img.naturalHeight
-          if (config.width && !config.height) {
+          if (options.width && !options.height) {
             outputHeight = outputWidth / ratio
-          } else if (!config.width && config.height) {
+          } else if (!options.width && options.height) {
             outputWidth = outputHeight * ratio
           } else {
             const newRatio = outputWidth / outputHeight
@@ -468,7 +482,7 @@ const convertImage = async (file: any): Promise<{ blob: Blob, url: string }> => 
         canvas.height = outputHeight
 
         // 如果是PNG转JPG/JPEG，先填充白色背景
-        if (config.outputFormat === 'jpg' || config.outputFormat === 'jpeg') {
+        if (options.outputFormat === 'jpg' || options.outputFormat === 'jpeg') {
           ctx.fillStyle = '#FFFFFF'
           ctx.fillRect(0, 0, outputWidth, outputHeight)
         }
@@ -476,56 +490,25 @@ const convertImage = async (file: any): Promise<{ blob: Blob, url: string }> => 
         // 绘制图片
         ctx.drawImage(img, 0, 0, outputWidth, outputHeight)
 
-        // 根据输出格式和透明度设置调整质量
-        let mimeType = `image/${config.outputFormat}`
-        let quality = config.quality / 100
-
-        // 转换为Blob
-        canvas.toBlob(
-          (blob) => {
-            if (!blob) {
-              reject(new Error('转换失败'))
-              return
-            }
-            const url = URL.createObjectURL(blob)
-            resolve({ blob, url })
-          },
-          mimeType,
-          quality
-        )
+        const blob = await encodeImageCanvas(canvas, options.outputFormat, options.quality / 100)
+        const url = URL.createObjectURL(blob)
+        resolve({ blob, url, format: options.outputFormat as ImageOutputFormat })
       } catch (error) {
         reject(error)
       }
     }
 
     img.onload = handleLoad
-    img.onerror = () => reject(new Error('图片加载失败'))
+    img.onerror = () => {
+      URL.revokeObjectURL(imageUrl)
+      reject(new Error('图片无法读取，文件可能损坏或当前浏览器不支持此输入格式'))
+    }
 
     // 修改文件处理逻辑
     try {
-      let imageUrl: string
-      if (file instanceof File) {
-        imageUrl = URL.createObjectURL(file)
-      } else if (file.raw instanceof File) {
-        imageUrl = URL.createObjectURL(file.raw)
-      } else if (file.url) {
-        imageUrl = file.url
-      } else {
-        throw new Error('无效的文件格式')
-      }
-
+      if (!(file instanceof File)) throw new Error('无效的文件格式')
+      imageUrl = URL.createObjectURL(file)
       img.src = imageUrl
-
-      // 在图片加载完成后清理 URL
-      const originalOnload = img.onload
-      img.onload = (event) => {
-        if (file instanceof File || file.raw instanceof File) {
-          URL.revokeObjectURL(imageUrl)
-        }
-        if (originalOnload && typeof originalOnload === 'function') {
-          originalOnload.call(img, event)
-        }
-      }
     } catch (error) {
       reject(error)
     }
@@ -636,7 +619,7 @@ const getPreviewUrl = (file: any): string => {
       </div>
 
       <!-- 主要内容区域 - 添加新的卡片样式 -->
-      <div class="bg-white rounded-xl p-8 mb-8 shadow-sm">
+      <div class="image-format-primary-card bg-white rounded-xl p-8 mb-8 shadow-sm">
         <!-- 上传区域 - 保持原有功能，修改样式 -->
         <div class="relative border-2 border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center bg-gray-50"
           :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
@@ -672,14 +655,14 @@ const getPreviewUrl = (file: any): string => {
         </div>
 
         <!-- 转换设置 - 调整样式 -->
-        <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6 mt-6">
-          <div class="flex items-center justify-between mb-6">
+        <div v-if="fileList.length > 0" class="image-format-settings bg-gray-50 rounded-lg p-6 mt-6" data-smoke="image-format-settings">
+          <div class="image-format-settings-header flex items-center justify-between mb-6">
             <div class="flex items-center space-x-2">
               <h3 class="text-sm font-medium text-gray-700">转换设置</h3>
               <span class="text-xs text-gray-400">设置输出参数</span>
             </div>
             <div class="flex items-center space-x-3">
-              <el-button type="primary" @click="convertFormat" :loading="isProcessing" :disabled="isProcessing">
+              <el-button data-smoke="image-format-start" type="primary" @click="convertFormat" :loading="isProcessing" :disabled="isProcessing">
                 开始转换
               </el-button>
               <el-button @click="clearAll" :disabled="isProcessing">
@@ -693,7 +676,7 @@ const getPreviewUrl = (file: any): string => {
             <!-- 格式选择 -->
             <div class="space-y-2">
               <label class="text-sm text-gray-600">输出格式</label>
-              <el-select v-model="config.outputFormat" class="w-full">
+              <el-select v-model="config.outputFormat" :disabled="isProcessing" class="w-full" data-smoke="image-format-output">
                 <el-option v-for="format in supportedFormats.output"
                           :key="format"
                           :label="format.toUpperCase()"
@@ -704,17 +687,17 @@ const getPreviewUrl = (file: any): string => {
             <!-- 质量设置 -->
             <div class="space-y-2">
               <label class="text-sm text-gray-600">输出质量</label>
-              <el-slider v-model="config.quality" :min="1" :max="100" :step="1" show-input />
+              <el-slider v-model="config.quality" :disabled="isProcessing" :min="1" :max="100" :step="1" show-input />
             </div>
 
             <!-- 尺寸设置 -->
             <div class="space-y-2">
               <label class="text-sm text-gray-600">输出尺寸</label>
-              <div class="flex items-center space-x-2">
-                <el-input-number v-model="config.width" :min="0" :step="1" placeholder="宽度" class="flex-1" />
+              <div class="image-format-dimensions flex items-center gap-2">
+                <el-input-number v-model="config.width" :disabled="isProcessing" :min="0" :step="1" placeholder="宽度" class="flex-1" />
                 <span class="text-gray-400">×</span>
-                <el-input-number v-model="config.height" :min="0" :step="1" placeholder="高度" class="flex-1" />
-                <el-checkbox v-model="config.keepRatio">保持比例</el-checkbox>
+                <el-input-number v-model="config.height" :disabled="isProcessing" :min="0" :step="1" placeholder="高度" class="flex-1" />
+                <el-checkbox v-model="config.keepRatio" :disabled="isProcessing">保持比例</el-checkbox>
               </div>
             </div>
 
@@ -722,26 +705,27 @@ const getPreviewUrl = (file: any): string => {
             <div class="space-y-2">
               <label class="text-sm text-gray-600">其他选项</label>
               <div class="space-y-2">
-                <el-checkbox v-model="config.keepTransparency">保持透明度</el-checkbox>
+                <el-checkbox v-model="config.keepTransparency" :disabled="isProcessing">保持透明度</el-checkbox>
               </div>
             </div>
           </div>
         </div>
 
         <!-- 文件列表 - 调整样式 -->
-        <div v-if="fileList.length > 0" class="bg-white rounded-lg p-6 border mt-6">
+        <div v-if="fileList.length > 0" class="image-format-file-list bg-white rounded-lg p-6 border mt-6">
           <!-- 列表标题和批量下载 -->
           <div class="flex items-center justify-between mb-4">
             <h3 class="text-sm font-medium text-gray-700">文件列表</h3>
             <el-button type="primary"
+                      data-smoke="image-format-download-all"
                       @click="downloadAllImages"
-                      :disabled="!fileList.some(file => file.status === 'success')">
+                      :disabled="isProcessing || !fileList.some(file => file.status === 'success')">
               全部下载
             </el-button>
           </div>
 
           <!-- 文件表格 -->
-          <el-table :data="fileList" style="width: 100%">
+          <el-table data-smoke="image-format-files" :data="fileList" style="width: 100%">
             <el-table-column prop="name" label="文件名" />
             <el-table-column label="原始格式" width="100">
               <template #default="scope">
@@ -855,6 +839,49 @@ const getPreviewUrl = (file: any): string => {
 </template>
 
 <style scoped>
+/* 窄屏仅收紧间距并允许设置控件换行，桌面保留原有布局。 */
+@media (max-width: 639px) {
+  .image-format-primary-card,
+  .image-format-settings,
+  .image-format-file-list {
+    padding: 1rem;
+    min-width: 0;
+  }
+
+  .image-format-settings-header {
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .image-format-settings-header > div {
+    flex-shrink: 0;
+  }
+
+  .image-format-dimensions {
+    flex-wrap: wrap;
+  }
+
+  .image-format-dimensions .el-input-number {
+    flex: 1 1 calc(50% - 1rem);
+    min-width: 0;
+    width: 0;
+  }
+
+  .image-format-dimensions .el-checkbox {
+    flex-basis: 100%;
+  }
+
+  .image-format-dimensions :deep(.el-input__wrapper) {
+    padding-left: 25px;
+    padding-right: 25px;
+  }
+
+  .image-format-dimensions :deep(.el-input-number__decrease),
+  .image-format-dimensions :deep(.el-input-number__increase) {
+    width: 24px;
+  }
+}
+
 /* 上传组件样式 */
 .upload-area {
   width: 100%;

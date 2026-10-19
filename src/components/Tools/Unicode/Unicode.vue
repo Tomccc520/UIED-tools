@@ -1,6 +1,7 @@
 <!--
  * @file Unicode.vue
  * @description Unicode编码转换工具，支持Unicode和中文互转
+ * @copyright Tomda (https://www.tomda.top)
  * @author UIED技术团队
  * @copyright UIED技术团队 (https://fsuied.com)
  * @createDate 2024-03-20
@@ -116,12 +117,11 @@
 </template>
 
 <script setup lang="ts">
-import { reactive } from '@vue/runtime-core'
-import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
-import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
+import { reactive } from 'vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { Codemirror } from "vue-codemirror"
 import { copy } from '@/utils/string'
+import { decodeUnicodeEscapes } from '@/utils/textEscaping'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 
@@ -157,11 +157,12 @@ const usageScenarios = [
   '调试工具：分析和转换编码问题'
 ]
 
+/** 清除上次转换结果，避免新输出与旧内容拼接。 */
 const clearRes = () => {
   info.tranRes = ''
 }
 
-//Unicode转中文
+/** 仅解码合法 Unicode 转义，其他反斜杠、路径和百分号原样保留。 */
 const toZH = () => {
   if (!info.content.trim()) {
     ElMessage({
@@ -172,11 +173,7 @@ const toZH = () => {
     return
   }
   clearRes()
-  let str = info.content
-  str = str.replace(/\\/g, "%")
-  // 转换中文
-  str = unescape(str)
-  info.tranRes = str
+  info.tranRes = decodeUnicodeEscapes(info.content)
   ElMessage({
     message: "转换成功",
     type: "success",

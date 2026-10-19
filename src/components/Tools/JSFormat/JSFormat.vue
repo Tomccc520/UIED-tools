@@ -88,7 +88,7 @@ const copyRes = async () => {
 
 <template>
   <div class="flex flex-col mt-3 flex-1">
-    <DetailHeader :title="info.title"></DetailHeader>
+    <DetailHeader :title="info.title" primary-heading></DetailHeader>
 
     <div class="p-4 rounded-2xl bg-white ">
 

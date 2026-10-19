@@ -7,12 +7,16 @@
  * @createDate 2026-07-20
  */
 
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import axios from 'axios'
 import {
+  compressVideoWithServer,
   parseVideoCompressBoolean,
   parseVideoCompressFileName,
   VIDEO_COMPRESS_REQUEST_TIMEOUT_MS
 } from './videoCompress'
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('视频压缩接口响应解析', () => {
   it('优先解析 UTF-8 下载文件名', () => {
@@ -36,5 +40,13 @@ describe('视频压缩接口响应解析', () => {
   it('视频压缩请求必须有有限超时，避免异常连接无限等待', () => {
     expect(VIDEO_COMPRESS_REQUEST_TIMEOUT_MS).toBeGreaterThan(10 * 60 * 1000)
     expect(VIDEO_COMPRESS_REQUEST_TIMEOUT_MS).toBeLessThanOrEqual(11 * 60 * 1000)
+  })
+
+  it.each([
+    { blob: new Blob([]), type: 'video/mp4' },
+    { blob: new Blob(['<html>gateway error</html>']), type: 'text/html' }
+  ])('空响应或网关 HTML 不得作为视频下载', async ({ blob, type }) => {
+    vi.spyOn(axios, 'post').mockResolvedValue({ data: blob, headers: { 'content-type': type } })
+    await expect(compressVideoWithServer(new File(['source'], 'sample.mp4'))).rejects.toThrow('未返回有效视频')
   })
 })
