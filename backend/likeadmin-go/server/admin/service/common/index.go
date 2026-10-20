@@ -586,6 +586,8 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 	if toolsSearchProviderLink == "" {
 		toolsSearchProviderLink = "https://cloud.siliconflow.cn/i/AZywGNhl"
 	}
+	// 仅规范化本次读取的配置副本，使已保存的旧默认每日文章地址与后台返回值一致。
+	website["toolsSidebarRecommend"] = servicedefaults.NormalizeToolsSidebarRecommendJSON(website["toolsSidebarRecommend"])
 	toolsSidebarRecommend := parseWebsiteJsonArray(website, "toolsSidebarRecommend")
 	toolsSidebarCategoryMenus := parseWebsiteJsonArray(website, "toolsSidebarCategoryMenus")
 	if len(toolsSidebarCategoryMenus) == 0 {

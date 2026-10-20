@@ -68,7 +68,7 @@ const (
 	toolsSearchQuickToolsDefaultJSON        = `[{"name":"DeepSeek R1对话","desc":"基于 DeepSeek-R1 推理模型的智能对话","link":"/tools/ai/deepseek-r1"},{"name":"DeepSeek AI对话","desc":"基础智能对话服务","link":"/tools/ai/deepseek"},{"name":"DeepSeek提示词","desc":"专业的 Prompt 提示词指南","link":"/tools/ai/deepseek-prompt"},{"name":"DeepSeek导航","desc":"DeepSeek 模型与工具导航","link":"/tools/ai/deepseek-nav"},{"name":"AI封面设计","desc":"AI智能生成封面图片","link":"/tools/ai-design-cover"},{"name":"AI产品榜","desc":"跳转至 AI 产品导航站","link":"https://hao.uied.cn/"}]`
 	toolsSearchProviderLabelDefaultValue    = "硅基流动 x 华为云联合 SiliconFlow"
 	toolsSearchProviderLinkDefaultValue     = "https://cloud.siliconflow.cn/i/AZywGNhl"
-	toolsSidebarRecommendDefaultJSON        = `[{"name":"热门工具","link":"#recommend-hot"},{"name":"随机推荐","link":"/tools/random-tools"},{"name":"每日热榜","link":"/tools/hot-ranking"},{"name":"每日文章","link":"https://hot.uied.cn/"},{"name":"实时资讯","link":"/tools/ai-news"},{"name":"AI产品榜","link":"https://hao.uied.cn/"}]`
+	toolsSidebarRecommendDefaultJSON        = `[{"name":"热门工具","link":"#recommend-hot"},{"name":"随机推荐","link":"/tools/random-tools"},{"name":"每日热榜","link":"/tools/hot-ranking"},{"name":"每日文章","link":"https://uied.cn/"},{"name":"实时资讯","link":"/tools/ai-news"},{"name":"AI产品榜","link":"https://hao.uied.cn/"}]`
 	toolsSidebarCategoryMenusDefaultJSON    = `[{"key":"ai","title":"AI工具箱","cateTitle":"AI工具箱","link":"/tools/ai/toolbox","icon":"/icons/sidebar/ai.svg"},{"key":"design","title":"设计工具","cateTitle":"设计工具","icon":"/icons/sidebar/design.svg"},{"key":"image","title":"图片处理","cateTitle":"图片处理","icon":"/icons/sidebar/image.svg"},{"key":"office","title":"办公工具","cateTitle":"办公工具","icon":"/icons/sidebar/office.svg"},{"key":"daily","title":"生活常用","cateTitle":"生活常用","icon":"/icons/sidebar/daily.svg"},{"key":"copywriting","title":"文案工具","cateTitle":"文案工具","icon":"/icons/sidebar/copywriting.svg"},{"key":"psychology","title":"潜能测试","cateTitle":"潜能测试","icon":"/icons/sidebar/psychology.svg"},{"key":"video","title":"剪辑工具","cateTitle":"剪辑工具","icon":"/icons/sidebar/video.svg"},{"key":"dev","title":"开发工具","cateTitle":"开发工具","icon":"/icons/sidebar/dev.svg"},{"key":"slacking","title":"摸鱼工具","cateTitle":"摸鱼工具","icon":"/icons/sidebar/slacking.svg"},{"key":"efficiency","title":"效率工具","cateTitle":"效率工具","icon":"/icons/sidebar/efficiency.svg"}]`
 	toolsSidebarMenuBlocksDefaultJSON       = `[]`
 	toolsSidebarBottomLinksDefaultJSON      = `[{"name":"更新记录","link":"/changelog"},{"name":"意见反馈","link":"https://uiedtool.com/"},{"name":"关于我们","link":"/about"}]`
@@ -506,7 +506,9 @@ func (wSrv settingWebsiteService) Detail() (res map[string]string, e error) {
 	toolsFooterRecordLinks := normalizeToolsLayoutArrayConfig(data[toolsFooterRecordLinksConfigName], toolsFooterRecordLinksDefaultJSON)
 	toolsHotTools := normalizeHotToolsConfig(data[toolsHotToolsConfigName])
 	toolsBannerSlides := normalizeToolsLayoutArrayConfig(data[toolsBannerSlidesConfigName], toolsBannerSlidesDefaultJSON)
-	toolsSidebarRecommend := normalizeToolsLayoutArrayConfig(data[toolsSidebarRecommendConfigName], toolsSidebarRecommendDefaultJSON)
+	toolsSidebarRecommend := defaults.NormalizeToolsSidebarRecommendJSON(
+		normalizeToolsLayoutArrayConfig(data[toolsSidebarRecommendConfigName], toolsSidebarRecommendDefaultJSON),
+	)
 	toolsSidebarCategoryMenus := normalizeToolsLayoutArrayConfig(data[toolsSidebarCategoryMenusConfigName], toolsSidebarCategoryMenusDefaultJSON)
 	toolsSidebarMenuBlocks := normalizeToolsSidebarMenuBlocksConfig(data[toolsSidebarMenuBlocksConfigName])
 	toolsCategoryTree := normalizeToolsCategoryTreeConfig(data[toolsCategoryTreeConfigName])

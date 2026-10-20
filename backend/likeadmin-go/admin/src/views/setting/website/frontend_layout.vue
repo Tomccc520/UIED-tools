@@ -2016,7 +2016,7 @@ const defaultSidebarRecommendLinks: ToolsLinkItem[] = [
     { name: '热门工具', link: '#recommend-hot' },
     { name: '随机推荐', link: '/tools/random-tools' },
     { name: '每日热榜', link: '/tools/hot-ranking' },
-    { name: '每日文章', link: 'https://hot.uied.cn/' },
+    { name: '每日文章', link: 'https://uied.cn/' },
     { name: '实时资讯', link: '/tools/ai-news' },
     { name: 'AI产品榜', link: 'https://hao.uied.cn/' },
 ]
