@@ -19,66 +19,60 @@ const lastUpdate = ref(dayjs().format('HH:mm'))
 const currentCategory = ref<NewsCategory>('全部')
 const lastError = ref<string | null>(null)
 const refreshing = ref(false)
-const lastRequestAt = ref(0)
-const REQUEST_COOLDOWN = 15 * 1000
+const requestTimers = new Set<ReturnType<typeof setTimeout>>()
+let requestVersion = 0
+let disposed = false
+let newsSchema: HTMLScriptElement | null = null
 
 /**
  * 获取新闻数据
  * @param forceRefresh 是否强制刷新
  */
 const fetchNews = async (forceRefresh = false) => {
-  if (loading.value && !forceRefresh) return
-
-  const now = Date.now()
-  if (!forceRefresh && now - lastRequestAt.value < REQUEST_COOLDOWN) {
-    return
-  }
-  lastRequestAt.value = now
-
+  if (disposed) return
+  const version = ++requestVersion
+  const category = currentCategory.value === '全部' ? undefined : currentCategory.value
+  let timeoutId: ReturnType<typeof setTimeout> | undefined
   loading.value = true
+  refreshing.value = true
   lastError.value = null
 
   try {
-    refreshing.value = true
-    const category = currentCategory.value === '全部' ? undefined : currentCategory.value
-    const newsPromise = rssNewsService.getNews(category, 1, 50, forceRefresh)
-
-    // 添加超时处理
     const result = await Promise.race([
-      newsPromise,
+      rssNewsService.getNews(category, 1, 50, forceRefresh),
       new Promise<NewsItem[]>((_, reject) => {
-        setTimeout(() => reject(new Error('请求超时，请检查网络连接')), 30000)
+        timeoutId = setTimeout(() => reject(new Error('NEWS_REQUEST_TIMEOUT')), 30_000)
+        requestTimers.add(timeoutId)
       })
     ])
-
-    if (result.length > 0) {
-      newsList.value = result
-      lastUpdate.value = dayjs().format('HH:mm')
-      lastError.value = null
-    } else {
-      throw new Error('暂无新闻数据，请稍后重试')
-    }
-  } catch (error: any) {
-    // 生产环境下不打印错误详情
-    if (import.meta.env.DEV) {
-      console.error('获取新闻失败:', error)
-    }
-
-    lastError.value = error.message
+    if (disposed || version !== requestVersion) return
+    newsList.value = result
+    lastUpdate.value = dayjs().format('HH:mm')
+  } catch (error) {
+    if (disposed || version !== requestVersion) return
+    console.error('[ai-news] 获取资讯失败:', error)
+    const message = error instanceof Error && ['NEWS_REQUEST_TIMEOUT', '请求超时'].includes(error.message)
+      ? '资讯加载超时，请重试'
+      : '资讯加载失败，请重试'
+    lastError.value = message
     ElMessage.error({
-      message: error instanceof Error && error.message === '请求超时'
-        ? '网络请求超时，请检查网络连接'
-        : `获取新闻失败: ${error.message || '未知错误'}`,
+      message,
       duration: 5000,
       showClose: true
     })
   } finally {
-    loading.value = false
-    refreshing.value = false
+    if (timeoutId !== undefined) {
+      clearTimeout(timeoutId)
+      requestTimers.delete(timeoutId)
+    }
+    if (!disposed && version === requestVersion) {
+      loading.value = false
+      refreshing.value = false
+    }
   }
 }
 
-// 切换分类
+/** 切换分类后立即发起对应请求；缓存与强刷频率由服务层按分类管理。 */
 const handleCategoryChange = (category: NewsCategory) => {
   if (currentCategory.value === category) return
   currentCategory.value = category
@@ -104,13 +98,11 @@ const handleImageError = (e: Event) => {
   img.onerror = null; // 防止循环加载
 };
 
-// 添加结构化数据
+/** 只更新本页拥有的资讯结构化数据，保留全站和其他组件注入的 schema。 */
 const addStructuredData = () => {
-  // 移除旧的结构化数据
-  const existingStructuredData = document.querySelector('script[type="application/ld+json"]')
-  if (existingStructuredData) {
-    existingStructuredData.remove()
-  }
+  newsSchema?.remove()
+  newsSchema = null
+  if (disposed || !newsList.value.length) return
 
   // 生成新闻列表结构化数据
   const newsItems = newsList.value.map((news, index) => ({
@@ -118,7 +110,7 @@ const addStructuredData = () => {
     "position": index + 1,
     "name": news.title,
     "description": news.description || "",
-    "datePublished": new Date(news.date).toISOString(),
+    ...(Number.isFinite(news.date) ? { datePublished: new Date(news.date).toISOString() } : {}),
     "url": news.url,
     "publisher": {
       "@type": "Organization",
@@ -146,23 +138,25 @@ const addStructuredData = () => {
 
   const script = document.createElement('script')
   script.type = 'application/ld+json'
+  script.dataset.aiNewsSchema = ''
   script.text = JSON.stringify(structuredData)
   document.head.appendChild(script)
+  newsSchema = script
 }
 
-// 在新闻列表更新时更新结构化数据
+/** 列表变空时同步清理本页旧资讯，避免分类与结构化数据不一致。 */
 watch(newsList, () => {
-  if (newsList.value.length > 0) {
-    addStructuredData()
-  }
+  addStructuredData()
 })
 
-// 组件卸载时清理结构化数据
+/** 离开页面后使在途结果失效，并清理超时计时器与本页 schema。 */
 onUnmounted(() => {
-  const structuredData = document.querySelector('script[type="application/ld+json"]')
-  if (structuredData) {
-    structuredData.remove()
-  }
+  disposed = true
+  requestVersion += 1
+  requestTimers.forEach(timer => clearTimeout(timer))
+  requestTimers.clear()
+  newsSchema?.remove()
+  newsSchema = null
 })
 
 // 添加已读状态记录
@@ -175,17 +169,6 @@ const markAsRead = (newsId: string) => {
   } catch (e) {
     console.warn('Failed to save read status:', e)
   }
-}
-
-// 优化错误处理
-const showError = (error: Error) => {
-  lastError.value = error.message
-  ElMessage({
-    type: 'error',
-    message: error.message,
-    duration: 5000,
-    showClose: true
-  })
 }
 
 // 组件挂载时初始化
@@ -232,7 +215,8 @@ onMounted(async () => {
           <!-- 移动端分类选择器 -->
           <div class="mt-3 -mx-4 px-4">
             <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-              <div v-for="category in NEWS_CATEGORIES" :key="category" @click="handleCategoryChange(category)"
+              <button v-for="category in NEWS_CATEGORIES" :key="category" type="button"
+                :aria-pressed="currentCategory === category" @click="handleCategoryChange(category)"
                 class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap"
                 :class="[
                   currentCategory === category
@@ -240,7 +224,7 @@ onMounted(async () => {
                     : 'bg-gray-100 text-gray-600'
                 ]">
                 {{ category }}
-              </div>
+              </button>
             </div>
           </div>
         </div>
@@ -283,7 +267,8 @@ onMounted(async () => {
           </div>
           <!-- 原有的PC端分类选择器 -->
           <div class="flex items-center gap-2 mt-4 overflow-x-auto pb-2 relative scrollbar-hide">
-            <div v-for="category in NEWS_CATEGORIES" :key="category" @click="handleCategoryChange(category)"
+            <button v-for="category in NEWS_CATEGORIES" :key="category" type="button"
+              :aria-pressed="currentCategory === category" @click="handleCategoryChange(category)"
               class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium cursor-pointer transition-all duration-200 whitespace-nowrap hover:shadow-md"
               :class="[
                 currentCategory === category
@@ -291,7 +276,7 @@ onMounted(async () => {
                   : 'bg-white/80 text-gray-600 hover:bg-gray-50 border border-gray-100/80 backdrop-blur-sm'
               ]">
               {{ category }}
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -299,7 +284,8 @@ onMounted(async () => {
       <!-- 新闻列表 -->
       <div class="flex-1 overflow-hidden">
         <div class="h-full overflow-auto px-4 sm:px-8">
-          <div v-if="loading" class="py-8 sm:py-16">
+          <div v-if="loading" role="status" aria-live="polite" class="py-8 sm:py-16">
+            <span class="sr-only">资讯加载中…</span>
             <div v-for="i in 3" :key="i" class="mb-8 animate-pulse">
               <div class="flex items-start gap-4">
                 <div class="w-24 h-8 bg-gray-200 rounded"></div>
@@ -464,7 +450,7 @@ onMounted(async () => {
           </template>
 
           <!-- 添加错误提示 -->
-          <div v-if="lastError" class="mt-4 p-4 bg-red-50 rounded-lg">
+          <div v-if="lastError" role="alert" class="mt-4 p-4 bg-red-50 rounded-lg">
             <div class="flex items-center">
               <svg class="w-5 h-5 text-red-400 mr-2" viewBox="0 0 20 20" fill="currentColor">
                 <path fill-rule="evenodd"
@@ -473,13 +459,13 @@ onMounted(async () => {
               </svg>
               <span class="text-red-700">{{ lastError }}</span>
             </div>
-            <button @click="fetchNews(true)" class="mt-2 text-red-600 hover:text-red-800 text-sm font-medium">
+            <button type="button" :disabled="loading" @click="fetchNews(true)" class="mt-2 text-red-600 hover:text-red-800 text-sm font-medium">
               点击重试
             </button>
           </div>
 
           <!-- 空状态 -->
-          <div v-if="!loading && newsList.length === 0" class="py-8 sm:py-16">
+          <div v-if="!loading && !lastError && newsList.length === 0" role="status" class="py-8 sm:py-16">
             <div class="text-center">
               <div
                 class="mx-auto w-24 h-24 rounded-full bg-brand/10 flex items-center justify-center relative group">

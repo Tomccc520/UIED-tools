@@ -20,17 +20,18 @@
                         <a-tag :color="formData.enabled === 1 ? 'green' : 'gray'" bordered>
                             {{ formData.enabled === 1 ? '已启用' : '已关闭' }}
                         </a-tag>
-                        <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
+                        <a-tag v-if="hasLoadedData && !loadErrorMessage" :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
                             {{ hasUnsavedChanges ? '待发布' : '已同步' }}
                         </a-tag>
                     </div>
-                    <a-button size="small" @click="loadData">重新加载</a-button>
+                    <a-button size="small" :loading="isLoadingData" :disabled="isSubmitting" @click="reloadRankingConfig">重新加载</a-button>
                     <a-button size="small" @click="openHotRankingPreview">前端预览</a-button>
                     <a-button size="small" type="outline" @click="goManagePage">查看热榜数据</a-button>
                 </div>
             </template>
         </a-page-header>
 
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadRankingConfig">
         <a-card class="page-card pro-panel-card" :bordered="false">
 
 
@@ -147,9 +148,10 @@
             </div>
         </a-card>
 
-        <footer-btns :fixed="false" v-perms="['setting:tool-ranking:config:save']">
-            <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存</a-button>
-        </footer-btns>
+        <template #actions>
+            <a-button v-perms="['setting:tool-ranking:config:save']" type="primary" :loading="isSubmitting" :disabled="isLoadingData || !hasLoadedData || Boolean(loadErrorMessage)" @click="handleSubmit">保存配置</a-button>
+        </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -165,7 +167,9 @@ import {
     type ToolRankingPeriod
 } from '@/api/setting/tool_ranking'
 import OperateCollapse from './components/operate-collapse.vue'
+import ConfigEditFrame from './components/config-edit-frame.vue'
 import { useOperateSubmit } from './composables/use-operate-submit'
+import { useConfigLoad } from './composables/use-config-load'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 
 interface FocusItem {
@@ -177,7 +181,7 @@ interface FocusItem {
 
 const router = useRouter()
 const appStore = useAppStore()
-const { isSubmitting, lastSavedAt, runSubmit } = useOperateSubmit('工具热榜配置已保存')
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('工具热榜配置已保存')
 const operationCollapseKeys = ref<(string | number)[]>(['validation_tips', 'operation_guide'])
 const baselineSnapshot = ref('')
 const guideItems = [
@@ -285,17 +289,22 @@ const patchFormData = (payload: Partial<ToolRankingConfigDetail>) => {
     formData.sidebarPeriod = (String(nextData.sidebarPeriod || 'week').trim() || 'week') as ToolRankingPeriod
 }
 
-/**
- * 函数说明：读取榜单配置详情并同步刷新页面基线快照。
- */
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+
+/** 读取真实榜单配置后才更新表单和基线；失败保留编辑并禁止保存，保存期间不重新读取。 */
 const loadData = async () => {
-    try {
+    if (isSubmitting.value) return false
+    return loadConfiguration(async () => {
         const detail = await getToolRankingConfigDetail()
         patchFormData(detail)
         updateBaselineSnapshot()
-    } catch (error) {
-        feedback.msgError('读取工具热榜配置失败')
-    }
+    })
+}
+
+/** 点击重试或重新加载前保护未保存编辑，加载或保存进行中不重复请求。 */
+const reloadRankingConfig = async () => {
+    if (isSubmitting.value) return
+    await reloadConfiguration(loadData)
 }
 
 /**
@@ -323,6 +332,7 @@ const goManagePage = () => {
  * 函数说明：提交榜单配置保存请求，成功后刷新基线快照并更新顶部状态。
  */
 const handleSubmit = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     const passed = await runSubmit(async () => {
         await saveToolRankingConfigDetail({
             enabled: formData.enabled,

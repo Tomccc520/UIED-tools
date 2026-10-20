@@ -275,6 +275,7 @@ class RSSNewsService {
     }
   }
 
+  /** 按次数重试请求，15 秒截止覆盖响应头与正文读取，并在每次尝试结束时清理计时器。 */
   private async fetchWithRetry(url: string, options: any = {}, retries = 3, delay = 1000): Promise<string> {
     let lastError: Error | null = null;
 
@@ -303,8 +304,6 @@ class RSSNewsService {
             }
           });
 
-          clearTimeout(timeoutId);
-
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}, statusText: ${response.statusText}`);
           }
@@ -316,11 +315,12 @@ class RSSNewsService {
 
           return text;
         } catch (error) {
-          lastError = error as Error;
-          if (error instanceof Error && error.name === 'AbortError') {
-            throw new Error('请求超时');
-          }
-          throw error;
+          lastError = controller.signal.aborted
+            ? new Error('请求超时')
+            : error instanceof Error ? error : new Error('请求失败');
+          throw lastError;
+        } finally {
+          clearTimeout(timeoutId);
         }
       } catch (error) {
         if (i === retries - 1) {
@@ -404,12 +404,14 @@ class RSSNewsService {
     return cleanText.slice(0, 150) + '...';  // 增加描述长度到150字符
   }
 
+  /** 汇总分类来源，允许部分成功及真实空列表；全部来源失败时保留缓存并抛出明确错误。 */
   public async getNews(
     category?: NewsCategory,
     page: number = 1,
     pageSize: number = 50,
     forceRefresh: boolean = false
   ): Promise<NewsItem[]> {
+    this.lastError = null;
     const cacheKey = `${category || 'all'}_${page}_${pageSize}`;
 
     if (this.shouldUseCache(cacheKey, forceRefresh)) {
@@ -432,6 +434,10 @@ class RSSNewsService {
       const newsPromises = sources.map(source => this.fetchRSS(source));
       const results = await Promise.allSettled(newsPromises);
 
+      if (results.length > 0 && results.every(result => result.status === 'rejected')) {
+        throw new Error('资讯加载失败，请稍后重试');
+      }
+
       let allNews: NewsItem[] = [];
       results.forEach((result, index) => {
         if (result.status === 'fulfilled') {
@@ -452,6 +458,7 @@ class RSSNewsService {
       this.updateCache(cacheKey, pagedNews);
       return pagedNews;
     } catch (error) {
+      this.lastError = error instanceof Error ? error : new Error('资讯加载失败');
       if (import.meta.env.DEV) {
         console.error('获取新闻失败:', error);
       }

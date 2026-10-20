@@ -73,8 +73,9 @@
                   <p class="text-xs text-gray-500">支持PNG、JPG、SVG格式，文件大小不超过10MB</p>
                 </div>
               </div>
-              <div v-if="previewUrl" class="mt-4">
-                <img :src="previewUrl" class="max-h-40 mx-auto" alt="Logo预览">
+              <div v-if="previewUrl || readingLogo" class="mt-4">
+                <p v-if="readingLogo" role="status" class="text-sm text-gray-500 text-center">正在读取 Logo，请稍候...</p>
+                <img v-if="previewUrl" :src="previewUrl" class="max-h-40 mx-auto" alt="Logo预览">
                 <button @click="removeLogo"
                   class="mt-2 w-full px-3 py-2 text-sm text-red-600 hover:text-red-700 focus:outline-none">
                   移除Logo
@@ -220,7 +221,7 @@
 
         <!-- 操作按钮优化 -->
         <div class="logo-spec-actions flex flex-wrap justify-center gap-3 pt-4">
-          <el-button type="primary" size="large" class="px-8 py-3 text-base" :disabled="exporting" @click="generateSpec">
+          <el-button type="primary" size="large" class="px-8 py-3 text-base" :disabled="exporting || readingLogo" @click="generateSpec">
             生成规范文档
           </el-button>
           <el-button size="large" class="px-8 py-3 text-base" :disabled="exporting" @click="resetForm">
@@ -356,7 +357,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, onBeforeUnmount } from 'vue'
 import { useHead } from '@vueuse/head'
 import { ElMessage } from 'element-plus'
 import { ensureHtml2canvasRuntime, ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
@@ -413,6 +414,24 @@ const logoType = ref('wordmark')
 const brandDesc = ref('')
 const previewUrl = ref('')
 const logoFile = ref<File | null>(null)
+const readingLogo = ref(false)
+let logoReadVersion = 0
+let activeLogoReader: FileReader | null = null
+let disposed = false
+
+/** 使旧读取结果失效并取消未完成的读取，供换图、清空和卸载统一使用。 */
+const cancelLogoRead = () => {
+  logoReadVersion += 1
+  const reader = activeLogoReader
+  activeLogoReader = null
+  readingLogo.value = false
+  if (reader) {
+    reader.onload = null
+    reader.onerror = null
+    reader.onabort = null
+    if (reader.readyState === 1) reader.abort()
+  }
+}
 
 // 文件上传处理
 /** 读取选择框中的首个 Logo 文件，清空输入以支持重新选择同一文件。 */
@@ -446,16 +465,54 @@ const validateAndProcessFile = (file: File) => {
     return
   }
 
-  logoFile.value = file
+  cancelLogoRead()
+  showPreview.value = false
+  logoFile.value = null
+  previewUrl.value = ''
+  readingLogo.value = true
+  const version = logoReadVersion
   const reader = new FileReader()
-  reader.onload = (e) => {
-    previewUrl.value = e.target?.result as string
+  activeLogoReader = reader
+  /** 仅接受当前页面最近一次选择的读取结果，忽略已取消或排队到达的事件。 */
+  const isCurrentRead = () => !disposed && version === logoReadVersion && activeLogoReader === reader
+  /** 完成读取后解除事件和忙碌状态，防止同一次读取重复提交结果。 */
+  const finishRead = () => {
+    activeLogoReader = null
+    readingLogo.value = false
+    reader.onload = null
+    reader.onerror = null
+    reader.onabort = null
   }
-  reader.readAsDataURL(file)
+  /** 当前文件读取失败时清空待用状态并保留重新选择同一文件的入口。 */
+  const failRead = () => {
+    if (!isCurrentRead()) return
+    finishRead()
+    ElMessage.error('Logo 读取失败，请重新选择文件')
+  }
+  reader.onload = (e) => {
+    if (!isCurrentRead()) return
+    const result = e.target?.result
+    if (typeof result !== 'string' || !result.startsWith('data:image/')) {
+      failRead()
+      return
+    }
+    finishRead()
+    logoFile.value = file
+    previewUrl.value = result
+  }
+  reader.onerror = failRead
+  reader.onabort = failRead
+  try {
+    reader.readAsDataURL(file)
+  } catch {
+    failRead()
+  }
 }
 
 /** 移除当前 Logo 并清空选择框。 */
 const removeLogo = () => {
+  cancelLogoRead()
+  showPreview.value = false
   logoFile.value = null
   previewUrl.value = ''
   const input = document.getElementById('file-upload') as HTMLInputElement
@@ -561,6 +618,10 @@ const logoTypes: Record<string, string> = {
 
 /** 生成前校验必要信息与颜色、尺寸参数，通过后打开可下载的规范预览。 */
 const generateSpec = () => {
+  if (readingLogo.value) {
+    ElMessage.warning('Logo 尚未读取完成，请稍后重试')
+    return
+  }
   if (!logoFile.value || !brandName.value.trim()) {
     ElMessage.warning('请上传 Logo 并填写品牌名称')
     return
@@ -661,6 +722,7 @@ const downloadSpec = async () => {
 /** 恢复默认规范参数并关闭预览，导出过程中不清空正在生成的文档。 */
 const resetForm = () => {
   if (exporting.value) return
+  cancelLogoRead()
   showPreview.value = false
   // 重置表单
   brandName.value = ''
@@ -675,6 +737,12 @@ const resetForm = () => {
   selectedRules.value = []
   colors.splice(0, colors.length, { hex: '#000000', rgb: '0, 0, 0', cmyk: '0, 0, 0, 100' })
 }
+
+/** 页面离开后取消本地读取，禁止迟到的文件事件恢复已卸载的界面。 */
+onBeforeUnmount(() => {
+  disposed = true
+  cancelLogoRead()
+})
 </script>
 
 <style scoped>

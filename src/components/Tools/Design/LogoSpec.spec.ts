@@ -85,6 +85,43 @@ async function fillRequired() {
   await flushPromises()
 }
 
+/** 安装可控制完成顺序的读取替身，模拟取消后仍到达的浏览器旧回调。 */
+function controlFileReads() {
+  const readers: Array<{
+    onload: ((event: unknown) => void) | null
+    onerror: (() => void) | null
+    onabort: (() => void) | null
+    readyState: number
+    abort: ReturnType<typeof vi.fn>
+    readAsDataURL: ReturnType<typeof vi.fn>
+  }> = []
+  vi.stubGlobal('FileReader', class {
+    onload: ((event: unknown) => void) | null = null
+    onerror: (() => void) | null = null
+    onabort: (() => void) | null = null
+    readyState = 0
+    /** 模拟启动读取，保留回调供测试决定完成顺序。 */
+    readAsDataURL = vi.fn(() => { this.readyState = 1 })
+    /** 模拟取消读取，不自动触发回调，以便单独验证过时事件保护。 */
+    abort = vi.fn(() => { this.readyState = 2 })
+    /** 保存每次创建的读取器，测试无需直接改动组件状态。 */
+    constructor() { readers.push(this) }
+  })
+  return readers
+}
+
+/** 通过文件输入选择指定文件，保持与用户上传操作相同的事件入口。 */
+async function chooseLogo(file: File) {
+  const input = view!.get('input[type="file"]')
+  Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+  await input.trigger('change')
+}
+
+/** 创建带可辨识名称的合法 Logo，便于追踪多次上传的对应结果。 */
+function logoFile(name: string) {
+  return new File(['logo'], name, { type: 'image/png' })
+}
+
 describe('Logo 规范预览与 PDF 导出', () => {
   it('缺少 Logo 或品牌名称时给出提示，不打开空白预览或加载导出库', async () => {
     mountTool()
@@ -174,5 +211,128 @@ describe('Logo 规范预览与 PDF 导出', () => {
     await button('生成规范文档').trigger('click')
     expect(runtime.warning).toHaveBeenCalledWith('最小尺寸必须为大于 0 的数字')
     expect(view!.find('.preview-content').exists()).toBe(false)
+  })
+})
+
+describe('Logo 文件读取时序', () => {
+  it('选择 A 后再选 B，只接收 B 的结果，取消后到达的 A 回调不覆盖预览', async () => {
+    const readers = controlFileReads()
+    mountTool()
+    await chooseLogo(logoFile('A.png'))
+    const oldLoad = readers[0].onload!
+    const oldError = readers[0].onerror!
+    await chooseLogo(logoFile('B.png'))
+    expect(readers[0].abort).toHaveBeenCalledOnce()
+    oldLoad({ target: { result: 'data:image/png;base64,A' } })
+    oldError()
+    await flushPromises()
+    expect(view!.find('img[alt="Logo预览"]').exists()).toBe(false)
+    expect(view!.find('[role="status"]').exists()).toBe(true)
+    readers[1].onload!({ target: { result: 'data:image/png;base64,B' } })
+    oldLoad({ target: { result: 'data:image/png;base64,A' } })
+    await flushPromises()
+    expect(view!.get('img[alt="Logo预览"]').attributes('src')).toBe('data:image/png;base64,B')
+    expect((view!.vm as any).logoFile.name).toBe('B.png')
+    expect(runtime.error).not.toHaveBeenCalled()
+  })
+
+  it('换图读取期间禁用生成，直接触发生成也不能复用上一张 Logo', async () => {
+    const readers = controlFileReads()
+    mountTool()
+    await chooseLogo(logoFile('A.png'))
+    readers[0].onload!({ target: { result: logoUrl } })
+    await view!.get('#brandName').setValue('示例品牌')
+    await flushPromises()
+    await chooseLogo(logoFile('B.png'))
+    expect(button('生成规范文档').attributes('disabled')).toBeDefined()
+    expect(view!.get('[role="status"]').text()).toContain('正在读取 Logo')
+    await (view!.vm as any).generateSpec()
+    expect(runtime.warning).toHaveBeenCalledWith('Logo 尚未读取完成，请稍后重试')
+    expect(view!.find('[role="dialog"]').exists()).toBe(false)
+  })
+
+  it.each(['重置', '移除Logo'])('读取期间%s会取消读取，旧成功或失败回调不能重填或报错', async (action) => {
+    const readers = controlFileReads()
+    mountTool()
+    await chooseLogo(logoFile('pending.png'))
+    const oldLoad = readers[0].onload!
+    const oldError = readers[0].onerror!
+    await button(action).trigger('click')
+    oldLoad({ target: { result: logoUrl } })
+    oldError()
+    await flushPromises()
+    expect(readers[0].abort).toHaveBeenCalledOnce()
+    expect(view!.find('img[alt="Logo预览"]').exists()).toBe(false)
+    expect(view!.find('[role="status"]').exists()).toBe(false)
+    expect((view!.vm as any).logoFile).toBeNull()
+    expect(runtime.error).not.toHaveBeenCalled()
+  })
+
+  it('读取失败给出提示并清理忙碌状态，可重新选择同一文件成功生成', async () => {
+    const readers = controlFileReads()
+    mountTool()
+    const file = logoFile('retry.png')
+    await chooseLogo(file)
+    readers[0].onerror!()
+    await flushPromises()
+    expect(runtime.error).toHaveBeenCalledWith('Logo 读取失败，请重新选择文件')
+    expect(button('生成规范文档').attributes('disabled')).toBeUndefined()
+    expect((view!.vm as any).logoFile).toBeNull()
+    await chooseLogo(file)
+    readers[1].onload!({ target: { result: logoUrl } })
+    await view!.get('#brandName').setValue('重试品牌')
+    await button('生成规范文档').trigger('click')
+    expect(view!.find('[role="dialog"]').exists()).toBe(true)
+    expect(view!.get('.preview-content img').attributes('src')).toBe(logoUrl)
+  })
+
+  it('同步读取异常同样解除忙碌状态并保留重试入口', async () => {
+    const readers = controlFileReads()
+    mountTool()
+    await chooseLogo(logoFile('first.png'))
+    readers[0].onerror!()
+    await flushPromises()
+    // 下一次 FileReader 的读取方法在浏览器拒绝操作时同步抛出。
+    vi.stubGlobal('FileReader', class {
+      onload = null
+      onerror = null
+      onabort = null
+      readyState = 0
+      /** 模拟读取器在读取开始前抛出异常。 */
+      readAsDataURL() { throw new Error('read unavailable') }
+    })
+    await chooseLogo(logoFile('throw.png'))
+    expect(runtime.error).toHaveBeenLastCalledWith('Logo 读取失败，请重新选择文件')
+    expect(view!.find('[role="status"]').exists()).toBe(false)
+    expect((view!.vm as any).logoFile).toBeNull()
+  })
+
+  it.each(['type', 'size'] as const)('非法文件 %s 不清空已有 Logo 和已生成的规范预览', async (invalid) => {
+    mountTool()
+    await fillRequired()
+    await button('生成规范文档').trigger('click')
+    const file = invalid === 'type' ? new File(['text'], 'invalid.txt', { type: 'text/plain' }) : logoFile('large.png')
+    if (invalid === 'size') Object.defineProperty(file, 'size', { value: 10 * 1024 * 1024 + 1 })
+    await chooseLogo(file)
+    expect(runtime.warning).toHaveBeenCalledWith(invalid === 'type' ? '请上传 PNG、JPG 或 SVG 格式的文件' : '文件大小不能超过 10MB')
+    expect(view!.get('img[alt="Logo预览"]').attributes('src')).toBe(logoUrl)
+    expect(view!.get('.preview-content img').attributes('src')).toBe(logoUrl)
+  })
+
+  it('组件卸载取消读取，已排队的成功或失败事件不更新状态或提示', async () => {
+    const readers = controlFileReads()
+    mountTool()
+    await chooseLogo(logoFile('pending.png'))
+    const vm = view!.vm as any
+    const oldLoad = readers[0].onload!
+    const oldError = readers[0].onerror!
+    view!.unmount()
+    view = undefined
+    oldLoad({ target: { result: logoUrl } })
+    oldError()
+    await flushPromises()
+    expect(readers[0].abort).toHaveBeenCalledOnce()
+    expect(vm.previewUrl).toBe('')
+    expect(runtime.error).not.toHaveBeenCalled()
   })
 })

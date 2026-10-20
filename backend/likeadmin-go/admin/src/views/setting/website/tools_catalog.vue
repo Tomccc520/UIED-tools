@@ -1735,7 +1735,7 @@ const buildAppendToolPolicyRules = (
         result.push({
             toolKey: seedRule.toolKey,
             name: seedRule.name || seedRule.toolKey,
-            consumePoints: Math.max(0, Math.floor(Number(seedRule.consumePoints || 1))),
+            consumePoints: Math.max(0, Math.floor(Number(seedRule.consumePoints ?? 1))),
             memberFree: seedRule.memberFree === 0 ? 0 : 1,
             status: seedRule.status === 0 ? 0 : 1,
             sort: Number.isFinite(Number(seedRule.sort))

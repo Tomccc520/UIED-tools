@@ -24,6 +24,7 @@ import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 import { useToolConsume } from '@/composables/useToolConsume'
+import { audioBufferToWav } from './audioBufferToWav'
 
 const route = useRoute()
 const { ensureToolConsume } = useToolConsume()
@@ -172,64 +173,6 @@ const onSourceVideoLoaded = (event: Event) => {
   sourceMeta.duration = target.duration || 0
   sourceMeta.width = target.videoWidth || 0
   sourceMeta.height = target.videoHeight || 0
-}
-
-/**
- * 将 AudioBuffer 转换为 WAV Blob
- * @param buffer 音频缓冲
- * @returns WAV 格式 Blob
- */
-const audioBufferToWav = (buffer: AudioBuffer): Blob => {
-  const numOfChan = buffer.numberOfChannels
-  const length = buffer.length * numOfChan * 2 + 44
-  const bufferArr = new ArrayBuffer(length)
-  const view = new DataView(bufferArr)
-  const channels = []
-  let i
-  let sample
-  let offset = 0
-  let pos = 0
-
-  setUint32(0x46464952) // "RIFF"
-  setUint32(length - 8) // file length - 8
-  setUint32(0x45564157) // "WAVE"
-
-  setUint32(0x20746d66) // "fmt " chunk
-  setUint32(16) // length = 16
-  setUint16(1) // PCM (uncompressed)
-  setUint16(numOfChan)
-  setUint32(buffer.sampleRate)
-  setUint32(buffer.sampleRate * 2 * numOfChan)
-  setUint16(numOfChan * 2)
-  setUint16(16)
-
-  setUint32(0x61746164) // "data" - chunk
-  setUint32(length - pos - 4)
-
-  for (i = 0; i < buffer.numberOfChannels; i++)
-    channels.push(buffer.getChannelData(i))
-
-  while (pos < buffer.length) {
-    for (i = 0; i < numOfChan; i++) {
-      sample = Math.max(-1, Math.min(1, channels[i][pos]))
-      sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0
-      view.setInt16(44 + offset, sample, true)
-      offset += 2
-    }
-    pos++
-  }
-
-  return new Blob([bufferArr], { type: 'audio/wav' })
-
-  function setUint16(data: any) {
-    view.setUint16(pos, data, true)
-    pos += 2
-  }
-
-  function setUint32(data: any) {
-    view.setUint32(pos, data, true)
-    pos += 4
-  }
 }
 
 /**
