@@ -247,7 +247,7 @@ func getDefaultToolsChangelogMetaLinks() []map[string]interface{} {
  * 函数说明：返回更新记录页顶部统计说明默认值，供运营后台未配置时兜底渲染
  */
 func getDefaultToolsChangelogStatsText() string {
-	return "当前版本：3.0.3 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-08-28 18:00"
+	return "当前版本：3.0.4 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-20"
 }
 
 /**
@@ -615,7 +615,7 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 	}
 	toolsChangelogSplitTitle := strings.TrimSpace(website["toolsChangelogSplitTitle"])
 	if toolsChangelogSplitTitle == "" {
-		toolsChangelogSplitTitle = "3.0.3 全栈开源说明"
+		toolsChangelogSplitTitle = "3.0.4 全栈开源说明"
 	}
 	toolsChangelogSplitDesc := strings.TrimSpace(website["toolsChangelogSplitDesc"])
 	if toolsChangelogSplitDesc == "" {
@@ -634,8 +634,10 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 		toolsChangelogStatsText = getDefaultToolsChangelogStatsText()
 	}
 	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前工具总数：333个", "当前工具总数：334个")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.1", "当前版本：3.0.3")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-08-28 18:00", "最后更新：2026-09-12 15:50")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.1", "当前版本：3.0.4")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.3", "当前版本：3.0.4")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-08-28 18:00", "最后更新：2026-10-20")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-09-12 15:50", "最后更新：2026-10-20")
 	toolsChangelogTimeline := parseWebsiteJsonArray(website, "toolsChangelogTimeline")
 	if len(toolsChangelogTimeline) == 0 {
 		toolsChangelogTimeline = servicedefaults.GetToolsChangelogTimelineItems()

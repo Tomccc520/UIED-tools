@@ -145,14 +145,32 @@ func NormalizeToolsChangelogTimelineJSON(raw string) string {
 		}
 	}
 	normalized := normalizeToolsChangelogTimeline(items)
-	// 已保存的旧站点配置也要自动带上最新版本，避免必须手工重新录入时间线。
-	if !hasChangelogVersion(normalized, "3.0.3") {
+	// 已保存的旧站点配置补齐缺失发布版本，保留运营已经编辑的同版本内容。
+	if !hasChangelogVersion(normalized, "3.0.3") || !hasChangelogVersion(normalized, "3.0.4") {
 		defaults := make([]toolsChangelogTimelineItem, 0)
 		if err := json.Unmarshal([]byte(toolsChangelogTimelineJSON), &defaults); err == nil {
-			for _, item := range normalizeToolsChangelogTimeline(defaults) {
-				if normalizeToolsChangelogTextKey(item.Version) == normalizeToolsChangelogTextKey("3.0.3") {
-					normalized = append([]toolsChangelogTimelineItem{item}, normalized...)
-					break
+			normalizedDefaults := normalizeToolsChangelogTimeline(defaults)
+			// 先补历史版本再补最新版本，确保缺失的 3.0.4 最终位于列表首位。
+			for _, version := range []string{"3.0.3", "3.0.4"} {
+				if hasChangelogVersion(normalized, version) {
+					continue
+				}
+				for _, item := range normalizedDefaults {
+					if normalizeToolsChangelogTextKey(item.Version) == normalizeToolsChangelogTextKey(version) {
+						insertAt := 0
+						if version == "3.0.3" {
+							for index, existing := range normalized {
+								if normalizeToolsChangelogTextKey(existing.Version) == "3.0.4" {
+									insertAt = index + 1
+									break
+								}
+							}
+						}
+						normalized = append(normalized, toolsChangelogTimelineItem{})
+						copy(normalized[insertAt+1:], normalized[insertAt:])
+						normalized[insertAt] = item
+						break
+					}
 				}
 			}
 		}

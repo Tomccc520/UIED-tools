@@ -1,4 +1,4 @@
-# UIED Tools 3.0.3 - 全栈开源在线工具平台
+# UIED Tools 3.0.4 - 全栈开源在线工具平台
 
 > Vue 3 主站 + Go API + Arco Pro 管理后台，面向免费工具、内容运营、SEO 和社区共建。
 
@@ -20,6 +20,14 @@ UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具�
 ![输入图片说明](public/assets/image.png)
 
 ## 更新日志
+
+### 3.0.4 文件工具与移动端更新（2026-10-20）
+
+- 图片压缩完善批量队列、PNG 后台线程与保持原尺寸；GIF 明确保留透明动画原图的处理边界。
+- 图片、GIF、视频转 GIF、视频与 PDF 压缩统一手机参数、预览、文件卡片和底部操作。
+- 手机 PDF 支持直接预览与翻页，修复路由切换空白、视频重压取消后的旧结果状态。
+- 提供 [3.0.4 宝塔部署说明](docs/uiedtool-3.0.4-baota-deploy.md)，已有站点使用代码更新模式。
+
 <a href="https://uiedtool.com/changelog" target="_blank">查看完整更新日志</a>
 
 ## 开源协作
@@ -119,15 +127,17 @@ go build .
 
 完整生产部署包含主站静态资源、管理端静态资源、Go API、MySQL 与 Redis。宝塔环境请参考：
 
-- [`docs/uiedtool-3.0.3-baota-deploy.md`](docs/uiedtool-3.0.3-baota-deploy.md)
+- [`docs/uiedtool-3.0.4-baota-deploy.md`](docs/uiedtool-3.0.4-baota-deploy.md)
 - [`scripts/release/package-fullstack.sh`](scripts/release/package-fullstack.sh)
 
 ```bash
 npm run build:check
+npm --prefix backend/likeadmin-go/admin run type-check
+npm --prefix backend/likeadmin-go/admin run build
 npm run release:production
 ```
 
-正式发布文件会统一生成到 `output/production/uiedtool-3.0.3/`。不要把示例数据库密码或第三方 API 密钥直接用于生产环境。
+正式发布文件会统一生成到 `output/production/uiedtool-3.0.4/`。不要把示例数据库密码或第三方 API 密钥直接用于生产环境。
 
 ## 项目结构说明
 
