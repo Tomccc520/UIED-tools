@@ -116,7 +116,10 @@ onMounted(() => {
 <template>
   <article class="tool-ranking-page" :aria-label="toolRankingPageTitle">
     <header class="tool-ranking-page__header">
-      <h1 class="tool-ranking-page__title">{{ toolRankingPageTitle }}</h1>
+      <div class="tool-ranking-page__heading">
+        <h1 class="tool-ranking-page__title">{{ toolRankingPageTitle }}</h1>
+        <span class="tool-ranking-page__badge">站内热榜</span>
+      </div>
       <p class="tool-ranking-page__desc">{{ toolRankingPageDescription }}</p>
       <div class="tool-ranking-page__toolbar">
         <div class="tool-ranking-page__periods" role="group" aria-label="切换排行榜周期">
@@ -137,6 +140,10 @@ onMounted(() => {
     </header>
 
     <section class="tool-ranking-page__board-shell" :aria-label="`${toolRankingPeriodLabel}工具排名`">
+      <div class="tool-ranking-page__board-heading">
+        <h2>本期热门工具</h2>
+        <span>按真实点击量排序</span>
+      </div>
       <div v-if="pageLoading" class="tool-ranking-page__status" role="status" aria-live="polite">
         工具排行榜加载中...
       </div>
@@ -166,11 +173,23 @@ onMounted(() => {
 .tool-ranking-page {
   width: 100%;
   box-sizing: border-box;
-  padding: 32px;
+  overflow: hidden;
   border: 1px solid var(--uied-color-border);
   border-radius: var(--uied-radius-lg);
   background: var(--uied-color-surface);
   color: var(--uied-color-text);
+}
+
+.tool-ranking-page__header {
+  padding: 32px 32px 24px;
+  background: linear-gradient(180deg, #f5f3ff, #ffffff);
+}
+
+.tool-ranking-page__heading {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 
 .tool-ranking-page__title {
@@ -179,6 +198,16 @@ onMounted(() => {
   line-height: 1.4;
   font-weight: 700;
   letter-spacing: -0.5px;
+}
+
+.tool-ranking-page__badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 500;
 }
 
 .tool-ranking-page__desc {
@@ -195,17 +224,12 @@ onMounted(() => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 16px;
-  margin: 24px 0;
+  margin-top: 20px;
 }
 
 .tool-ranking-page__periods {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border: 1px solid var(--uied-color-border);
-  border-radius: var(--uied-radius-md);
-  background: var(--uied-color-surface-subtle);
+  display: flex;
+  gap: 8px;
 }
 
 .tool-ranking-page__period-btn {
@@ -213,42 +237,61 @@ onMounted(() => {
   min-width: 68px;
   min-height: 44px;
   padding: 8px 18px;
-  border: 1px solid transparent;
-  border-radius: var(--uied-radius-sm);
-  background: transparent;
+  border: 1px solid var(--uied-color-border);
+  border-radius: 999px;
+  background: var(--uied-color-surface);
   color: var(--uied-color-text-secondary);
   font: inherit;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  transition: color var(--uied-motion-fast), background-color var(--uied-motion-fast);
+  transition: color var(--uied-motion-fast), background-color var(--uied-motion-fast), border-color var(--uied-motion-fast);
 }
 
 .tool-ranking-page__period-btn:hover {
-  color: var(--uied-color-text);
-  background: var(--uied-color-surface);
+  border-color: var(--uied-color-primary);
+  color: var(--uied-color-primary);
 }
 
-.tool-ranking-page__period-btn--active {
-  border-color: var(--uied-color-border);
-  background: var(--uied-color-surface);
-  color: var(--uied-color-primary);
+.tool-ranking-page__period-btn--active,
+.tool-ranking-page__period-btn--active:hover {
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary);
+  color: #ffffff;
   font-weight: 600;
-  box-shadow: 0 1px 2px rgb(16 24 40 / 5%);
 }
 
 .tool-ranking-page__period-btn:focus-visible {
   outline: 2px solid var(--uied-color-primary);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
-.tool-ranking-page__hint {
+.tool-ranking-page__hint,
+.tool-ranking-page__board-heading > span {
   color: var(--uied-color-text-secondary);
-  font-size: 13px;
+  font-size: 12px;
 }
 
 .tool-ranking-page__board-shell {
   min-width: 0;
+  padding: 0 32px 24px;
+}
+
+.tool-ranking-page__board-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--uied-color-border);
+}
+
+.tool-ranking-page__board-heading h2 {
+  margin: 0;
+  color: var(--uied-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
 }
 
 .tool-ranking-page__status {
@@ -266,20 +309,31 @@ onMounted(() => {
 }
 
 @container uied-tool (max-width: 600px) {
-  .tool-ranking-page {
-    padding: 20px 16px 12px;
+  .tool-ranking-page__header {
+    padding: 20px 16px 16px;
+  }
+
+  .tool-ranking-page__heading {
+    gap: 8px;
   }
 
   .tool-ranking-page__title {
     font-size: 22px;
   }
 
+  .tool-ranking-page__badge {
+    font-size: 11px;
+  }
+
   .tool-ranking-page__toolbar {
-    margin: 20px 0 16px;
+    margin-top: 20px;
   }
 
   .tool-ranking-page__periods {
+    display: grid;
     width: 100%;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
   }
 
   .tool-ranking-page__period-btn {
@@ -289,6 +343,14 @@ onMounted(() => {
 
   .tool-ranking-page__hint {
     display: none;
+  }
+
+  .tool-ranking-page__board-shell {
+    padding: 0 16px 12px;
+  }
+
+  .tool-ranking-page__board-heading > span {
+    font-size: 11px;
   }
 }
 </style>

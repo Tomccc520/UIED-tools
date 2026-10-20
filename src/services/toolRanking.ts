@@ -29,6 +29,8 @@ export interface ToolRankingListItem {
   rank: number
   toolKey: string
   toolTitle: string
+  /** 从现有工具目录补充的功能简介；目录尚未加载时可缺省。 */
+  toolDescription?: string
   toolUrl: string
   cateTitle: string
   viewCount: number
@@ -236,7 +238,7 @@ const normalizeToolRankingListResult = (input: unknown): ToolRankingListResult =
 }
 
 /**
- * 函数说明：使用当前工具主数据校准历史榜单，过滤已下线的导航入口并覆盖旧标题、分类和运行状态。
+ * 函数说明：使用当前工具主数据校准历史榜单，补充简介、过滤已下线的导航入口并覆盖旧标题、分类和运行状态。
  */
 const reconcileToolRankingListItems = (
   rankingItems: ToolRankingListItem[],
@@ -273,6 +275,7 @@ const reconcileToolRankingListItems = (
       rank: result.length + 1,
       toolKey: canonicalToolKey,
       toolTitle: String(matchedTool.title || rankingItem.toolTitle).trim(),
+      toolDescription: String(matchedTool.desc || '').trim(),
       toolUrl: canonicalUrl,
       cateTitle: String(matchedTool.cate || rankingItem.cateTitle).trim(),
       status: Number(matchedTool.status ?? rankingItem.status) === 0 ? 0 : 1,
@@ -440,6 +443,7 @@ export const buildFallbackToolRankingItems = (toolList: Tool[]): ToolRankingList
       rank: index + 1,
       toolKey: normalizeToolRankingKey(tool.toolKey) || deriveToolRankingKeyByPath(String(tool.url || '')),
       toolTitle: String(tool.title || '').trim(),
+      toolDescription: String(tool.desc || '').trim(),
       toolUrl: String(tool.url || '').trim(),
       cateTitle: String(tool.cate || '').trim(),
       viewCount: 0,

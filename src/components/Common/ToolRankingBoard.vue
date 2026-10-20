@@ -216,12 +216,6 @@ watch(
     </div>
 
     <template v-if="displayRankingList.length > 0 && (!loading || !flat)">
-      <div v-if="flat && !compact" class="tool-ranking-board__columns" aria-hidden="true">
-        <span>排名</span>
-        <span>工具</span>
-        <span class="tool-ranking-board__column-stat">点击量</span>
-        <span></span>
-      </div>
       <ol class="tool-ranking-board__list" :aria-label="`${title}列表`">
         <li v-for="item in displayRankingList" :key="`${item.toolKey}-${item.rank}`">
           <button type="button" class="tool-ranking-board__item" @click="handleRankingClick(item)">
@@ -232,6 +226,7 @@ watch(
             </span>
             <span class="tool-ranking-board__content">
               <span class="tool-ranking-board__item-title">{{ item.toolTitle }}</span>
+              <span v-if="flat && !compact && item.toolDescription" class="tool-ranking-board__item-description">{{ item.toolDescription }}</span>
               <span class="tool-ranking-board__item-meta">{{ resolveRankingMetaText(item) }}</span>
             </span>
             <span v-if="!compact" class="tool-ranking-board__stat">
@@ -461,7 +456,7 @@ watch(
   }
 }
 
-/* 独立榜单使用统一的排名行；紧凑侧栏沿用原有布局。 */
+/* 独立榜单借鉴资讯页的节点列表，紧凑侧栏继续保留原有布局。 */
 .tool-ranking-board--flat {
   container: ranking-board / inline-size;
   border-radius: 0;
@@ -469,32 +464,53 @@ watch(
 
 .tool-ranking-board--flat .tool-ranking-board__list {
   gap: 0;
+  padding-left: 24px;
 }
 
-.tool-ranking-board__columns,
+.tool-ranking-board--flat li {
+  position: relative;
+}
+
+.tool-ranking-board--flat li::before {
+  position: absolute;
+  z-index: 1;
+  top: calc(50% - 4px);
+  left: -24px;
+  width: 8px;
+  height: 8px;
+  box-sizing: border-box;
+  border: 2px solid var(--uied-color-primary);
+  border-radius: 50%;
+  background: var(--uied-color-surface);
+  content: '';
+}
+
+.tool-ranking-board--flat li::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -20.5px;
+  width: 1px;
+  background: #e8e4ff;
+  content: '';
+}
+
+.tool-ranking-board--flat li:first-child::after {
+  top: 50%;
+}
+
+.tool-ranking-board--flat li:last-child::after {
+  bottom: 50%;
+}
+
 .tool-ranking-board--flat .tool-ranking-board__item {
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr) 76px 16px;
+  grid-template-columns: 64px minmax(0, 1fr) 90px 16px;
   align-items: center;
   gap: 20px;
-  padding-inline: 16px;
-}
-
-.tool-ranking-board__columns {
-  min-height: 40px;
-  border-block: 1px solid var(--uied-color-border);
-  color: var(--uied-color-text-secondary);
-  font-size: 12px;
-}
-
-.tool-ranking-board__column-stat {
-  text-align: right;
-}
-
-.tool-ranking-board--flat .tool-ranking-board__item {
   width: 100%;
-  min-height: 84px;
-  padding-block: 16px;
+  min-height: 124px;
+  padding: 24px 12px;
   border: 0;
   border-bottom: 1px solid var(--uied-color-border);
   border-radius: 0;
@@ -519,10 +535,10 @@ watch(
 }
 
 .tool-ranking-board--flat .tool-ranking-board__rank {
-  width: 36px;
+  width: 56px;
   height: 36px;
   border-radius: var(--uied-radius-md);
-  background: transparent;
+  background: var(--uied-color-surface-subtle);
   color: var(--uied-color-text-secondary);
   font-size: 15px;
   font-weight: 500;
@@ -532,7 +548,7 @@ watch(
 .tool-ranking-board--flat .tool-ranking-board__rank--top {
   background: var(--uied-color-primary-soft);
   color: var(--uied-color-primary);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .tool-ranking-board--flat .tool-ranking-board__item-title {
@@ -541,15 +557,27 @@ watch(
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
   white-space: normal;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.6;
   font-weight: 600;
   color: var(--uied-color-text);
 }
 
+.tool-ranking-board__item-description {
+  display: -webkit-box;
+  overflow: hidden;
+  margin-top: 6px;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--uied-color-text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.75;
+}
+
 .tool-ranking-board--flat .tool-ranking-board__item-meta {
-  margin-top: 4px;
-  font-size: 12px;
+  margin-top: 8px;
+  font-size: 13px;
   line-height: 1.6;
   color: var(--uied-color-text-secondary);
 }
@@ -601,16 +629,32 @@ watch(
 }
 
 @container ranking-board (max-width: 540px) {
-  .tool-ranking-board__columns,
+  .tool-ranking-board--flat .tool-ranking-board__list {
+    padding-left: 16px;
+  }
+
+  .tool-ranking-board--flat li::before {
+    left: -16px;
+    top: calc(50% - 3px);
+    width: 6px;
+    height: 6px;
+    border-width: 1.5px;
+  }
+
+  .tool-ranking-board--flat li::after {
+    left: -13.5px;
+  }
+
   .tool-ranking-board--flat .tool-ranking-board__item {
-    grid-template-columns: 28px minmax(0, 1fr) 52px 14px;
-    gap: 10px;
-    padding-inline: 0;
+    grid-template-columns: 34px minmax(0, 1fr) 42px 12px;
+    gap: 8px;
+    min-height: 96px;
+    padding: 20px 4px;
   }
 
   .tool-ranking-board--flat .tool-ranking-board__rank {
-    width: 28px;
-    height: 32px;
+    width: 32px;
+    height: 30px;
     font-size: 13px;
   }
 
@@ -622,6 +666,20 @@ watch(
 
   .tool-ranking-board--flat .tool-ranking-board__item-title {
     font-size: 15px;
+  }
+
+  .tool-ranking-board__item-description {
+    font-size: 13px;
+  }
+
+  .tool-ranking-board--flat .tool-ranking-board__item-meta {
+    margin-top: 6px;
+    font-size: 12px;
+  }
+
+  .tool-ranking-board__arrow {
+    width: 12px;
+    height: 12px;
   }
 }
 </style>

@@ -17,7 +17,7 @@ vi.mock('./siteConfig', () => ({
   getSitePublicConfig: mocks.getSitePublicConfig
 }))
 
-import { getToolRankingList, resolveToolRankingMetaByRoute } from './toolRanking'
+import { buildFallbackToolRankingItems, getToolRankingList, resolveToolRankingMetaByRoute } from './toolRanking'
 
 const toolCategories = [
   {
@@ -63,7 +63,7 @@ describe('toolRanking', () => {
     await expect(resolveToolRankingMetaByRoute('/tools/ai/toolbox')).resolves.toBeNull()
   })
 
-  it('使用工具主数据修正旧榜单标题并过滤导航页', async () => {
+  it('复用工具主数据补充简介、修正旧榜单标题并过滤导航页', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
       code: 200,
       msg: '成功',
@@ -98,12 +98,14 @@ describe('toolRanking', () => {
           rank: 1,
           toolKey: 'ai-perler',
           toolTitle: '拼豆图纸生成器',
+          toolDescription: '上传图片生成拼豆图纸',
           toolUrl: '/tools/ai-perler',
           cateTitle: 'AI图像工具',
           viewCount: 20
         }
       ]
     })
+    expect(fetch).toHaveBeenCalledTimes(1)
   })
 
   it('工具目录尚未加载时保留接口榜单，避免冷启动空白', async () => {
@@ -130,6 +132,32 @@ describe('toolRanking', () => {
     const result = await getToolRankingList({ period: 'week', limit: 1 })
     expect(result.list).toHaveLength(1)
     expect(result.list[0]?.toolTitle).toBe('拼豆图纸生成器')
+    expect(result.list[0]?.toolDescription).toBeUndefined()
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('兜底推荐直接复用工具简介，保留既有排名和门禁信息', () => {
+    const result = buildFallbackToolRankingItems([{
+      id: 1,
+      title: '拼豆图纸生成器',
+      logo: '',
+      desc: '  上传图片生成拼豆图纸  ',
+      url: '/tools/ai-perler',
+      cate: 'AI图像工具',
+      toolKey: 'ai-perler',
+      status: 0,
+      remark: '维护中'
+    }])
+
+    expect(result).toMatchObject([{
+      rank: 1,
+      toolKey: 'ai-perler',
+      toolTitle: '拼豆图纸生成器',
+      toolDescription: '上传图片生成拼豆图纸',
+      toolUrl: '/tools/ai-perler',
+      status: 0,
+      remark: '维护中'
+    }])
   })
 
   describe('排行榜请求状态', () => {
