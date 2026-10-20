@@ -24,13 +24,13 @@ UIED-Tools 定位为“高密度、高可用、低学习成本”的专业在线
 
 ## 3. 基础令牌
 
-令牌统一定义在 `src/styles/tailwind.css`，新组件不再新增同义硬编码颜色。
+令牌统一定义在 `src/styles/tailwind.css`，新组件不再新增同义硬编码颜色。主色沿用网站原有品牌紫 `#6C54FF`，设计调整不自行更换品牌主色；按钮、选中态、链接、焦点及浅色背景使用对应主题令牌。
 
 | 用途 | 令牌 | 当前值 |
 | --- | --- | --- |
-| 品牌主色 | `--uied-color-primary` | `#5b54e8` |
-| 主色悬停 | `--uied-color-primary-hover` | `#4d47d0` |
-| 主色浅背景 | `--uied-color-primary-soft` | `#efefff` |
+| 品牌主色 | `--uied-color-primary` | `#6c54ff` |
+| 主色悬停 | `--uied-color-primary-hover` | `#5842cc` |
+| 主色浅背景 | `--uied-color-primary-soft` | `#f8f7ff` |
 | 页面背景 | `--uied-color-page` | `#f6f7fb` |
 | 内容表面 | `--uied-color-surface` | `#ffffff` |
 | 主文字 | `--uied-color-text` | `#172033` |

@@ -1085,14 +1085,14 @@ onUnmounted(() => {
 
 .header-link-item--account {
   color: #ffffff;
-  border-color: #5b54e8;
-  background: #5b54e8;
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary);
 }
 
 .header-link-item--account:hover {
   color: #ffffff;
-  border-color: #4d47d0;
-  background: #4d47d0;
+  border-color: var(--uied-color-primary-hover);
+  background: var(--uied-color-primary-hover);
 }
 
 .header-link-icon {
@@ -1115,17 +1115,17 @@ onUnmounted(() => {
   height: 32px;
   align-items: center;
   justify-content: center;
-  color: #5b54e8;
+  color: var(--uied-color-primary);
   border: 1px solid #dedcfb;
   border-radius: 6px;
-  background: #f4f3ff;
+  background: var(--uied-color-primary-soft);
   transition: color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
 }
 
 .header-bookmark-action:hover {
   color: #ffffff;
-  border-color: #5b54e8;
-  background: #5b54e8;
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary);
 }
 
 .header-bookmark-action .el-icon {
@@ -1188,15 +1188,15 @@ onUnmounted(() => {
 
 /* 修改收藏到书签按钮样式 */
 .el-button.el-button--primary {
-  background-color: #6C54FF !important;
-  border-color: #6C54FF !important;
+  background-color: var(--uied-color-primary) !important;
+  border-color: var(--uied-color-primary) !important;
   color: #fff !important;
   transition: all 0.3s ease;
 }
 
 .el-button.el-button--primary:hover {
-  background-color: #5842cc !important;
-  border-color: #5842cc !important;
+  background-color: var(--uied-color-primary-hover) !important;
+  border-color: var(--uied-color-primary-hover) !important;
 }
 
 .login-dialog-header {
@@ -1223,7 +1223,7 @@ onUnmounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #5b54e8;
+  color: var(--uied-color-primary);
   font-size: 10px;
   line-height: 1;
   font-weight: 900;
@@ -1233,7 +1233,7 @@ onUnmounted(() => {
   content: '';
   width: 22px;
   height: 3px;
-  background: #5b54e8;
+  background: var(--uied-color-primary);
 }
 
 .login-dialog-shell {
@@ -1282,7 +1282,7 @@ onUnmounted(() => {
   justify-content: space-between;
   gap: 8px;
   padding: 8px 10px;
-  border-left: 3px solid #5b54e8;
+  border-left: 3px solid var(--uied-color-primary);
   border-radius: 4px;
   background: #ffffff;
 }
@@ -1331,7 +1331,7 @@ onUnmounted(() => {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #5b54e8;
+  background: var(--uied-color-primary);
 }
 
 .login-dialog-main {
@@ -1428,7 +1428,7 @@ onUnmounted(() => {
 }
 
 :deep(.frontend-login-dialog .el-input__wrapper.is-focus) {
-  box-shadow: 0 0 0 1px #5b54e8 inset;
+  box-shadow: 0 0 0 1px var(--uied-color-primary) inset;
 }
 
 :deep(.frontend-login-dialog .el-input__prefix) {

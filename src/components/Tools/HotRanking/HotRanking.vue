@@ -182,7 +182,7 @@ onMounted(() => {
 
 .tool-ranking-page__header {
   padding: 32px 32px 24px;
-  background: linear-gradient(180deg, #f5f3ff, #ffffff);
+  background: linear-gradient(180deg, var(--uied-color-primary-soft), var(--uied-color-surface));
 }
 
 .tool-ranking-page__heading {

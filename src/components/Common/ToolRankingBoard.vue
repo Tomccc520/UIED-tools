@@ -304,8 +304,8 @@ watch(
   flex-shrink: 0;
   padding: 0.25rem 0.625rem;
   border-radius: 999px;
-  background: rgba(99, 102, 241, 0.1);
-  color: #4f46e5;
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
   font-size: 0.75rem;
   font-weight: 600;
 }
@@ -353,7 +353,7 @@ watch(
 }
 
 .tool-ranking-board__rank--top {
-  background: #4f46e5;
+  background: var(--uied-color-primary);
   color: #ffffff;
 }
 
@@ -388,7 +388,7 @@ watch(
   flex-shrink: 0;
   font-size: 0.75rem;
   line-height: 1.25rem;
-  color: #4f46e5;
+  color: var(--uied-color-primary);
   font-weight: 600;
 }
 
@@ -409,7 +409,7 @@ watch(
   margin-left: 0.75rem;
   padding: 0 0.9rem;
   color: #fff;
-  background: #6757ff;
+  background: var(--uied-color-primary);
   border: 0;
   border-radius: 8px;
   font-size: 0.8rem;
@@ -418,7 +418,7 @@ watch(
 }
 
 .tool-ranking-board__retry:focus-visible {
-  outline: 2px solid #6757ff;
+  outline: 2px solid var(--uied-color-primary);
   outline-offset: 2px;
 }
 
@@ -491,7 +491,7 @@ watch(
   bottom: 0;
   left: -20.5px;
   width: 1px;
-  background: #e8e4ff;
+  background: var(--uied-color-primary-soft);
   content: '';
 }
 

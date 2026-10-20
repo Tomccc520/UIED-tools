@@ -1025,7 +1025,7 @@ onMounted(() => {
                 <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
                   stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
-              <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+              <div class="absolute w-2.5 h-2.5 bg-[var(--uied-color-primary)] rounded-full opacity-40 -bottom-1 -right-1"></div>
             </div>
             <span class="menu-text">{{ recommendTitle }}</span>
           </template>
@@ -1050,7 +1050,7 @@ onMounted(() => {
                 <template #title>
                   <div class="relative menu-icon-wrap">
                     <img class="menu-image-icon" :src="block.icon" :alt="`${block.title} 图标`" />
-                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                    <div class="absolute w-2.5 h-2.5 bg-[var(--uied-color-primary)] rounded-full opacity-40 -bottom-1 -right-1"></div>
                   </div>
                   <span class="menu-text">{{ block.title }}</span>
                 </template>
@@ -1083,7 +1083,7 @@ onMounted(() => {
                 >
                   <div class="relative menu-icon-wrap">
                     <img class="menu-image-icon" :src="item.icon" :alt="`${item.name} 图标`" />
-                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                    <div class="absolute w-2.5 h-2.5 bg-[var(--uied-color-primary)] rounded-full opacity-40 -bottom-1 -right-1"></div>
                   </div>
                   <span class="menu-text">{{ item.name }}</span>
                 </el-menu-item>
@@ -1117,7 +1117,7 @@ onMounted(() => {
                 <template #title>
                   <div class="relative menu-icon-wrap">
                     <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
-                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                    <div class="absolute w-2.5 h-2.5 bg-[var(--uied-color-primary)] rounded-full opacity-40 -bottom-1 -right-1"></div>
                   </div>
                   <span class="menu-text">{{ menu.title }}</span>
                 </template>
@@ -1141,7 +1141,7 @@ onMounted(() => {
               >
                 <div class="relative menu-icon-wrap">
                   <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
-                  <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                  <div class="absolute w-2.5 h-2.5 bg-[var(--uied-color-primary)] rounded-full opacity-40 -bottom-1 -right-1"></div>
                 </div>
                 <span class="menu-text">{{ menu.title }}</span>
               </el-menu-item>
@@ -1150,7 +1150,7 @@ onMounted(() => {
                 <template #title>
                   <div class="relative menu-icon-wrap">
                     <img class="menu-image-icon" :src="menu.resolvedIcon" :alt="`${menu.title} 图标`" />
-                    <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+                    <div class="absolute w-2.5 h-2.5 bg-[var(--uied-color-primary)] rounded-full opacity-40 -bottom-1 -right-1"></div>
                   </div>
                   <span class="menu-text">{{ menu.title }}</span>
                 </template>
@@ -1190,7 +1190,7 @@ onMounted(() => {
               <path d="M10 9H9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                 stroke-linejoin="round" />
             </svg>
-            <div class="absolute w-2.5 h-2.5 bg-[#6C54FF] rounded-full opacity-40 -bottom-1 -right-1"></div>
+            <div class="absolute w-2.5 h-2.5 bg-[var(--uied-color-primary)] rounded-full opacity-40 -bottom-1 -right-1"></div>
           </div>
           <span class="menu-text">{{ item.name }}</span>
         </el-menu-item>
@@ -1218,9 +1218,9 @@ onMounted(() => {
   /* 颜色变量 */
   --menu-text-color: #333;
   --menu-hover-color: #fff;
-  --menu-hover-bg: #6C54FF;
-  --menu-active-bg: #6C54FF;
-  --menu-dot-color: #6C54FF;
+  --menu-hover-bg: var(--uied-color-primary);
+  --menu-active-bg: var(--uied-color-primary);
+  --menu-dot-color: var(--uied-color-primary);
 
   /* 动画变量 */
   --menu-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1448,7 +1448,7 @@ onMounted(() => {
 
 @keyframes stroke-animation {
   0% {
-    color: #6C54FF;
+    color: var(--uied-color-primary);
     text-shadow:
       -1px -1px 0 #fff,
       1px -1px 0 #fff,
@@ -1466,7 +1466,7 @@ onMounted(() => {
   }
 
   100% {
-    color: #6C54FF;
+    color: var(--uied-color-primary);
     text-shadow:
       -1px -1px 0 #fff,
       1px -1px 0 #fff,
@@ -1522,7 +1522,7 @@ onMounted(() => {
 }
 
 #矩形 {
-  fill: #6C54FF;
+  fill: var(--uied-color-primary);
 }
 
 /* 新Logo样式 */
@@ -1538,14 +1538,14 @@ onMounted(() => {
 }
 
 .logo-wrapper :deep(#background-rect) {
-  fill: #6C54FF;
+  fill: var(--uied-color-primary);
 }
 
 /* Tools 文字样式 */
 .tools-text {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #6C54FF;
+  color: var(--uied-color-primary);
   opacity: 0;
   animation: fade-in 0.3s ease-out 1s forwards;
   letter-spacing: 0.5px;
@@ -1569,7 +1569,7 @@ onMounted(() => {
 
 /* Logo 容器样式 */
 .logo-wrapper {
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border-radius: 6px;
   padding: 1px;
   box-shadow: 0 4px 6px -1px rgba(108, 84, 255, 0.1), 0 2px 4px -1px rgba(108, 84, 255, 0.06);

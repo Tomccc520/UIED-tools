@@ -7,9 +7,9 @@
   --base-black: #444;
 
   /* UIED 3.x 基础颜色令牌：主色仅用于主操作、链接与焦点反馈。 */
-  --uied-color-primary: #5b54e8;
-  --uied-color-primary-hover: #4d47d0;
-  --uied-color-primary-soft: #efefff;
+  --uied-color-primary: #6c54ff;
+  --uied-color-primary-hover: #5842cc;
+  --uied-color-primary-soft: #f8f7ff;
   --uied-color-page: #f6f7fb;
   --uied-color-surface: #ffffff;
   --uied-color-surface-subtle: #f8fafc;
@@ -33,7 +33,7 @@
   --uied-shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 5%);
   --uied-motion-fast: 160ms;
   --uied-motion-base: 240ms;
-  --uied-focus-ring: 0 0 0 3px rgb(91 84 232 / 22%);
+  --uied-focus-ring: 0 0 0 3px rgb(108 84 255 / 22%);
 }
 
 body {
