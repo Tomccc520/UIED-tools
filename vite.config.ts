@@ -221,8 +221,7 @@ export default defineConfig({
           if (
             normalizedId.includes('/node_modules/pdfjs-dist/') ||
             normalizedId.includes('/node_modules/pdf-lib/') ||
-            normalizedId.includes('/node_modules/jspdf/') ||
-            normalizedId.includes('/node_modules/html2pdf.js/')
+            normalizedId.includes('/node_modules/jspdf/')
           ) {
             return 'vendor-pdf'
           }

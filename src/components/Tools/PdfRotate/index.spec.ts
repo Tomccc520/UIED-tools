@@ -17,8 +17,8 @@ const runtime = vi.hoisted(() => ({
 }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/tools/pdf-rotate' }) }))
 vi.mock('element-plus', () => ({ ElMessage: runtime }))
-vi.mock('@/utils/pdf', async () => ({
-  getPdfFileError: () => '',
+vi.mock('@/utils/pdf', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/utils/pdf')>(),
   ensurePdfjsRuntime: async () => ({ getDocument: runtime.getDocument }),
   ensurePdfLibRuntime: async () => ({ PDFDocument: { create: runtime.create, load: runtime.load }, degrees }),
 }))
@@ -49,7 +49,9 @@ const mountTool = async (component = PdfRotate) => {
   } })
   const file = new File(['pdf'], 'pages.pdf')
   Object.defineProperty(file, 'arrayBuffer', { value: async () => sourceBytes.slice().buffer })
-  await (wrapper.vm as any).handleFile(file)
+  const input = wrapper.get('input[type="file"]')
+  Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+  await input.trigger('change')
   await flushPromises()
   return wrapper
 }
@@ -81,6 +83,40 @@ beforeEach(async () => {
   vi.stubGlobal('URL', { createObjectURL: vi.fn(() => 'blob:pdf-test'), revokeObjectURL: vi.fn() })
 })
 afterEach(() => { wrapper?.unmount(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+describe('PDF 公共上传入口', () => {
+  it.each([PdfRotate, PdfDelete])('拒绝非法与超限文件后仍可选择 PDF，清空后允许重新选择同一文件', async (component) => {
+    const view = await mountTool(component)
+    const vm = view.vm as any
+    const file = vm.currentFile as File
+    vm.clearFile()
+    await flushPromises()
+    const previousLoads = runtime.getDocument.mock.calls.length
+    const input = view.get('input[type="file"]')
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['text'], 'notes.txt', { type: 'text/plain' })] })
+    await input.trigger('change')
+    await flushPromises()
+    expect(runtime.error).toHaveBeenCalledWith('仅支持PDF文件')
+    expect(runtime.getDocument).toHaveBeenCalledTimes(previousLoads)
+    expect(vm.currentFile).toBeNull()
+    expect(view.get('button[aria-label="选择 PDF 文件"]').attributes('disabled')).toBeUndefined()
+
+    const oversized = new File([], 'oversized.pdf', { type: 'application/pdf' })
+    Object.defineProperty(oversized, 'size', { value: 200 * 1024 * 1024 + 1 })
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [oversized] })
+    await input.trigger('change')
+    await flushPromises()
+    expect(runtime.error).toHaveBeenCalledWith('文件大小不能超过200MB')
+    expect(runtime.getDocument).toHaveBeenCalledTimes(previousLoads)
+    expect(vm.currentFile).toBeNull()
+
+    Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
+    await input.trigger('change')
+    await flushPromises()
+    expect(view.findAll('canvas')).toHaveLength(3)
+    expect((input.element as HTMLInputElement).value).toBe('')
+  })
+})
 
 describe('PDF 页面旋转与删除的真实导出', () => {
   it('拖拽为 C/A/B 后保持源页顺序，只旋转 C 而不误转 A', async () => {

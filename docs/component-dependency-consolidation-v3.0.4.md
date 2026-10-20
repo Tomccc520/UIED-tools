@@ -1,8 +1,8 @@
-# 组件复用与依赖收敛：首轮记录
+# 组件复用与依赖收敛记录
 
 日期：2026-10-21。代码基线：`7367488f`。版本保持 3.0.4。
 
-## 已完成
+## 首轮已完成
 
 - 新增公共 `FileUploadZone.vue`，统一原生文件选择、顺序、重复选择、拖拽高亮、禁用、忙碌反馈与键盘入口。业务格式/大小校验和处理生命周期留在各工具。
 - Favicon、图片格式转换、图片合成 GIF 三个页面接入，删除重复的输入、选择按钮和拖拽处理。Favicon 拖入文件不再需要构造 DataTransfer 再写回文件输入。
@@ -23,10 +23,43 @@
 
 本地证据位于 `output/playwright/component-reuse-2026-10-21/`，按仓库规则不提交。回归初期本地 MySQL/Redis 容器停止导致站点配置和热榜报错；恢复已有容器后热榜接口返回 200 及真实数据，没有执行数据库补丁或导入。
 
+## 第二轮：PDF 上传与闲置依赖
+
+日期：2026-10-21。代码基线：`ba161698`，版本保持 3.0.4。
+
+- PDF 页面旋转、PDF 页面删除接入同一 `FileUploadZone.vue`，删除两套文件输入、拖拽高亮与重选清空逻辑，上传标题、说明和 200MB 上限由页面属性传入。
+- 类型/大小校验、源页标识、排序、旋转、异步取消和保存生命周期继续留在工具中。公共组件没有引入 PDF 依赖，也没有把 PDF 运行库加入首页入口。
+- 回归从真实文件输入事件进入，验证非法与超限文件被拒绝、不会调用 PDF 加载器，随后仍可重新选择原文件；原有真实 PDF 页序/角度测试继续保留。
+
+### 本轮依赖决策
+
+| 依赖 | 决策与证据 | 保留的实际能力 |
+| --- | --- | --- |
+| `vue-devui` | 删除。无主站组件、全局 CSS、自动注册或动态加载消费者，避免维护第二套未使用的 Vue UI 库。 | 主站 Element Plus、Tailwind 和项目公共组件不变，后台 Arco 属于独立构建边界。 |
+| `@devui-design/icons` | 删除。无源码消费者，原反向树仅来自已删除的 DevUI。 | `@element-plus/icons-vue` 与存量业务图标继续使用。 |
+| `html2pdf.js` | 删除。只有失效类型声明及 Vite 分包条件，无导出调用；同步删除两处失效配置。 | Markdown/文本/Logo 规范原本使用独立的 `html2canvas` 与 `jspdf` 按需加载器，继续保留。 |
+
+未增加依赖、未升级保留包。npm 锁删除 81 个不再可达的安装节点，保留节点的版本和完整性不变；pnpm 锁删除 72 个 package 及其 snapshot，保留对象不变。移除闲置 `html2pdf.js` 同时清除了其传递引入的第二套 jsPDF。安装节点数量不等于浏览器体积或首屏耗时收益，本轮不据此宣称加载提速比例。
+
+在隔离临时目录执行 `npm ci --ignore-scripts --prefer-offline --no-audit --no-fund` 成功，检查三个目标不再安装，`html2canvas`、`jspdf`、`tui-image-editor` 继续保留，临时目录已删除。npm manifest 与锁文件一致。
+
+**既有 pnpm 锁漂移已补齐**：核对发现根 importer 原本缺少 `@neslinesli93/qpdf-wasm`、`@types/react`、`@types/react-dom`、`react`、`react-cropper`、`react-dom`、`sql-formatter` 七项现有依赖。隔离生成候选后，仅合入七项 importer 与其必需的 13 个 package/snapshot，直接依赖版本采用 npm 锁的已验证版本，保留节点及元数据原样。隔离执行 `pnpm install --frozen-lockfile --lockfile-only --ignore-scripts --offline --registry=https://registry.npmjs.org` 通过；这是冻结锁一致性验证，完整干净安装验证使用前述 npm ci。
+
+### 浏览器与真实产物
+
+- 两款 PDF 工具通过原生键盘文件选择、三页预览与真实下载；删除页清空后可用同一路径重新载入原 PDF。
+- 旋转产物保留 A/B/C 三页文字，A 旋转到 90°，源 B 原有的 90° 不变；删除 B 后的产物为 A/C，A 的 90° 保留。独立读取页数、尺寸、角度和文本确认。
+- 两款 PDF 页覆盖 320/375/768/1440px，单个 H1、无横向溢出。公共上传区使用主题令牌，不再有放大拖入动画。
+- 保留的 Markdown 转 PDF、文本转 PDF 均通过页面真实下载和 Poppler 渲染检查，内容没有变成空白。
+- 回归发现 Logo 规范页原本只有 `showPreview` 状态，缺少实际预览与下载模板。恢复现有 Element Plus 对话框，接入品牌信息、Logo、颜色、尺寸、场景和禁用规则；增加导出忙碌、防重、解码失败与保存失败后的重试反馈，普通 UI 改为品牌主题，作品色值不变。
+- Logo 规范在 320/375px 对话框内滚动、下载按钮可见，手机端实际导出包含最后的“05 / 禁用规则”。使用现有 jsPDF 无损压缩，导出仍为图片型 PDF，不引入新依赖；7 项独立测试覆盖生成校验、预览、按需加载和失败重试。
+- 同一份两页测试规范启用压缩后由 14,875,687 字节降为 181,360 字节，Poppler 渲染的两张 PNG 分别与压缩前完全一致；该数值仅对应测试文档，不代表任意文件的压缩率。重复下载及中间 PDF 已清理，保留最终 PDF、渲染图与比较记录。
+- 最终单测 66 个文件、654 项通过，`npm run build:check`（含 TypeScript）、工具与路由一致性检查及 `git diff --check` 通过，未修改版本号或部署线上环境。
+- 证据：`output/playwright/component-dependency-round2-2026-10-21/`，按仓库规则不提交。
+
 ## 后续候选与边界
 
-- `vue-devui`、`@devui-design/icons`：本轮未发现运行时、全局样式或构建自动注册消费者；下一批可单独清理并做干净安装/构建回归。
-- `html2pdf.js`：未发现当前调用，但仍有类型声明和分包条目，应成组检查清理并回归相关导出入口。`@toast-ui/editor`、`image-conversion` 也列为后续候选。
+- `@toast-ui/editor`、`image-conversion` 仍为后续候选，须继续核对真实消费者，不能只因依赖名称相似而删除。
 - 保留 PDF.js 渲染、pdf-lib 编辑、qpdf 加密，以及 CompressorJS JPG/WebP 和 UPNG PNG 编码等互补职责，不能只按同类名称删除。
 - 重型文件处理、Worker 和异步加载边界保留。本轮没有首屏性能基准，不把删除依赖的安装目录体积当作网页加载节省量。
 - 新组件尚未迁移所有 PDF、Element Upload 和其他上传场景；后续按实际事件与生命周期逐组接入，避免扩大通用组件职责。

@@ -24,27 +24,16 @@
         </div>
 
         <!-- 上传区域 -->
-        <div v-if="!currentFile">
-          <div
-            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-brand"
-            :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200'" @drop.prevent="handleDrop"
-            @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
-
-            <div class="text-center px-4">
-              <div class="w-8 h-8 mb-2 mx-auto">
-                <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽PDF文件到这里</div>
-              <p class="text-xs text-gray-400">单个文件最大 {{ maxFileSizeMB }}MB</p>
-              <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
-            </div>
-          </div>
-        </div>
+        <FileUploadZone
+          v-if="!currentFile"
+          title="点击或拖拽 PDF 文件到这里"
+          aria-label="选择 PDF 文件"
+          accept=".pdf,application/pdf"
+          description="本地处理，不上传文件"
+          :hint="`支持 PDF 格式 · 单个文件最大 ${maxFileSizeMB}MB`"
+          :disabled="saving"
+          @files="handleFiles"
+        />
 
         <p v-if="loading" role="status" class="mt-4 text-sm text-gray-500">正在加载 PDF 页面预览...</p>
         <button v-if="loading" class="mt-2 text-sm text-brand" @click="clearFile">取消加载</button>
@@ -236,6 +225,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist'
 import type { PDFDocument as PdfDocument } from 'pdf-lib'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import FileUploadZone from '@/components/Common/FileUploadZone.vue'
 
 const route = useRoute()
 
@@ -300,8 +290,6 @@ interface EditablePage {
   deleted: boolean
 }
 
-const fileInputRef = ref<HTMLInputElement | null>(null)
-const isDragging = ref(false)
 const currentFile = ref<File | null>(null)
 const pdfDoc = shallowRef<PdfDocument | null>(null)
 const pdfPages = ref<EditablePage[]>([])
@@ -314,19 +302,9 @@ let documentVersion = 0
 
 const hasSelectedPages = computed(() => pdfPages.value.some(page => page.selected && !page.deleted))
 
-/** 从拖放事件加载首个文件，保存期间不更换编辑中的文档。 */
-const handleDrop = async (event: DragEvent) => {
-  isDragging.value = false
-  const file = event.dataTransfer?.files[0]
-  if (file && !saving.value) await handleFile(file)
-}
-
-/** 读取文件选择结果并清空 input，以便再次选择同一文件。 */
-const handleFileInputChange = async (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (file && !saving.value) await handleFile(file)
+/** 接收公共上传区交付的首个文件，保存期间不更换文档，校验和预览继续由工具负责。 */
+const handleFiles = async (files: File[]) => {
+  if (files[0] && !saving.value) await handleFile(files[0])
 }
 
 /** 取消现有画布渲染并释放预览文档，使旧文件的异步结果失效。 */

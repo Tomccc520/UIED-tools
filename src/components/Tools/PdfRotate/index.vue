@@ -19,27 +19,16 @@
         </div>
 
         <!-- 上传区域 -->
-        <div v-if="!currentFile">
-          <div
-            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
-            :class="isDragging ? 'border-brand bg-brand-soft scale-[1.02]' : 'border-gray-200 hover:border-brand hover:bg-gray-50'"
-            @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
-
-            <div class="text-center px-4">
-              <div class="w-16 h-16 mb-4 rounded-full bg-brand-soft flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <div class="text-lg font-medium text-gray-700 mb-2">点击或拖拽PDF文件到这里</div>
-              <p class="text-sm text-gray-400">单个文件最大 {{ maxFileSizeMB }}MB</p>
-              <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
-            </div>
-          </div>
-        </div>
+        <FileUploadZone
+          v-if="!currentFile"
+          title="点击或拖拽 PDF 文件到这里"
+          aria-label="选择 PDF 文件"
+          accept=".pdf,application/pdf"
+          description="本地处理，不上传文件"
+          :hint="`支持 PDF 格式 · 单个文件最大 ${maxFileSizeMB}MB`"
+          :disabled="processing"
+          @files="handleFiles"
+        />
 
         <!-- 文件预览和操作区域 -->
         <div v-if="currentFile" class="mt-6">
@@ -109,7 +98,7 @@
 
           <!-- 页面网格 -->
           <VueDraggable v-model="pages" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 pdf-page-grid" :item-key="'id'"
-            :animation="300" :disabled="processing || loading" @start="isDragging = true" @end="isDragging = false">
+            :animation="300" :disabled="processing || loading">
             <template #item="{ element, index }">
               <div class="relative bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all group" :data-source-page="element.id + 1">
                 <!-- 页面预览 -->
@@ -206,6 +195,7 @@ import { formatFileSize } from '@/utils/file'
 import VueDraggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import FileUploadZone from '@/components/Common/FileUploadZone.vue'
 import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import { cancelPdfPagePreview, getPdfPageRotation, renderPdfPagePreview } from '@/utils/pdfPagePreview'
 import type { PDFDocumentProxy } from 'pdfjs-dist'
@@ -278,8 +268,6 @@ const pages = ref<Page[]>([])
 const pageCount = ref(0)
 const processing = ref(false)
 const loading = ref(false)
-const isDragging = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
 const pageCanvases = new Map<number, HTMLCanvasElement>()
 let previewDocument: PDFDocumentProxy | null = null
 let documentVersion = 0
@@ -292,19 +280,9 @@ const setCanvasRef = (element: unknown, id: number) => {
   else pageCanvases.delete(id)
 }
 
-/** 从拖放事件读取首个 PDF，保存过程中不接受新文件。 */
-const handleDrop = (event: DragEvent) => {
-  isDragging.value = false
-  const file = event.dataTransfer?.files[0]
-  if (file && !processing.value) void handleFile(file)
-}
-
-/** 从文件选择框加载 PDF，并清空选择值以支持重复选择同一文件。 */
-const handleFileInputChange = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  input.value = ''
-  if (file && !processing.value) void handleFile(file)
+/** 接收公共上传区交付的首个文件，格式、大小及文档生命周期仍由本工具管理。 */
+const handleFiles = (files: File[]) => {
+  if (files[0] && !processing.value) void handleFile(files[0])
 }
 
 /** 取消旧预览并释放文档，使清除、换文件及离开页面后的异步结果失效。 */
