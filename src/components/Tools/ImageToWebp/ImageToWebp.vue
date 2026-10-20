@@ -1,13 +1,14 @@
 <!--
   @file ImageToWebp.vue
   @description 图片格式转换工具组件，支持多种格式图片互相转换
+  @copyright Tomda (https://www.tomda.top)
   @copyright UIED技术团队 (https://fsuied.com)
   @author UIED技术团队
   @createDate 2024-12-22
 
   功能特性：
   1. 支持拖拽和点击上传图片
-  2. 支持JPG、PNG、WebP、GIF等常见格式互相转换
+  2. 支持浏览器可读取的图片转换为JPG、PNG、WebP
   3. 支持调整图片质量和压缩率
   4. 支持批量转换多张图片
   5. 本地处理，无需上传服务器
@@ -98,29 +99,23 @@
                   <div>
                     <label class="text-sm text-gray-600 mb-1 block">质量 ({{ quality }}%)</label>
                     <div class="flex items-center space-x-2">
-                      <input type="range" v-model="quality" min="10" max="100" step="1"
+                      <input type="range" v-model="quality" min="10" max="100" step="1" :disabled="selectedFormat === 'PNG'"
                         class="flex-1 accent-blue-500" />
                       <span class="text-xs text-gray-500 w-8 text-right">{{ quality }}%</span>
                     </div>
-                    <p class="text-xs text-gray-400 mt-1">质量越高，文件体积越大</p>
+                    <p class="text-xs text-gray-400 mt-1">{{ selectedFormat === 'PNG' ? 'PNG 使用无损编码，不应用质量参数' : '质量越高，文件体积通常越大' }}</p>
                   </div>
 
                   <!-- 特殊选项 -->
                   <div>
-                    <div v-if="selectedFormat === 'WEBP'" class="flex items-center mt-5">
-                      <input id="lossless" type="checkbox" v-model="lossless" class="accent-blue-500 mr-2" />
-                      <label for="lossless" class="text-sm text-gray-600">使用无损压缩</label>
-                    </div>
                     <div v-if="selectedFormat === 'PNG'" class="flex items-center mt-5">
                       <input id="transparent" type="checkbox" v-model="transparent" class="accent-blue-500 mr-2" />
                       <label for="transparent" class="text-sm text-gray-600">保留透明度</label>
                     </div>
-                    <div v-if="selectedFormat === 'JPG'" class="flex items-center mt-5">
-                      <input id="progressive" type="checkbox" v-model="progressive" class="accent-blue-500 mr-2" />
-                      <label for="progressive" class="text-sm text-gray-600">使用渐进式JPEG</label>
-                    </div>
+                    <p v-if="selectedFormat === 'JPG'" class="text-xs text-gray-500 mt-5">JPG 不支持透明度，透明区域将填充为白色。</p>
                   </div>
                 </div>
+                <p class="mt-3 text-xs text-gray-500" role="status">设置用于下一次转换；已有结果保持其标注格式，点击“开始转换”后才会更新。</p>
 
                 <div class="mt-4">
                   <button @click="convertAllImages" :disabled="isConverting"
@@ -136,7 +131,7 @@
 
             <!-- 图片预览区域 -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div v-for="(image, index) in images" :key="index"
+              <div v-for="(image, index) in images" :key="image.id"
                 class="border rounded-lg overflow-hidden shadow-sm bg-white flex flex-col">
                 <div class="relative">
                   <div class="aspect-video bg-gray-100 flex items-center justify-center overflow-hidden">
@@ -151,9 +146,9 @@
                       {{ formatFileSize(image.file.size) }}
                     </span>
                   </div>
-                  <span v-if="image.convertedUrl"
+                  <span v-if="image.result"
                     class="absolute top-2 right-2 bg-green-500/90 text-white text-xs rounded px-2 py-1">
-                    已转换
+                    已转换 · {{ image.result.format.toUpperCase() }}
                   </span>
                 </div>
 
@@ -165,15 +160,17 @@
                   </div>
 
                   <!-- 转换结果 -->
-                  <div v-if="image.convertedUrl" class="mt-2">
+                  <div v-if="image.result" class="mt-2">
+                    <p class="mb-2 text-xs text-gray-600">实际格式：{{ image.result.format.toUpperCase() }} · {{ image.result.filename }}</p>
                     <div class="flex items-center justify-between text-xs text-gray-500">
                       <span>原始大小: {{ formatFileSize(image.file.size) }}</span>
-                      <span>转换后: {{ formatFileSize(image.convertedSize) }}</span>
-                      <span :class="image.convertedSize < image.file.size ? 'text-green-500' : 'text-orange-500'">
-                        {{ image.convertedSize < image.file.size ? '节省' : '增加' }}: {{ calcSavings(image.file.size,
-                          image.convertedSize) }} </span>
+                      <span>转换后: {{ formatFileSize(image.result.blob.size) }}</span>
+                      <span :class="image.result.blob.size < image.file.size ? 'text-green-500' : 'text-orange-500'">
+                        {{ image.result.blob.size < image.file.size ? '节省' : '增加' }}: {{ calcSavings(image.file.size,
+                          image.result.blob.size) }} </span>
                     </div>
                   </div>
+                  <p v-if="image.error" role="alert" class="mt-2 text-xs text-red-500">{{ image.error }}</p>
 
                   <!-- 操作按钮 -->
                   <div class="mt-3 flex justify-between">
@@ -185,7 +182,7 @@
                       </svg>
                       <span>移除</span>
                     </button>
-                    <button v-if="image.convertedUrl" @click="downloadImage(image)"
+                    <button v-if="image.result" @click="downloadImage(image)"
                       class="text-xs text-blue-500 hover:text-blue-600 transition-colors flex items-center space-x-1">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -230,7 +227,7 @@
                 </div>
                 <h4 class="text-base font-medium text-gray-900">多格式转换</h4>
               </div>
-              <p class="text-sm text-gray-600 leading-relaxed">支持JPG、PNG、WebP、BMP等格式互相转换，满足不同场景需求，灵活切换图片格式</p>
+              <p class="text-sm text-gray-600 leading-relaxed">支持浏览器可读取的图片转换为 JPG、PNG 或 WebP；BMP 仅支持作为输入，不提供 BMP 导出。</p>
             </div>
 
             <div class="bg-white border border-gray-100 rounded-lg p-6">
@@ -281,346 +278,276 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from '@vue/runtime-core'
+import { ref, reactive, computed, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import JSZip from 'jszip'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { encodeImageCanvas, createConvertedImageNames, type ImageOutputFormat } from '@/utils/imageFormatConversion'
 
-// 获取当前路由
 const route = useRoute()
-
-// 组件配置信息
 const info = reactive({
   title: "免费在线图片格式转换工具",
   subtitle: "支持JPG、PNG、WebP等多种格式互相转换，批量处理高效便捷"
 })
-
-// 转换格式选项
-const outputFormats = ['JPG', 'PNG', 'WEBP', 'BMP']
+const outputFormats = ['JPG', 'PNG', 'WEBP']
 const selectedFormat = ref('WEBP')
-
-// 图片质量设置
 const quality = ref(80)
-const lossless = ref(false)
 const transparent = ref(true)
-const progressive = ref(false)
 const isConverting = ref(false)
-
-// 状态管理
 const isDragging = ref(false)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 
-// 图片数据结构
-interface ImageItem {
-  file: File;
-  previewUrl: string;
-  convertedUrl?: string;
-  convertedSize?: number;
+interface ConvertedImage {
+  blob: Blob
+  format: ImageOutputFormat
+  mime: string
+  filename: string
+  url: string
 }
 
-// 图片列表
+interface ConversionSettings {
+  format: ImageOutputFormat
+  quality: number
+  transparent: boolean
+}
+
+interface ImageItem {
+  id: number
+  file: File
+  previewUrl: string
+  result?: ConvertedImage
+  error?: string
+}
+
 const images = ref<ImageItem[]>([])
+let nextImageId = 0
+let batchVersion = 0
+let isDisposed = false
+const cancelConversions = new Map<number, () => void>()
+const CONVERSION_TIMEOUT_MS = 30_000
+const hasConvertedImages = computed(() => images.value.some(image => !!image.result))
 
-// 计算属性：是否有转换后的图片
-const hasConvertedImages = computed(() => {
-  return images.value.some(img => !!img.convertedUrl)
-})
-
-// 文件处理方法
+/** 从文件选择器添加图片，并清空输入值以支持再次选择相同文件。 */
 const handleFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
-
   addFiles(Array.from(input.files))
-  // 重置文件输入，允许选择相同的文件
-  if (fileInputRef.value) fileInputRef.value.value = ''
+  input.value = ''
 }
 
+/** 接收拖拽文件并交由统一图片校验入口处理。 */
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragging.value = false
-
-  if (e.dataTransfer?.files.length) {
-    addFiles(Array.from(e.dataTransfer.files))
-  }
+  if (e.dataTransfer?.files.length) addFiles(Array.from(e.dataTransfer.files))
 }
 
+/** 筛选图片文件并分配稳定标识，避免列表移除后异步结果写入其他图片。 */
 const addFiles = (files: File[]) => {
-  // 过滤出图片文件
   const imageFiles = files.filter(file => file.type.startsWith('image/'))
-
-  if (imageFiles.length === 0) {
+  if (!imageFiles.length) {
     ElMessage.warning('请只选择图片文件')
     return
   }
-
-  // 添加到图片列表
-  imageFiles.forEach(file => {
-    const previewUrl = URL.createObjectURL(file)
-    images.value.push({
-      file,
-      previewUrl
-    })
-  })
+  imageFiles.forEach(file => images.value.push({ id: ++nextImageId, file, previewUrl: URL.createObjectURL(file) }))
 }
 
-// 转换图片
+/** 快照整批文件、格式和质量，逐张转换；失败不冒充成功，取消后的批次不再写回。 */
 const convertAllImages = async () => {
-  if (images.value.length === 0 || isConverting.value) return
-
+  if (!images.value.length || isConverting.value || isDisposed) return
+  const version = ++batchVersion
+  const batch = [...images.value]
+  const settings: ConversionSettings = {
+    format: selectedFormat.value.toLowerCase() as ImageOutputFormat,
+    quality: selectedFormat.value === 'PNG' ? 1 : Number(quality.value) / 100,
+    transparent: selectedFormat.value === 'WEBP' || (selectedFormat.value === 'PNG' && transparent.value)
+  }
+  const filenames = createConvertedImageNames(batch.map(image => ({ name: image.file.name, format: settings.format })))
   isConverting.value = true
-
+  let completed = 0
+  let failed = 0
   try {
-    // 一个个转换，避免浏览器卡顿
-    for (let i = 0; i < images.value.length; i++) {
-      const image = images.value[i]
-      // 如果已经转换过则跳过
-      if (image.convertedUrl) {
-        // 释放之前的URL
-        URL.revokeObjectURL(image.convertedUrl)
-        image.convertedUrl = undefined
-        image.convertedSize = undefined
+    for (let index = 0; index < batch.length; index++) {
+      if (version !== batchVersion || isDisposed) break
+      const image = batch[index]
+      if (!images.value.some(item => item.id === image.id)) continue
+      image.error = undefined
+      try {
+        const blob = await convertImage(image, settings)
+        const current = images.value.find(item => item.id === image.id)
+        if (!blob || !current || version !== batchVersion || isDisposed) continue
+        const previousUrl = current.result?.url
+        current.result = {
+          blob, format: settings.format, mime: blob.type, filename: filenames[index], url: URL.createObjectURL(blob)
+        }
+        if (previousUrl) URL.revokeObjectURL(previousUrl)
+        completed++
+      } catch (error) {
+        if (version !== batchVersion || isDisposed || !images.value.some(item => item.id === image.id)) continue
+        const message = `“${image.file.name}”：${error instanceof Error ? error.message : '图片转换失败，请重试'}`
+        image.error = message
+        failed++
+        ElMessage.error(message)
       }
-
-      await convertImage(image, i)
     }
-
-    ElMessage.success('图片转换完成')
-  } catch (error) {
-    console.error('转换失败:', error)
-    ElMessage.error('图片转换失败，请重试')
+    if (version !== batchVersion || isDisposed) return
+    if (failed && completed) ElMessage.warning(`已转换 ${completed} 张，${failed} 张失败，请查看对应图片提示`)
+    else if (completed) ElMessage.success(`已转换 ${completed} 张图片`)
   } finally {
-    isConverting.value = false
+    if (version === batchVersion) isConverting.value = false
   }
 }
 
-const convertImage = (imageItem: ImageItem, index: number) => {
-  return new Promise<void>((resolve) => {
+/** 按本批快照解码并校验实际编码结果；返回 Blob，移除、清空或卸载时取消并返回 null。 */
+const convertImage = (imageItem: ImageItem, settings: ConversionSettings): Promise<Blob | null> => {
+  return new Promise((resolve, reject) => {
     const img = new Image()
-    img.onload = () => {
-      // 创建canvas
-      const canvas = document.createElement('canvas')
-      canvas.width = img.width
-      canvas.height = img.height
-      const ctx = canvas.getContext('2d')
-
-      if (ctx) {
-        // 绘制图像到canvas
+    let settled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    /** 结算当前任务并解除监听、超时和解码资源，迟到的编码回调不再产生副作用。 */
+    const finish = (blob: Blob | null, error?: Error) => {
+      if (settled) return
+      settled = true
+      clearTimeout(timer)
+      img.onload = null
+      img.onerror = null
+      img.src = ''
+      cancelConversions.delete(imageItem.id)
+      if (error) reject(error)
+      else resolve(blob)
+    }
+    cancelConversions.set(imageItem.id, () => finish(null))
+    timer = setTimeout(() => finish(null, new Error('图片处理超时，请重新转换')), CONVERSION_TIMEOUT_MS)
+    img.onload = async () => {
+      if (settled) return
+      try {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('当前浏览器无法创建图片画布')
+        if (!settings.transparent) {
+          ctx.fillStyle = '#ffffff'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }
         ctx.drawImage(img, 0, 0)
-
-        // 根据选择的格式转换图片
-        let mimeType: string;
-        let qualityValue = quality.value / 100; // 0到1之间
-
-        switch (selectedFormat.value) {
-          case 'WEBP':
-            mimeType = 'image/webp';
-            break;
-          case 'JPG':
-            mimeType = 'image/jpeg';
-            break;
-          case 'PNG':
-            mimeType = 'image/png';
-            qualityValue = 1; // PNG不使用质量参数
-            break;
-          case 'BMP':
-            mimeType = 'image/bmp';
-            qualityValue = 1; // BMP不使用质量参数
-            break;
-          default:
-            mimeType = 'image/webp';
-        }
-
-        // 特殊选项处理
-        const options: any = {};
-        if (selectedFormat.value === 'WEBP') {
-          options.lossless = lossless.value;
-        }
-
-        canvas.toBlob((blob) => {
-          if (blob) {
-            // 创建预览URL
-            const convertedUrl = URL.createObjectURL(blob)
-
-            // 更新图片对象
-            images.value[index] = {
-              ...images.value[index],
-              convertedUrl,
-              convertedSize: blob.size
-            }
-          }
-          resolve()
-        }, mimeType, qualityValue)
-      } else {
-        resolve()
+        finish(await encodeImageCanvas(canvas, settings.format, settings.quality))
+      } catch (error) {
+        finish(null, error instanceof Error ? error : new Error('图片编码失败，请重试'))
       }
     }
-
-    img.onerror = () => {
-      console.error('图片加载失败')
-      ElMessage.error('图片加载失败')
-      resolve()
-    }
-
+    img.onerror = () => finish(null, new Error('图片读取失败，请检查文件是否损坏'))
     img.src = imageItem.previewUrl
   })
 }
 
-// 下载转换后的图片
+/** 下载当前已保存的实际转换结果，文件名不读取尚未执行的新设置。 */
 const downloadImage = (image: ImageItem) => {
-  if (!image.convertedUrl) return
-
+  const result = image.result
+  if (!result) return
   const link = document.createElement('a')
-  link.href = image.convertedUrl
-
-  // 获取文件扩展名
-  const fileExt = selectedFormat.value.toLowerCase()
-
-  // 生成文件名：原文件名.新扩展名
-  const fileName = image.file.name.split('.').slice(0, -1).join('.') || image.file.name
-  link.download = `${fileName}.${fileExt}`
-
+  link.href = result.url
+  link.download = result.filename
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
 }
 
-// 下载所有已转换的图片
+/** 快照已转换的 Blob 和文件元数据打包，同名结果唯一命名，不再从对象地址重新读取内容。 */
 const downloadAllImages = async () => {
-  const convertedImages = images.value.filter(img => !!img.convertedUrl)
-
-  if (convertedImages.length === 0) return
-
-  // 如果只有一张图片，直接下载
+  const convertedImages = images.value.filter(image => !!image.result)
+  if (!convertedImages.length) return
   if (convertedImages.length === 1) {
     downloadImage(convertedImages[0])
     return
   }
-
+  const results = convertedImages.map(image => image.result!)
   try {
-    // 添加提示信息
     ElMessage.info('正在打包文件，请稍候...')
-
-    // 创建一个zip文件
     const zip = new JSZip()
     const folder = zip.folder('converted_images')
-
-    // 获取文件扩展名
-    const fileExt = selectedFormat.value.toLowerCase()
-
-    // 添加所有转换后的图片到zip
-    for (const image of convertedImages) {
-      if (image.convertedUrl) {
-        try {
-          // 获取Blob数据
-          const response = await fetch(image.convertedUrl)
-          const blob = await response.blob()
-
-          // 生成文件名：原文件名.新扩展名
-          const fileName = image.file.name.split('.').slice(0, -1).join('.') || image.file.name
-          folder?.file(`${fileName}.${fileExt}`, blob, { binary: true })
-        } catch (error) {
-          console.error('添加文件到压缩包失败:', error)
-          continue
-        }
-      }
-    }
-
-    // 生成压缩包
-    const content = await zip.generateAsync({
-      type: 'blob',
-      compression: 'DEFLATE',
-      compressionOptions: {
-        level: 6
-      }
-    })
-
-    // 下载压缩包
+    const filenames = createConvertedImageNames(results.map(result => ({ name: result.filename, format: result.format })))
+    results.forEach((result, index) => folder?.file(filenames[index], result.blob, { binary: true }))
+    const content = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } })
+    if (isDisposed) return
     const link = document.createElement('a')
     const url = URL.createObjectURL(content)
     link.href = url
-    link.download = `converted_images_${new Date().getTime()}.zip`
+    link.download = `converted_images_${Date.now()}.zip`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-
-    // 释放URL
-    setTimeout(() => {
-      URL.revokeObjectURL(url)
-    }, 1000)
-
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
     ElMessage.success('图片打包下载成功')
   } catch (error) {
-    console.error('打包下载失败:', error)
-    ElMessage.error('打包下载失败，请重试')
+    if (!isDisposed) ElMessage.error('打包下载失败，请重试')
   }
 }
 
-// 移除指定图片
-const removeImage = (index: number) => {
-  // 释放URL对象，避免内存泄漏
-  URL.revokeObjectURL(images.value[index].previewUrl)
-  if (images.value[index].convertedUrl) {
-    URL.revokeObjectURL(images.value[index].convertedUrl)
-  }
+/** 释放图片输入与结果地址，并取消该图片尚未完成的解码或编码任务。 */
+const releaseImage = (image: ImageItem) => {
+  cancelConversions.get(image.id)?.()
+  URL.revokeObjectURL(image.previewUrl)
+  if (image.result) URL.revokeObjectURL(image.result.url)
+}
 
-  // 从数组中移除
+/** 按当前列表位置移除图片，异步结果始终用稳定标识写回而不依赖数组下标。 */
+const removeImage = (index: number) => {
+  const image = images.value[index]
+  if (!image) return
+  releaseImage(image)
   images.value.splice(index, 1)
 }
 
-// 清除所有图片
+/** 取消当前批次并清空全部资源，允许立即重新上传，不受旧回调影响。 */
 const clearImages = () => {
-  // 释放所有URL对象
-  images.value.forEach(image => {
-    URL.revokeObjectURL(image.previewUrl)
-    if (image.convertedUrl) {
-      URL.revokeObjectURL(image.convertedUrl)
-    }
-  })
-
-  // 清空数组
+  batchVersion++
+  images.value.forEach(releaseImage)
   images.value = []
+  isConverting.value = false
 }
 
-// 格式化文件大小
+/** 将文件字节数转换为便于比较的容量文本。 */
 const formatFileSize = (bytes: number): string => {
-  if (bytes === 0) return '0 Bytes'
-
+  if (!bytes) return '0 Bytes'
   const k = 1024
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
   const i = Math.floor(Math.log(bytes) / Math.log(k))
-
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// 计算节省的百分比
+/** 计算转换前后的体积变化百分比，空源文件返回零。 */
 const calcSavings = (originalSize: number, newSize: number): string => {
-  const percent = Math.abs(((originalSize - newSize) / originalSize) * 100).toFixed(1)
-  return percent + '%'
+  if (!originalSize) return '0%'
+  return Math.abs(((originalSize - newSize) / originalSize) * 100).toFixed(1) + '%'
 }
 
-// 常见问题
+onUnmounted(() => {
+  isDisposed = true
+  clearImages()
+})
+
 const faq = [
   {
     q: '为什么需要图片格式转换？',
-    a: '不同图片格式各有优势，如WebP提供高压缩率保持图像质量，PNG支持透明背景，JPG适合照片。根据使用场景选择合适格式可以平衡质量和文件大小。'
+    a: '不同图片格式各有优势，如 WebP 提供高压缩率，PNG 支持透明背景，JPG 适合照片。根据使用场景选择合适格式可以平衡质量和文件大小。'
   },
   {
     q: '如何选择合适的图片格式？',
-    a: 'WebP：适合网站图片，体积小且支持透明度；JPG：适合照片和色彩丰富的图像；PNG：适合需要透明背景的图像和图标；BMP：无损但体积大，适合需要高质量原始数据的场景。'
+    a: 'WebP 适合网站图片并支持透明度；JPG 适合照片，透明区域会填充白色；PNG 适合透明图像和图标。BMP 可作为浏览器支持的输入，但不提供 BMP 导出。动画图片转换后仅保留浏览器解码的静态画面。'
   },
   {
     q: '如何选择最佳质量设置？',
-    a: '一般建议从80%的质量开始测试，对于大多数图像，这个设置可以在保持良好质量的同时显著减小文件大小。如果需要无损转换WebP，请启用"无损压缩"选项。'
+    a: 'JPG 和 WebP 可从 80% 质量开始测试；PNG 使用无损编码，不应用质量参数。转换使用浏览器 Canvas 编码器，不提供 WebP 无损模式或渐进式 JPEG 开关；浏览器不支持目标格式时会提示失败，不会用其他格式冒充。'
   },
   {
     q: '有文件大小或数量限制吗？',
-    a: '为了保证处理性能，建议每次上传不超过20张图片，单个图片大小不超过10MB。所有处理都在您的浏览器本地完成，不会上传到服务器。'
+    a: '为了保证处理性能，建议每次上传不超过 20 张图片，单张不超过 10MB。所有处理都在浏览器本地完成，不会上传到服务器。'
   },
   {
     q: '转换后的图片会有质量损失吗？',
-    a: '这取决于所选格式和质量设置。使用高质量设置或无损选项可以最小化质量损失，但可能导致文件体积较大。不同格式之间的转换可能会有一些细微的质量变化。'
+    a: 'JPG 和 WebP 通常使用有损编码，较高质量可以减少损失但会增大文件。PNG 无损保存解码后的像素；转换可能移除原文件的元数据。修改设置不会改变已有文件，需要再次点击“开始转换”。'
   }
 ]
 </script>

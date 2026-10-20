@@ -44,6 +44,24 @@ const clickButton = async (view: VueWrapper, name: string) => {
 }
 
 describe('JSON 页面转义与去转义', () => {
+  it.each(['校验/格式化', '压缩'])('%s 保留大整数、小数、指数与嵌套原始数字', async (action) => {
+    const view = mountJson()
+    const original = '{"id":9007199254740993,"negative":-9007199254740993,"decimal":0.1234567890123456789012345,"value":1e400,"nested":[-0,1E-400,{"id":9007199254740995}]}'
+    await view.get('textarea').setValue(original)
+    await clickButton(view, action)
+    expect(view.get<HTMLTextAreaElement>('textarea').element.value.replace(/\s/g, '')).toBe(original)
+    expect(view.get('[role="alert"]').isVisible()).toBe(false)
+  })
+
+  it.each(['校验/格式化', '压缩'])('%s 错误时保留原文并显示错误', async (action) => {
+    const view = mountJson()
+    const original = '{"id":9007199254740993,}'
+    await view.get('textarea').setValue(original)
+    await clickButton(view, action)
+    expect(view.get<HTMLTextAreaElement>('textarea').element.value).toBe(original)
+    expect(view.get('[role="alert"]').isVisible()).toBe(true)
+  })
+
   it('连续点击转义和去转义后，路径、引号、换行及字面 Unicode 完全一致', async () => {
     const view = mountJson()
     const original = String.raw`C:\temp\a.txt "引号" \u4e2d` + '\n第二行\t\\'

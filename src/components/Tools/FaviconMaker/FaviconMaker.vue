@@ -26,11 +26,11 @@
       <!-- 主要内容区域 -->
       <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
@@ -42,7 +42,7 @@
               :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
               @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
               <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="handleFileChange" />
-              <div class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></div>
+              <button type="button" aria-label="选择 Favicon 图片" :disabled="generating" class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></button>
               <div class="text-center px-4">
                 <div class="w-8 h-8 mb-2 mx-auto">
                   <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,6 +54,7 @@
                 <p class="text-xs text-gray-400 mb-1">支持 PNG、JPG、JPEG、GIF 格式</p>
                 <p class="text-xs text-gray-400">建议上传正方形图片，最佳尺寸 1024x1024</p>
               </div>
+              <p v-if="readingImage" role="status" class="mt-3 text-xs text-gray-500">正在读取图片，请稍候…</p>
             </div>
           </div>
 
@@ -105,14 +106,14 @@
                   <label class="text-sm font-medium text-gray-700 mb-2 block">输出格式</label>
                   <div class="grid grid-cols-2 gap-3">
                     <div class="relative">
-                      <input type="radio" id="format-png" value="png" v-model="outputFormat" class="peer hidden" />
+                      <input type="radio" id="format-png" value="png" v-model="outputFormat" class="peer sr-only" />
                       <label for="format-png"
                         class="block cursor-pointer select-none rounded-lg border border-gray-200 p-3 text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-600 hover:border-blue-500/30 transition-colors">
                         <span class="text-sm font-medium">PNG格式</span>
                       </label>
                     </div>
                     <div class="relative">
-                      <input type="radio" id="format-ico" value="ico" v-model="outputFormat" class="peer hidden" />
+                      <input type="radio" id="format-ico" value="ico" v-model="outputFormat" class="peer sr-only" />
                       <label for="format-ico"
                         class="block cursor-pointer select-none rounded-lg border border-gray-200 p-3 text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-600 hover:border-blue-500/30 transition-colors">
                         <span class="text-sm font-medium">ICO格式</span>
@@ -129,13 +130,13 @@
                   <label class="text-sm font-medium text-gray-700 mb-2 block">输出尺寸</label>
                   <div class="grid grid-cols-3 gap-3">
                     <el-checkbox-group v-model="selectedSizes" class="w-full">
-                      <el-checkbox v-for="size in availableSizes" :key="size" :label="size" class="flex-1 mb-2">
+                      <el-checkbox v-for="size in availableSizes" :key="size" :value="size" class="flex-1 mb-2">
                         {{ size }}x{{ size }}
                       </el-checkbox>
                     </el-checkbox-group>
                   </div>
                   <p class="text-xs text-gray-500 mt-2">
-                    建议选择多个尺寸以适配不同设备，ICO格式建议不超过4个尺寸
+                    单尺寸 PNG 直接下载，多尺寸 PNG 和 ICO 打包下载，每个尺寸独立生成。
                   </p>
                 </div>
               </div>
@@ -143,12 +144,12 @@
               <!-- 生成按钮 -->
               <el-button type="primary" size="large"
                 class="w-full h-12 text-base font-medium !bg-blue-500 hover:!bg-blue-600 transition-colors duration-300"
-                :loading="generating" @click="generateFavicon">
+                :loading="generating" :disabled="readingImage" @click="generateFavicon">
                 {{ generating ? '生成中...' : '生成Favicon' }}
               </el-button>
 
               <!-- 下载区域 -->
-              <div v-if="downloadUrl" class="bg-white border border-gray-200 rounded-lg p-6">
+              <div v-if="downloadUrl && generatedResult" class="bg-white border border-gray-200 rounded-lg p-6">
                 <div class="flex items-center justify-between mb-3">
                   <label class="text-sm font-medium text-gray-700">下载文件</label>
                   <el-button type="success" class="h-10 px-6 text-base" @click="downloadFavicon">
@@ -161,15 +162,15 @@
                     </div>
                   </el-button>
                 </div>
+                <p class="text-xs text-gray-600 mb-3" role="status">
+                  当前文件：{{ generatedResult.filename }} · {{ generatedResult.sizes.map(size => `${size}×${size}`).join('、') }}
+                </p>
+                <p v-if="settingsChanged" class="text-xs text-amber-700 mb-3">设置已更改，请重新生成以应用；当前下载仍为上次生成的文件。</p>
                 <div class="bg-gray-50 rounded-lg p-4 space-y-2">
                   <p class="text-xs text-gray-600">使用说明：</p>
-                  <p class="text-xs text-gray-600">1. 下载后将文件重命名为 favicon.{{ outputFormat === 'png' ? 'png' : 'ico'
-                    }}，放到网站根目录</p>
+                  <p class="text-xs text-gray-600">1. {{ generatedResult.isArchive ? '解压后，将需要的尺寸文件放到网站根目录。' : `将 ${generatedResult.filename} 放到网站根目录。` }}</p>
                   <p class="text-xs text-gray-600">2. 在HTML中添加以下代码：</p>
-                  <pre class="bg-gray-100 p-2 rounded mt-1 overflow-x-auto text-xs">
-                    <code v-if="outputFormat === 'ico'">&lt;link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"&gt;</code>
-                    <code v-else>&lt;link rel="icon" type="image/png" href="/favicon.png"&gt;</code>
-                  </pre>
+                  <pre class="bg-gray-100 p-2 rounded mt-1 overflow-x-auto text-xs"><code>{{ generatedHtml }}</code></pre>
                 </div>
               </div>
             </div>
@@ -230,11 +231,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { ElMessage, ElButton, ElCheckbox, ElCheckboxGroup } from 'element-plus'
 import VueCropper from 'vue-cropperjs'
 import 'cropperjs/dist/cropper.css'
-import JSZip from 'jszip'
+import { createFaviconExport, FAVICON_OUTPUT_SIZES, type FaviconExportResult, type FaviconOutputFormat } from '@/utils/faviconExport'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 
@@ -256,7 +257,7 @@ const faqItems = [
   },
   {
     q: '如何使用生成的Favicon？',
-    a: '下载生成的文件后，将其重命名为favicon.ico（或favicon.png），放到网站根目录，并在HTML的<head>标签中添加相应的链接标签。具体代码在下载区域有提供。'
+    a: '单尺寸PNG可直接下载，多尺寸PNG和ICO会打包为ZIP。解压后将对应尺寸的图标放到网站根目录，并按下载区域的示例添加HTML引用。'
   },
   {
     q: '为什么要选择多个尺寸？',
@@ -280,19 +281,49 @@ const imageUrl = ref('')
 const previewUrl = ref('')
 const downloadUrl = ref('')
 const generating = ref(false)
-const outputFormat = ref('ico')
+const readingImage = ref(false)
+const outputFormat = ref<FaviconOutputFormat>('ico')
 const selectedSizes = ref<Array<number>>([])
 
 // 可用尺寸
-const availableSizes = [16, 32, 48, 64, 128, 256]
+const availableSizes = [...FAVICON_OUTPUT_SIZES]
 const previewSizes = [16, 24, 32, 48, 64, 128]
 
-// 文件处理
+const generatedResult = ref<FaviconExportResult | null>(null)
+let activeReader: FileReader | null = null
+let readVersion = 0
+let generationVersion = 0
+let disposed = false
+
+/** 对比当前设置和已生成文件的快照，避免用户把旧结果误认为新设置已生效。 */
+const settingsChanged = computed(() => {
+  const result = generatedResult.value
+  return Boolean(result && (outputFormat.value !== result.format
+    || [...selectedSizes.value].sort((a, b) => a - b).join(',') !== result.sizes.join(',')))
+})
+
+/** 按结果的实际格式与尺寸生成 HTML 引用，不读取当前尚未应用的表单选项。 */
+const generatedHtml = computed(() => {
+  const result = generatedResult.value
+  if (!result) return ''
+  const mime = result.format === 'png' ? 'image/png' : 'image/x-icon'
+  return result.sizes.map(size => `<link rel="icon" type="${mime}" sizes="${size}x${size}" href="/favicon-${size}x${size}.${result.format}">`).join('\n')
+})
+
+/** 释放上次生成的下载地址，并清理与该文件绑定的元数据。 */
+const clearGeneratedResult = () => {
+  if (downloadUrl.value) URL.revokeObjectURL(downloadUrl.value)
+  downloadUrl.value = ''
+  generatedResult.value = null
+}
+
+/** 读取用户图片并初始化尺寸，忽略替换文件或离开页面之后的迟到读取结果。 */
 const handleFileChange = (event: Event) => {
   const input = event.target as HTMLInputElement
-  if (!input.files?.length) return
+  if (generating.value || !input.files?.length) return
 
   const file = input.files[0]
+  input.value = ''
   if (!file.type.startsWith('image/')) {
     ElMessage.error('请选择图片文件')
     return
@@ -305,22 +336,40 @@ const handleFileChange = (event: Event) => {
     return
   }
 
+  activeReader?.abort?.()
+  const version = ++readVersion
+  clearGeneratedResult()
+  previewUrl.value = ''
   const reader = new FileReader()
+  activeReader = reader
+  readingImage.value = true
   reader.onload = (e) => {
+    if (disposed || version !== readVersion) return
+    activeReader = null
+    readingImage.value = false
     imageUrl.value = e.target?.result as string
+    // vue-cropperjs 不监听 src；替换现有实例的源图，避免再次上传仍导出旧图。
+    cropperRef.value?.replace?.(imageUrl.value)
     // 重置其他状态
     downloadUrl.value = ''
     previewUrl.value = ''
     // 默认选择所有尺寸
     selectedSizes.value = [...availableSizes]
   }
+  reader.onerror = () => {
+    if (disposed || version !== readVersion) return
+    activeReader = null
+    readingImage.value = false
+    ElMessage.error('图片读取失败，请重新上传')
+  }
   reader.readAsDataURL(file)
 }
 
-// 拖拽处理
+/** 接收拖入的图片；生成期间不替换本次正在处理的源文件。 */
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragging.value = false
+  if (generating.value) return
 
   const files = e.dataTransfer?.files
   if (!files?.length) return
@@ -340,127 +389,67 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
-// 触发文件选择
+/** 打开图片选择器，编码期间保持本次源图稳定。 */
 const triggerFileInput = () => {
+  if (generating.value) return
   fileInputRef.value?.click()
 }
 
-// 创建 ICO 文件
-function createIcoBlob(canvas: HTMLCanvasElement, size: number): Blob {
-  // 创建指定尺寸的画布
-  const resizedCanvas = document.createElement('canvas')
-  resizedCanvas.width = size
-  resizedCanvas.height = size
-  const ctx = resizedCanvas.getContext('2d')
-  if (!ctx) {
-    throw new Error('无法创建画布上下文')
-  }
-  // 将图像绘制到指定尺寸
-  ctx.drawImage(canvas, 0, 0, size, size)
-
-  // 获取PNG数据
-  const pngData = atob(resizedCanvas.toDataURL('image/png').split(',')[1]);
-  const pngArray = new Uint8Array(pngData.length);
-  for (let i = 0; i < pngData.length; i++) {
-    pngArray[i] = pngData.charCodeAt(i);
-  }
-
-  // ICO文件头
-  const iconDir = new Uint8Array([
-    0, 0,             // Reserved (0)
-    1, 0,             // Image type (1 = ICO)
-    1, 0,             // Number of images
-    size,             // Width
-    size,             // Height
-    0,                // Color palette
-    0,                // Reserved
-    1, 0,             // Color planes
-    32, 0,            // Bits per pixel
-    pngArray.length & 0xFF,               // Image size (low byte)
-    (pngArray.length >> 8) & 0xFF,        // Image size
-    (pngArray.length >> 16) & 0xFF,       // Image size
-    (pngArray.length >> 24) & 0xFF,       // Image size (high byte)
-    22, 0, 0, 0      // Offset to image data
-  ]);
-
-  // 合并ICO头和PNG数据
-  const icoData = new Uint8Array(iconDir.length + pngArray.length);
-  icoData.set(iconDir, 0);
-  icoData.set(pngArray, iconDir.length);
-
-  return new Blob([icoData], { type: 'image/x-icon' });
-}
-
-// 生成favicon
+/** 按开始生成时的格式与尺寸快照编码图标，只发布完整成功的结果。 */
 const generateFavicon = async () => {
+  if (generating.value || readingImage.value) return
   if (!cropperRef.value) {
     ElMessage.error('请先上传图片')
     return
   }
-
-  if (selectedSizes.value.length === 0) {
+  if (!selectedSizes.value.length) {
     ElMessage.error('请至少选择一个输出尺寸')
     return
   }
-
+  const version = ++generationVersion
+  const format = outputFormat.value
+  const sizes = [...selectedSizes.value]
+  clearGeneratedResult()
+  generating.value = true
   try {
-    generating.value = true
-
-    // 获取裁剪后的图片数据
-    const canvas = cropperRef.value.getCroppedCanvas({
-      imageSmoothingEnabled: true,
-      imageSmoothingQuality: 'high'
-    })
-
-    // 更新预览
-    previewUrl.value = canvas.toDataURL('image/png')
-
-    if (outputFormat.value === 'png') {
-      // 直接下载PNG
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((b: Blob | null) => resolve(b!), 'image/png', 1)
-      })
-      downloadUrl.value = URL.createObjectURL(blob)
-      ElMessage.success('PNG格式Favicon生成成功')
-    } else {
-      // 创建ZIP文件
-      const zip = new JSZip()
-
-      // 为每个选择的尺寸生成ICO文件
-      for (const size of selectedSizes.value) {
-        const icoBlob = createIcoBlob(canvas, size)
-        zip.file(`favicon-${size}x${size}.ico`, icoBlob)
-      }
-
-      // 生成ZIP文件
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      downloadUrl.value = URL.createObjectURL(zipBlob)
-      ElMessage.success('多尺寸ICO文件生成成功')
-    }
+    const canvas = cropperRef.value.getCroppedCanvas({ imageSmoothingEnabled: true, imageSmoothingQuality: 'high' })
+    if (!canvas?.width || !canvas.height) throw new Error('图片尚未准备好')
+    const preview = canvas.toDataURL('image/png')
+    const result = await createFaviconExport(canvas, format, sizes)
+    if (disposed || version !== generationVersion) return
+    generatedResult.value = result
+    downloadUrl.value = URL.createObjectURL(result.blob)
+    previewUrl.value = preview
+    ElMessage.success(result.isArchive ? '图标已按所选尺寸生成，请下载压缩包' : 'PNG 图标生成成功')
   } catch (error) {
+    if (disposed || version !== generationVersion) return
     console.error('生成Favicon失败:', error)
     ElMessage.error('生成Favicon失败，请重试')
   } finally {
-    generating.value = false
+    if (version === generationVersion) generating.value = false
   }
 }
 
-// 下载favicon
+/** 下载已生成的文件，名称来自结果快照，切换设置不会重新解释旧文件。 */
 const downloadFavicon = () => {
-  if (!downloadUrl.value) return
-
+  const result = generatedResult.value
+  if (!downloadUrl.value || !result) return
   const link = document.createElement('a')
   link.href = downloadUrl.value
-  const extension = outputFormat.value === 'png' ? 'png' : 'zip'
-  link.download = outputFormat.value === 'png' ? 'favicon.png' : 'favicons.zip'
+  link.download = result.filename
   document.body.appendChild(link)
   link.click()
-  document.body.removeChild(link)
-
-  // 清理 Blob URL
-  URL.revokeObjectURL(downloadUrl.value)
-  downloadUrl.value = ''
+  link.remove()
 }
+
+onBeforeUnmount(() => {
+  disposed = true
+  readVersion++
+  generationVersion++
+  activeReader?.abort?.()
+  cropperRef.value?.destroy?.()
+  clearGeneratedResult()
+})
 
 // 在 script setup 部分添加数据
 const features = [
@@ -495,6 +484,8 @@ const route = useRoute()
   width: 100%;
   height: 400px;
 }
+
+.peer:focus-visible + label { outline: 2px solid var(--uied-color-primary); outline-offset: 3px; }
 
 /* 禁用图片拖动 */
 img {

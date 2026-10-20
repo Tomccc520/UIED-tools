@@ -140,6 +140,7 @@ import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import AsyncCodemirror from '@/components/Common/AsyncCodemirror.vue'
 import { copy } from '@/utils/string'
 import { encodeJsonStringContent, decodeJsonStringContent } from '@/utils/textEscaping'
+import { formatJsonLosslessly, minifyJsonLosslessly } from '@/utils/losslessJson'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 
@@ -190,7 +191,7 @@ onMounted(() => {
   void loadJsonExtensions()
 })
 
-//格式化json
+/** 仅调整 JSON 的结构空白，完整保留数字、字符串转义和键顺序。 */
 const formatJson = () => {
   if (!info.code.trim()) {
     ElMessage({
@@ -204,9 +205,7 @@ const formatJson = () => {
     //初始化错误信息
     info.isParseErr = false
     info.parseErr = ''
-    // 1、JSON.parse：把JSON字符串转换为JSON对象
-    // 2、JSON.stringify：把JSON对象 转换为 有缩进的 JSON字符串格式
-    info.code = JSON.stringify(JSON.parse(info.code), null, '\t')
+    info.code = formatJsonLosslessly(info.code, '\t')
     ElMessage({
       message: "格式化成功",
       type: "success",
@@ -214,11 +213,11 @@ const formatJson = () => {
     })
   } catch (error) {
     info.isParseErr = true
-    info.parseErr = '无效的JSON格式，请检查语法'
+    info.parseErr = '无效的 JSON：' + (error instanceof Error ? error.message : '请检查语法，原文已保留')
   }
 }
 
-//压缩
+/** 压缩 JSON 结构空白，不把数字转为 Number，也不改为字符串。 */
 const compress = () => {
   if (!info.code.trim()) {
     ElMessage({
@@ -229,8 +228,7 @@ const compress = () => {
     return
   }
   try {
-    const parsed = JSON.parse(info.code)
-    info.code = JSON.stringify(parsed)
+    info.code = minifyJsonLosslessly(info.code)
     info.isParseErr = false
     info.parseErr = ''
     ElMessage({
@@ -240,7 +238,7 @@ const compress = () => {
     })
   } catch (error) {
     info.isParseErr = true
-    info.parseErr = '无效的JSON格式，请检查语法'
+    info.parseErr = '无效的 JSON：' + (error instanceof Error ? error.message : '请检查语法，原文已保留')
   }
 }
 

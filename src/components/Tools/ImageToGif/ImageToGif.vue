@@ -33,7 +33,7 @@
                 @dragleave.prevent="isDragging = false">
                 <input ref="fileInputRef" type="file" class="hidden" multiple accept="image/*"
                   @change="handleFileInputChange" />
-                <button type="button" aria-label="选择合成 GIF 的图片" class="absolute inset-0 cursor-pointer z-10 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4" @click="triggerFileInput"></button>
+                <button type="button" aria-label="选择合成 GIF 的图片" :disabled="isProcessing" class="absolute inset-0 cursor-pointer z-10 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4" @click="triggerFileInput"></button>
                 <div class="text-center px-4">
                   <div class="w-8 h-8 mb-2 mx-auto">
                     <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,6 +45,9 @@
                   <p class="text-xs text-gray-400">支持 JPG、PNG、WebP</p>
                 </div>
               </div>
+              <p v-if="isLoading" role="status" aria-live="polite" class="mt-3 text-xs text-gray-500">
+                正在读取 {{ pendingCount }} 张图片，完成后可预览；可点击“清空”取消。
+              </p>
             </div>
 
             <!-- GIF设置 -->
@@ -79,12 +82,12 @@
             </div>
 
             <!-- 图片列表（可拖拽排序） -->
-            <div v-if="fileList.length > 0" class="bg-white border border-gray-200 rounded-lg p-6">
+            <div v-if="fileList.length > 0 || isLoading" class="bg-white border border-gray-200 rounded-lg p-6">
               <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <div class="text-gray-700 font-medium">图片列表 ({{ fileList.length }})</div>
-                <el-button type="text" class="!text-red-500" @click="clearAll">清空</el-button>
+                <el-button type="text" class="!text-red-500" :disabled="isProcessing" @click="clearAll">清空</el-button>
               </div>
-              <draggable v-model="fileList" :disabled="isProcessing" item-key="id" class="space-y-2" ghost-class="ghost">
+              <draggable v-model="fileList" :disabled="isProcessing || isLoading" item-key="id" class="space-y-2" ghost-class="ghost">
                 <template #item="{ element, index }">
                   <div
                     class="image-gif-item flex items-center gap-3 p-2 bg-gray-50 rounded border border-gray-100 cursor-move hover:bg-gray-100 transition-colors">
@@ -94,14 +97,14 @@
                       <div class="image-gif-filename text-xs text-gray-600 truncate" :title="element.name">{{ element.name }}</div>
                       <div class="text-xs text-gray-400">{{ formatSize(element.size) }}</div>
                     </div>
-                    <el-button type="text" :aria-label="`移除第 ${index + 1} 张图片`" @click="removeFile(index)">
+                    <el-button type="text" :disabled="isProcessing || isLoading" :aria-label="`移除第 ${index + 1} 张图片`" @click="removeFile(index)">
                       <el-icon class="text-gray-400 hover:text-red-500">
                         <Close />
                       </el-icon>
                     </el-button>
                     <div class="image-gif-order">
-                      <button type="button" :disabled="index === 0 || isProcessing" :aria-label="`上移第 ${index + 1} 张图片`" @click="moveImage(index, -1)">上移</button>
-                      <button type="button" :disabled="index === fileList.length - 1 || isProcessing" :aria-label="`下移第 ${index + 1} 张图片`" @click="moveImage(index, 1)">下移</button>
+                      <button type="button" :disabled="index === 0 || isProcessing || isLoading" :aria-label="`上移第 ${index + 1} 张图片`" @click="moveImage(index, -1)">上移</button>
+                      <button type="button" :disabled="index === fileList.length - 1 || isProcessing || isLoading" :aria-label="`下移第 ${index + 1} 张图片`" @click="moveImage(index, 1)">下移</button>
                     </div>
                   </div>
                 </template>
@@ -115,10 +118,10 @@
               <div class="image-gif-preview-head flex justify-between items-center mb-4">
                 <div class="text-gray-700 font-medium">效果预览</div>
                 <div class="flex gap-2">
-                  <el-button @click="generatePreview" :disabled="fileList.length === 0 || isProcessing">
+                  <el-button @click="generatePreview" :disabled="fileList.length === 0 || isProcessing || isLoading">
                     预览GIF
                   </el-button>
-                  <el-button type="primary" :loading="isProcessing" @click="downloadGif" :disabled="!previewUrl">
+                  <el-button type="primary" :loading="isProcessing" @click="downloadGif" :disabled="!previewUrl || isLoading">
                     下载GIF
                   </el-button>
                 </div>
@@ -153,10 +156,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Close, Picture, Loading } from '@element-plus/icons-vue'
+import { Close, Picture } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import GIF from 'gif.js'
@@ -178,6 +181,14 @@ interface ImageFile {
   height: number
 }
 
+interface ImageLoadTask {
+  item: ImageFile
+  image: HTMLImageElement
+  settled: boolean
+  loaded: boolean
+  timer: ReturnType<typeof setTimeout> | null
+}
+
 // 状态
 const fileList = ref<ImageFile[]>([])
 const isDragging = ref(false)
@@ -185,6 +196,11 @@ const isProcessing = ref(false)
 const progress = ref(0)
 const fileInputRef = ref<HTMLInputElement | null>(null)
 const previewUrl = ref('')
+const pendingCount = ref(0)
+const isLoading = computed(() => pendingCount.value > 0)
+const IMAGE_LOAD_TIMEOUT_MS = 30_000
+let pendingUploads: ImageLoadTask[] = []
+let isDisposed = false
 
 // 设置
 const width = ref(400)
@@ -205,7 +221,7 @@ watch(() => fileList.value.map(item => item.id), (currentIds, previousIds) => {
   clearPreview()
 })
 
-// 文件处理
+/** 从文件选择器提交本批图片，随后重置输入值以允许重复选择同一文件。 */
 const handleFileInputChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   if (input.files) {
@@ -214,10 +230,13 @@ const handleFileInputChange = (e: Event) => {
   input.value = ''
 }
 
+/** 打开文件选择器；编码期间禁止更改正在生成的帧列表。 */
 const triggerFileInput = () => {
+  if (isProcessing.value) return
   fileInputRef.value?.click()
 }
 
+/** 接收拖入的图片，并通过统一上传队列保持选择批次顺序。 */
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragging.value = false
@@ -227,32 +246,69 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
-const processFiles = async (files: File[]) => {
-  for (const file of files) {
-    const url = URL.createObjectURL(file)
-    const img = new Image()
-    img.onload = () => {
-      // 如果是第一张图片，自动设置宽高
-      if (fileList.value.length === 0) {
-        width.value = img.width
-        height.value = img.height
-      }
+/** 释放单张图片的解码监听和计时器，终止继续解码；图片地址由队列或帧列表持有。 */
+const releaseImageDecoder = (task: ImageLoadTask) => {
+  if (task.timer !== null) clearTimeout(task.timer)
+  task.timer = null
+  task.image.onload = null
+  task.image.onerror = null
+  task.image.src = ''
+}
 
-      fileList.value.push({
-        id: Math.random().toString(36).substr(2, 9),
-        file,
-        name: file.name,
-        size: file.size,
-        url,
-        width: img.width,
-        height: img.height
-      })
+/** 按预留的选择位置提交已完成的连续帧；失败帧跳过，首个成功帧决定默认画布。 */
+const flushDecodedFiles = () => {
+  while (pendingUploads[0]?.settled) {
+    const task = pendingUploads.shift()!
+    if (task.loaded) {
+      if (fileList.value.length === 0) {
+        width.value = task.item.width
+        height.value = task.item.height
+      }
+      fileList.value.push(task.item)
     }
-    img.src = url
+  }
+  pendingCount.value = pendingUploads.length
+}
+
+/** 结算一次解码结果，忽略清空或卸载后的迟到事件，并释放失败文件地址。 */
+const finishImageLoad = (task: ImageLoadTask, errorMessage?: string) => {
+  if (task.settled || isDisposed) return
+  task.settled = true
+  task.loaded = !errorMessage
+  task.item.width = task.image.width
+  task.item.height = task.image.height
+  releaseImageDecoder(task)
+  if (errorMessage) {
+    URL.revokeObjectURL(task.item.url)
+    ElMessage.error(errorMessage)
+  }
+  flushDecodedFiles()
+}
+
+/** 为本批文件先预留入队位置再并行解码，后续上传批次不能越过更早的待完成图片。 */
+const processFiles = (files: File[]) => {
+  if (isDisposed || isProcessing.value || !files.length) return
+  clearPreview()
+  const batch = files.map(file => ({
+    item: {
+      id: Math.random().toString(36).slice(2, 11),
+      file, name: file.name, size: file.size, url: URL.createObjectURL(file), width: 0, height: 0
+    },
+    image: new Image(), settled: false, loaded: false, timer: null
+  } as ImageLoadTask))
+  pendingUploads.push(...batch)
+  pendingCount.value = pendingUploads.length
+  for (const task of batch) {
+    task.image.onload = () => finishImageLoad(task)
+    task.image.onerror = () => finishImageLoad(task, `图片“${task.item.name}”读取失败，已跳过`)
+    task.timer = setTimeout(() => finishImageLoad(task, `图片“${task.item.name}”读取超时，已跳过，请重新上传`), IMAGE_LOAD_TIMEOUT_MS)
+    task.image.src = task.item.url
   }
 }
 
+/** 移除指定位置的图片并释放地址；读取和编码期间保持帧列表稳定。 */
 const removeFile = (index: number) => {
+  if (isProcessing.value || isLoading.value || !fileList.value[index]) return
   URL.revokeObjectURL(fileList.value[index].url)
   fileList.value.splice(index, 1)
 }
@@ -264,18 +320,28 @@ const removeFile = (index: number) => {
  */
 const moveImage = (index: number, direction: -1 | 1) => {
   const target = index + direction
-  if (isProcessing.value || target < 0 || target >= fileList.value.length) return
+  if (isProcessing.value || isLoading.value || target < 0 || target >= fileList.value.length) return
   const next = [...fileList.value]
   ;[next[index], next[target]] = [next[target], next[index]]
   fileList.value = next
 }
 
+/** 清空已入队和等待中的图片，撤销解码回调与地址，避免迟到结果重新加入列表。 */
 const clearAll = () => {
+  pendingUploads.forEach(task => {
+    const needsRelease = !task.settled || task.loaded
+    task.settled = true
+    releaseImageDecoder(task)
+    if (needsRelease) URL.revokeObjectURL(task.item.url)
+  })
+  pendingUploads = []
+  pendingCount.value = 0
   fileList.value.forEach(f => URL.revokeObjectURL(f.url))
   fileList.value = []
   clearPreview()
 }
 
+/** 将文件字节数转换为易读的容量文本。 */
 const formatSize = (bytes: number) => {
   if (bytes === 0) return '0 B'
   const k = 1024
@@ -284,9 +350,9 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-// 生成 GIF
+/** 使用当前帧顺序生成 GIF；上传队列结算前禁止开始编码。 */
 const generatePreview = async () => {
-  if (fileList.value.length === 0) return
+  if (fileList.value.length === 0 || isLoading.value || isProcessing.value) return
 
   isProcessing.value = true
   progress.value = 0
@@ -355,6 +421,7 @@ const generatePreview = async () => {
   }
 }
 
+/** 下载当前生成的 GIF 预览文件。 */
 const downloadGif = () => {
   if (!previewUrl.value) return
 
@@ -367,6 +434,7 @@ const downloadGif = () => {
 }
 
 onUnmounted(() => {
+  isDisposed = true
   clearAll()
 })
 </script>

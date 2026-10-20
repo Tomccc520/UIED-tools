@@ -9,12 +9,13 @@
 -->
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { CopyDocument, Delete, DocumentChecked, MagicStick } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import StandardToolPageTemplate from '@/components/Common/PageTemplates/StandardToolPageTemplate.vue'
 import useClipboard from 'vue-clipboard3'
+import { formatJsonLosslessly, minifyJsonLosslessly } from '@/utils/losslessJson'
 
 const { toClipboard } = useClipboard()
 
@@ -31,11 +32,11 @@ const formatJson = () => {
     return
   }
   try {
-    const parsed = JSON.parse(jsonInput.value)
-    jsonOutput.value = JSON.stringify(parsed, null, indentSize.value)
+    jsonOutput.value = formatJsonLosslessly(jsonInput.value, indentSize.value)
     ElMessage.success('格式化成功')
-  } catch (e: any) {
-    errorMsg.value = '无效的 JSON: ' + e.message
+  } catch (e) {
+    jsonOutput.value = ''
+    errorMsg.value = '无效的 JSON: ' + (e instanceof Error ? e.message : '请检查语法，原文已保留')
     ElMessage.error('格式化失败，请检查 JSON 格式')
   }
 }
@@ -48,11 +49,11 @@ const compressJson = () => {
     return
   }
   try {
-    const parsed = JSON.parse(jsonInput.value)
-    jsonOutput.value = JSON.stringify(parsed)
+    jsonOutput.value = minifyJsonLosslessly(jsonInput.value)
     ElMessage.success('压缩成功')
-  } catch (e: any) {
-    errorMsg.value = '无效的 JSON: ' + e.message
+  } catch (e) {
+    jsonOutput.value = ''
+    errorMsg.value = '无效的 JSON: ' + (e instanceof Error ? e.message : '请检查语法，原文已保留')
     ElMessage.error('压缩失败，请检查 JSON 格式')
   }
 }
