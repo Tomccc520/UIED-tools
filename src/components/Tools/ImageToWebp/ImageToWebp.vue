@@ -31,8 +31,8 @@
         <!-- 文件上传区域 -->
         <div v-if="images.length === 0">
           <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
+            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-brand"
+            :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200'" @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" accept="image/*" multiple
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileChange" />
@@ -64,7 +64,7 @@
                 <div class="flex items-center space-x-3">
                   <!-- 下载所有按钮 -->
                   <button v-if="hasConvertedImages" @click="downloadAllImages"
-                    class="flex items-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-sm">
+                    class="flex items-center space-x-2 bg-brand text-white px-4 py-2 rounded-lg hover:bg-brand-hover transition-colors shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -86,7 +86,7 @@
                         <button v-for="format in outputFormats" :key="format" @click="selectedFormat = format" :class="[
                           'px-3 py-1.5 rounded-md text-sm font-medium transition-colors',
                           selectedFormat === format
-                            ? 'bg-blue-500 text-white'
+                            ? 'bg-brand text-white'
                             : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
                         ]">
                           {{ format }}
@@ -100,7 +100,7 @@
                     <label class="text-sm text-gray-600 mb-1 block">质量 ({{ quality }}%)</label>
                     <div class="flex items-center space-x-2">
                       <input type="range" v-model="quality" min="10" max="100" step="1" :disabled="selectedFormat === 'PNG'"
-                        class="flex-1 accent-blue-500" />
+                        class="flex-1 accent-brand" />
                       <span class="text-xs text-gray-500 w-8 text-right">{{ quality }}%</span>
                     </div>
                     <p class="text-xs text-gray-400 mt-1">{{ selectedFormat === 'PNG' ? 'PNG 使用无损编码，不应用质量参数' : '质量越高，文件体积通常越大' }}</p>
@@ -109,7 +109,7 @@
                   <!-- 特殊选项 -->
                   <div>
                     <div v-if="selectedFormat === 'PNG'" class="flex items-center mt-5">
-                      <input id="transparent" type="checkbox" v-model="transparent" class="accent-blue-500 mr-2" />
+                      <input id="transparent" type="checkbox" v-model="transparent" class="accent-brand mr-2" />
                       <label for="transparent" class="text-sm text-gray-600">保留透明度</label>
                     </div>
                     <p v-if="selectedFormat === 'JPG'" class="text-xs text-gray-500 mt-5">JPG 不支持透明度，透明区域将填充为白色。</p>
@@ -183,7 +183,7 @@
                       <span>移除</span>
                     </button>
                     <button v-if="image.result" @click="downloadImage(image)"
-                      class="text-xs text-blue-500 hover:text-blue-600 transition-colors flex items-center space-x-1">
+                      class="text-xs text-brand hover:text-brand-hover transition-colors flex items-center space-x-1">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                           d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -219,8 +219,8 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div class="bg-white border border-gray-100 rounded-lg p-6">
               <div class="flex items-center space-x-3 mb-4">
-                <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-lg bg-brand-soft flex items-center justify-center">
+                  <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                   </svg>
@@ -245,8 +245,8 @@
 
             <div class="bg-white border border-gray-100 rounded-lg p-6">
               <div class="flex items-center space-x-3 mb-4">
-                <div class="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center">
-                  <svg class="w-6 h-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-lg bg-brand-soft flex items-center justify-center">
+                  <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
                   </svg>

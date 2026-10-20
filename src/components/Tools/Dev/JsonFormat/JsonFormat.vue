@@ -139,7 +139,7 @@ const clearAll = () => {
         <el-button type="primary" @click="formatJson">
           <el-icon class="mr-1"><MagicStick /></el-icon>格式化
         </el-button>
-        <el-button type="success" @click="compressJson">
+        <el-button @click="compressJson">
           <el-icon class="mr-1"><DocumentChecked /></el-icon>压缩
         </el-button>
       </template>
@@ -175,7 +175,7 @@ const clearAll = () => {
 .json-result__textarea { width: 100%; height: 100%; min-height: 420px; padding: 14px; border: 0; outline: 0; resize: none; color: #273044; background: transparent; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; line-height: 1.65; }
 .json-result__error { position: absolute; right: 0; bottom: 0; left: 0; padding: 9px 12px; border-top: 1px solid #f2b8b5; color: #b42318; background: #fff1f0; font-size: 12px; }
 .json-indent { width: 150px; }
-.json-support { display: flex; gap: 12px; padding: 14px 16px; border-left: 3px solid var(--uied-color-primary); background: #f6f5ff; color: #5d6373; font-size: 13px; line-height: 1.6; }
+.json-support { display: flex; gap: 12px; padding: 14px 16px; border-left: 3px solid var(--uied-color-primary); background: var(--uied-color-primary-soft); color: #5d6373; font-size: 13px; line-height: 1.6; }
 .json-support strong { color: #242035; white-space: nowrap; }
 @container json-format (max-width: 720px) {
   .json-workspace { grid-template-columns: 1fr; min-height: 0; }

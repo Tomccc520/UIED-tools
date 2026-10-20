@@ -16,7 +16,7 @@
             </span>
           </h1>
           <p class="gif-desktop-description text-gray-500 text-sm mt-4 max-w-2xl mx-auto">{{ info.subtitle }}</p>
-          <router-link to="/tools/video/gif" class="inline-flex mt-3 text-sm text-blue-600 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">需要把视频转成 GIF？前往视频转 GIF</router-link>
+          <router-link to="/tools/video/gif" class="inline-flex mt-3 text-sm text-brand hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4">需要把视频转成 GIF？前往视频转 GIF</router-link>
         </div>
 
         <!-- 主要操作区域 -->
@@ -24,15 +24,15 @@
           <!-- 上传区域 -->
           <transition name="fade" mode="out-in">
             <div v-if="!file"
-              class="gif-upload relative border-2 border-dashed rounded-xl min-h-[320px] flex flex-col items-center justify-center transition-all duration-300 bg-gray-50/50 group cursor-pointer hover:border-blue-500 hover:bg-blue-50/30 hover:shadow-md"
-              :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.01]' : 'border-gray-300'"
+              class="gif-upload relative border-2 border-dashed rounded-xl min-h-[320px] flex flex-col items-center justify-center transition-all duration-300 bg-gray-50/50 group cursor-pointer hover:border-brand hover:bg-brand-soft/30 hover:shadow-md"
+              :class="isDragging ? 'border-brand bg-brand-soft scale-[1.01]' : 'border-gray-300'"
               @click="triggerFileInput" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
               @drop.prevent="handleDrop" role="button" tabindex="0" aria-label="上传GIF文件区域，点击或拖拽文件至此"
               @keydown.enter="triggerFileInput" @keydown.space.prevent="triggerFileInput">
               <input type="file" ref="fileInput" class="hidden" accept="image/gif" @change="handleFileChange" />
               <div class="text-center px-4 transform transition-transform duration-300 group-hover:scale-105">
                 <div
-                  class="w-24 h-24 mb-6 mx-auto bg-white rounded-full shadow-sm flex items-center justify-center text-blue-500 group-hover:text-blue-600 transition-colors">
+                  class="w-24 h-24 mb-6 mx-auto bg-white rounded-full shadow-sm flex items-center justify-center text-brand group-hover:text-brand-hover transition-colors">
                   <el-icon :size="48">
                     <UploadFilled />
                   </el-icon>
@@ -59,7 +59,7 @@
                     plain>重新上传</el-button>
                   <div
                     class="gif-toolbar__file flex items-center gap-2 text-sm text-gray-600 bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm hidden md:flex">
-                    <el-icon class="text-blue-500">
+                    <el-icon class="text-brand">
                       <Document />
                     </el-icon>
                     <span class="font-medium max-w-[200px] truncate" :title="file.name">{{ file.name }}</span>
@@ -85,7 +85,7 @@
                     <div class="gif-settings bg-gray-50 rounded-xl p-6 border border-gray-100 shadow-sm" :class="{ 'gif-settings--expanded': mobileSettingsExpanded }">
                       <h3
                         class="gif-settings-heading font-bold text-gray-900 mb-6 flex items-center gap-2 text-lg border-b border-gray-200 pb-4">
-                        <span class="gif-settings-desktop-title"><el-icon class="text-blue-500"><Setting /></el-icon> 压缩参数设置</span>
+                        <span class="gif-settings-desktop-title"><el-icon class="text-brand"><Setting /></el-icon> 压缩参数设置</span>
                         <button type="button" class="gif-settings-toggle" :aria-expanded="mobileSettingsExpanded" aria-controls="gif-settings-controls" @click="mobileSettingsExpanded = !mobileSettingsExpanded">
                           <span>压缩参数设置</span><span>{{ mobileSettingsExpanded ? '收起' : '展开' }} <span aria-hidden="true">{{ mobileSettingsExpanded ? '⌃' : '⌄' }}</span></span>
                         </button>
@@ -94,7 +94,7 @@
                       <div id="gif-settings-controls" class="gif-settings-body">
 
                       <!-- 画质保护模式 -->
-                      <div class="gif-quality-card mb-6 rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50 p-4">
+                      <div class="gif-quality-card mb-6 rounded-xl border border-brand-border bg-gradient-to-r from-brand-soft via-white to-brand-soft p-4">
                         <div class="gif-quality-card__header flex items-start justify-between gap-3">
                           <div class="gif-quality-card__copy">
                             <p class="text-sm font-semibold text-gray-900">画质保护模式</p>
@@ -107,7 +107,7 @@
                             :class="preserveQuality ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'">
                             {{ preserveQuality ? '当前：画质优先' : '当前：自定义压缩' }}
                           </span>
-                          <span class="px-2.5 py-1 rounded-full text-xs text-blue-700 bg-blue-100">建议先尝试画质优先，再按需降低参数</span>
+                          <span class="px-2.5 py-1 rounded-full text-xs text-brand-hover bg-brand/10">建议先尝试画质优先，再按需降低参数</span>
                         </div>
                       </div>
 
@@ -125,8 +125,8 @@
                             :disabled="isProcessing"
                             class="rounded-lg px-3 py-2 text-left transition-all border"
                             :class="activePreset === key
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                              : 'bg-white text-gray-600 border-gray-200 hover:border-blue-300 hover:text-blue-600'"
+                              ? 'bg-brand text-white border-brand shadow-sm'
+                              : 'bg-white text-gray-600 border-gray-200 hover:border-brand-border hover:text-brand'"
                             @click="applyCompressionPreset(key)"
                           >
                             <p class="text-sm font-medium leading-none">{{ preset.label }}</p>
@@ -146,7 +146,7 @@
                               </el-icon>
                             </el-tooltip>
                           </span>
-                          <span class="text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded text-xs">{{
+                          <span class="text-brand font-bold bg-brand-soft px-2 py-0.5 rounded text-xs">{{
                             Math.round(options.scale * 100) }}%</span>
                         </div>
                         <el-slider v-model="options.scale" :min="0.1" :max="1" :step="0.05" show-stops
@@ -211,7 +211,7 @@
                       <div class="gif-settings-group mb-8">
                         <div class="flex justify-between items-center mb-3">
                           <span class="text-gray-700 font-medium">抽帧处理</span>
-                          <span class="text-blue-600 font-bold text-xs bg-blue-50 px-2 py-0.5 rounded">
+                          <span class="text-brand font-bold text-xs bg-brand-soft px-2 py-0.5 rounded">
                             {{ options.fpsReduction === 1 ? '保留全帧' : `1/${options.fpsReduction} 帧` }}
                           </span>
                         </div>
@@ -225,7 +225,7 @@
                       <div class="gif-settings-group mb-2">
                         <div class="flex justify-between items-center mb-2">
                           <span class="text-gray-700 font-medium">压缩质量 (Quality)</span>
-                          <span class="text-blue-600 font-bold">{{ options.quality }}</span>
+                          <span class="text-brand font-bold">{{ options.quality }}</span>
                         </div>
                         <el-slider v-model="options.quality" :min="1" :max="30" :step="1" :disabled="preserveQuality || isProcessing" />
                         <div class="text-xs text-gray-400 mt-1">1 (最佳画质/最慢) - 30 (最低画质/最快)</div>
@@ -287,25 +287,25 @@
                               formatSize(compressedSize)
                             }}</span>
                             <span class="bg-green-500 text-white px-2 py-0.5 rounded font-bold">{{ keptOriginal ? '保留原图' : `节省 ${calculateReduction()}%` }}</span>
-                            <span class="bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100">帧 {{
+                            <span class="bg-brand-soft text-brand px-2 py-0.5 rounded border border-brand-border">帧 {{
                               compressionStats.encodedFrames
                             }}/{{ compressionStats.decodedFrames }}</span>
                           </div>
                         </div>
                         <div
                           class="gif-mobile-preview-canvas bg-gray-50 rounded-xl overflow-hidden border border-gray-200 flex items-center justify-center flex-1 min-h-[300px] relative p-4"
-                          :class="{ 'bg-blue-50/30 border-blue-200': isProcessing, 'border-green-200 bg-green-50/10': compressedSrc }">
+                          :class="{ 'bg-brand-soft/30 border-brand-border': isProcessing, 'border-green-200 bg-green-50/10': compressedSrc }">
 
                           <!-- 加载状态 -->
                           <div v-if="isProcessing" class="flex flex-col items-center justify-center w-full h-full z-10">
                             <div class="relative">
                               <el-progress type="circle" :percentage="progress" :width="80" :stroke-width="6"
-                                color="#3b82f6" />
+                                color="var(--uied-color-primary)" />
                               <div class="absolute inset-0 flex items-center justify-center">
-                                <span class="text-xs font-bold text-blue-600">{{ progress }}%</span>
+                                <span class="text-xs font-bold text-brand">{{ progress }}%</span>
                               </div>
                             </div>
-                            <p class="text-blue-600 mt-4 text-sm font-medium animate-pulse">{{ processingStage || '正在智能压缩每一帧...' }}</p>
+                            <p class="text-brand mt-4 text-sm font-medium animate-pulse">{{ processingStage || '正在智能压缩每一帧...' }}</p>
                             <p class="text-gray-400 text-xs mt-1">大文件可能需要几秒钟，请耐心等待</p>
                           </div>
 
@@ -332,7 +332,7 @@
                   </div>
                 </div>
                 <p v-if="errorMessage" role="alert" class="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{{ errorMessage }}，可调整参数后重新压缩或重新上传。</p>
-                <p v-if="resultMessage" role="status" class="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-3 text-sm text-blue-700">{{ resultMessage }}</p>
+                <p v-if="resultMessage" role="status" class="mt-4 rounded-lg border border-brand-border bg-brand-soft p-3 text-sm text-brand-hover">{{ resultMessage }}</p>
                 <div v-if="compressionStats.decodedFrames > 0"
                   class="mt-6 rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 flex flex-wrap items-center gap-2 text-xs text-gray-600">
                   <span class="px-2 py-1 rounded bg-white border border-gray-200">解析帧数：{{ compressionStats.decodedFrames }}</span>
@@ -352,7 +352,7 @@
           <div v-for="(feature, index) in features" :key="index"
             class="flex items-start space-x-3 p-4 rounded-lg bg-gray-50 border border-gray-100">
             <div
-              class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
+              class="flex-shrink-0 w-8 h-8 rounded-full bg-brand-soft flex items-center justify-center text-brand font-bold">
               {{ index + 1 }}
             </div>
             <div>
@@ -1427,7 +1427,7 @@ onUnmounted(() => {
   .gif-preview-tabs button[aria-pressed='true'] {
     border-color: var(--uied-color-border, #e4e7ec);
     background: var(--uied-color-surface, #fff);
-    color: var(--uied-color-primary, #5b54e8);
+    color: var(--uied-color-primary);
     font-weight: 600;
   }
 
@@ -1473,7 +1473,7 @@ onUnmounted(() => {
     margin-bottom: 12px;
     padding: 12px;
     border-radius: 8px;
-    background: var(--uied-color-primary-soft, #efefff);
+    background: var(--uied-color-primary-soft);
     color: var(--uied-color-text-secondary, #667085);
     font-size: 13px;
     line-height: 1.6;
@@ -1482,7 +1482,7 @@ onUnmounted(() => {
   .gif-mobile-progress progress {
     width: 100%;
     height: 8px;
-    accent-color: var(--uied-color-primary, #5b54e8);
+    accent-color: var(--uied-color-primary);
   }
 
   .gif-help {
@@ -1517,7 +1517,7 @@ onUnmounted(() => {
   .gif-settings-toggle:focus-visible,
   .gif-preview-tabs button:focus-visible,
   .gif-help > summary:focus-visible {
-    outline: 2px solid var(--uied-color-primary, #5b54e8);
+    outline: 2px solid var(--uied-color-primary);
     outline-offset: 3px;
   }
 }

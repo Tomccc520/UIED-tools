@@ -22,14 +22,14 @@
         <div v-if="files.length === 0">
           <div
             class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
-            :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+            :class="isDragging ? 'border-brand bg-brand-soft scale-[1.02]' : 'border-gray-200 hover:border-brand hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" multiple accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
-              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-16 h-16 mb-4 rounded-full bg-brand-soft flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
@@ -53,7 +53,7 @@
                 </span>
               </div>
               <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" multiple accept=".pdf,application/pdf" class="hidden" @change="handleFileInputChange" />
-              <button @click="triggerFileInput" :disabled="merging || files.length >= maxFiles" class="text-sm text-blue-600">添加文件</button>
+              <button @click="triggerFileInput" :disabled="merging || files.length >= maxFiles" class="text-sm text-brand">添加文件</button>
               <button @click="clearFiles" class="text-sm text-gray-500 hover:text-red-500 transition-colors"
                 :disabled="merging">
                 清空队列
@@ -66,7 +66,7 @@
               <template #item="{ element }">
                 <div
                   class="relative group bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all"
-                  :class="{ 'border-2 border-blue-500 shadow-lg': drag }">
+                  :class="{ 'border-2 border-brand shadow-lg': drag }">
                   <div class="flex items-center justify-between pdf-file-row">
                     <div class="flex items-center space-x-3 min-w-0 flex-1">
                       <!-- 拖拽手柄 -->
@@ -94,7 +94,7 @@
                     <div class="flex items-center space-x-2 pdf-file-actions">
                       <!-- 预览按钮 -->
                       <button @click="previewPDF(element)" :aria-label="`预览 ${element.name}`"
-                        class="text-gray-400 hover:text-blue-500 p-1.5 rounded-full hover:bg-blue-50 transition-colors"
+                        class="text-gray-400 hover:text-brand p-1.5 rounded-full hover:bg-brand-soft transition-colors"
                         :disabled="merging">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -121,7 +121,7 @@
             <!-- 合并按钮 -->
             <div class="text-center mt-8">
               <button data-smoke="pdf-merge-start" @click="mergePDFs" :disabled="merging"
-                class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                class="bg-brand hover:bg-brand-hover text-white px-8 py-3 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 <span class="flex items-center justify-center">
                   <span class="mr-2">{{ merging ? '⚙️' : '✨' }}</span>
                   {{ merging ? '合并中...' : '开始合并' }}
@@ -138,7 +138,7 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+              <svg class="w-5 h-5 text-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
@@ -479,7 +479,7 @@ onUnmounted(() => {
 
 .sortable-ghost {
   opacity: 0.5;
-  background: #dbeafe;
+  background: var(--uied-color-primary-soft);
 }
 
 .pdf-preview-dialog :deep(.el-dialog__body) {

@@ -22,8 +22,8 @@
 
         <div v-if="!file">
           <div
-            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
+            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-brand"
+            :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200'" @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
@@ -46,12 +46,12 @@
           <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 pdf-settings-panel">
             <h3 class="font-bold text-gray-800 mb-4 flex items-center">
               <span
-                class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
+                class="w-6 h-6 bg-brand text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
               创建签名
             </h3>
             <div class="flex flex-col md:flex-row gap-6 pdf-editor-layout">
               <div
-                class="border-2 border-dashed border-gray-300 bg-white rounded-lg shadow-sm hover:border-blue-400 transition-colors"
+                class="border-2 border-dashed border-gray-300 bg-white rounded-lg shadow-sm hover:border-brand transition-colors"
                 style="width: 100%; max-width: 400px; height: auto; position: relative;">
                 <canvas ref="signatureCanvas" width="400" height="200" style="aspect-ratio: 2 / 1;"
                   class="cursor-crosshair block w-full h-auto touch-none"
@@ -89,7 +89,7 @@
             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
               <h3 class="font-bold text-gray-800 flex items-center">
                 <span
-                  class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
+                  class="w-6 h-6 bg-brand text-white rounded-full flex items-center justify-center text-sm mr-2">2</span>
                 放置签名
               </h3>
               <div class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border shadow-sm">
@@ -119,7 +119,7 @@
               <canvas ref="pdfCanvas" class="block"></canvas>
               <!-- 签名拖拽层 -->
               <div v-if="signatureImage"
-                class="absolute cursor-move border-2 border-dashed border-blue-500 hover:bg-blue-500/10 transition-colors group"
+                class="absolute cursor-move border-2 border-dashed border-brand hover:bg-brand/10 transition-colors group"
                 :style="{
                   left: signaturePos.x + 'px',
                   top: signaturePos.y + 'px',
@@ -130,7 +130,7 @@
                   draggable="false" />
                 <!-- 缩放手柄 -->
                 <div
-                  class="absolute bottom-[-6px] right-[-6px] w-5 h-5 bg-blue-500 rounded-full cursor-se-resize flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pdf-signature-resize"
+                  class="absolute bottom-[-6px] right-[-6px] w-5 h-5 bg-brand rounded-full cursor-se-resize flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pdf-signature-resize"
                   @mousedown.stop="startResizeSignature" @touchstart.stop.prevent="startResizeSignature">
                   <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -144,7 +144,7 @@
             <div class="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4 border-t pt-4">
               <label class="flex items-center cursor-pointer select-none">
                 <input type="checkbox" v-model="applyToAllPages"
-                  class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                  class="w-4 h-4 text-brand rounded border-gray-300 focus:ring-brand">
                 <span class="ml-2 text-gray-700">应用到每一页 (相同位置)</span>
               </label>
               <div class="flex gap-3 w-full sm:w-auto pdf-actions">

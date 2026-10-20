@@ -622,7 +622,7 @@ const getPreviewUrl = (file: any): string => {
       <div class="image-format-primary-card bg-white rounded-xl p-8 mb-8 shadow-sm">
         <!-- 上传区域 - 保持原有功能，修改样式 -->
         <div class="relative border-2 border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center bg-gray-50"
-          :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
+          :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200 hover:border-brand'"
           @drop.prevent="handleDrop"
           @dragover.prevent="isDragging = true"
           @dragleave.prevent="isDragging = false">
@@ -786,7 +786,7 @@ const getPreviewUrl = (file: any): string => {
                :key="index"
                class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0"
+              <svg class="w-5 h-5 text-brand mt-0.5 flex-shrink-0"
                    fill="none"
                    stroke="currentColor"
                    viewBox="0 0 24 24">

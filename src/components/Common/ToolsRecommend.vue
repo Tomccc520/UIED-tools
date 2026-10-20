@@ -40,14 +40,14 @@
   <section ref="recommendRoot" class="tools-recommend" aria-label="更多工具">
   <div class="recommend-grid grid grid-cols-1 md:grid-cols-4 gap-4">
     <!-- 1. 相关工具区域
-         - 使用闪电图标(蓝色)
+         - 使用闪电图标（品牌色）
          - 展示8个同类工具
          - 仅支持站内路由跳转
     -->
     <details open class="uied-tool-card bg-white rounded-lg border border-gray-100">
       <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
@@ -64,12 +64,12 @@
           ]">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm font-medium text-gray-800 group-hover:text-blue-500 transition-colors">{{ tool.title
+              <div class="text-sm font-medium text-gray-800 group-hover:text-brand transition-colors">{{ tool.title
               }}</div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-gray-400 group-hover:text-blue-500 transition-colors" fill="none" viewBox="0 0 24 24"
+              class="h-4 w-4 text-gray-400 group-hover:text-brand transition-colors" fill="none" viewBox="0 0 24 24"
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
@@ -79,7 +79,7 @@
     </details>
 
     <!-- 2. 热门工具区域
-         - 使用火焰图标(红色)
+         - 使用火焰图标（品牌色）
          - 展示8个固定的外部推荐工具
          - 支持外部链接跳转
          - 使用isExternal属性区分链接类型
@@ -87,7 +87,7 @@
     <details :open="!compactRecommendations" class="uied-tool-card bg-white rounded-lg border border-gray-100">
       <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24"
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
@@ -111,12 +111,12 @@
         >
             <div class="flex items-center justify-between">
               <div>
-                <div class="text-sm font-medium text-gray-800 group-hover:text-red-500 transition-colors">{{ tool.title
+                <div class="text-sm font-medium text-gray-800 group-hover:text-brand transition-colors">{{ tool.title
                 }}</div>
                 <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
               </div>
               <svg xmlns="http://www.w3.org/2000/svg"
-                class="h-4 w-4 text-gray-400 group-hover:text-red-500 transition-colors" fill="none" viewBox="0 0 24 24"
+                class="h-4 w-4 text-gray-400 group-hover:text-brand transition-colors" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -127,14 +127,14 @@
     </details>
 
     <!-- 3. 新品工具区域
-         - 使用勾选图标(绿色)
+         - 使用勾选图标（品牌色）
          - 随机展示8个最新工具
          - 仅支持站内路由跳转
     -->
     <details :open="!compactRecommendations" class="uied-tool-card bg-white rounded-lg border border-gray-100">
       <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24"
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -152,13 +152,13 @@
           ]">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm font-medium text-gray-800 group-hover:text-green-500 transition-colors">{{ tool.title
+              <div class="text-sm font-medium text-gray-800 group-hover:text-brand transition-colors">{{ tool.title
               }}
               </div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-gray-400 group-hover:text-green-500 transition-colors" fill="none" viewBox="0 0 24 24"
+              class="h-4 w-4 text-gray-400 group-hover:text-brand transition-colors" fill="none" viewBox="0 0 24 24"
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>
@@ -168,14 +168,14 @@
     </details>
 
     <!-- 4. 实用工具区域
-         - 使用工具图标(紫色)
+         - 使用工具图标（品牌色）
          - 随机展示8个实用工具
          - 仅支持站内路由跳转
     -->
     <details :open="!compactRecommendations" class="uied-tool-card bg-white rounded-lg border border-gray-100">
       <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24"
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-brand" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z" />
@@ -193,13 +193,13 @@
           ]">
           <div class="flex items-center justify-between">
             <div>
-              <div class="text-sm font-medium text-gray-800 group-hover:text-purple-500 transition-colors">{{ tool.title
+              <div class="text-sm font-medium text-gray-800 group-hover:text-brand transition-colors">{{ tool.title
               }}
               </div>
               <div class="text-xs text-gray-500 mt-1 line-clamp-1">{{ tool.desc }}</div>
             </div>
             <svg xmlns="http://www.w3.org/2000/svg"
-              class="h-4 w-4 text-gray-400 group-hover:text-purple-500 transition-colors" fill="none"
+              class="h-4 w-4 text-gray-400 group-hover:text-brand transition-colors" fill="none"
               viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
             </svg>

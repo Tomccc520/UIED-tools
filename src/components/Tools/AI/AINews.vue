@@ -216,9 +216,9 @@ onMounted(async () => {
 
     <!-- 内容区域 -->
     <div class="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col h-full relative">
-      <!-- 渐变装饰背景 - 只在头部 -->
+      <!-- 头部背景沿用网站主题浅色。 -->
       <div
-        class="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-[#4318FF]/5 via-[#9F53FF]/3 to-transparent pointer-events-none">
+        class="absolute top-0 left-0 right-0 h-96 bg-gradient-to-b from-brand-soft to-transparent pointer-events-none">
       </div>
 
       <!-- 头部区域 -->
@@ -236,7 +236,7 @@ onMounted(async () => {
                 class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium cursor-pointer whitespace-nowrap"
                 :class="[
                   currentCategory === category
-                    ? 'bg-[#4318FF] text-white'
+                    ? 'bg-brand text-white'
                     : 'bg-gray-100 text-gray-600'
                 ]">
                 {{ category }}
@@ -253,27 +253,27 @@ onMounted(async () => {
               <div class="flex items-center gap-2 mb-2 flex-wrap">
                 <div class="flex items-center relative">
                   <span
-                    class="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-[#4318FF] to-[#9F53FF] bg-clip-text text-transparent relative z-10">
+                    class="text-2xl sm:text-3xl font-bold text-brand relative z-10">
                     News
                   </span>
                   <span class="text-2xl sm:text-3xl font-bold text-gray-800 ml-2 relative z-10">实时快讯</span>
                   <!-- 装饰圆点 -->
                   <div
-                    class="absolute -left-3 -top-3 w-12 h-12 bg-gradient-to-r from-[#4318FF]/10 to-[#9F53FF]/10 rounded-full blur-lg">
+                    class="absolute -left-3 -top-3 w-12 h-12 bg-brand/10 rounded-full blur-lg">
                   </div>
                 </div>
                 <div class="flex items-center gap-2 ml-0 sm:ml-3 mt-2 sm:mt-0 flex-wrap">
                   <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#ECE8FF] text-[#4318FF] shadow-sm">
-                    <span class="w-1 h-1 bg-[#4318FF] rounded-full mr-1 animate-pulse"></span>
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-soft text-brand shadow-sm">
+                    <span class="w-1 h-1 bg-brand rounded-full mr-1 animate-pulse"></span>
                     实时更新
                   </span>
                   <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-[#4318FF] to-[#9F53FF] text-white shadow-sm">
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-soft text-brand">
                     AI 领域
                   </span>
                   <span
-                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gradient-to-r from-[#4318FF] to-[#9F53FF] text-white shadow-sm">
+                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-brand-soft text-brand">
                     科技领域
                   </span>
                 </div>
@@ -287,7 +287,7 @@ onMounted(async () => {
               class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-full text-xs sm:text-sm font-medium cursor-pointer transition-all duration-200 whitespace-nowrap hover:shadow-md"
               :class="[
                 currentCategory === category
-                  ? 'bg-gradient-to-r from-[#4318FF] to-[#9F53FF] text-white shadow-sm hover:shadow-[#4318FF]/20'
+                  ? 'bg-brand text-white shadow-sm hover:bg-brand-hover'
                   : 'bg-white/80 text-gray-600 hover:bg-gray-50 border border-gray-100/80 backdrop-blur-sm'
               ]">
               {{ category }}
@@ -316,7 +316,7 @@ onMounted(async () => {
               <div v-for="(news, index) in newsList" :key="index" class="py-3">
                 <div class="flex items-start gap-3">
                   <div class="flex-shrink-0 w-14 pt-1">
-                    <div class="text-sm font-medium text-[#4318FF]">{{ news.time }}</div>
+                    <div class="text-sm font-medium text-brand">{{ news.time }}</div>
                   </div>
                   <div class="flex-1 min-w-0">
                     <a :href="news.url" target="_blank" rel="nofollow noopener" class="block">
@@ -350,13 +350,13 @@ onMounted(async () => {
                 <div
                   v-if="index === 0 || dayjs(news.date).format('YYYY-MM-DD') !== dayjs(newsList[index - 1].date).format('YYYY-MM-DD')"
                   class="sticky top-0 z-10 -mx-8 px-8 py-3 backdrop-blur-sm border-b border-gray-100/80 relative">
-                  <div class="absolute inset-0 bg-gradient-to-r from-[#4318FF]/3 to-transparent opacity-30"></div>
+                  <div class="absolute inset-0 bg-brand-soft opacity-30"></div>
                   <div class="flex items-center justify-between relative z-10">
                     <div class="flex items-center gap-2">
-                      <div class="w-1 h-5 bg-gradient-to-b from-[#4318FF] to-[#9F53FF] rounded-sm shadow-sm"></div>
+                      <div class="w-1 h-5 bg-brand rounded-sm shadow-sm"></div>
                       <div class="flex items-center">
                         <template v-if="dayjs(news.date).isSame(dayjs(), 'day')">
-                          <span class="text-base font-medium text-[#4318FF]">今日快讯</span>
+                          <span class="text-base font-medium text-brand">今日快讯</span>
                           <span class="ml-2 text-sm text-gray-400">{{ dayjs(news.date).format('MM月DD日') }}</span>
                         </template>
                         <template v-else>
@@ -379,16 +379,16 @@ onMounted(async () => {
                 <div class="py-6 sm:py-8 px-2 relative group">
                   <!-- PC端时间线 -->
                   <div
-                    class="hidden sm:block absolute left-0 top-0 bottom-0 w-[2px] bg-gradient-to-b from-[#4318FF]/10 to-[#9F53FF]/10 group-hover:from-[#4318FF]/20 group-hover:to-[#9F53FF]/20 transition-colors duration-300">
+                    class="hidden sm:block absolute left-0 top-0 bottom-0 w-[2px] bg-brand/10 group-hover:bg-brand/20 transition-colors duration-300">
                     <div
-                      class="absolute left-[-4px] top-[40px] w-[10px] h-[10px] rounded-full border-2 border-[#4318FF] bg-white group-hover:scale-110 transition-transform duration-300">
+                      class="absolute left-[-4px] top-[40px] w-[10px] h-[10px] rounded-full border-2 border-brand bg-white group-hover:scale-110 transition-transform duration-300">
                     </div>
                   </div>
 
                   <!-- 移动端布局 -->
                   <div class="sm:hidden flex items-start gap-4">
                     <div class="flex-shrink-0 w-12">
-                      <div class="text-sm text-[#4318FF] font-medium">{{ news.time }}</div>
+                      <div class="text-sm text-brand font-medium">{{ news.time }}</div>
                     </div>
                     <div class="flex-1 min-w-0">
                       <a :href="news.url" target="_blank" rel="nofollow noopener" class="block">
@@ -412,8 +412,8 @@ onMounted(async () => {
                   <div class="hidden sm:flex sm:flex-row sm:items-start gap-4 sm:gap-8 pl-8">
                     <!-- 原有的PC端时间显示 -->
                     <div class="flex-shrink-0 sm:w-24 order-2 sm:order-1">
-                      <div class="text-center py-1 sm:py-2 px-2 sm:px-4 bg-gradient-to-r from-[#4318FF]/10 to-[#9F53FF]/10 text-[#4318FF] text-xs sm:text-sm font-medium
-                        rounded-lg shadow-sm relative overflow-hidden group-hover:from-[#4318FF] group-hover:to-[#9F53FF] group-hover:text-white
+                      <div class="text-center py-1 sm:py-2 px-2 sm:px-4 bg-brand-soft text-brand text-xs sm:text-sm font-medium
+                        rounded-lg shadow-sm relative overflow-hidden group-hover:bg-brand group-hover:text-white
                         transition-all duration-300">
                         <div class="relative z-10">{{ news.time }}</div>
                       </div>
@@ -425,7 +425,7 @@ onMounted(async () => {
                         <div class="flex gap-8">
                           <div class="flex-1">
                             <h3
-                              class="text-gray-900 text-lg font-medium leading-relaxed mb-3 group-hover:text-[#4318FF] transition-all duration-300">
+                              class="text-gray-900 text-lg font-medium leading-relaxed mb-3 group-hover:text-brand transition-all duration-300">
                               {{ news.title }}
                             </h3>
                             <p v-if="news.description"
@@ -434,7 +434,7 @@ onMounted(async () => {
                             </p>
                             <div class="flex items-center gap-3 mt-3">
                               <span
-                                class="text-sm text-gray-400 flex items-center gap-1 group-hover:text-[#4318FF]/70 transition-colors duration-300">
+                                class="text-sm text-gray-400 flex items-center gap-1 group-hover:text-brand transition-colors duration-300">
                                 <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path
                                     d="M19 4H5a2 2 0 00-2 2v12a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zM5 6h14v2H5V6zm0 4h3v2H5v-2zm0 4h3v2H5v-2zm14 4H5v-2h14v2zm0-4h-8v-2h8v2zm0-4h-8V8h8v2z"
@@ -445,9 +445,9 @@ onMounted(async () => {
                             </div>
                           </div>
                           <div v-if="news.cover"
-                            class="flex-shrink-0 w-48 h-32 overflow-hidden rounded-xl shadow-sm bg-gradient-to-r from-[#4318FF]/5 to-[#9F53FF]/5 relative group">
+                            class="flex-shrink-0 w-48 h-32 overflow-hidden rounded-xl shadow-sm bg-brand-soft relative group">
                             <div
-                              class="absolute inset-0 bg-gradient-to-br from-[#4318FF]/10 to-[#9F53FF]/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10">
+                              class="absolute inset-0 bg-brand/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10">
                             </div>
                             <img :src="news.cover" :alt="news.title" @error="handleImageError" loading="lazy"
                               class="w-full h-full object-cover transform group-hover:scale-105 transition-all duration-500 ease-out relative z-0"
@@ -482,12 +482,12 @@ onMounted(async () => {
           <div v-if="!loading && newsList.length === 0" class="py-8 sm:py-16">
             <div class="text-center">
               <div
-                class="mx-auto w-24 h-24 rounded-full bg-gradient-to-br from-[#4318FF]/10 to-[#9F53FF]/10 flex items-center justify-center relative group">
+                class="mx-auto w-24 h-24 rounded-full bg-brand/10 flex items-center justify-center relative group">
                 <div
-                  class="absolute inset-0 rounded-full bg-gradient-to-br from-[#4318FF]/5 to-[#9F53FF]/5 blur-lg group-hover:blur-xl transition-all duration-500">
+                  class="absolute inset-0 rounded-full bg-brand/5 blur-lg group-hover:blur-xl transition-all duration-500">
                 </div>
                 <svg
-                  class="h-12 w-12 text-[#4318FF] relative z-10 transform group-hover:scale-110 transition-transform duration-500"
+                  class="h-12 w-12 text-brand relative z-10 transform group-hover:scale-110 transition-transform duration-500"
                   fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -497,7 +497,7 @@ onMounted(async () => {
               <p class="mt-2 text-sm text-gray-500">请稍后刷新重试</p>
               <div class="mt-6">
                 <button @click="fetchNews(true)" type="button"
-                  class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-gradient-to-r from-[#4318FF] to-[#9F53FF] hover:from-[#3311DD] hover:to-[#8E42EE] transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#4318FF] shadow-sm hover:shadow-lg hover:shadow-[#4318FF]/20">
+                  class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-brand hover:bg-brand-hover transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand shadow-sm hover:shadow-lg hover:shadow-brand/20">
                   <svg class="-ml-1 mr-3 h-5 w-5 animate-spin" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
                     fill="currentColor">
                     <path fill-rule="evenodd"
@@ -556,7 +556,8 @@ onMounted(async () => {
   height: 48px;
   border-radius: 50%;
   position: relative;
-  background: linear-gradient(to right, #4318FF, #9F53FF);
+  border: 4px solid var(--uied-color-primary-soft);
+  border-top-color: var(--uied-color-primary);
   animation: rotate 1s linear infinite;
 }
 
@@ -569,12 +570,9 @@ onMounted(async () => {
 }
 
 .loading-text {
-  color: #4318FF;
+  color: var(--uied-color-primary);
   font-size: 0.875rem;
   font-weight: 500;
-  background: linear-gradient(to right, #4318FF, #9F53FF);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
@@ -606,7 +604,7 @@ onMounted(async () => {
   width: 10px;
   height: 10px;
   border-radius: 50%;
-  border: 2px solid #4318FF;
+  border: 2px solid var(--uied-color-primary);
   background-color: white;
   z-index: 1;
 }
@@ -617,7 +615,7 @@ onMounted(async () => {
   top: 0;
   bottom: 0;
   width: 2px;
-  background: linear-gradient(to bottom, rgba(67, 24, 255, 0.1), rgba(159, 83, 255, 0.1));
+  background: rgb(var(--uied-color-primary-rgb) / 10%);
 }
 
 /* 移动端优化样式 */

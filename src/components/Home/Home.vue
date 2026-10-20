@@ -404,8 +404,8 @@ watch(
 
 .tool-card:hover {
   transform: translateY(-8px) scale(1.01);
-  border-color: #6C54FF;
-  box-shadow: 0 10px 20px rgba(108, 84, 255, 0.1);
+  border-color: var(--uied-color-primary);
+  box-shadow: 0 10px 20px rgb(var(--uied-color-primary-rgb) / 10%);
 }
 
 .tool-card--disabled {
@@ -652,7 +652,7 @@ watch(
 .sub-title-indicator {
   width: 4px;
   height: 16px;
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border-radius: 2px;
   margin-right: 0.5rem;
 }
@@ -681,7 +681,7 @@ watch(
   width: 100%;
   height: 100%;
   background: radial-gradient(circle at var(--mouse-x) var(--mouse-y),
-      rgba(108, 84, 255, 0.08),
+      rgb(var(--uied-color-primary-rgb) / 8%),
       transparent 40%);
   opacity: 0;
   transition: opacity 0.3s;
@@ -707,7 +707,7 @@ watch(
 .tool-card:hover .card-arrow {
   opacity: 1;
   transform: translate(0, 0);
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 /* 滚动条容器样式 */

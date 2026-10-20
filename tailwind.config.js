@@ -6,7 +6,17 @@ export default {
     "./src/**/*.{vue,js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      // 品牌语义色沿用全站令牌，透明度修饰符也从同一组 RGB 通道生成。
+      colors: {
+        brand: {
+          DEFAULT: 'rgb(var(--uied-color-primary-rgb) / <alpha-value>)',
+          hover: 'rgb(var(--uied-color-primary-hover-rgb) / <alpha-value>)',
+          soft: 'rgb(var(--uied-color-primary-soft-rgb) / <alpha-value>)',
+          border: 'rgb(var(--uied-color-primary-border-rgb) / <alpha-value>)',
+        },
+      },
+    },
     screens: {
       // 自定义响应式尺寸
       'c-xs': {'max': '768px'},

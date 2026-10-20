@@ -43,7 +43,7 @@
 }
 
 .not-found-code {
-  color: #6757ff;
+  color: var(--uied-color-primary);
   font-size: clamp(4.5rem, 16vw, 8rem);
   font-weight: 900;
   line-height: 0.9;
@@ -99,8 +99,8 @@
 
 .not-found-primary {
   color: #fff;
-  background: #6757ff;
-  box-shadow: 0 8px 18px rgba(103, 87, 255, 0.22);
+  background: var(--uied-color-primary);
+  box-shadow: 0 8px 18px rgb(var(--uied-color-primary-rgb) / 22%);
 }
 
 .not-found-secondary {

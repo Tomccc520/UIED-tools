@@ -26,8 +26,8 @@
         <!-- 上传区域 -->
         <div v-if="!currentFile">
           <div
-            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
+            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-brand"
+            :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200'" @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
@@ -47,7 +47,7 @@
         </div>
 
         <p v-if="loading" role="status" class="mt-4 text-sm text-gray-500">正在加载 PDF 页面预览...</p>
-        <button v-if="loading" class="mt-2 text-sm text-blue-600" @click="clearFile">取消加载</button>
+        <button v-if="loading" class="mt-2 text-sm text-brand" @click="clearFile">取消加载</button>
 
         <!-- PDF页面预览和操作区域 -->
         <div v-if="currentFile && pdfPages.length > 0" class="mt-6">
@@ -94,7 +94,7 @@
                 清除文件
               </button>
               <button @click="savePDF" :disabled="saving || loading"
-                class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -111,7 +111,7 @@
             <template #item="{ element }">
               <div class="relative group bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all" :data-source-page="element.pageIndex + 1"
                 :class="{
-                  'ring-2 ring-blue-500': element.selected,
+                  'ring-2 ring-brand': element.selected,
                   'opacity-50': element.deleted
                 }">
                 <!-- 页面预览 -->
@@ -155,7 +155,7 @@
                     @click.stop="togglePageSelection(element)">
                     <div
                       class="w-6 h-6 rounded-lg border-2 flex items-center justify-center bg-white shadow-sm hover:shadow-md transition-all"
-                      :class="element.selected ? 'border-blue-500 bg-blue-500' : 'border-gray-300'">
+                      :class="element.selected ? 'border-brand bg-brand' : 'border-gray-300'">
                       <svg v-if="element.selected" class="w-4 h-4 text-white" fill="none" stroke="currentColor"
                         viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -181,7 +181,7 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+              <svg class="w-5 h-5 text-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path v-if="feature.icon === 'Delete'" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -486,6 +486,6 @@ onUnmounted(releasePreview)
 
 .sortable-ghost {
   opacity: 0.5;
-  background: #dbeafe;
+  background: var(--uied-color-primary-soft);
 }
 </style>

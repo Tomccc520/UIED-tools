@@ -72,8 +72,8 @@ const handleDrop = (event: DragEvent) => {
 
 .video-upload-zone:hover,
 .video-upload-zone--active {
-  border-color: #2563eb;
-  background: #f3f7ff;
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary-soft);
 }
 
 .video-upload-zone__icon {
@@ -81,8 +81,8 @@ const handleDrop = (event: DragEvent) => {
   width: 52px;
   height: 52px;
   border-radius: 8px;
-  background: #e8efff;
-  color: #2563eb;
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
   align-items: center;
   justify-content: center;
   font-size: 28px;
@@ -107,9 +107,9 @@ const handleDrop = (event: DragEvent) => {
 .video-upload-zone__button {
   min-width: 120px;
   margin-top: 20px;
-  border: 1px solid #2563eb;
+  border: 1px solid var(--uied-color-primary);
   border-radius: 6px;
-  background: #2563eb;
+  background: var(--uied-color-primary);
   color: #ffffff;
   font-size: 14px;
   font-weight: 650;
@@ -120,13 +120,13 @@ const handleDrop = (event: DragEvent) => {
 }
 
 .video-upload-zone__button:focus-visible {
-  outline: 2px solid var(--uied-color-primary, #5b54e8);
+  outline: 2px solid var(--uied-color-primary);
   outline-offset: 4px;
 }
 
 .video-upload-zone__button:hover {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
+  border-color: var(--uied-color-primary-hover);
+  background: var(--uied-color-primary-hover);
 }
 
 .video-upload-zone__hint {

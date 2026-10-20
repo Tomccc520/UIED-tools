@@ -281,7 +281,7 @@ onMounted(() => {
 
 .changelog-kicker {
   margin-bottom: 8px;
-  color: #6c54ff;
+  color: var(--uied-color-primary);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.08em;
@@ -327,9 +327,9 @@ onMounted(() => {
 }
 
 .changelog-meta-links a:hover {
-  border-color: #b9afff;
-  background: #f7f5ff;
-  color: #5c45e6;
+  border-color: rgb(var(--uied-color-primary-rgb) / 35%);
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
 }
 
 .open-source-notice {
@@ -414,7 +414,7 @@ onMounted(() => {
 }
 
 .scope-switch button.is-active {
-  background: #6c54ff;
+  background: var(--uied-color-primary);
   color: #ffffff;
 }
 
@@ -425,7 +425,7 @@ onMounted(() => {
 }
 
 .changelog-search :deep(.el-input__wrapper.is-focus) {
-  border-color: #6c54ff;
+  border-color: var(--uied-color-primary);
   box-shadow: none !important;
 }
 
@@ -483,13 +483,13 @@ onMounted(() => {
 }
 
 .changelog-toc__list a:hover {
-  border-left-color: #6c54ff;
-  background: #f7f5ff;
-  color: #5c45e6;
+  border-left-color: var(--uied-color-primary);
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
 }
 
 .changelog-toc__list a span {
-  color: #5c45e6;
+  color: var(--uied-color-primary);
   font-weight: 700;
 }
 
@@ -534,7 +534,7 @@ onMounted(() => {
 }
 
 .release-version__number {
-  color: #6c54ff;
+  color: var(--uied-color-primary);
   font-size: 17px;
   font-weight: 750;
 }
@@ -594,12 +594,12 @@ onMounted(() => {
   width: 5px;
   height: 5px;
   border-radius: 50%;
-  background: #8d7aff;
+  background: var(--uied-color-primary);
   content: '';
 }
 
 .feature-block :deep(a) {
-  color: #5c45e6;
+  color: var(--uied-color-primary);
   text-decoration: none;
 }
 
@@ -623,7 +623,7 @@ onMounted(() => {
 }
 
 .empty-result__icon {
-  color: #8d7aff;
+  color: var(--uied-color-primary);
   font-size: 32px;
 }
 
@@ -641,10 +641,10 @@ onMounted(() => {
 .empty-result button {
   margin-top: 16px;
   padding: 8px 14px;
-  border: 1px solid #6c54ff;
+  border: 1px solid var(--uied-color-primary);
   border-radius: 8px;
   background: #ffffff;
-  color: #5c45e6;
+  color: var(--uied-color-primary);
   cursor: pointer;
 }
 

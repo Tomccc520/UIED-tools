@@ -172,9 +172,7 @@ const values = [
 }
 
 .text-gradient {
-  background: linear-gradient(120deg, #6C54FF, #00CE3F);
-  -webkit-background-clip: text;
-  color: transparent;
+  color: var(--uied-color-primary);
 }
 
 .description-card {
@@ -194,7 +192,7 @@ const values = [
 }
 
 .text-primary {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 .el-link {

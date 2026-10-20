@@ -31,6 +31,7 @@ UIED-Tools 定位为“高密度、高可用、低学习成本”的专业在线
 | 品牌主色 | `--uied-color-primary` | `#6c54ff` |
 | 主色悬停 | `--uied-color-primary-hover` | `#5842cc` |
 | 主色浅背景 | `--uied-color-primary-soft` | `#f8f7ff` |
+| 主色浅边框 | `--uied-color-primary-border` | `#ded7ff` |
 | 页面背景 | `--uied-color-page` | `#f6f7fb` |
 | 内容表面 | `--uied-color-surface` | `#ffffff` |
 | 主文字 | `--uied-color-text` | `#172033` |
@@ -38,6 +39,10 @@ UIED-Tools 定位为“高密度、高可用、低学习成本”的专业在线
 | 边框 | `--uied-color-border` | `#e4e7ec` |
 | 成功 | `--uied-color-success` | `#16845b` |
 | 错误/危险 | `--uied-color-danger` | `#d92d20` |
+
+品牌色的 RGB 通道只在上述样式文件中定义，完整颜色令牌和 Tailwind 共用这些通道。Tailwind 使用 `text-brand`、`bg-brand`、`hover:bg-brand-hover`、`bg-brand-soft`、`border-brand-border`、`focus:ring-brand` 等语义类；需要透明效果时使用 `bg-brand/10`，不再写独立的蓝紫色值。Element Plus 主色、浅底、选中、滑杆和实心主按钮悬停也从这套令牌读取。
+
+主题统一只针对网站界面：用户设置的图片/图标背景、二维码前景色、签名和水印颜色、预览棋盘、代码语法色、数据图例与运营配置不随品牌色替换。成功、警告、错误、删除和停用状态保留各自语义，普通操作不使用状态色强调。
 
 间距使用 8px 基线：8、16、24、32px；4、12px 只用于组件内部紧密关系。圆角使用 6、8、12、16px 四档，普通卡片默认 8px，对话框或强调容器最大 16px。
 

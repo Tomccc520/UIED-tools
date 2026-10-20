@@ -22,14 +22,14 @@
         <div v-if="!file">
           <div
             class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
-            :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+            :class="isDragging ? 'border-brand bg-brand-soft scale-[1.02]' : 'border-gray-200 hover:border-brand hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
-              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-16 h-16 mb-4 rounded-full bg-brand-soft flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
@@ -47,7 +47,7 @@
           <div
             class="pdf-editor-main flex-1 bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden">
             <div v-if="rendering" class="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand"></div>
             </div>
             <div class="relative shadow-lg max-w-full">
               <canvas ref="pdfPreviewCanvas" aria-label="PDF 页面预览" class="max-w-full h-auto block"></canvas>
@@ -116,7 +116,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
             class="bg-gray-50 p-6 rounded-xl hover:shadow-sm transition-shadow">
-            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+            <div class="w-10 h-10 bg-brand-soft rounded-lg flex items-center justify-center text-brand mb-4">
               <svg v-if="feature.icon === 'Edit'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -146,7 +146,7 @@
         <!-- 常见问题 -->
         <div class="mt-12">
           <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
-            <svg class="w-6 h-6 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-brand mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

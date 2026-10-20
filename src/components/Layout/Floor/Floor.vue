@@ -246,7 +246,7 @@ onMounted(() => {
           <nav class="grid grid-cols-1 md:grid-cols-2 gap-6" aria-label="底部导航">
             <section class="w-full" aria-labelledby="quick-tools">
               <h2 id="quick-tools" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
+                <span class="w-1 h-5 bg-brand rounded-full"></span>
                 {{ footerQuickTitle }}
               </h2>
               <div class="flex flex-col space-y-4">
@@ -257,7 +257,7 @@ onMounted(() => {
                     <a v-for="item in section.items" :key="`${section.title}-${item.name}-${item.link}`" :href="item.link"
                       :target="isExternalLink(item.link) ? '_blank' : '_self'"
                       :rel="isExternalLink(item.link) ? 'noopener noreferrer' : undefined"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-brand transition-colors whitespace-nowrap">
                       {{ item.name }}
                     </a>
                   </div>
@@ -267,7 +267,7 @@ onMounted(() => {
 
             <section class="w-full" aria-labelledby="friend-links">
               <h2 id="friend-links" class="text-lg font-semibold text-gray-800 mb-6 flex items-center gap-2">
-                <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
+                <span class="w-1 h-5 bg-brand rounded-full"></span>
                 {{ footerFriendTitle }}
               </h2>
               <div class="space-y-6">
@@ -277,7 +277,7 @@ onMounted(() => {
                   <div class="flex flex-wrap gap-x-4 gap-y-2">
                     <a v-for="item in section.items" :key="`${section.title}-${item.name}-${item.link}`" :href="item.link"
                       target="_blank" rel="noopener noreferrer"
-                      class="text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                      class="text-sm text-gray-500 hover:text-brand transition-colors whitespace-nowrap">
                       {{ item.name }}
                     </a>
                   </div>
@@ -287,14 +287,14 @@ onMounted(() => {
 
             <section class="w-full md:col-span-2" aria-labelledby="official-media">
               <h2 id="official-media" class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                <span class="w-1 h-5 bg-[#6C54FF] rounded-full"></span>
+                <span class="w-1 h-5 bg-brand rounded-full"></span>
                 {{ officialMediaTitle }}
               </h2>
               <div class="flex flex-wrap gap-x-6 gap-y-3">
                 <a v-for="item in officialMediaLinks" :key="`${item.name}-${item.link}`" :href="item.link" target="_blank"
                   rel="noopener noreferrer"
-                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-[#6C54FF] transition-colors whitespace-nowrap group">
-                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-[#6C54FF] transition-colors"></span>
+                  class="flex items-center gap-2 text-sm text-gray-500 hover:text-brand transition-colors whitespace-nowrap group">
+                  <span class="w-1.5 h-1.5 rounded-full bg-gray-300 group-hover:bg-brand transition-colors"></span>
                   {{ item.name }}
                 </a>
               </div>
@@ -316,7 +316,7 @@ onMounted(() => {
                   :href="item.link"
                   target="_blank"
                   rel="noopener noreferrer"
-                  class="text-gray-500 hover:text-[#6C54FF] transition-colors"
+                  class="text-gray-500 hover:text-brand transition-colors"
                 >
                   {{ item.name }}
                 </a>
@@ -332,7 +332,7 @@ onMounted(() => {
                 <a v-for="link in footerLinks" :key="`${link.name}-${link.link}`" :href="link.link || '#'"
                   :target="isExternalLink(link.link) ? '_blank' : '_self'"
                   :rel="isExternalLink(link.link) ? 'noopener noreferrer' : undefined"
-                  class="hover:text-[#6C54FF] transition-colors whitespace-nowrap">
+                  class="hover:text-brand transition-colors whitespace-nowrap">
                   {{ link.name }}
                 </a>
               </div>
@@ -386,10 +386,10 @@ onMounted(() => {
 }
 
 .logo-wrapper {
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border-radius: 6px;
   padding: 1px;
-  box-shadow: 0 4px 6px -1px rgba(108, 84, 255, 0.1), 0 2px 4px -1px rgba(108, 84, 255, 0.06);
+  box-shadow: 0 4px 6px -1px rgb(var(--uied-color-primary-rgb) / 10%), 0 2px 4px -1px rgb(var(--uied-color-primary-rgb) / 6%);
   height: 32px;
   width: 64px;
   display: flex;
@@ -435,13 +435,13 @@ onMounted(() => {
 }
 
 #矩形 {
-  fill: #6C54FF;
+  fill: var(--uied-color-primary);
 }
 
 .tools-text {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #6C54FF;
+  color: var(--uied-color-primary);
   letter-spacing: 0.5px;
   height: 32px;
   line-height: 32px;

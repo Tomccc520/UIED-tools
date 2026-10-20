@@ -7,9 +7,14 @@
   --base-black: #444;
 
   /* UIED 3.x 基础颜色令牌：主色仅用于主操作、链接与焦点反馈。 */
-  --uied-color-primary: #6c54ff;
-  --uied-color-primary-hover: #5842cc;
-  --uied-color-primary-soft: #f8f7ff;
+  --uied-color-primary-rgb: 108 84 255;
+  --uied-color-primary-hover-rgb: 88 66 204;
+  --uied-color-primary-soft-rgb: 248 247 255;
+  --uied-color-primary-border-rgb: 222 215 255;
+  --uied-color-primary: rgb(var(--uied-color-primary-rgb));
+  --uied-color-primary-hover: rgb(var(--uied-color-primary-hover-rgb));
+  --uied-color-primary-soft: rgb(var(--uied-color-primary-soft-rgb));
+  --uied-color-primary-border: rgb(var(--uied-color-primary-border-rgb));
   --uied-color-page: #f6f7fb;
   --uied-color-surface: #ffffff;
   --uied-color-surface-subtle: #f8fafc;
@@ -33,7 +38,26 @@
   --uied-shadow-card: 0 1px 2px rgb(16 24 40 / 4%), 0 8px 24px rgb(16 24 40 / 5%);
   --uied-motion-fast: 160ms;
   --uied-motion-base: 240ms;
-  --uied-focus-ring: 0 0 0 3px rgb(108 84 255 / 22%);
+  --uied-focus-ring: 0 0 0 3px rgb(var(--uied-color-primary-rgb) / 22%);
+}
+
+/* 比组件库默认 :root 更明确，确保加载顺序不使控件重新使用默认蓝色。 */
+html:root {
+  --el-color-primary: var(--uied-color-primary);
+  --el-color-primary-dark-2: var(--uied-color-primary-hover);
+  --el-color-primary-light-3: color-mix(in srgb, var(--uied-color-primary) 70%, white);
+  --el-color-primary-light-5: color-mix(in srgb, var(--uied-color-primary) 50%, white);
+  --el-color-primary-light-7: color-mix(in srgb, var(--uied-color-primary) 30%, white);
+  --el-color-primary-light-8: color-mix(in srgb, var(--uied-color-primary) 20%, white);
+  --el-color-primary-light-9: var(--uied-color-primary-soft);
+}
+
+/* 实心主按钮悬停使用深品牌紫，维持白色按钮文字的可读性。 */
+html .el-button--primary:not(.is-plain):not(.is-text):not(.is-link) {
+  --el-button-hover-bg-color: var(--uied-color-primary-hover);
+  --el-button-hover-border-color: var(--uied-color-primary-hover);
+  --el-button-active-bg-color: var(--uied-color-primary-hover);
+  --el-button-active-border-color: var(--uied-color-primary-hover);
 }
 
 body {

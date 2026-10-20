@@ -25,8 +25,8 @@
         <!-- 更新上传区域样式 -->
         <div v-if="files.length === 0">
           <div
-            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @dragover.prevent="handleDragover"
+            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-brand"
+            :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200'" @dragover.prevent="handleDragover"
             @dragleave.prevent="handleDragleave" @drop.prevent="handleDrop" @click="triggerFileInput" role="button" tabindex="0"
             @keydown.enter.prevent="triggerFileInput" @keydown.space.prevent="triggerFileInput"
             aria-label="选择 PDF 文件">
@@ -98,15 +98,15 @@
               <div class="flex flex-wrap gap-2">
                 <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors" :class="[
                   quality === 150
-                    ? 'bg-blue-500 border-blue-500 text-white'
-                    : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500'
+                    ? 'bg-brand border-brand text-white'
+                    : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand'
                 ]" @click="quality = 150">
                   普通 (150dpi)
                 </button>
                 <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors" :class="[
                   quality === 300
-                    ? 'bg-blue-500 border-blue-500 text-white'
-                    : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500'
+                    ? 'bg-brand border-brand text-white'
+                    : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand'
                 ]" @click="quality = 300">
                   高清 (300dpi)
                 </button>
@@ -117,7 +117,7 @@
           <!-- 转换按钮 -->
           <div class="text-center mb-8">
             <button @click="startConversion" :disabled="converting"
-              class="bg-blue-500 hover:bg-blue-600 text-white px-8 py-3 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+              class="bg-brand hover:bg-brand-hover text-white px-8 py-3 rounded-lg font-medium shadow-sm hover:shadow disabled:opacity-50 disabled:cursor-not-allowed transition-all">
               <span class="flex items-center justify-center">
                 <span class="mr-2">{{ converting ? '⚙️' : '✨' }}</span>
                 {{ converting ? '转换中...' : '开始转换' }}
@@ -133,7 +133,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+              <svg class="w-5 h-5 text-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
@@ -145,7 +145,7 @@
           </div>
           <div class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+              <svg class="w-5 h-5 text-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>
@@ -157,7 +157,7 @@
           </div>
           <div class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
-              <svg class="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
+              <svg class="w-5 h-5 text-brand mt-0.5 flex-shrink-0" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
               </svg>

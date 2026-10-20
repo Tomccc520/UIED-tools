@@ -99,7 +99,7 @@
   }
 
   .video-mobile-upload:focus-visible {
-    outline: 2px solid var(--uied-color-primary, #5b54e8);
+    outline: 2px solid var(--uied-color-primary);
     outline-offset: 4px;
   }
 

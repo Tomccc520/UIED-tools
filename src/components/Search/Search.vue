@@ -1124,8 +1124,8 @@ watch(
   flex-direction: column;
   overflow: hidden;
   padding: 1.5rem;
-  box-shadow: 0 8px 30px rgba(108, 84, 255, 0.2);
-  border: 1px solid rgba(108, 84, 255, 0.1);
+  box-shadow: 0 8px 30px rgb(var(--uied-color-primary-rgb) / 20%);
+  border: 1px solid rgb(var(--uied-color-primary-rgb) / 10%);
   z-index: 1;
 }
 
@@ -1164,8 +1164,8 @@ watch(
 }
 
 .quick-tool-item:hover {
-  border-color: #6C54FF;
-  box-shadow: 0 4px 12px rgba(108, 84, 255, 0.1);
+  border-color: var(--uied-color-primary);
+  box-shadow: 0 4px 12px rgb(var(--uied-color-primary-rgb) / 10%);
   transform: translateY(-2px);
 }
 
@@ -1185,7 +1185,7 @@ watch(
 }
 
 .quick-tool-item:hover .quick-tool-title {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 /* 简化响应式样式 */
@@ -1264,7 +1264,7 @@ watch(
   transform: translateY(-50%);
   width: 3px;
   height: 20px;
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border-radius: 3px;
 }
 
@@ -1274,7 +1274,7 @@ watch(
 }
 
 .provider-link {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
   text-decoration: none;
   transition: all 0.3s ease;
   font-weight: 500;
@@ -1283,7 +1283,7 @@ watch(
 .provider-link:hover {
   opacity: 0.8;
   text-decoration: underline;
-  color: #5846cc;
+  color: var(--uied-color-primary-hover);
 }
 
 .close-btn {
@@ -1316,7 +1316,7 @@ watch(
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border-radius: 50%;
   position: relative;
   overflow: hidden;
@@ -1340,7 +1340,7 @@ watch(
 }
 
 .user-message .message-avatar {
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   color: white;
 }
 
@@ -1361,7 +1361,7 @@ watch(
 
 .answer-header .el-icon {
   font-size: 14px;
-  color: #6C54FF;
+  color: var(--uied-color-primary);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1375,7 +1375,7 @@ watch(
   padding: 0 1.5rem;
   font-size: 0.9375rem;
   border-radius: 0.75rem;
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border: none;
   color: white;
   transition: all 0.2s ease;
@@ -1384,21 +1384,21 @@ watch(
   align-items: center;
   justify-content: center;
   font-weight: 500;
-  box-shadow: 0 2px 8px rgba(108, 84, 255, 0.3);
+  box-shadow: 0 2px 8px rgb(var(--uied-color-primary-rgb) / 30%);
 }
 
 .send-btn:hover:not(:disabled) {
-  background: #5846cc;
-  box-shadow: 0 4px 12px rgba(108, 84, 255, 0.4);
+  background: var(--uied-color-primary-hover);
+  box-shadow: 0 4px 12px rgb(var(--uied-color-primary-rgb) / 40%);
 }
 
 .send-btn:active:not(:disabled) {
   transform: translateY(1px);
-  box-shadow: 0 2px 6px rgba(108, 84, 255, 0.3);
+  box-shadow: 0 2px 6px rgb(var(--uied-color-primary-rgb) / 30%);
 }
 
 .send-btn:disabled {
-  background: #b4a7ff;
+  background: rgb(var(--uied-color-primary-rgb) / 50%);
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
@@ -1417,9 +1417,9 @@ watch(
 
 .search-input :deep(.el-input__wrapper:hover),
 .search-input :deep(.el-input__wrapper.is-focus) {
-  border-color: #6C54FF !important;
+  border-color: var(--uied-color-primary) !important;
   background: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 2px rgba(108, 84, 255, 0.1) !important;
+  box-shadow: 0 0 0 2px rgb(var(--uied-color-primary-rgb) / 10%) !important;
 }
 
 .search-input :deep(.el-input__wrapper.is-disabled) {
@@ -1429,7 +1429,7 @@ watch(
 }
 
 .search-input :deep(.el-input__prefix) {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 /* 加载状态样式 */
@@ -1450,7 +1450,7 @@ watch(
   position: absolute;
   width: 200px;
   height: 200px;
-  background: radial-gradient(circle, rgba(108, 84, 255, 0.1) 0%, rgba(108, 84, 255, 0) 70%);
+  background: radial-gradient(circle, rgb(var(--uied-color-primary-rgb) / 10%) 0%, rgb(var(--uied-color-primary-rgb) / 0%) 70%);
   border-radius: 50%;
   z-index: 0;
 }
@@ -1458,7 +1458,7 @@ watch(
 .loading-icon {
   animation: rotate 2s linear infinite;
   margin-bottom: 1rem;
-  color: #6C54FF;
+  color: var(--uied-color-primary);
   font-size: 2rem;
   position: relative;
   z-index: 1;
@@ -1500,13 +1500,13 @@ watch(
 }
 
 .tool-card:hover {
-  border-color: #6C54FF;
-  box-shadow: 0 4px 12px rgba(108, 84, 255, 0.15);
+  border-color: var(--uied-color-primary);
+  box-shadow: 0 4px 12px rgb(var(--uied-color-primary-rgb) / 15%);
   z-index: 3;
 }
 
 .tool-card:hover .tool-title {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 .tool-title {
@@ -1525,13 +1525,13 @@ watch(
 }
 
 .tool-actions .el-button {
-  background: #6C54FF;
-  border-color: #6C54FF;
+  background: var(--uied-color-primary);
+  border-color: var(--uied-color-primary);
 }
 
 .tool-actions .el-button:hover {
-  background: #5846cc;
-  border-color: #5846cc;
+  background: var(--uied-color-primary-hover);
+  border-color: var(--uied-color-primary-hover);
 }
 
 /* 欢迎区域样式 */
@@ -1576,7 +1576,7 @@ watch(
   display: inline-block;
   width: 8px;
   height: 20px;
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border-radius: 4px;
 }
 
@@ -1597,7 +1597,7 @@ watch(
 }
 
 .welcome-section li::marker {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 /* 快捷工具样式 */
@@ -1639,14 +1639,14 @@ watch(
   left: 0;
   width: 4px;
   height: 0;
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   transition: height 0.3s ease;
 }
 
 .quick-tool-item:hover {
-  border-color: #6C54FF;
+  border-color: var(--uied-color-primary);
   transform: none;
-  box-shadow: 0 2px 8px rgba(108, 84, 255, 0.15);
+  box-shadow: 0 2px 8px rgb(var(--uied-color-primary-rgb) / 15%);
 }
 
 .quick-tool-item:hover::before {
@@ -1654,7 +1654,7 @@ watch(
 }
 
 .quick-tool-item:hover .quick-tool-title {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 .tool-disabled-tag {
@@ -1687,7 +1687,7 @@ watch(
   display: inline-block;
   width: 4px;
   height: 16px;
-  background: #6C54FF;
+  background: var(--uied-color-primary);
   border-radius: 2px;
 }
 
@@ -1813,7 +1813,7 @@ watch(
   content: '|';
   animation: blink 1s infinite;
   margin-left: 2px;
-  color: #6C54FF;
+  color: var(--uied-color-primary);
 }
 
 /* 优化对话容器滚动 */
@@ -1892,7 +1892,7 @@ watch(
 }
 
 :deep(.markdown-content a) {
-  color: #6C54FF;
+  color: var(--uied-color-primary);
   text-decoration: none;
 }
 
@@ -1997,7 +1997,7 @@ watch(
 }
 
 .clear-history:hover {
-  background: rgba(108, 84, 255, 0.1);
+  background: rgb(var(--uied-color-primary-rgb) / 10%);
   color: #475569;
 }
 
@@ -2019,7 +2019,7 @@ watch(
 }
 
 .history-item:hover {
-  background: rgba(108, 84, 255, 0.1);
+  background: rgb(var(--uied-color-primary-rgb) / 10%);
 }
 
 .history-item-content {
@@ -2185,7 +2185,7 @@ watch(
 }
 
 .panel-kicker {
-  color: #6c54ff;
+  color: var(--uied-color-primary);
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.16em;
@@ -2210,7 +2210,7 @@ watch(
 .instant-results__eyebrow {
   display: block;
   margin-bottom: 4px;
-  color: #6c54ff;
+  color: var(--uied-color-primary);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -2253,8 +2253,8 @@ watch(
 
 .instant-result-item:hover,
 .instant-result-item.is-active {
-  border-color: #6c54ff;
-  background: #f8f7ff;
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary-soft);
   transform: translateY(-1px);
 }
 
@@ -2316,7 +2316,7 @@ watch(
 }
 
 .instant-result-item__action {
-  color: #6c54ff;
+  color: var(--uied-color-primary);
   font-size: 12px;
   font-weight: 600;
 }
@@ -2524,9 +2524,9 @@ watch(
 }
 
 .quick-tool-item:hover {
-  border-color: #c9c4ff;
-  background: #faf9ff;
-  box-shadow: 0 4px 14px rgb(91 84 232 / 10%);
+  border-color: rgb(var(--uied-color-primary-rgb) / 35%);
+  background: var(--uied-color-primary-soft);
+  box-shadow: 0 4px 14px rgb(var(--uied-color-primary-rgb) / 10%);
 }
 
 .quick-tool-title {
@@ -2603,9 +2603,9 @@ watch(
 }
 
 .weekly-hot-tool:hover {
-  border-color: #c7c1ff;
+  border-color: rgb(var(--uied-color-primary-rgb) / 35%);
   background: #fff;
-  box-shadow: 0 5px 14px rgb(91 84 232 / 10%);
+  box-shadow: 0 5px 14px rgb(var(--uied-color-primary-rgb) / 10%);
   transform: translateY(-2px);
 }
 
@@ -2622,8 +2622,8 @@ watch(
   width: 24px;
   height: 24px;
   border-radius: 7px;
-  background: #eeecff;
-  color: #6658e8;
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
   font-size: 11px;
   font-weight: 700;
 }

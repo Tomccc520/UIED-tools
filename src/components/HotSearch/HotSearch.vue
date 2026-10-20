@@ -501,14 +501,14 @@ onUnmounted(() => {
 }
 
 .refresh-button:hover:not(:disabled) {
-  color: #1890ff;
-  background: #f1f5ff;
+  color: var(--uied-color-primary);
+  background: var(--uied-color-primary-soft);
   transform: rotate(180deg);
 }
 
 .refresh-button:focus-visible,
 .hot-state__retry:focus-visible {
-  outline: 2px solid #6757ff;
+  outline: 2px solid var(--uied-color-primary);
   outline-offset: 2px;
 }
 
@@ -529,7 +529,7 @@ onUnmounted(() => {
 
 .refresh-button.refreshing {
   animation: rotate 1s linear infinite;
-  color: #1890ff;
+  color: var(--uied-color-primary);
 }
 
 .hot-state {
@@ -569,7 +569,7 @@ onUnmounted(() => {
 }
 
 .hot-state__retry:hover {
-  background: rgb(103 87 255 / 8%);
+  background: rgb(var(--uied-color-primary-rgb) / 8%);
 }
 
 .hot-search-content {

@@ -367,7 +367,7 @@ const downloadQRCode = () => {
                 </div>
                 <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                   <button data-smoke="qrcode-generate" @click="gen"
-                    class="w-full sm:w-auto px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors duration-300 flex items-center justify-center">
+                    class="w-full sm:w-auto px-6 py-2 bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors duration-300 flex items-center justify-center">
                     <el-icon class="mr-1">
                       <Plus />
                     </el-icon>
@@ -399,7 +399,7 @@ const downloadQRCode = () => {
 }
 
 .el-radio.is-bordered {
-  @apply border-gray-200 hover:border-blue-500;
+  @apply border-gray-200 hover:border-brand;
 }
 
 .el-input,
@@ -422,7 +422,7 @@ const downloadQRCode = () => {
 
 /* 添加统一的按钮样式 */
 .btn-primary {
-  @apply inline-flex items-center justify-center px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
+  @apply inline-flex items-center justify-center px-6 py-3 bg-brand hover:bg-brand-hover text-white rounded-lg text-base transition-colors disabled:opacity-50 disabled:cursor-not-allowed;
 }
 
 .btn-secondary {

@@ -402,8 +402,8 @@ const formatFileSize = (bytes: number) => {
         <div class="grid grid-cols-1 gap-8">
           <!-- 上传区域 -->
           <div
-            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
-            :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @dragover.prevent="handleDragover"
+            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-brand"
+            :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200'" @dragover.prevent="handleDragover"
             @dragleave.prevent="handleDragleave" @drop.prevent="handleDrop" @click="triggerFileInput" role="button" tabindex="0"
             @keydown.enter.prevent="triggerFileInput" @keydown.space.prevent="triggerFileInput"
             aria-label="选择图片">
@@ -432,12 +432,12 @@ const formatFileSize = (bytes: number) => {
                 </div>
                 <div class="flex flex-wrap gap-3 pdf-actions">
                   <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors"
-                    :class="[config.mergeType === 'merge' ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500']"
+                    :class="[config.mergeType === 'merge' ? 'bg-brand border-brand text-white' : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand']"
                     @click="config.mergeType = 'merge'">
                     合并为一个
                   </button>
                   <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors"
-                    :class="[config.mergeType === 'separate' ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500']"
+                    :class="[config.mergeType === 'separate' ? 'bg-brand border-brand text-white' : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand']"
                     @click="config.mergeType = 'separate'">
                     单独生成
                   </button>
@@ -451,17 +451,17 @@ const formatFileSize = (bytes: number) => {
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors"
-                    :class="[config.pageSize === 'original' ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500']"
+                    :class="[config.pageSize === 'original' ? 'bg-brand border-brand text-white' : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand']"
                     @click="config.pageSize = 'original'">
                     原始尺寸
                   </button>
                   <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors"
-                    :class="[config.pageSize === 'a4-portrait' ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500']"
+                    :class="[config.pageSize === 'a4-portrait' ? 'bg-brand border-brand text-white' : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand']"
                     @click="config.pageSize = 'a4-portrait'">
                     竖版A4
                   </button>
                   <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors"
-                    :class="[config.pageSize === 'a4-landscape' ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500']"
+                    :class="[config.pageSize === 'a4-landscape' ? 'bg-brand border-brand text-white' : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand']"
                     @click="config.pageSize = 'a4-landscape'">
                     横版A4
                   </button>
@@ -485,7 +485,7 @@ const formatFileSize = (bytes: number) => {
           <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6 pdf-settings-panel">
             <div class="flex items-center justify-between mb-4 pdf-file-summary">
               <div class="flex items-center space-x-2">
-                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                     d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -535,7 +535,7 @@ const formatFileSize = (bytes: number) => {
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div v-for="(feature, index) in features" :key="index" class="border border-gray-100 rounded-lg p-6">
               <div class="flex items-center space-x-3 mb-4">
-                <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-500">
+                <div class="w-10 h-10 rounded-lg bg-brand-soft flex items-center justify-center text-brand">
                   <span v-html="feature.icon"></span>
                 </div>
                 <h4 class="text-base font-medium text-gray-900">{{ feature.title }}</h4>
@@ -584,7 +584,7 @@ const formatFileSize = (bytes: number) => {
 <style scoped>
 .ghost {
   opacity: 0.5;
-  background: #c8ebfb;
+  background: var(--uied-color-primary-soft);
   cursor: move;
 }
 

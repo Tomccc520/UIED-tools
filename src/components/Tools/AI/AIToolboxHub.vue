@@ -412,9 +412,9 @@ watch(
   padding: 0.35rem 0.8rem;
   margin-bottom: 1rem;
   border-radius: 999px;
-  border: 1px solid #dce8f8;
-  background: #f5f9ff;
-  color: #416182;
+  border: 1px solid var(--uied-color-primary-border);
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
   font-size: 0.78rem;
 }
 
@@ -451,7 +451,7 @@ watch(
 .sub-title-indicator {
   width: 4px;
   height: 16px;
-  background: #0ea5e9;
+  background: var(--uied-color-primary);
   border-radius: 2px;
 }
 
@@ -521,7 +521,7 @@ watch(
 
 .tool-card:hover {
   transform: translateY(-4px);
-  border-color: #8ac5ee;
+  border-color: var(--uied-color-primary-border);
 }
 
 .tool-card--disabled {
@@ -641,7 +641,7 @@ watch(
 .tool-card:hover .card-arrow {
   opacity: 1;
   transform: translate(0, 0);
-  color: #0ea5e9;
+  color: var(--uied-color-primary);
 }
 
 .empty-card {

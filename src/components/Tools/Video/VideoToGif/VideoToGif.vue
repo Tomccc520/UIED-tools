@@ -688,7 +688,7 @@ onUnmounted(() => {
 
 <style scoped>
 .gif-tool-page {
-  --gif-primary: #2563eb;
+  --gif-primary: var(--uied-color-primary);
   --gif-border: #e2e8f0;
   --gif-muted: #64748b;
   color: #0f172a;
@@ -839,8 +839,8 @@ onUnmounted(() => {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
-  border-left: 3px solid #60a5fa;
-  background: #eff6ff;
+  border-left: 3px solid var(--uied-color-primary-border);
+  background: var(--uied-color-primary-soft);
   padding: 12px;
 }
 
@@ -856,7 +856,7 @@ onUnmounted(() => {
 }
 
 .gif-output-estimate strong {
-  color: #1e3a8a;
+  color: var(--uied-color-primary-hover);
   font-size: 12px;
 }
 
@@ -889,8 +889,8 @@ onUnmounted(() => {
 
 .gif-primary:hover,
 .gif-download:hover {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
+  border-color: var(--uied-color-primary-hover);
+  background: var(--uied-color-primary-hover);
 }
 
 .gif-primary:disabled {

@@ -22,14 +22,14 @@
         <div v-if="!file">
           <div
             class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
-            :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+            :class="isDragging ? 'border-brand bg-brand-soft scale-[1.02]' : 'border-gray-200 hover:border-brand hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="handleDragover" @dragleave.prevent="handleDragleave">
             <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
-              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-16 h-16 mb-4 rounded-full bg-brand-soft flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -64,7 +64,7 @@
                 重新上传
               </button>
               <button v-if="!extractedText && !processing" @click="extractText"
-                class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">
+                class="px-4 py-2 text-sm font-medium text-white bg-brand rounded-lg hover:bg-brand-hover transition-colors">
                 开始提取
               </button>
             </div>
@@ -73,7 +73,7 @@
           <!-- 处理中状态 -->
           <div v-if="processing" class="text-center py-12 bg-gray-50 rounded-lg border border-gray-100">
             <div
-              class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-blue-500 border-t-transparent mb-4">
+              class="inline-block animate-spin rounded-full h-10 w-10 border-4 border-brand border-t-transparent mb-4">
             </div>
             <p class="text-gray-900 font-medium text-lg">正在提取文本...</p>
             <p class="text-gray-500 mt-2">已处理 {{ progress }}%</p>
@@ -83,7 +83,7 @@
           <div v-if="extractedText" class="space-y-4">
             <div class="flex justify-between items-center pdf-file-summary">
               <h3 class="font-medium text-gray-900 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 mr-2 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
@@ -99,7 +99,7 @@
                   复制文本
                 </button>
                 <button @click="downloadText"
-                  class="flex items-center px-3 py-1.5 text-sm text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors">
+                  class="flex items-center px-3 py-1.5 text-sm text-white bg-brand rounded-lg hover:bg-brand-hover transition-colors">
                   <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                       d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -110,7 +110,7 @@
             </div>
             <div class="relative group">
               <textarea readonly
-                class="w-full h-[600px] p-6 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-700 font-mono resize-y focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent leading-relaxed"
+                class="w-full h-[600px] p-6 bg-gray-50 border border-gray-200 rounded-xl text-base text-gray-700 font-mono resize-y focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent leading-relaxed"
                 :value="extractedText"></textarea>
               <div class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity">
                 <span class="bg-gray-800 text-white text-xs px-2 py-1 rounded">只读预览</span>
@@ -126,7 +126,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
             class="bg-gray-50 p-6 rounded-xl hover:shadow-sm transition-shadow">
-            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+            <div class="w-10 h-10 bg-brand-soft rounded-lg flex items-center justify-center text-brand mb-4">
               <svg v-if="feature.icon === 'Text'" class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -156,7 +156,7 @@
         <!-- 常见问题 -->
         <div class="mt-12">
           <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
-            <svg class="w-6 h-6 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-brand mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

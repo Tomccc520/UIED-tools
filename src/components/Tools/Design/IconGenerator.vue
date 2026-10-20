@@ -71,14 +71,14 @@
               <!-- 上传区域 -->
               <div
                 class="relative border-2 border-dashed border-gray-300 rounded-lg p-6 text-center transition-all duration-300 group"
-                :class="{ 'border-blue-500 bg-blue-50': isDragging }" @dragenter.prevent="isDragging = true"
+                :class="{ 'border-brand bg-brand-soft': isDragging }" @dragenter.prevent="isDragging = true"
                 @dragleave.prevent="isDragging = false" @dragover.prevent @drop.prevent="handleDrop"
                 @click="triggerFileInput" @keydown.enter.prevent="triggerFileInput" @keydown.space.prevent="triggerFileInput"
                 role="button" tabindex="0" aria-label="上传图标素材">
                 <input type="file" ref="fileInput" class="hidden" accept="image/png,image/jpeg,image/webp,image/svg+xml"
                   @change="handleFileChange">
                 <div v-if="!config.image" class="space-y-2">
-                  <el-icon class="text-4xl text-gray-400 group-hover:text-blue-500 transition-colors">
+                  <el-icon class="text-4xl text-gray-400 group-hover:text-brand transition-colors">
                     <UploadFilled />
                   </el-icon>
                   <p class="text-sm text-gray-600 font-medium">点击或拖拽上传图标素材</p>

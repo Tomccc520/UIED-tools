@@ -39,7 +39,7 @@
           <div class="bg-white border border-gray-200 rounded-lg p-6">
             <div
               class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-gray-50"
-              :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
+              :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200 hover:border-brand'"
               @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
               <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="handleFileChange" />
               <button type="button" aria-label="选择 Favicon 图片" :disabled="generating" class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></button>
@@ -108,14 +108,14 @@
                     <div class="relative">
                       <input type="radio" id="format-png" value="png" v-model="outputFormat" class="peer sr-only" />
                       <label for="format-png"
-                        class="block cursor-pointer select-none rounded-lg border border-gray-200 p-3 text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-600 hover:border-blue-500/30 transition-colors">
+                        class="block cursor-pointer select-none rounded-lg border border-gray-200 p-3 text-center peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand hover:border-brand/30 transition-colors">
                         <span class="text-sm font-medium">PNG格式</span>
                       </label>
                     </div>
                     <div class="relative">
                       <input type="radio" id="format-ico" value="ico" v-model="outputFormat" class="peer sr-only" />
                       <label for="format-ico"
-                        class="block cursor-pointer select-none rounded-lg border border-gray-200 p-3 text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 peer-checked:text-blue-600 hover:border-blue-500/30 transition-colors">
+                        class="block cursor-pointer select-none rounded-lg border border-gray-200 p-3 text-center peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand hover:border-brand/30 transition-colors">
                         <span class="text-sm font-medium">ICO格式</span>
                       </label>
                     </div>
@@ -143,7 +143,7 @@
 
               <!-- 生成按钮 -->
               <el-button type="primary" size="large"
-                class="w-full h-12 text-base font-medium !bg-blue-500 hover:!bg-blue-600 transition-colors duration-300"
+                class="w-full h-12 text-base font-medium !bg-brand hover:!bg-brand-hover transition-colors duration-300"
                 :loading="generating" :disabled="readingImage" @click="generateFavicon">
                 {{ generating ? '生成中...' : '生成Favicon' }}
               </el-button>
@@ -181,23 +181,23 @@
             <div class="mb-4 text-gray-700 font-medium">功能说明</div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div v-for="feature in features" :key="feature.title" class="flex items-center gap-3 text-gray-600">
-                <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <svg v-if="feature.icon === 'Format'" class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor"
+                <div class="w-10 h-10 rounded-lg bg-brand-soft flex items-center justify-center">
+                  <svg v-if="feature.icon === 'Format'" class="w-5 h-5 text-brand" fill="none" stroke="currentColor"
                     viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
                   </svg>
-                  <svg v-else-if="feature.icon === 'Size'" class="w-5 h-5 text-blue-500" fill="none"
+                  <svg v-else-if="feature.icon === 'Size'" class="w-5 h-5 text-brand" fill="none"
                     stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M4 8v8a4 4 0 004 4h8m4-16v8a4 4 0 01-4 4H8m16-16l-4 4m0 0l4-4m-4 4h3m-3 8l4 4m0 0l-4-4m4 4v-3" />
                   </svg>
-                  <svg v-else-if="feature.icon === 'Lock'" class="w-5 h-5 text-blue-500" fill="none"
+                  <svg v-else-if="feature.icon === 'Lock'" class="w-5 h-5 text-brand" fill="none"
                     stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4" />
                   </svg>
-                  <svg v-else-if="feature.icon === 'Easy'" class="w-5 h-5 text-blue-500" fill="none"
+                  <svg v-else-if="feature.icon === 'Easy'" class="w-5 h-5 text-brand" fill="none"
                     stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
                       d="M13 10V3L4 14h7v7l9-11h-7z" />

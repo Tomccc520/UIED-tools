@@ -908,14 +908,14 @@ onUnmounted(() => {
         <div
           class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
           :data-has-files="fileList.length > 0"
-          :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+          :class="isDragging ? 'border-brand bg-brand-soft scale-[1.02]' : 'border-gray-200 hover:border-brand hover:bg-gray-50'"
           @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
           <el-upload :disabled="isProcessing" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
             accept="application/pdf" :auto-upload="false" :on-change="handleChange" :show-file-list="false" multiple
             drag>
             <div class="flex flex-col items-center justify-center h-full py-10 pdf-compress-upload-content">
-              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center pdf-compress-upload-icon">
-                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-16 h-16 mb-4 rounded-full bg-brand-soft flex items-center justify-center pdf-compress-upload-icon">
+                <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
@@ -950,7 +950,7 @@ onUnmounted(() => {
                 <div class="flex flex-wrap bg-gray-100 rounded-lg p-1">
                   <button v-for="(preset, key) in presets" :key="key" @click="currentPreset = key" :disabled="isProcessing"
                     class="px-4 py-1.5 rounded-md text-sm font-medium transition-all"
-                    :class="currentPreset === key ? 'bg-white text-blue-600' : 'text-gray-500 hover:text-gray-700'">
+                    :class="currentPreset === key ? 'bg-white text-brand' : 'text-gray-500 hover:text-gray-700'">
                     {{ preset.name }}
                   </button>
                 </div>
@@ -966,7 +966,7 @@ onUnmounted(() => {
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700 flex justify-between">
                   DPI (分辨率)
-                  <span class="text-blue-600">{{ config.dpi }}</span>
+                  <span class="text-brand">{{ config.dpi }}</span>
                 </label>
                 <el-input-number :disabled="isProcessing" v-model="config.dpi" :min="72" :max="600" :step="10" class="w-full" />
                 <p class="text-xs text-gray-400">屏幕72，Web 150，打印300+</p>
@@ -976,7 +976,7 @@ onUnmounted(() => {
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700 flex justify-between">
                   图片质量
-                  <span class="text-blue-600">{{ config.imageQuality }}%</span>
+                  <span class="text-brand">{{ config.imageQuality }}%</span>
                 </label>
                 <el-slider :disabled="isProcessing" v-model="config.imageQuality" :min="10" :max="100" :step="5" />
                 <p class="text-xs text-gray-400">数值越低体积越小，建议 50-85</p>
@@ -1017,7 +1017,7 @@ onUnmounted(() => {
                 清空列表
               </button>
               <button @click="compressPDF" :disabled="isProcessing"
-                class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all flex items-center disabled:opacity-60 disabled:cursor-not-allowed pdf-compress-inline-start">
+                class="px-8 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-lg font-medium transition-all flex items-center disabled:opacity-60 disabled:cursor-not-allowed pdf-compress-inline-start">
                 <svg v-if="isProcessing" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none"
                   viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -1071,7 +1071,7 @@ onUnmounted(() => {
                 <!-- 状态标签 -->
                 <div class="flex items-center gap-2">
                   <button v-if="file.logs && file.logs.length > 0" @click="showLogs(file)"
-                    class="text-gray-400 hover:text-blue-600" title="查看日志" :aria-label="`查看 ${file.name} 的处理日志`">
+                    class="text-gray-400 hover:text-brand" title="查看日志" :aria-label="`查看 ${file.name} 的处理日志`">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
@@ -1088,14 +1088,14 @@ onUnmounted(() => {
                   <span v-else-if="file.status === 'error'"
                     class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">失败</span>
                   <span v-else-if="file.status === 'processing'"
-                    class="bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded-full">处理中</span>
+                    class="bg-brand/10 text-brand-hover text-xs px-2 py-1 rounded-full">处理中</span>
                   <span v-else class="bg-gray-100 text-gray-500 text-xs px-2 py-1 rounded-full">待处理</span>
                 </div>
               </div>
 
               <!-- 进度条 -->
               <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
-                <div class="h-full bg-blue-500 transition-all duration-300 rounded-full"
+                <div class="h-full bg-brand transition-all duration-300 rounded-full"
                   :style="{ width: `${file.progress}%` }"
                   :class="{ 'bg-green-500': file.status === 'success', 'bg-red-500': file.status === 'error' }"></div>
               </div>
@@ -1105,7 +1105,7 @@ onUnmounted(() => {
             <div class="flex gap-2 w-full sm:w-auto justify-end pdf-file-actions pdf-compress-card-actions">
               <button @click="showPreview(file)"
                 :aria-label="`预览 ${file.name}`"
-                class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="预览">
+                class="p-2 text-gray-500 hover:text-brand hover:bg-brand-soft rounded-lg transition-colors" title="预览">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M15 12a3 3 0 11-6 0 3 3 0 016 0z">
@@ -1118,7 +1118,7 @@ onUnmounted(() => {
               </button>
               <button v-if="file.status === 'success'" @click="recompressFile(file)" :disabled="isProcessing"
                 :aria-label="`重新压缩 ${file.name}`"
-                class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                class="p-2 text-gray-500 hover:text-brand hover:bg-brand-soft rounded-lg transition-colors"
                 title="重新压缩">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -1129,7 +1129,7 @@ onUnmounted(() => {
               </button>
               <button v-if="file.status === 'success'" @click="downloadFile(file)"
                 :aria-label="`下载 ${file.name}`"
-                class="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors" title="下载">
+                class="p-2 text-brand hover:text-brand-hover hover:bg-brand-soft rounded-lg transition-colors" title="下载">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
@@ -1169,7 +1169,7 @@ onUnmounted(() => {
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
             class="bg-gray-50 p-6 rounded-xl hover:shadow-sm transition-shadow">
-            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+            <div class="w-10 h-10 bg-brand/10 rounded-lg flex items-center justify-center text-brand mb-4">
               <svg v-if="feature.icon === 'Compress'" class="w-6 h-6" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3">
@@ -1200,7 +1200,7 @@ onUnmounted(() => {
         <!-- 常见问题 -->
         <div class="mt-12">
           <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
-            <svg class="w-6 h-6 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-brand mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
               </path>
@@ -1242,7 +1242,7 @@ onUnmounted(() => {
         <div class="flex justify-center gap-4 mb-4">
           <button @click="switchPreviewType('original')"
             class="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
-            :class="previewType === 'original' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
+            :class="previewType === 'original' ? 'bg-brand/10 text-brand-hover' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'">
             原始文件
           </button>
           <button v-if="previewFile?.status === 'success'" @click="switchPreviewType('compressed')"

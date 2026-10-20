@@ -48,7 +48,7 @@
             <!-- 输入框 -->
             <textarea
               v-model="textContent"
-              class="w-full h-[400px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y font-mono text-sm"
+              class="w-full h-[400px] p-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand focus:border-transparent resize-y font-mono text-sm"
               placeholder="请输入或粘贴文本内容..."
             ></textarea>
           </div>
@@ -57,7 +57,7 @@
           <div class="pdf-editor-sidebar w-full lg:w-80 flex flex-col gap-6">
             <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
               <h3 class="font-medium text-gray-900 mb-4 flex items-center">
-                <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-5 h-5 mr-2 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
@@ -67,7 +67,7 @@
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-1">页面尺寸</label>
-                  <select v-model="settings.pageSize" class="w-full border-gray-300 rounded-md shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500">
+                  <select v-model="settings.pageSize" class="w-full border-gray-300 rounded-md shadow-sm text-sm focus:border-brand focus:ring-brand">
                     <option value="a4">A4</option>
                     <option value="letter">Letter</option>
                   </select>
@@ -91,7 +91,7 @@
 
               <div class="mt-6 pt-6 border-t border-gray-200">
                 <button @click="generatePDF" :disabled="!textContent || generating"
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg shadow-sm transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                  class="w-full bg-brand hover:bg-brand-hover text-white font-medium py-2.5 rounded-lg shadow-sm transition-all flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
                   <svg v-if="generating" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -123,7 +123,7 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
-              <div class="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center text-blue-500 flex-shrink-0">
+              <div class="w-10 h-10 bg-brand-soft rounded-lg flex items-center justify-center text-brand flex-shrink-0">
                 <span v-html="feature.icon"></span>
               </div>
               <div>

@@ -196,10 +196,7 @@ onMounted(async () => {
 .user-login-page__bg {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 10% 18%, rgba(108, 84, 255, 0.2) 0%, rgba(108, 84, 255, 0) 38%),
-    radial-gradient(circle at 90% 20%, rgba(78, 127, 255, 0.16) 0%, rgba(78, 127, 255, 0) 32%),
-    linear-gradient(145deg, #f5f4ff 0%, #f7f9ff 100%);
+  background: var(--uied-color-page);
 }
 
 .auth-shell {
@@ -217,7 +214,7 @@ onMounted(async () => {
 
 .auth-side {
   padding: 26px 22px;
-  background: linear-gradient(162deg, #6c54ff 0%, #755dff 48%, #5d47ea 100%);
+  background: var(--uied-color-primary);
   color: #fff;
 }
 
@@ -278,17 +275,15 @@ onMounted(async () => {
 
 .auth-panel {
   padding: 24px;
-  background:
-    linear-gradient(180deg, #ffffff 0%, #fbfcff 100%),
-    #ffffff;
+  background: var(--uied-color-surface);
 }
 
 .auth-header-kicker {
   width: fit-content;
   border-radius: 999px;
-  border: 1px solid #dcd4ff;
-  background: #f4f1ff;
-  color: #5d48d6;
+  border: 1px solid var(--uied-color-primary-border);
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;

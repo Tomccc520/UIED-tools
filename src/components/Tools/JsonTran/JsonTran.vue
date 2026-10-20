@@ -81,8 +81,8 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div v-for="(feature, index) in features" :key="index" class="border border-gray-100 rounded-lg p-6">
               <div class="flex items-center space-x-3 mb-4">
-                <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
-                  <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-10 h-10 rounded-lg bg-brand-soft flex items-center justify-center">
+                  <svg class="w-6 h-6 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M5 13l4 4L19 7" />
                   </svg>
                 </div>
@@ -98,8 +98,8 @@
           <h3 class="text-xl font-semibold text-gray-900 mb-6">适用场景</h3>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div v-for="(text, index) in usageScenarios" :key="index" class="flex items-start space-x-3">
-              <div class="w-6 h-6 rounded-lg bg-green-50 flex items-center justify-center flex-shrink-0">
-                <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-6 h-6 rounded-lg bg-brand-soft flex items-center justify-center flex-shrink-0">
+                <svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
               </div>
@@ -369,8 +369,8 @@ const copyRes = async () => {
 }
 
 .el-input :deep(.el-input__inner:focus) {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+  border-color: var(--uied-color-primary);
+  box-shadow: 0 0 0 2px rgb(var(--uied-color-primary-rgb) / 10%);
 }
 
 .el-button {

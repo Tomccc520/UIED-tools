@@ -1,9 +1,17 @@
+<!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-20
+ */
+-->
 <template>
   <div class="mt-8 border-t pt-8">
     <h3 class="text-lg font-bold text-gray-800 mb-4">使用说明</h3>
     <div class="space-y-4 text-gray-600 text-sm">
       <div v-for="(step, index) in steps" :key="index" class="flex items-start">
-        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs font-bold mr-3 mt-0.5">
+        <span class="flex-shrink-0 w-6 h-6 rounded-full bg-brand-soft text-brand flex items-center justify-center text-xs font-bold mr-3 mt-0.5">
           {{ index + 1 }}
         </span>
         <div>

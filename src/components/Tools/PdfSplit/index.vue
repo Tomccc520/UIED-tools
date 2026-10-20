@@ -22,14 +22,14 @@
         <div v-if="!currentFile">
           <div
             class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
-            :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
+            :class="isDragging ? 'border-brand bg-brand-soft scale-[1.02]' : 'border-gray-200 hover:border-brand hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="handleDragover" @dragleave.prevent="handleDragleave">
             <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
-              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center mx-auto">
-                <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div class="w-16 h-16 mb-4 rounded-full bg-brand-soft flex items-center justify-center mx-auto">
+                <svg class="w-8 h-8 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
@@ -43,7 +43,7 @@
 
         <div v-if="currentFile && previewLoading && pdfPages.length === 0" class="mt-6" role="status">
           正在加载 PDF，请稍候…
-          <button @click="clearFile" class="ml-3 text-blue-600">取消加载</button>
+          <button @click="clearFile" class="ml-3 text-brand">取消加载</button>
         </div>
 
         <!-- PDF页面预览和操作区域 -->
@@ -58,21 +58,21 @@
                 <div class="space-y-3" :class="processing ? 'opacity-50 pointer-events-none' : ''">
                   <label class="flex items-center space-x-3 cursor-pointer">
                     <input type="radio" v-model="splitMode" :disabled="processing || previewLoading" value="extract"
-                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                      class="w-4 h-4 text-brand border-gray-300 focus:ring-brand">
                     <span class="text-gray-700">提取为单个PDF</span>
                   </label>
                   <p class="text-xs text-gray-500 ml-7">将选中的页面或指定范围的页面合并为一个新的PDF文件。</p>
 
                   <label class="flex items-center space-x-3 cursor-pointer mt-4">
                     <input type="radio" v-model="splitMode" :disabled="processing || previewLoading" value="split_every"
-                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                      class="w-4 h-4 text-brand border-gray-300 focus:ring-brand">
                     <span class="text-gray-700">每一页单独拆分</span>
                   </label>
                   <p class="text-xs text-gray-500 ml-7">将PDF的每一页保存为一个单独的PDF文件，打包下载。</p>
 
                   <label class="flex items-center space-x-3 cursor-pointer mt-4">
                     <input type="radio" v-model="splitMode" :disabled="processing || previewLoading" value="split_range"
-                      class="w-4 h-4 text-blue-600 border-gray-300 focus:ring-blue-500">
+                      class="w-4 h-4 text-brand border-gray-300 focus:ring-brand">
                     <span class="text-gray-700">按范围拆分为多个PDF</span>
                   </label>
                   <p class="text-xs text-gray-500 ml-7">根据输入的范围，每个范围生成一个PDF文件，打包下载。</p>
@@ -82,7 +82,7 @@
                 <div v-if="splitMode !== 'split_every'" class="mt-6">
                   <label class="block text-sm font-medium text-gray-700 mb-2">页面范围</label>
                   <input type="text" v-model="rangeInput" :disabled="processing || previewLoading" aria-label="PDF 页面范围" placeholder="例如: 1-3, 5, 8-10"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm">
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-brand focus:border-brand sm:text-sm">
                   <p class="text-xs text-gray-500 mt-2">
                     输入要提取/拆分的页面页码或范围，用逗号分隔。
                     <br>
@@ -96,7 +96,7 @@
                 <div class="mt-8 space-y-3">
                   <button @click="processPdf"
                     :disabled="processing || previewLoading || (splitMode !== 'split_every' && !rangeInput.trim())"
-                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                    class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-brand hover:bg-brand-hover focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                     <svg v-if="processing" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
                       xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -108,7 +108,7 @@
                   </button>
 
                   <button @click="clearFile" :disabled="processing"
-                    class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    class="w-full flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-brand transition-colors">
                     清除文件
                   </button>
                 </div>
@@ -120,7 +120,7 @@
               <div v-if="previewLoading"
                 class="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
                 <div class="flex flex-col items-center">
-                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mb-3"></div>
+                  <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-brand mb-3"></div>
                   <div class="text-sm text-gray-600">正在生成预览，已完成 {{ previewProgress }}%</div>
                 </div>
               </div>
@@ -136,7 +136,7 @@
                 <div v-for="page in pdfPages" :key="page.pageIndex" class="relative group cursor-pointer"
                   @click="togglePageSelection(page.pageNumber)">
                   <div class="aspect-[1/1.4] bg-white shadow-sm rounded border border-gray-200 overflow-hidden relative"
-                    :class="{ 'ring-2 ring-blue-500': isPageSelected(page.pageNumber) }">
+                    :class="{ 'ring-2 ring-brand': isPageSelected(page.pageNumber) }">
                     <img :src="page.thumbnail" class="w-full h-full object-contain" />
                     <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-opacity">
                     </div>
@@ -147,7 +147,7 @@
 
                     <!-- 选中标记 -->
                     <div v-if="isPageSelected(page.pageNumber)"
-                      class="absolute top-1 right-1 bg-blue-500 text-white rounded-full p-0.5">
+                      class="absolute top-1 right-1 bg-brand text-white rounded-full p-0.5">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7">
                         </path>
@@ -167,7 +167,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
             class="bg-gray-50 p-6 rounded-xl hover:shadow-sm transition-shadow">
-            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+            <div class="w-10 h-10 bg-brand-soft rounded-lg flex items-center justify-center text-brand mb-4">
               <svg v-if="feature.icon === 'Split'" class="w-6 h-6" fill="none" stroke="currentColor"
                 viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -198,7 +198,7 @@
         <!-- 常见问题 -->
         <div class="mt-12">
           <h3 class="text-xl font-bold text-gray-900 mb-6 flex items-center">
-            <svg class="w-6 h-6 text-blue-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg class="w-6 h-6 text-brand mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>

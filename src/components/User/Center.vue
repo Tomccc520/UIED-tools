@@ -1541,10 +1541,7 @@ onBeforeUnmount(() => {
 .user-center-page {
   min-height: 70vh;
   padding: 24px clamp(12px, 3vw, 40px) 28px;
-  background:
-    radial-gradient(circle at 8% 0%, rgba(108, 84, 255, 0.12) 0%, transparent 34%),
-    radial-gradient(circle at 100% 100%, rgba(16, 185, 129, 0.08) 0%, transparent 42%),
-    #f6f7fb;
+  background: var(--uied-color-page);
 }
 
 .center-shell {
@@ -1559,7 +1556,7 @@ onBeforeUnmount(() => {
 .center-hero {
   border: 1px solid #dfe4f2;
   border-radius: 16px;
-  background: linear-gradient(140deg, #f7f4ff 0%, #ffffff 56%, #f5f9ff 100%);
+  background: var(--uied-color-primary-soft);
   padding: 18px;
   display: grid;
   grid-template-columns: 1.35fr 1fr;
@@ -1576,8 +1573,8 @@ onBeforeUnmount(() => {
   width: 52px;
   height: 52px;
   border-radius: 16px;
-  border: 1px solid #cec6ff;
-  background: linear-gradient(160deg, #6c54ff 0%, #4d4cf5 100%);
+  border: 1px solid var(--uied-color-primary-border);
+  background: var(--uied-color-primary);
   color: #ffffff;
   font-size: 24px;
   font-weight: 700;
@@ -1606,9 +1603,9 @@ onBeforeUnmount(() => {
   width: fit-content;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid #d9d2ff;
-  background: #f0ecff;
-  color: #5942d8;
+  border: 1px solid var(--uied-color-primary-border);
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
@@ -1719,9 +1716,9 @@ onBeforeUnmount(() => {
 
 .rights-intro {
   padding: 10px 12px;
-  border: 1px solid #e4defe;
+  border: 1px solid var(--uied-color-primary-border);
   border-radius: 10px;
-  background: linear-gradient(120deg, #f5f2ff 0%, #f8f9ff 100%);
+  background: var(--uied-color-primary-soft);
   color: #4f5670;
   font-size: 13px;
   line-height: 1.6;
@@ -1751,9 +1748,9 @@ onBeforeUnmount(() => {
 .payment-watch-bar {
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid #dcd4ff;
+  border: 1px solid var(--uied-color-primary-border);
   border-radius: 10px;
-  background: #f7f4ff;
+  background: var(--uied-color-primary-soft);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1767,7 +1764,7 @@ onBeforeUnmount(() => {
 .payment-watch-title {
   font-size: 13px;
   font-weight: 700;
-  color: #4a3bb7;
+  color: var(--uied-color-primary);
 }
 
 .payment-watch-desc {
@@ -1901,7 +1898,7 @@ onBeforeUnmount(() => {
   padding: 18px 20px;
   border: 1px solid #e6e8f2;
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(108, 84, 255, 0.08), rgba(44, 182, 125, 0.08));
+  background: var(--uied-color-primary-soft);
 }
 
 .delivery-board-title {
@@ -1947,9 +1944,9 @@ onBeforeUnmount(() => {
   width: fit-content;
   padding: 4px 10px;
   border-radius: 999px;
-  border: 1px solid #d9d2ff;
-  background: #f3efff;
-  color: #5b47d6;
+  border: 1px solid var(--uied-color-primary-border);
+  background: var(--uied-color-primary-soft);
+  color: var(--uied-color-primary);
   font-size: 12px;
   font-weight: 700;
 }
@@ -2248,11 +2245,11 @@ onBeforeUnmount(() => {
 }
 
 :deep(.center-tabs .el-tabs__item.is-active) {
-  color: #5b47d6;
+  color: var(--uied-color-primary);
 }
 
 :deep(.center-tabs .el-tabs__active-bar) {
-  background: #5b47d6;
+  background: var(--uied-color-primary);
 }
 
 :deep(.center-tabs .el-table) {

@@ -28,7 +28,7 @@
             <div class="bg-white border border-gray-200 rounded-lg p-6">
               <div
                 class="relative border border-dashed rounded-lg min-h-[150px] flex flex-col items-center justify-center transition-colors duration-200 bg-gray-50"
-                :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
+                :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200 hover:border-brand'"
                 @drop.prevent="handleDrop" @dragover.prevent="isDragging = true"
                 @dragleave.prevent="isDragging = false">
                 <input ref="fileInputRef" type="file" class="hidden" multiple accept="image/*"
@@ -552,6 +552,6 @@ onUnmounted(() => {
 
 .ghost {
   opacity: 0.5;
-  background: #c8ebfb;
+  background: var(--uied-color-primary-soft);
 }
 </style>

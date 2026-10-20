@@ -1514,14 +1514,14 @@ onBeforeRouteLeave((to, from, next) => {
                   <el-input-number v-model="settings.audioBitrateKbps" :min="64" :max="320" :step="32" :disabled="isProcessing" class="w-full" />
                 </div>
 
-                <div class="rounded-lg bg-indigo-50 border border-indigo-100 p-4 text-sm space-y-1">
+                <div class="rounded-lg bg-brand-soft border border-brand-border p-4 text-sm space-y-1">
                   <div class="flex justify-between">
-                    <span class="text-indigo-700">预计视频码率</span>
-                    <span class="font-semibold text-indigo-900">{{ Math.round(estimatedVideoBitrateKbps) }} kbps</span>
+                    <span class="text-brand-hover">预计视频码率</span>
+                    <span class="font-semibold text-brand-hover">{{ Math.round(estimatedVideoBitrateKbps) }} kbps</span>
                   </div>
                   <div class="flex justify-between">
-                    <span class="text-indigo-700">预计输出大小</span>
-                    <span class="font-semibold text-indigo-900">{{ estimatedOutputSizeMB.toFixed(2) }} MB</span>
+                    <span class="text-brand-hover">预计输出大小</span>
+                    <span class="font-semibold text-brand-hover">{{ estimatedOutputSizeMB.toFixed(2) }} MB</span>
                   </div>
                 </div>
                 </template>
@@ -1585,7 +1585,7 @@ onBeforeRouteLeave((to, from, next) => {
                   </div>
                   <div class="video-mobile-actions flex items-center gap-2">
                     <button
-                      class="inline-flex items-center px-4 py-2 border border-gray-300 hover:border-indigo-400 hover:text-indigo-700 text-gray-700 font-medium rounded-lg transition-colors"
+                      class="inline-flex items-center px-4 py-2 border border-gray-300 hover:border-brand hover:text-brand-hover text-gray-700 font-medium rounded-lg transition-colors"
                       @click="triggerSelectVideo"
                     >
                       上传其他视频
@@ -1744,8 +1744,8 @@ onBeforeRouteLeave((to, from, next) => {
 }
 
 .video-server-specs {
-  border-left: 3px solid #0ea5e9;
-  background: #f0f9ff;
+  border-left: 3px solid var(--uied-color-primary-border);
+  background: var(--uied-color-primary-soft);
   padding: 12px 14px;
 }
 
@@ -1754,14 +1754,14 @@ onBeforeRouteLeave((to, from, next) => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: #0c4a6e;
+  color: var(--uied-color-primary-hover);
   font-size: 12px;
   font-weight: 700;
   line-height: 1.4;
 }
 
 .video-server-specs__head span:last-child {
-  color: #0369a1;
+  color: var(--uied-color-primary);
   font-weight: 500;
 }
 
@@ -1794,8 +1794,8 @@ onBeforeRouteLeave((to, from, next) => {
 }
 
 .video-compress-primary:hover {
-  border-color: #1d4ed8;
-  background: #1d4ed8;
+  border-color: var(--uied-color-primary-hover);
+  background: var(--uied-color-primary-hover);
 }
 
 .video-compress-primary:disabled {
