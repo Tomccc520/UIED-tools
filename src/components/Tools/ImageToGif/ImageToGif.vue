@@ -26,25 +26,17 @@
           <div class="lg:col-span-1 space-y-6">
             <!-- 上传区域 -->
             <div class="bg-white border border-gray-200 rounded-lg p-6">
-              <div
-                class="relative border border-dashed rounded-lg min-h-[150px] flex flex-col items-center justify-center transition-colors duration-200 bg-gray-50"
-                :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200 hover:border-brand'"
-                @drop.prevent="handleDrop" @dragover.prevent="isDragging = true"
-                @dragleave.prevent="isDragging = false">
-                <input ref="fileInputRef" type="file" class="hidden" multiple accept="image/*"
-                  @change="handleFileInputChange" />
-                <button type="button" aria-label="选择合成 GIF 的图片" :disabled="isProcessing" class="absolute inset-0 cursor-pointer z-10 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4" @click="triggerFileInput"></button>
-                <div class="text-center px-4">
-                  <div class="w-8 h-8 mb-2 mx-auto">
-                    <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                        d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                  </div>
-                  <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽图片</div>
-                  <p class="text-xs text-gray-400">支持 JPG、PNG、WebP</p>
-                </div>
-              </div>
+              <FileUploadZone
+                title="点击或拖拽图片"
+                description="支持 JPG、PNG、WebP"
+                aria-label="选择合成 GIF 的图片"
+                accept="image/*"
+                multiple
+                size="compact"
+                :disabled="isProcessing"
+                :busy="isLoading"
+                @files="handleFiles"
+              />
               <p v-if="isLoading" role="status" aria-live="polite" class="mt-3 text-xs text-gray-500">
                 正在读取 {{ pendingCount }} 张图片，完成后可预览；可点击“清空”取消。
               </p>
@@ -162,6 +154,7 @@ import { ElMessage } from 'element-plus'
 import { Close, Picture } from '@element-plus/icons-vue'
 import draggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import FileUploadZone from '@/components/Common/FileUploadZone.vue'
 import GIF from 'gif.js'
 
 const route = useRoute()
@@ -191,10 +184,8 @@ interface ImageLoadTask {
 
 // 状态
 const fileList = ref<ImageFile[]>([])
-const isDragging = ref(false)
 const isProcessing = ref(false)
 const progress = ref(0)
-const fileInputRef = ref<HTMLInputElement | null>(null)
 const previewUrl = ref('')
 const pendingCount = ref(0)
 const isLoading = computed(() => pendingCount.value > 0)
@@ -220,31 +211,6 @@ watch(() => fileList.value.map(item => item.id), (currentIds, previousIds) => {
   if (currentIds.length === previousIds.length && currentIds.every((id, index) => id === previousIds[index])) return
   clearPreview()
 })
-
-/** 从文件选择器提交本批图片，随后重置输入值以允许重复选择同一文件。 */
-const handleFileInputChange = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  if (input.files) {
-    processFiles(Array.from(input.files))
-  }
-  input.value = ''
-}
-
-/** 打开文件选择器；编码期间禁止更改正在生成的帧列表。 */
-const triggerFileInput = () => {
-  if (isProcessing.value) return
-  fileInputRef.value?.click()
-}
-
-/** 接收拖入的图片，并通过统一上传队列保持选择批次顺序。 */
-const handleDrop = (e: DragEvent) => {
-  e.preventDefault()
-  isDragging.value = false
-  if (e.dataTransfer?.files) {
-    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'))
-    processFiles(files)
-  }
-}
 
 /** 释放单张图片的解码监听和计时器，终止继续解码；图片地址由队列或帧列表持有。 */
 const releaseImageDecoder = (task: ImageLoadTask) => {
@@ -283,6 +249,17 @@ const finishImageLoad = (task: ImageLoadTask, errorMessage?: string) => {
     ElMessage.error(errorMessage)
   }
   flushDecodedFiles()
+}
+
+/** 校验本批图片后再进入解码队列，拒绝非图片时保留已有帧和已生成的 GIF。 */
+const handleFiles = (files: File[]) => {
+  if (isDisposed || isProcessing.value) return
+  const images = files.filter(file => file.type.startsWith('image/'))
+  if (!images.length) {
+    ElMessage.error('请选择图片文件')
+    return
+  }
+  processFiles(images)
 }
 
 /** 为本批文件先预留入队位置再并行解码，后续上传批次不能越过更早的待完成图片。 */

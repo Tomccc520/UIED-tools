@@ -107,6 +107,21 @@ beforeEach(() => {
 afterEach(() => { view?.unmount(); view = undefined; vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('图片合成 GIF 的上传解码顺序与清理', () => {
+  it('上传非图片时保留已有帧和 GIF 预览，并明确提示选择图片', async () => {
+    await createPreview()
+    const previewUrl = view!.get('img.max-w-full').attributes('src')
+    const input = view!.get('input[type="file"]')
+    Object.defineProperty(input.element, 'files', {
+      configurable: true, value: [new File(['plain text'], 'notes.txt', { type: 'text/plain' })]
+    })
+    await input.trigger('change')
+    await flushPromises()
+    expect(view!.findAll('.image-gif-filename').map(item => item.text())).toEqual(['first.png', 'second.png'])
+    expect(view!.get('img.max-w-full').attributes('src')).toBe(previewUrl)
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(previewUrl)
+    expect(mocks.error).toHaveBeenCalledWith('请选择图片文件')
+  })
+
   it('02 先解码时仍按 01、02 入队，默认画布取 01 的 100×100', async () => {
     const images = controlImageDecoding()
     mountPage()

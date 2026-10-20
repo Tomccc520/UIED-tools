@@ -6,7 +6,7 @@ components = [
         "name": "CustomAnalysis",
         "title": "自定义分析报告",
         "desc": "针对特定需求生成的深度分析报告，支持自定义分析维度和结构",
-        "icon": "ChartBarIcon",
+        "icon": "Histogram",
         "color": "indigo",
         "inputs": [
             {"label": "分析主题", "model": "topic", "placeholder": "例如：2024年用户增长分析", "type": "input"},
@@ -19,7 +19,7 @@ components = [
         "name": "ResearchReport",
         "title": "研究报告",
         "desc": "智能生成学术或商业研究报告，包含研究背景、方法、发现和结论",
-        "icon": "AcademicCapIcon",
+        "icon": "School",
         "color": "blue",
         "inputs": [
             {"label": "研究课题", "model": "topic", "placeholder": "例如：人工智能在医疗领域的应用现状", "type": "input"},
@@ -32,7 +32,7 @@ components = [
         "name": "ActivityPlan",
         "title": "活动方案",
         "desc": "智能策划各类线上线下活动方案，包含创意亮点、流程安排和执行细节",
-        "icon": "CalendarDaysIcon",
+        "icon": "Calendar",
         "color": "rose",
         "inputs": [
             {"label": "活动名称", "model": "topic", "placeholder": "例如：双十一品牌促销活动", "type": "input"},
@@ -46,7 +46,7 @@ components = [
         "name": "BusinessPlan",
         "title": "商业计划书",
         "desc": "智能生成专业的商业计划书(BP)，助力项目融资和商业路演",
-        "icon": "BriefcaseIcon",
+        "icon": "Briefcase",
         "color": "amber",
         "inputs": [
             {"label": "项目名称", "model": "project", "placeholder": "例如：智能家居生态平台", "type": "input"},
@@ -60,7 +60,7 @@ components = [
         "name": "SurveyReport",
         "title": "调研报告",
         "desc": "智能生成市场调研或社会调查报告，深入分析数据背后的趋势",
-        "icon": "ClipboardDocumentListIcon",
+        "icon": "Tickets",
         "color": "cyan",
         "inputs": [
             {"label": "调研主题", "model": "topic", "placeholder": "例如：Z世代消费习惯调研", "type": "input"},
@@ -74,7 +74,7 @@ components = [
         "name": "IndustryReport",
         "title": "行业报告",
         "desc": "智能分析行业发展现状、趋势和竞争格局，提供战略参考",
-        "icon": "BuildingOffice2Icon",
+        "icon": "OfficeBuilding",
         "color": "slate",
         "inputs": [
             {"label": "行业名称", "model": "industry", "placeholder": "例如：新能源汽车行业", "type": "input"},
@@ -87,7 +87,7 @@ components = [
         "name": "FeasibilityReport",
         "title": "可行性研究报告",
         "desc": "全面评估项目的技术、经济和社会可行性，为决策提供依据",
-        "icon": "CheckBadgeIcon",
+        "icon": "CircleCheck",
         "color": "emerald",
         "inputs": [
             {"label": "项目名称", "model": "project", "placeholder": "例如：新建年产5万吨锂电池工厂", "type": "input"},
@@ -100,7 +100,7 @@ components = [
         "name": "ProjectApplication",
         "title": "立项申请报告",
         "desc": "智能生成规范的项目立项申请书，清晰阐述项目价值和实施计划",
-        "icon": "DocumentPlusIcon",
+        "icon": "DocumentAdd",
         "color": "violet",
         "inputs": [
             {"label": "项目名称", "model": "project", "placeholder": "例如：企业数字化转型一期项目", "type": "input"},
@@ -113,7 +113,7 @@ components = [
         "name": "PESTAnalysis",
         "title": "PEST分析",
         "desc": "利用PEST模型从政治、经济、社会、技术四个维度分析宏观环境",
-        "icon": "GlobeAsiaAustraliaIcon",
+        "icon": "Position",
         "color": "sky",
         "inputs": [
             {"label": "分析对象", "model": "target", "placeholder": "例如：跨境电商行业、某公司出海战略", "type": "input"},
@@ -125,7 +125,7 @@ components = [
         "name": "SWOTAnalysis",
         "title": "SWOT分析",
         "desc": "利用SWOT模型分析优势、劣势、机会和威胁，制定战略对策",
-        "icon": "ArrowsPointingOutIcon",
+        "icon": "FullScreen",
         "color": "orange",
         "inputs": [
             {"label": "分析对象", "model": "target", "placeholder": "例如：某品牌新产品、个人职业发展", "type": "input"},
@@ -137,7 +137,7 @@ components = [
         "name": "TransportPlan",
         "title": "运输方案",
         "desc": "智能规划物流运输路线和方式，优化成本和效率",
-        "icon": "TruckIcon",
+        "icon": "Van",
         "color": "lime",
         "inputs": [
             {"label": "货物类型", "model": "goods", "placeholder": "例如：精密仪器、生鲜食品", "type": "input"},
@@ -150,7 +150,7 @@ components = [
         "name": "SituationReport",
         "title": "情况报告",
         "desc": "客观陈述事件经过或当前状态，分析原因并提出处理意见",
-        "icon": "InformationCircleIcon",
+        "icon": "InfoFilled",
         "color": "zinc",
         "inputs": [
             {"label": "事件/情况", "model": "event", "placeholder": "例如：服务器宕机事故、突发公共卫生事件", "type": "input"},
@@ -163,7 +163,7 @@ components = [
         "name": "SevenSAnalysis",
         "title": "7S模型分析",
         "desc": "利用麦肯锡7S模型全方位分析企业组织有效性",
-        "icon": "CubeTransparentIcon",
+        "icon": "Box",
         "color": "fuchsia",
         "inputs": [
             {"label": "分析对象", "model": "target", "placeholder": "例如：某公司的组织架构改革", "type": "input"},
@@ -175,7 +175,7 @@ components = [
         "name": "Marketing4P",
         "title": "4P营销分析",
         "desc": "利用4P理论制定产品营销组合策略",
-        "icon": "ShoppingBagIcon",
+        "icon": "ShoppingBag",
         "color": "pink",
         "inputs": [
             {"label": "产品/服务", "model": "product", "placeholder": "例如：新款智能手表", "type": "input"},
@@ -188,7 +188,7 @@ components = [
         "name": "IndustryConsultant",
         "title": "产业顾问",
         "desc": "模拟资深产业顾问，解答行业疑惑，提供专业见解",
-        "icon": "UserGroupIcon",
+        "icon": "User",
         "color": "teal",
         "inputs": [
             {"label": "咨询问题", "model": "question", "placeholder": "例如：未来5年光伏产业的发展前景如何？", "type": "textarea", "rows": 3},
@@ -200,7 +200,7 @@ components = [
         "name": "StartupIdea",
         "title": "创新创业金点子",
         "desc": "结合个人优势和市场趋势，激发创新创业灵感",
-        "icon": "LightBulbIcon",
+        "icon": "Sunny",
         "color": "yellow",
         "inputs": [
             {"label": "感兴趣领域", "model": "field", "placeholder": "例如：银发经济、宠物市场", "type": "input"},
@@ -251,7 +251,7 @@ template = """<!--
                   <button @click="generateContent" :disabled="isGenerating || !form.{first_model}"
                     class="group w-full py-3.5 px-4 bg-gradient-to-r from-{color}-600 to-{color}-500 hover:from-{color}-700 hover:to-{color}-600 text-white font-medium rounded-xl transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-{color}-500/30 hover:shadow-{color}-500/40 transform active:scale-[0.98]">
                     <span v-if="!isGenerating" class="flex items-center">
-                      <PencilSquareIcon class="w-5 h-5 mr-2" />
+                      <EditPen class="w-5 h-5 mr-2" aria-hidden="true" />
                       生成内容
                     </span>
                     <span v-else class="flex items-center">
@@ -276,7 +276,7 @@ template = """<!--
               <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                 <div class="flex items-center space-x-3">
                   <div class="w-8 h-8 rounded-lg bg-green-100 text-green-600 flex items-center justify-center">
-                    <DocumentTextIcon class="w-5 h-5" />
+                    <Document class="w-5 h-5" aria-hidden="true" />
                   </div>
                   <span class="font-medium text-gray-700">生成结果</span>
                 </div>
@@ -284,12 +284,12 @@ template = """<!--
                   <button @click="copyContent" :disabled="!resultText"
                     class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
                     title="复制内容">
-                    <ClipboardDocumentIcon class="w-5 h-5" />
+                    <CopyDocument class="w-5 h-5" aria-hidden="true" />
                   </button>
                   <button @click="downloadText" :disabled="!resultText"
                     class="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
                     title="下载文件">
-                    <ArrowDownTrayIcon class="w-5 h-5" />
+                    <Download class="w-5 h-5" aria-hidden="true" />
                   </button>
                 </div>
               </div>
@@ -298,7 +298,7 @@ template = """<!--
                   <MarkdownRenderer :content="resultText" />
                 </div>
                 <div v-else class="h-full flex flex-col items-center justify-center text-gray-400">
-                  <SparklesIcon class="w-16 h-16 mb-4 opacity-20" />
+                  <MagicStick class="w-16 h-16 mb-4 opacity-20" aria-hidden="true" />
                   <p>在左侧输入信息，AI将为您生成{title}</p>
                 </div>
               </div>
@@ -315,12 +315,12 @@ import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
   {icon},
-  PencilSquareIcon,
-  DocumentTextIcon,
-  ClipboardDocumentIcon,
-  ArrowDownTrayIcon,
-  SparklesIcon
-} from '@heroicons/vue/24/outline'
+  EditPen,
+  Document,
+  CopyDocument,
+  Download,
+  MagicStick
+} from '@element-plus/icons-vue'
 import MarkdownRenderer from '@/components/MarkdownRenderer.vue'
 import { generateAIWriting } from '@/utils/aiUtils'
 

@@ -37,25 +37,17 @@
         <!-- 上传区域 -->
         <div class="grid grid-cols-1 gap-8">
           <div class="bg-white border border-gray-200 rounded-lg p-6">
-            <div
-              class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-gray-50"
-              :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200 hover:border-brand'"
-              @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-              <input ref="fileInputRef" type="file" accept="image/*" class="hidden" @change="handleFileChange" />
-              <button type="button" aria-label="选择 Favicon 图片" :disabled="generating" class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></button>
-              <div class="text-center px-4">
-                <div class="w-8 h-8 mb-2 mx-auto">
-                  <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                      d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </div>
-                <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽图片到这里</div>
-                <p class="text-xs text-gray-400 mb-1">支持 PNG、JPG、JPEG、GIF 格式</p>
-                <p class="text-xs text-gray-400">建议上传正方形图片，最佳尺寸 1024x1024</p>
-              </div>
-              <p v-if="readingImage" role="status" class="mt-3 text-xs text-gray-500">正在读取图片，请稍候…</p>
-            </div>
+            <FileUploadZone
+              title="点击或拖拽图片到这里"
+              description="支持 PNG、JPG、JPEG、GIF 格式，单张不超过 5MB"
+              hint="建议上传正方形图片，最佳尺寸 1024×1024"
+              aria-label="选择 Favicon 图片"
+              accept="image/*"
+              :disabled="generating"
+              :busy="readingImage"
+              busy-text="正在读取图片，请稍候…"
+              @files="handleFiles"
+            />
           </div>
 
           <!-- 编辑区域 -->
@@ -237,6 +229,7 @@ import VueCropper from 'vue-cropperjs'
 import 'cropperjs/dist/cropper.css'
 import { createFaviconExport, FAVICON_OUTPUT_SIZES, type FaviconExportResult, type FaviconOutputFormat } from '@/utils/faviconExport'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import FileUploadZone from '@/components/Common/FileUploadZone.vue'
 import { useRoute } from 'vue-router'
 
 // 组件配置信息
@@ -274,9 +267,7 @@ const faqItems = [
 ]
 
 // 状态管理
-const fileInputRef = ref<HTMLInputElement | null>(null)
 const cropperRef = ref<any>(null)
-const isDragging = ref(false)
 const imageUrl = ref('')
 const previewUrl = ref('')
 const downloadUrl = ref('')
@@ -318,12 +309,10 @@ const clearGeneratedResult = () => {
 }
 
 /** 读取用户图片并初始化尺寸，忽略替换文件或离开页面之后的迟到读取结果。 */
-const handleFileChange = (event: Event) => {
-  const input = event.target as HTMLInputElement
-  if (generating.value || !input.files?.length) return
+const handleFiles = (files: File[]) => {
+  if (generating.value || !files.length) return
 
-  const file = input.files[0]
-  input.value = ''
+  const file = files[0]
   if (!file.type.startsWith('image/')) {
     ElMessage.error('请选择图片文件')
     return
@@ -363,36 +352,6 @@ const handleFileChange = (event: Event) => {
     ElMessage.error('图片读取失败，请重新上传')
   }
   reader.readAsDataURL(file)
-}
-
-/** 接收拖入的图片；生成期间不替换本次正在处理的源文件。 */
-const handleDrop = (e: DragEvent) => {
-  e.preventDefault()
-  isDragging.value = false
-  if (generating.value) return
-
-  const files = e.dataTransfer?.files
-  if (!files?.length) return
-
-  const file = files[0]
-  if (!file.type.startsWith('image/')) {
-    ElMessage.error('请选择图片文件')
-    return
-  }
-
-  const input = fileInputRef.value
-  if (input) {
-    const dataTransfer = new DataTransfer()
-    dataTransfer.items.add(file)
-    input.files = dataTransfer.files
-    handleFileChange({ target: input } as unknown as Event)
-  }
-}
-
-/** 打开图片选择器，编码期间保持本次源图稳定。 */
-const triggerFileInput = () => {
-  if (generating.value) return
-  fileInputRef.value?.click()
 }
 
 /** 按开始生成时的格式与尺寸快照编码图标，只发布完整成功的结果。 */

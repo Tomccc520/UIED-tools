@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
-import { ChevronRightIcon } from '@heroicons/vue/24/outline'
+import { ArrowRight } from '@element-plus/icons-vue'
 import { useToolRuntimeGate, type ToolRuntimeEntry } from '@/composables/useToolRuntimeGate'
 import { buildFallbackToolRankingItems, getToolRankingList, type ToolRankingListItem, type ToolRankingPeriod } from '@/services/toolRanking'
 import type { Tool } from '@/types/tools'
@@ -236,7 +236,7 @@ watch(
               </template>
               <template v-else>{{ resolveRankingStatText(item) }}</template>
             </span>
-            <ChevronRightIcon v-if="flat && !compact" class="tool-ranking-board__arrow" aria-hidden="true" />
+            <ArrowRight v-if="flat && !compact" class="tool-ranking-board__arrow" aria-hidden="true" />
           </button>
         </li>
       </ol>

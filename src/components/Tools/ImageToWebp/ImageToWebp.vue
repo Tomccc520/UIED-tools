@@ -30,25 +30,16 @@
 
         <!-- 文件上传区域 -->
         <div v-if="images.length === 0">
-          <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-brand"
-            :class="isDragging ? 'border-brand bg-brand-soft' : 'border-gray-200'" @drop.prevent="handleDrop"
-            @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" accept="image/*" multiple
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileChange" />
-
-            <div class="text-center px-4">
-              <div class="w-8 h-8 mb-2 mx-auto">
-                <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                    d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-              </div>
-              <div class="text-sm font-medium text-gray-600 mb-1">点击或拖拽图片到这里</div>
-              <p class="text-xs text-gray-400">支持 JPG、PNG、WebP、BMP、GIF 等常见格式</p>
-              <p class="text-xs text-gray-400 mt-1">支持批量上传多张图片</p>
-            </div>
-          </div>
+          <FileUploadZone
+            title="点击或拖拽图片到这里"
+            description="支持 JPG、PNG、WebP、BMP、GIF 等常见格式"
+            hint="支持批量上传多张图片"
+            aria-label="选择需要转换格式的图片"
+            accept="image/*"
+            multiple
+            :disabled="isConverting"
+            @files="addFiles"
+          />
         </div>
 
         <!-- 图片转换工具区域 -->
@@ -283,6 +274,7 @@ import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import JSZip from 'jszip'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import FileUploadZone from '@/components/Common/FileUploadZone.vue'
 import { encodeImageCanvas, createConvertedImageNames, type ImageOutputFormat } from '@/utils/imageFormatConversion'
 
 const route = useRoute()
@@ -295,8 +287,6 @@ const selectedFormat = ref('WEBP')
 const quality = ref(80)
 const transparent = ref(true)
 const isConverting = ref(false)
-const isDragging = ref(false)
-const fileInputRef = ref<HTMLInputElement | null>(null)
 
 interface ConvertedImage {
   blob: Blob
@@ -327,21 +317,6 @@ let isDisposed = false
 const cancelConversions = new Map<number, () => void>()
 const CONVERSION_TIMEOUT_MS = 30_000
 const hasConvertedImages = computed(() => images.value.some(image => !!image.result))
-
-/** 从文件选择器添加图片，并清空输入值以支持再次选择相同文件。 */
-const handleFileChange = (e: Event) => {
-  const input = e.target as HTMLInputElement
-  if (!input.files?.length) return
-  addFiles(Array.from(input.files))
-  input.value = ''
-}
-
-/** 接收拖拽文件并交由统一图片校验入口处理。 */
-const handleDrop = (e: DragEvent) => {
-  e.preventDefault()
-  isDragging.value = false
-  if (e.dataTransfer?.files.length) addFiles(Array.from(e.dataTransfer.files))
-}
 
 /** 筛选图片文件并分配稳定标识，避免列表移除后异步结果写入其他图片。 */
 const addFiles = (files: File[]) => {

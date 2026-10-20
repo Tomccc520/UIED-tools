@@ -9,7 +9,7 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { ArrowPathIcon, ArrowUpRightIcon, ChevronDownIcon } from '@heroicons/vue/24/outline'
+import { Refresh, TopRight, ArrowDown } from '@element-plus/icons-vue'
 import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import { flattenToolsFromCategories } from '@/services/toolCatalog'
 import { useToolsStore } from '@/store/modules/tools'
@@ -158,7 +158,7 @@ onMounted(() => {
           aria-label="换一批推荐"
           @click="refreshTools(false)"
         >
-          <ArrowPathIcon :class="{ 'is-spinning': loading }" aria-hidden="true" />
+          <Refresh :class="{ 'is-spinning': loading }" aria-hidden="true" />
           <span>{{ loading ? '挑选中' : '换一批' }}</span>
         </button>
       </header>
@@ -187,7 +187,7 @@ onMounted(() => {
               {{ category.title }}
             </option>
           </select>
-          <ChevronDownIcon aria-hidden="true" />
+          <ArrowDown aria-hidden="true" />
         </span>
       </label>
 
@@ -201,7 +201,7 @@ onMounted(() => {
         </p>
 
         <div v-if="loading" class="random-tools-page__loading">
-          <ArrowPathIcon aria-hidden="true" />
+          <Refresh aria-hidden="true" />
           <span>正在挑选工具…</span>
         </div>
 
@@ -220,7 +220,7 @@ onMounted(() => {
             <p>{{ tool.desc || '打开工具，开始处理你的任务。' }}</p>
             <span class="random-tools-page__card-action">
               <span>打开工具</span>
-              <ArrowUpRightIcon aria-hidden="true" />
+              <TopRight aria-hidden="true" />
             </span>
           </button>
         </div>

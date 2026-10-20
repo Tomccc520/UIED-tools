@@ -98,7 +98,7 @@
               <div class="p-3 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
                 <div class="flex items-center space-x-3">
                   <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center">
-                    <DocumentTextIcon class="w-5 h-5" />
+                    <Document class="w-5 h-5" aria-hidden="true" />
                   </div>
                   <h3 class="font-medium text-gray-700">合同内容</h3>
                 </div>
@@ -106,17 +106,17 @@
                 <div class="flex items-center gap-2">
                   <button v-if="resultText" @click="copyContent"
                     class="px-3 py-1.5 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <ClipboardIcon class="w-4 h-4 mr-1.5" />
+                    <CopyDocument class="w-4 h-4 mr-1.5" aria-hidden="true" />
                     复制内容
                   </button>
                   <button v-if="resultText" @click="downloadMarkdown"
                     class="px-3 py-1.5 text-sm text-gray-600 hover:text-blue-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <ArrowDownTrayIcon class="w-4 h-4 mr-1.5" />
+                    <Download class="w-4 h-4 mr-1.5" aria-hidden="true" />
                     下载
                   </button>
                   <button v-if="resultText" @click="clearResult"
                     class="px-3 py-1.5 text-sm text-gray-600 hover:text-red-600 hover:bg-gray-100 rounded-lg transition-colors flex items-center">
-                    <TrashIcon class="w-4 h-4 mr-1.5" />
+                    <Delete class="w-4 h-4 mr-1.5" aria-hidden="true" />
                     清空
                   </button>
                 </div>
@@ -126,17 +126,17 @@
               <div class="px-3 py-2 border-b border-gray-100 bg-gray-50 flex flex-wrap gap-2">
                 <button @click="handleAiAssist('review')" :disabled="isGenerating || !resultText"
                   class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-purple-50 hover:text-purple-600 hover:border-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <ShieldCheckIcon class="w-3.5 h-3.5 mr-1.5" />
+                  <CircleCheck class="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
                   审查风险
                 </button>
                 <button @click="handleAiAssist('polish')" :disabled="isGenerating || !resultText"
                   class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <SparklesIcon class="w-3.5 h-3.5 mr-1.5" />
+                  <MagicStick class="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
                   润色条款
                 </button>
                 <button @click="handleAiAssist('expand')" :disabled="isGenerating || !resultText"
                   class="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
-                  <PlusCircleIcon class="w-3.5 h-3.5 mr-1.5" />
+                  <CirclePlus class="w-3.5 h-3.5 mr-1.5" aria-hidden="true" />
                   补充细节
                 </button>
               </div>
@@ -198,16 +198,14 @@
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import {
-  DocumentTextIcon,
-  AdjustmentsHorizontalIcon,
-  ClipboardIcon,
-  ArrowDownTrayIcon,
-  TrashIcon,
-  SparklesIcon,
-  InformationCircleIcon,
-  ShieldCheckIcon,
-  PlusCircleIcon
-} from '@heroicons/vue/24/outline'
+  Document,
+  CopyDocument,
+  Download,
+  Delete,
+  MagicStick,
+  CircleCheck,
+  CirclePlus
+} from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { downloadMarkdownResult } from '@/utils/markdownResult'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
