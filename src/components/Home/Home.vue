@@ -252,6 +252,7 @@ watch(
 
 <template>
   <div class="home-container">
+    <h1 class="sr-only">UIED-Tools 免费在线工具集</h1>
     <div class="scroll-container">
       <!-- 热搜榜 -->
       <div class="mt-4 mb-6">

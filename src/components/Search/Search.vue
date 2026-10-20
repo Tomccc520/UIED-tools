@@ -191,7 +191,7 @@
                   <span class="weekly-hot-tool__rank">{{ String(tool.rank).padStart(2, '0') }}</span>
                   <span class="weekly-hot-tool__body">
                     <strong>{{ tool.toolTitle }}</strong>
-                    <span>{{ tool.remark || tool.cateTitle || '热门工具' }}</span>
+                    <span>{{ tool.cateTitle || '热门工具' }}</span>
                   </span>
                 </button>
               </div>
@@ -199,9 +199,11 @@
 
             <div class="section-title">快捷入口</div>
             <div class="quick-tools-grid">
-              <div
+              <button
                 v-for="tool in quickTools"
                 :key="tool.url"
+                type="button"
+                :aria-disabled="isToolEntryDisabled(tool.url)"
                 :class="['quick-tool-item', { 'quick-tool-item--disabled': isToolEntryDisabled(tool.url) }]"
                 @click="handleToolClick(tool.url, tool.title)"
               >
@@ -210,7 +212,7 @@
                   <span class="quick-tool-title">{{ tool.title }}</span>
                   <p class="quick-tool-desc">{{ tool.desc }}</p>
                 </div>
-              </div>
+              </button>
             </div>
           </div>
 
@@ -2658,11 +2660,13 @@ watch(
     height: 100dvh;
     max-height: none;
     border-radius: 0;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .panel-header {
     min-height: 64px;
     padding: 16px 52px 16px 20px;
+    flex-shrink: 0;
   }
 
   .panel-title {
@@ -2670,8 +2674,11 @@ watch(
   }
 
   .search-content {
+    flex: 1 1 auto;
+    min-height: 0;
     max-height: none;
     padding: 18px 16px;
+    overscroll-behavior-y: auto;
   }
 
   .weekly-hot-tools__list {
@@ -2683,7 +2690,19 @@ watch(
   }
 
   .search-footer {
+    flex-shrink: 0;
     padding: 12px;
   }
+
+  .search-input :deep(.el-input__inner) { font-size: 16px; }
+  .close-btn { top: 10px; right: 12px; width: 44px; height: 44px; }
+  .clear-btn { width: 44px; min-width: 44px; height: 44px; }
+  .quick-tool-item { min-width: 0; text-align: left; }
+  .weekly-hot-tool__body span { font-size: 12px; }
+}
+
+@media screen and (max-width: 420px) {
+  .weekly-hot-tools__list { grid-template-columns: minmax(0, 1fr); }
+  .weekly-hot-tool { min-height: 64px; }
 }
 </style>

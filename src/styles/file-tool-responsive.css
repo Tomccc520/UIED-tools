@@ -1,0 +1,45 @@
+/**
+ * @description 图片与设计工具共用的窄屏布局，仅对显式接入的 uied-file-tool 生效。
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-19
+ */
+.uied-file-tool { min-width: 0; container: file-tool / inline-size; }
+.uied-file-tool .file-tool-grid, .uied-file-tool .file-tool-grid > *,
+.uied-file-tool .file-tool-columns, .uied-file-tool .file-tool-columns > * { min-width: 0; }
+
+@container file-tool (max-width: 680px) {
+  .uied-file-tool .file-tool-card { padding: 16px; }
+  .uied-file-tool .file-tool-heading { margin-bottom: 20px; }
+  .uied-file-tool .file-tool-heading h1 { font-size: 24px; line-height: 1.4; }
+  .uied-file-tool .file-tool-heading__title { padding-inline: 0; }
+  .uied-file-tool .file-tool-heading p { margin-top: 10px; font-size: 13px; line-height: 1.7; }
+  .uied-file-tool .file-tool-panel { min-width: 0; padding: 16px; }
+  .uied-file-tool .file-tool-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .uied-file-tool .file-tool-grid > * { grid-column: auto; }
+  .uied-file-tool .file-tool-columns { flex-direction: column; gap: 16px; }
+  .uied-file-tool .file-tool-columns > * { width: 100%; }
+  .uied-file-tool .file-tool-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .uied-file-tool .file-tool-toolbar > * { min-width: 0; margin-inline: 0; }
+  .uied-file-tool .file-tool-filename { display: -webkit-box; min-width: 0; overflow: hidden; overflow-wrap: anywhere; white-space: normal; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .uied-file-tool button, .uied-file-tool .el-radio, .uied-file-tool .el-checkbox { min-height: 44px; }
+  .uied-file-tool .el-button { min-width: 44px; padding-inline: 12px; white-space: normal; line-height: 1.5; }
+  .uied-file-tool .el-button + .el-button { margin-left: 0; }
+  .uied-file-tool .el-button.is-circle { width: 44px; padding: 0; }
+  .uied-file-tool .el-checkbox.is-bordered { width: 100%; height: auto; margin: 0; }
+  .uied-file-tool .el-radio-button__inner { display: inline-flex; align-items: center; min-height: 44px; padding-block: 8px; }
+  .uied-file-tool .el-input-number { max-width: 100%; min-width: 0; }
+  .uied-file-tool .el-input__wrapper, .uied-file-tool .el-select__wrapper { min-height: 44px; }
+  .uied-file-tool .el-input__inner, .uied-file-tool .el-textarea__inner { font-size: 16px; }
+  .uied-file-tool .el-slider { --el-slider-button-size: 20px; --el-slider-button-wrapper-size: 44px; height: 44px; }
+  .uied-file-tool .file-tool-presets { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; gap: 8px; }
+  .uied-file-tool .file-tool-preview-canvas { min-height: 200px; padding: 12px; }
+  .uied-file-tool .file-tool-preview-canvas canvas { display: block; max-width: 100%; height: auto; }
+  .uied-file-tool .file-tool-previews { gap: 8px; padding: 16px; }
+  .uied-file-tool .file-tool-previews img { max-width: 100%; height: auto !important; }
+  .uied-file-tool .file-tool-crop-adjustments { position: static; min-width: 0; width: auto; margin: 12px; box-shadow: none; }
+  .uied-file-tool .file-tool-crop-controls { position: static; width: 100%; flex-wrap: wrap; justify-content: center; gap: 8px; padding: 12px; transform: none; box-shadow: none; border-top: 1px solid var(--uied-color-border); }
+  .uied-file-tool .file-tool-crop-controls > * { margin-inline: 0; }
+  .uied-file-tool .file-tool-crop-controls button { min-width: 44px; }
+}

@@ -8,23 +8,23 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h1>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="!file">
           <div
-            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -42,10 +42,10 @@
         </div>
 
         <!-- 编辑区域 -->
-        <div v-else class="flex flex-col lg:flex-row gap-8">
+        <div v-else class="flex flex-col lg:flex-row gap-8 pdf-editor-layout">
           <!-- 左侧预览 -->
           <div
-            class="flex-1 bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden">
+            class="pdf-editor-main flex-1 bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden">
             <div v-if="rendering" class="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
@@ -54,7 +54,7 @@
               <canvas ref="watermarkPreviewCanvas" aria-label="水印预览"
                 class="absolute inset-0 w-full h-full pointer-events-none"></canvas>
             </div>
-            <div class="mt-4 flex gap-4 items-center">
+            <div class="mt-4 flex gap-4 items-center pdf-pagination">
               <button @click="changePage(-1)" :disabled="currentPage <= 1"
                 class="px-3 py-1 bg-white border rounded text-sm disabled:opacity-50">上一页</button>
               <span class="text-sm text-gray-600">第 {{ currentPage }} / {{ totalPages }} 页</span>
@@ -64,7 +64,7 @@
           </div>
 
           <!-- 右侧设置 -->
-          <div class="w-full lg:w-80 space-y-6">
+          <div class="pdf-editor-sidebar w-full lg:w-80 space-y-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">水印文字</label>
               <el-input v-model="settings.text" aria-label="水印文字" placeholder="请输入水印文字" />
@@ -111,7 +111,7 @@
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
@@ -171,6 +171,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, shallowRef, reactive, watch, nextTick, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

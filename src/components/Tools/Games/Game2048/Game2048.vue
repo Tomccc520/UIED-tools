@@ -1,15 +1,15 @@
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen game-2048-page">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="game-2048-card bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">2048</span>
             </div>
-          </h2>
-          <p class="text-gray-500 text-sm mt-6">2048 Game</p>
+          </h1>
+          <p class="text-gray-500 text-sm mt-6">数字合成游戏</p>
 
           <!-- 温馨提示 -->
           <div class="mt-6 bg-yellow-50 rounded-lg p-4 max-w-2xl mx-auto">
@@ -28,18 +28,18 @@
           class="game-2048-container w-full min-h-[600px] bg-[#faf8ef] flex flex-col items-center justify-center font-sans select-none overflow-y-auto touch-pan-y rounded-xl py-8">
 
           <!-- 顶部 -->
-          <div class="w-full max-w-md px-4 mb-8 flex justify-between items-end">
+          <div class="game-2048-header w-full max-w-md px-4 mb-8 flex flex-wrap justify-between items-end gap-4">
             <div>
-              <h1 class="text-6xl font-bold text-[#776e65]">2048</h1>
+              <h2 class="text-6xl font-bold text-[#776e65]">2048</h2>
               <p class="text-[#776e65] text-sm mt-2">合并方块，得到 2048！</p>
             </div>
             <div class="flex gap-2">
-              <div class="bg-[#bbada0] rounded px-4 py-2 text-center min-w-[80px]">
-                <div class="text-[#eee4da] text-xs font-bold uppercase">SCORE</div>
+              <div class="bg-[#bbada0] rounded px-4 py-2 text-center game-2048-score min-w-[80px]">
+                <div class="text-[#eee4da] text-xs font-bold uppercase">得分</div>
                 <div class="text-white text-xl font-bold">{{ score }}</div>
               </div>
-              <div class="bg-[#bbada0] rounded px-4 py-2 text-center min-w-[80px]">
-                <div class="text-[#eee4da] text-xs font-bold uppercase">BEST</div>
+              <div class="bg-[#bbada0] rounded px-4 py-2 text-center game-2048-score min-w-[80px]">
+                <div class="text-[#eee4da] text-xs font-bold uppercase">最高分</div>
                 <div class="text-white text-xl font-bold">{{ bestScore }}</div>
               </div>
             </div>
@@ -47,14 +47,14 @@
 
           <!-- 游戏控制栏 -->
           <div class="w-full max-w-md px-4 mb-4 flex justify-end">
-            <button @click="initGame"
+            <button type="button" @click="initGame"
               class="bg-[#8f7a66] text-white font-bold py-2 px-6 rounded hover:bg-[#806c59] transition-colors active:scale-95 transform">
               新游戏
             </button>
           </div>
 
           <!-- 游戏棋盘 -->
-          <div class="relative bg-[#bbada0] p-3 rounded-lg w-[340px] h-[340px] sm:w-[400px] sm:h-[400px]"
+          <div class="game-2048-board relative bg-[#bbada0] p-3 rounded-lg"
             @touchstart="handleTouchStart" @touchmove="handleTouchMove" @touchend="handleTouchEnd">
             <!-- 背景格子 -->
             <div class="grid grid-cols-4 grid-rows-4 gap-3 w-full h-full">
@@ -62,10 +62,10 @@
             </div>
 
             <!-- 数字方块 -->
-            <div class="absolute inset-0 p-3">
+            <div class="game-2048-tiles absolute inset-3">
               <transition-group name="tile">
                 <div v-for="tile in tiles" :key="tile.id"
-                  class="absolute flex items-center justify-center rounded font-bold transition-all duration-100"
+                  class="game-2048-tile absolute flex items-center justify-center rounded font-bold transition-all duration-100"
                   :class="getTileClass(tile.value)" :style="getTileStyle(tile)">
                   {{ tile.value }}
                 </div>
@@ -76,7 +76,7 @@
             <div v-if="gameOver"
               class="absolute inset-0 bg-[#faf8ef]/70 flex flex-col items-center justify-center rounded-lg z-20 animate-fade-in">
               <div class="text-4xl font-bold text-[#776e65] mb-4">游戏结束!</div>
-              <button @click="initGame"
+              <button type="button" @click="initGame"
                 class="bg-[#8f7a66] text-white font-bold py-3 px-6 rounded hover:bg-[#806c59] transition-colors shadow-lg">
                 再试一次
               </button>
@@ -129,33 +129,13 @@ const gameOver = ref(false)
 
 let tileIdCounter = 0
 
-// 计算方块样式
+/** 根据四列网格的实际宽度定位方块，与背景格统一使用 12px 间距；不依赖视口估算尺寸。 */
 const getTileStyle = (tile: Tile) => {
-  const gap = 12 // gap-3 is 0.75rem ~ 12px
-  // 动态计算宽高
-  // 340px - 2*12(padding) - 3*12(gap) = 280 / 4 = 70px (mobile)
-  // 400px - 2*12 - 3*12 = 340 / 4 = 85px (desktop)
-
-  // 使用百分比定位以适应响应式
-  const percentage = 100 / GRID_SIZE
-  // 这里的 gap 处理比较麻烦，简化处理：假设容器是固定的，用 CSS 变量或简单的 calc
-  // 实际上为了流畅动画，绝对定位是必须的
-
-  // 简单起见，我们在 CSS 中处理响应式尺寸
-  // Mobile: cell size ~70px, gap ~12px
-  // Desktop: cell size ~85px, gap ~12px
-
-  const isDesktop = window.innerWidth >= 640
-  const cellSize = isDesktop ? 87.5 : 72.5 // approximate
-  const gutter = 12
-
-  const x = tile.col * (cellSize + gutter)
-  const y = tile.row * (cellSize + gutter)
-
+  const gap = 12
   return {
-    transform: `translate(${x}px, ${y}px)`,
-    width: `${cellSize}px`,
-    height: `${cellSize}px`
+    transform: `translate(calc(${tile.col * 100}% + ${tile.col * gap}px), calc(${tile.row * 100}% + ${tile.row * gap}px))`,
+    width: `calc(25% - ${gap * 3 / GRID_SIZE}px)`,
+    height: `calc(25% - ${gap * 3 / GRID_SIZE}px)`
   }
 }
 
@@ -385,6 +365,25 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.game-2048-page { container-type: inline-size; container-name: game-2048; min-width: 0; }
+.game-2048-board { width: 340px; max-width: calc(100% - 16px); aspect-ratio: 1; touch-action: none; }
+.game-2048-tile { top: 0; left: 0; }
+.game-2048-container button { min-height: 44px; }
+.game-2048-container button:focus-visible { outline: 3px solid #776e65; outline-offset: 3px; }
+@media (min-width: 640px) {
+  .game-2048-board { width: 400px; }
+}
+@container game-2048 (max-width: 600px) {
+  .game-2048-card { padding: 20px 12px; }
+  .game-2048-card > .text-center h1 { font-size: 28px; }
+  .game-2048-header { gap: 16px; padding-inline: 12px; margin-bottom: 20px; }
+  .game-2048-header > div:first-child { width: 100%; }
+  .game-2048-header h2 { font-size: 42px; }
+  .game-2048-score { min-width: 72px; }
+  .game-2048-tile { font-size: clamp(14px, 6cqw, 24px); }
+  .game-2048-container { padding-block: 24px; min-height: 0; }
+}
+
 .game-2048-container {
   font-family: "Clear Sans", "Helvetica Neue", Arial, sans-serif;
 }

@@ -863,13 +863,13 @@ onBeforeRouteLeave((to, from, next) => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="video-mobile-page min-h-screen">
     <div class="mx-auto">
-      <div class="mb-4 rounded-xl bg-white p-8">
+      <div class="video-mobile-workspace mb-4 rounded-xl bg-white p-8">
         <div class="mb-6 text-center">
-          <h2 class="mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+          <h1 class="video-mobile-title mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
             免费视频拼接
-          </h2>
+          </h1>
           <p class="mx-auto max-w-3xl text-sm text-gray-500 sm:text-base">
             支持多段视频按顺序合并导出，拖拽调整顺序即可一键生成合集视频。
           </p>
@@ -883,7 +883,7 @@ onBeforeRouteLeave((to, from, next) => {
         />
 
         <div
-          class="group relative mb-6 cursor-pointer overflow-hidden rounded-xl border-2 border-dashed p-10 text-center transition-all"
+          class="video-mobile-upload group relative mb-6 cursor-pointer overflow-hidden rounded-xl border-2 border-dashed p-10 text-center transition-all"
           :class="[
             isDragOver
               ? 'border-sky-500 bg-sky-50 scale-[1.01]'
@@ -893,7 +893,7 @@ onBeforeRouteLeave((to, from, next) => {
           @dragover.prevent="isDragOver = true"
           @dragleave.prevent="isDragOver = false"
           @drop.prevent="handleDrop"
-        >
+         role="button" tabindex="0" aria-label="选择视频" @keydown.enter="triggerSelectVideos" @keydown.space.prevent="triggerSelectVideos">
           <input
             ref="fileInput"
             type="file"
@@ -906,7 +906,7 @@ onBeforeRouteLeave((to, from, next) => {
           <p class="text-sm text-gray-500">至少上传 2 个片段，支持批量追加</p>
         </div>
 
-        <div v-if="clips.length" class="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        <div v-if="clips.length" class="video-mobile-editor grid grid-cols-1 gap-6 lg:grid-cols-12">
           <div class="space-y-4 lg:col-span-5">
             <div class="rounded-xl border border-gray-200 bg-gray-50 p-4">
               <div class="mb-3 flex items-center justify-between">
@@ -947,7 +947,7 @@ onBeforeRouteLeave((to, from, next) => {
                     </button>
                   </div>
 
-                  <div class="flex items-center gap-2 text-xs">
+                  <div class="video-mobile-actions flex items-center gap-2 text-xs">
                     <button
                       type="button"
                       class="rounded-md border border-gray-300 px-2 py-1 text-gray-600 hover:border-sky-400 hover:text-sky-700 disabled:cursor-not-allowed disabled:opacity-50"
@@ -1065,3 +1065,5 @@ onBeforeRouteLeave((to, from, next) => {
     </div>
   </div>
 </template>
+
+<style scoped src="../Shared/videoMobile.css"></style>

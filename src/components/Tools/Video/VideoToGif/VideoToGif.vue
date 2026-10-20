@@ -16,6 +16,8 @@
  * @createDate 2026.1.27
  */
 import { ref, reactive, onUnmounted, computed } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
+import MobileToolActions from '@/components/Common/MobileToolActions.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -26,6 +28,8 @@ import VideoWorkspaceIntro from '@/components/Tools/Video/Shared/VideoWorkspaceI
 import { ensureGifRuntime } from '@/utils/toolRuntimeLoaders'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 import { useToolConsume } from '@/composables/useToolConsume'
+import { runVideoGifJob, type VideoGifSettings } from './videoToGifJob'
+import { videoGifNumberAria as vGifNumberAria } from './numberInputAria'
 
 const route = useRoute()
 const { ensureToolConsume } = useToolConsume()
@@ -42,8 +46,21 @@ const etaText = ref('')
 const errorText = ref('')
 const processStartedAt = ref(0)
 const resultGifSizeMB = ref(0)
-const isCancelRequested = ref(false)
-let activeGifEncoder: any = null
+const isLoadingVideo = ref(false)
+const isVideoReady = ref(false)
+const resultSettings = ref<VideoGifSettings | null>(null)
+const isMobileViewport = useMediaQuery('(max-width: 640px)')
+const mobileSettingsExpanded = ref(false)
+const mobileGuideExpanded = ref(false)
+const mobileResultDetailsExpanded = ref(false)
+const mobileRecommendationsExpanded = ref(false)
+const mobilePreviewSide = ref<'original' | 'gif'>('original')
+const isCheckingDownload = ref(false)
+let downloadVersion = 0
+let disposed = false
+let taskVersion = 0
+let activeController: AbortController | null = null
+let metadataTimeout: ReturnType<typeof setTimeout> | null = null
 
 const MAX_GIF_SOURCE_SIZE_MB = 200
 const MAX_GIF_CLIP_SECONDS = 30
@@ -99,6 +116,26 @@ const outputResolutionText = computed(() => {
   return settings.width && settings.height ? `${settings.width} × ${settings.height}` : '-'
 })
 
+/** 判断当前设置是否与已生成结果一致，修改参数后手机主操作转为重新生成。 */
+const hasCurrentGifResult = computed(() => Boolean(gifUrl.value && resultSettings.value
+  && (Object.keys(settings) as (keyof VideoGifSettings)[]).every((key) => settings[key] === resultSettings.value![key])))
+
+/** 汇总可展开的输出参数，手机折叠时仍能确认尺寸、帧率与速度。 */
+const mobileSettingsSummary = computed(() => `${outputResolutionText.value} · ${settings.fps} 帧/秒 · ${settings.speed} 倍速`)
+
+/** 提供底部主操作状态，生成结果与修改中的设置明确区分。 */
+const mobileAction = computed(() => {
+  if (isCheckingDownload.value) return { title: '正在确认下载权限', description: '可取消本次下载', label: '准备下载…' }
+  if (isProcessing.value) return { title: `正在生成 ${progress.value}%`, description: statusText.value, label: '正在生成…' }
+  if (isLoadingVideo.value) return { title: '正在读取视频', description: '读取完成后即可选择片段', label: '生成 GIF' }
+  if (hasCurrentGifResult.value) return { title: 'GIF 已生成', description: `${resultGifSizeMB.value.toFixed(2)} MB · ${resultSettings.value!.width} × ${resultSettings.value!.height}`, label: '下载 GIF' }
+  return {
+    title: gifUrl.value ? '设置已更新' : '已选择视频片段',
+    description: `${clipDuration.value.toFixed(1)} 秒片段 · ${settings.width}px · ${settings.fps} 帧/秒`,
+    label: gifUrl.value ? '重新生成 GIF' : '生成 GIF'
+  }
+})
+
 /**
  * 函数说明：格式化源视频体积，统一用于文件摘要与结果对比。
  */
@@ -118,12 +155,12 @@ const resultComparisonMetrics = computed(() => {
     {
       label: '分辨率',
       before: videoMeta.width && videoMeta.height ? `${videoMeta.width} × ${videoMeta.height}` : '-',
-      after: settings.width && settings.height ? `${settings.width} × ${settings.height}` : '-'
+      after: resultSettings.value ? `${resultSettings.value.width} × ${resultSettings.value.height}` : '-'
     },
     {
       label: '时长',
-      before: `${clipDuration.value.toFixed(1)}s`,
-      after: `${outputDuration.value.toFixed(1)}s`
+      before: `${resultSettings.value ? (resultSettings.value.endTime - resultSettings.value.startTime).toFixed(1) : clipDuration.value.toFixed(1)}s`,
+      after: resultSettings.value ? `${((resultSettings.value.endTime - resultSettings.value.startTime) / resultSettings.value.speed).toFixed(1)}s` : '-'
     }
   ]
 })
@@ -151,12 +188,14 @@ const validateGifSourceFile = (file: File) => {
  */
 const handleFileChange = (event: Event) => {
   const target = event.target as HTMLInputElement
+  if (isProcessing.value) { target.value = ''; return }
   if (target.files && target.files.length > 0) {
     const file = target.files[0]
     if (validateGifSourceFile(file)) {
       loadVideo(file)
     }
   }
+  target.value = ''
 }
 
 /**
@@ -164,7 +203,24 @@ const handleFileChange = (event: Event) => {
  * @param file - 视频文件对象
  */
 const loadVideo = (file: File) => {
+  if (isProcessing.value || disposed) return
+  if (metadataTimeout) clearTimeout(metadataTimeout)
+  videoRef.value?.pause()
   videoFile.value = file
+  downloadVersion++
+  isCheckingDownload.value = false
+  mobilePreviewSide.value = 'original'
+  mobileSettingsExpanded.value = false
+  mobileResultDetailsExpanded.value = false
+  isVideoReady.value = false
+  isLoadingVideo.value = true
+  videoMeta.duration = 0
+  videoMeta.width = 0
+  videoMeta.height = 0
+  settings.startTime = 0
+  settings.endTime = 0
+  settings.height = 0
+  resultSettings.value = null
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
   if (gifUrl.value) URL.revokeObjectURL(gifUrl.value)
 
@@ -175,29 +231,53 @@ const loadVideo = (file: File) => {
   etaText.value = ''
   errorText.value = ''
   resultGifSizeMB.value = 0
-  isCancelRequested.value = false
   processStartedAt.value = 0
+  metadataTimeout = setTimeout(() => {
+    metadataTimeout = null
+    if (disposed || isVideoReady.value) return
+    isLoadingVideo.value = false
+    errorText.value = '视频读取超时，请更换为浏览器支持的 MP4 或 WebM 文件'
+  }, 15_000)
 }
 
 /**
  * 视频加载完成回调
  * 初始化视频元数据和默认设置
  */
-const onVideoLoaded = () => {
-  if (videoRef.value) {
-    videoMeta.duration = videoRef.value.duration
-    videoMeta.width = videoRef.value.videoWidth
-    videoMeta.height = videoRef.value.videoHeight
-
-    // Init settings
-    settings.startTime = 0
-    settings.endTime = Math.min(videoRef.value.duration, 5) // Default 5s
-
-    // Scale width to max 480 for performance default
-    const ratio = videoMeta.width / videoMeta.height
-    settings.width = Math.min(videoMeta.width, 480)
-    settings.height = Math.round(settings.width / ratio)
+const onVideoLoaded = (event: Event) => {
+  const video = event.target as HTMLVideoElement
+  if (disposed || isProcessing.value || video !== videoRef.value || (video.currentSrc && video.currentSrc !== videoUrl.value)) return
+  if (!Number.isFinite(video.duration) || video.duration <= 0 || video.videoWidth <= 0 || video.videoHeight <= 0) {
+    onVideoError(event)
+    return
   }
+  if (metadataTimeout) clearTimeout(metadataTimeout)
+  metadataTimeout = null
+  isLoadingVideo.value = false
+  isVideoReady.value = true
+  errorText.value = ''
+  videoMeta.duration = video.duration
+  videoMeta.width = video.videoWidth
+  videoMeta.height = video.videoHeight
+  settings.startTime = 0
+  settings.endTime = Math.min(video.duration, 5)
+  settings.width = Math.min(videoMeta.width, 480)
+  settings.height = Math.max(1, Math.round(settings.width * videoMeta.height / videoMeta.width))
+}
+
+/** 视频无法读取时清理旧元数据并给出明确原因，避免带着上一份文件的设置生成。 */
+const onVideoError = (event: Event) => {
+  const video = event.target as HTMLVideoElement
+  if (disposed || video !== videoRef.value || (video.currentSrc && video.currentSrc !== videoUrl.value)) return
+  if (metadataTimeout) clearTimeout(metadataTimeout)
+  metadataTimeout = null
+  isLoadingVideo.value = false
+  isVideoReady.value = false
+  videoMeta.duration = 0
+  videoMeta.width = 0
+  videoMeta.height = 0
+  activeController?.abort()
+  errorText.value = '视频解码失败，请检查文件是否损坏，或更换为浏览器支持的 MP4 / WebM 编码'
 }
 
 /**
@@ -227,59 +307,22 @@ const updateEtaText = (currentProgress: number) => {
   etaText.value = formatEtaText(remainSeconds)
 }
 
-/**
- * 生成 GIF
- */
-/**
- * 校验并修正转换参数
- */
+/** 校验并修正转换参数，拒绝尚未读取、非有限数值或超出片段范围的任务。 */
 const normalizeSettings = () => {
-  if (!videoRef.value) return false
-  if (!videoMeta.duration) return false
-
-  if (settings.endTime <= 0 || settings.endTime > videoMeta.duration) {
-    settings.endTime = Math.min(videoMeta.duration, settings.startTime + 5)
-  }
-  if (settings.endTime <= settings.startTime) {
-    settings.endTime = Math.min(videoMeta.duration, settings.startTime + 0.5)
-  }
-  if (!settings.height) {
-    handleWidthChange()
-  }
-  return settings.endTime > settings.startTime && settings.width > 0 && settings.height > 0
+  if (!videoRef.value || !isVideoReady.value || isLoadingVideo.value) return false
+  if (!Object.values(settings).every(Number.isFinite) || !Number.isFinite(videoMeta.duration) || videoMeta.duration <= 0) return false
+  if (settings.startTime < 0 || settings.startTime >= videoMeta.duration || settings.width < 1 || settings.width > 960 || settings.fps < 1 || settings.fps > 30 || settings.speed <= 0 || settings.quality < 1 || settings.quality > 30) return false
+  settings.width = Math.round(settings.width)
+  settings.fps = Math.round(settings.fps)
+  settings.quality = Math.round(settings.quality)
+  settings.endTime = Math.min(videoMeta.duration, settings.endTime)
+  handleWidthChange()
+  return settings.endTime > settings.startTime && settings.height > 0
 }
 
-/**
- * 等待视频跳转完成
- * @param video - 视频元素
- * @param targetTime - 目标时间
- */
-const waitForSeeked = (video: HTMLVideoElement, targetTime: number) => {
-  return new Promise<void>((resolve, reject) => {
-    if (Math.abs(video.currentTime - targetTime) < 0.02 && video.readyState >= 2) {
-      resolve()
-      return
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      video.removeEventListener('seeked', handleSeeked)
-      reject(new Error('视频定位超时，请更换编码格式后重试'))
-    }, 5000)
-    const handleSeeked = () => {
-      window.clearTimeout(timeoutId)
-      video.removeEventListener('seeked', handleSeeked)
-      resolve()
-    }
-    video.addEventListener('seeked', handleSeeked)
-    video.currentTime = targetTime
-  })
-}
-
-/**
- * 生成 GIF
- */
+/** 生成 GIF；在权限请求前锁定页面并固定参数，取帧和编码异常统一由当前任务处理。 */
 const generateGif = async () => {
-  if (!videoRef.value) return
+  if (isProcessing.value || isCheckingDownload.value || disposed) return
   if (!normalizeSettings()) {
     ElMessage.warning('请先加载视频并设置有效的截取片段')
     return
@@ -297,169 +340,144 @@ const generateGif = async () => {
     return
   }
 
-  const canConsume = await ensureToolConsume({
-    toolKey: 'video-to-gif',
-    action: 'generate',
-    loginWarningText: '请先登录后再使用视频转 GIF',
-    showConsumeSuccessToast: true
-  })
-  if (!canConsume) {
-    return
-  }
+  const currentTask = ++taskVersion
+  const snapshot = { ...settings }
+  const video = videoRef.value!
+  const controller = new AbortController()
+  activeController = controller
+  isProcessing.value = true
+  mobilePreviewSide.value = 'original'
+  progress.value = 0
+  errorText.value = ''
+  statusText.value = '正在确认使用权限...'
+  etaText.value = formatEtaText(null)
 
   try {
-    isCancelRequested.value = false
-    isProcessing.value = true
-    statusText.value = '准备处理...'
-    progress.value = 0
-    etaText.value = formatEtaText(null)
-    errorText.value = ''
+    const canConsume = await ensureToolConsume({
+      toolKey: 'video-to-gif',
+      action: 'generate',
+      loginWarningText: '请先登录后再使用视频转 GIF',
+      showConsumeSuccessToast: true
+    })
+    if (!canConsume || disposed || currentTask !== taskVersion || controller.signal.aborted) return
+    video.pause()
+    if (gifUrl.value) URL.revokeObjectURL(gifUrl.value)
     gifUrl.value = ''
+    resultSettings.value = null
     resultGifSizeMB.value = 0
     processStartedAt.value = Date.now()
-
-    const video = videoRef.value
-    const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d', { willReadFrequently: true })
-
-    if (!ctx) {
-      throw new Error('无法创建 Canvas 上下文')
-    }
-
-    canvas.width = settings.width
-    canvas.height = settings.height
-
+    statusText.value = '准备处理...'
     const { GIF } = await ensureGifRuntime()
+    if (disposed || currentTask !== taskVersion || controller.signal.aborted) return
     const GifConstructor = GIF as any
-    const gif = new GifConstructor({
+    const encoder = new GifConstructor({
       workers: 2,
-      quality: settings.quality,
-      width: settings.width,
-      height: settings.height,
+      quality: snapshot.quality,
+      width: snapshot.width,
+      height: snapshot.height,
       workerScript: '/workers/gif.worker.js'
     })
-    activeGifEncoder = gif
-
-    gif.on('finished', (blob: Blob) => {
-      if (isCancelRequested.value) {
-        isCancelRequested.value = false
-        return
+    const blob = await runVideoGifJob({
+      video, settings: snapshot, encoder, signal: controller.signal,
+      onProgress: (value, message) => {
+        if (disposed || currentTask !== taskVersion || controller.signal.aborted) return
+        progress.value = value
+        statusText.value = message
+        updateEtaText(value)
       }
-
-      gifUrl.value = URL.createObjectURL(blob)
-      resultGifSizeMB.value = blob.size / 1024 / 1024
-      isProcessing.value = false
-      progress.value = 100
-      etaText.value = '预计剩余时间：约 0 秒'
-      statusText.value = '生成完成'
-      activeGifEncoder = null
-      ElMessage.success('GIF 生成成功')
     })
-
-    gif.on('progress', (p: number) => {
-      if (!isProcessing.value || isCancelRequested.value) return
-
-      const currentProgress = Math.max(progress.value, Math.round(p * 100))
-      progress.value = currentProgress
-      statusText.value = `正在编码 GIF... ${Math.round(p * 100)}%`
-      updateEtaText(currentProgress)
-    })
-
-    const captureInterval = 1 / settings.fps
-    const duration = settings.endTime - settings.startTime
-    const totalFrames = Math.max(1, Math.floor(duration * settings.fps))
-
-    let currentFrame = 0
-    let currentTime = settings.startTime
-
-    statusText.value = '正在捕获帧...'
-
-    const captureFrame = async () => {
-      if (!isProcessing.value || isCancelRequested.value) return
-
-      if (currentFrame >= totalFrames) {
-        statusText.value = '开始渲染 GIF...'
-        gif.render()
-        return
-      }
-
-      await waitForSeeked(video, currentTime)
-
-      if (!isProcessing.value || isCancelRequested.value) return
-
-      ctx.drawImage(video, 0, 0, settings.width, settings.height)
-      gif.addFrame(ctx, {
-        copy: true,
-        delay: (1000 / settings.fps) / settings.speed
-      })
-
-      currentFrame++
-      currentTime += captureInterval
-
-      const captureProgress = Math.min(55, Math.round((currentFrame / totalFrames) * 55))
-      progress.value = captureProgress
-      updateEtaText(captureProgress)
-      requestAnimationFrame(() => captureFrame())
-    }
-
-    captureFrame()
+    if (disposed || currentTask !== taskVersion || controller.signal.aborted) return
+    gifUrl.value = URL.createObjectURL(blob)
+    resultGifSizeMB.value = blob.size / 1024 / 1024
+    resultSettings.value = snapshot
+    mobilePreviewSide.value = 'gif'
+    mobileResultDetailsExpanded.value = false
+    progress.value = 100
+    etaText.value = '预计剩余时间：约 0 秒'
+    statusText.value = '生成完成'
+    ElMessage.success('GIF 生成成功')
   } catch (error) {
-    console.error(error)
-    isProcessing.value = false
-    activeGifEncoder = null
+    if (disposed || currentTask !== taskVersion || controller.signal.aborted) return
+    console.error('[视频转 GIF] 处理失败', error instanceof Error ? error.message : '未知错误')
     etaText.value = ''
     const message = getFriendlyVideoError(error, 'GIF 生成失败，请调整参数后重试')
     errorText.value = message
     ElMessage.error(message)
+  } finally {
+    if (!disposed && currentTask === taskVersion) {
+      isProcessing.value = false
+      activeController = null
+    }
   }
 }
 
-/**
- * 取消当前 GIF 生成任务
- */
+/** 取消当前生成任务并失效其异步回调，不再接受旧任务的结果。 */
 const cancelProcessing = () => {
   if (!isProcessing.value) return
-
-  isCancelRequested.value = true
+  taskVersion++
+  activeController?.abort()
+  activeController = null
   isProcessing.value = false
   statusText.value = '已取消处理'
   progress.value = 0
   etaText.value = ''
-
-  if (activeGifEncoder && typeof activeGifEncoder.abort === 'function') {
-    activeGifEncoder.abort()
-  }
-  activeGifEncoder = null
   ElMessage.info('已取消当前 GIF 生成任务')
 }
 
-/**
- * 下载 GIF
- */
+/** 下载现有 GIF，保留原权限检查；锁定重复请求并允许取消等待中的下载。 */
 const downloadGif = async () => {
-  if (!gifUrl.value) return
-  const canDownload = await ensureToolConsume({
-    toolKey: 'video-to-gif',
-    action: 'download',
-    mode: 'check-login',
-    loginWarningText: '请先登录后再下载 GIF'
-  })
-  if (!canDownload) {
+  if (!gifUrl.value || isProcessing.value || isCheckingDownload.value || disposed) return
+  const resultUrl = gifUrl.value
+  const originalName = videoFile.value?.name.replace(/\.[^/.]+$/, '') || 'video'
+  const currentDownload = ++downloadVersion
+  isCheckingDownload.value = true
+  try {
+    const canDownload = await ensureToolConsume({
+      toolKey: 'video-to-gif',
+      action: 'download',
+      mode: 'check-login',
+      loginWarningText: '请先登录后再下载 GIF'
+    })
+    if (!canDownload || disposed || currentDownload !== downloadVersion || gifUrl.value !== resultUrl || isProcessing.value) return
+    const a = document.createElement('a')
+    a.href = resultUrl
+    a.download = `${originalName}.gif`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  } catch (error) {
+    if (disposed || currentDownload !== downloadVersion) return
+    console.error('[视频转 GIF] 下载检查失败', error instanceof Error ? error.message : '未知错误')
+    ElMessage.error('下载暂时失败，请稍后重试')
+  } finally {
+    if (currentDownload === downloadVersion) isCheckingDownload.value = false
+  }
+}
+
+/** 手机固定栏复用既有生成和下载入口，不另建编码或扣费流程。 */
+const handleMobileAction = async () => {
+  if (hasCurrentGifResult.value) await downloadGif()
+  else await generateGif()
+}
+
+/** 取消生成沿用任务 Abort；取消下载只忽略待返回的授权结果，避免晚到回调触发下载。 */
+const cancelMobileAction = () => {
+  if (isProcessing.value) {
+    cancelProcessing()
     return
   }
-  const a = document.createElement('a')
-  a.href = gifUrl.value
-  const originalName = videoFile.value?.name.replace(/\.[^/.]+$/, "") || "video"
-  a.download = `${originalName}.gif`
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
+  if (isCheckingDownload.value) {
+    downloadVersion++
+    isCheckingDownload.value = false
+    ElMessage.info('已取消本次下载')
+  }
 }
 
 /**
  * 拖拽处理
  */
 const dropHandler = (ev: DragEvent) => {
+  if (isProcessing.value || disposed) return
   const file = ev.dataTransfer?.files?.[0]
   if (file && validateGifSourceFile(file)) {
     loadVideo(file)
@@ -467,21 +485,24 @@ const dropHandler = (ev: DragEvent) => {
 }
 
 onUnmounted(() => {
-  if (activeGifEncoder && typeof activeGifEncoder.abort === 'function') {
-    activeGifEncoder.abort()
-  }
-  activeGifEncoder = null
-
+  disposed = true
+  taskVersion++
+  downloadVersion++
+  activeController?.abort()
+  activeController = null
+  if (metadataTimeout) clearTimeout(metadataTimeout)
+  metadataTimeout = null
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
   if (gifUrl.value) URL.revokeObjectURL(gifUrl.value)
 })
 </script>
 
 <template>
-  <div class="gif-tool-page min-h-screen">
+  <div class="video-mobile-page gif-tool-page min-h-screen">
     <div class="mx-auto">
-      <section class="gif-workspace mb-4">
+      <section class="video-mobile-workspace gif-workspace mb-4">
         <VideoWorkspaceIntro
+          heading-tag="h1"
           title="视频转 GIF"
           description="截取视频片段并导出 GIF，可调整尺寸、帧率和播放速度。"
           :specs="['本地处理', '最长 30 秒', '最多 450 帧']"
@@ -493,18 +514,19 @@ onUnmounted(() => {
           type="file"
           class="hidden"
           accept="video/*,.mp4,.mov,.webm,.avi,.mkv,.m4v"
+          :disabled="isProcessing"
           @change="handleFileChange"
         >
 
         <VideoUploadZone
           v-if="!videoUrl"
           title="上传需要转换的视频"
-          formats="支持 MP4、MOV、WebM、AVI、MKV，最大 200MB"
+          formats="最大 200MB，建议 MP4 / WebM；其他格式取决于浏览器解码支持"
           @select="fileInput?.click()"
           @drop="dropHandler"
         />
 
-        <div v-else class="gif-editor grid grid-cols-1 lg:grid-cols-12">
+        <div v-else class="video-mobile-editor gif-editor grid grid-cols-1 lg:grid-cols-12">
           <aside class="lg:col-span-4">
             <div class="gif-controls">
               <div class="gif-controls__head">
@@ -524,49 +546,61 @@ onUnmounted(() => {
                   <span>截取片段</span>
                   <strong>{{ clipDuration.toFixed(1) }}s</strong>
                 </div>
-                <el-slider v-model="clipRange" range :min="0" :max="videoMeta.duration" :step="0.1" />
+                <el-slider v-model="clipRange" :disabled="isProcessing || !isVideoReady" range :min="0" :max="videoMeta.duration" :step="0.1" />
                 <div class="gif-range-inputs">
-                  <el-input-number v-model="settings.startTime" :min="0" :max="settings.endTime" :step="0.1" size="small" />
-                  <span>至</span>
-                  <el-input-number v-model="settings.endTime" :min="settings.startTime" :max="videoMeta.duration" :step="0.1" size="small" />
+                  <label class="gif-range-field"><span>开始时间（秒）</span>
+                  <el-input-number v-gif-number-aria="{ disabled: isProcessing || !isVideoReady, min: 0, max: settings.endTime }" aria-label="开始时间（秒）" :disabled="isProcessing || !isVideoReady" v-model="settings.startTime" :controls="!isMobileViewport" :min="0" :max="settings.endTime" :step="0.1" size="small" />
+                  </label>
+                  <label class="gif-range-field"><span>结束时间（秒）</span>
+                  <el-input-number v-gif-number-aria="{ disabled: isProcessing || !isVideoReady, min: settings.startTime, max: videoMeta.duration }" aria-label="结束时间（秒）" :disabled="isProcessing || !isVideoReady" v-model="settings.endTime" :controls="!isMobileViewport" :min="settings.startTime" :max="videoMeta.duration" :step="0.1" size="small" />
+                  </label>
                 </div>
+                <p class="gif-clip-hint">源视频 {{ formatTime(videoMeta.duration) }}，单次最多截取 30 秒。</p>
               </div>
 
-              <div class="gif-control-section">
-                <div class="gif-control-label"><span>输出宽度</span><strong>{{ outputResolutionText }}</strong></div>
-                <el-input-number v-model="settings.width" :min="80" :max="960" :step="20" @change="handleWidthChange" />
-              </div>
-
-              <div class="gif-control-section">
-                <div class="gif-control-label"><span>帧率</span><strong>{{ settings.fps }} FPS</strong></div>
-                <el-slider v-model="settings.fps" :min="1" :max="30" :step="1" />
-              </div>
-
-              <div class="gif-control-section">
-                <div class="gif-control-label"><span>播放速度</span><strong>{{ settings.speed }}x</strong></div>
-                <div class="gif-speed-options">
-                  <button
-                    v-for="speed in [0.5, 1, 1.5, 2]"
-                    :key="speed"
-                    type="button"
-                    :class="{ 'is-active': settings.speed === speed }"
-                    @click="settings.speed = speed"
-                  >
-                    {{ speed }}x
-                  </button>
+              <button type="button" class="gif-mobile-toggle" :aria-expanded="mobileSettingsExpanded" aria-controls="gif-advanced-settings" @click="mobileSettingsExpanded = !mobileSettingsExpanded">
+                <strong>更多参数 <span>{{ mobileSettingsExpanded ? '收起' : '展开' }}</span></strong>
+                <span>{{ mobileSettingsSummary }}</span>
+              </button>
+              <div id="gif-advanced-settings" v-show="!isMobileViewport || mobileSettingsExpanded" class="gif-advanced-settings">
+                <div class="gif-control-section">
+                  <div class="gif-control-label"><span>输出宽度</span><strong>{{ outputResolutionText }}</strong></div>
+                  <el-input-number v-gif-number-aria="{ disabled: isProcessing || !isVideoReady, min: 80, max: 960 }" aria-label="输出宽度（像素）" :disabled="isProcessing || !isVideoReady" v-model="settings.width" :controls="!isMobileViewport" :min="80" :max="960" :step="20" @change="handleWidthChange" />
                 </div>
-              </div>
 
-              <div class="gif-control-section">
-                <div class="gif-control-label"><span>画质</span><strong>{{ settings.quality }}</strong></div>
-                <el-slider v-model="settings.quality" :min="1" :max="30" :step="1" />
-                <p class="gif-control-hint">数值越小越清晰，处理时间与文件体积也会增加。</p>
-              </div>
+                <div class="gif-control-section">
+                  <div class="gif-control-label"><span>帧率</span><strong>{{ settings.fps }} FPS</strong></div>
+                  <el-slider :disabled="isProcessing || !isVideoReady" v-model="settings.fps" :min="1" :max="30" :step="1" />
+                </div>
 
-              <div class="gif-output-estimate">
-                <div><span>输出尺寸</span><strong>{{ outputResolutionText }}</strong></div>
-                <div><span>预计帧数</span><strong>{{ estimatedFrameCount }} 帧</strong></div>
-                <div><span>输出时长</span><strong>{{ outputDuration.toFixed(1) }}s</strong></div>
+                <div class="gif-control-section">
+                  <div class="gif-control-label"><span>播放速度</span><strong>{{ settings.speed }}x</strong></div>
+                  <div class="gif-speed-options">
+                    <button
+                      v-for="speed in [0.5, 1, 1.5, 2]"
+                      :key="speed"
+                      type="button"
+                      :class="{ 'is-active': settings.speed === speed }"
+                      :disabled="isProcessing || !isVideoReady"
+                      @click="settings.speed = speed"
+                    >
+                      {{ speed }}x
+                    </button>
+                  </div>
+                </div>
+
+                <div class="gif-control-section">
+                  <div class="gif-control-label"><span>画质</span><strong>{{ settings.quality }}</strong></div>
+                  <el-slider :disabled="isProcessing || !isVideoReady" v-model="settings.quality" :min="1" :max="30" :step="1" />
+                  <p class="gif-control-hint">数值越小越清晰，处理时间与文件体积也会增加。</p>
+                </div>
+
+                <div class="gif-output-estimate">
+                  <div><span>输出尺寸</span><strong>{{ outputResolutionText }}</strong></div>
+                  <div><span>预计帧数</span><strong>{{ estimatedFrameCount }} 帧</strong></div>
+                  <div><span>输出时长</span><strong>{{ outputDuration.toFixed(1) }}s</strong></div>
+                </div>
+
               </div>
 
               <VideoProcessStatus
@@ -577,35 +611,44 @@ onUnmounted(() => {
                 @cancel="cancelProcessing"
               />
 
-              <div v-if="errorText" class="gif-error">{{ errorText }}</div>
+              <p v-if="isLoadingVideo" class="gif-control-hint" role="status">正在读取视频信息...</p>
+              <div v-if="errorText" class="gif-error" role="alert">{{ errorText }}</div>
 
-              <button type="button" class="gif-primary" :disabled="isProcessing" @click="generateGif">
+              <button type="button" class="gif-primary" :disabled="isProcessing || isCheckingDownload || !isVideoReady || isLoadingVideo" @click="generateGif">
                 {{ isProcessing ? '正在生成...' : '生成 GIF' }}
               </button>
             </div>
           </aside>
 
           <div class="gif-preview-column lg:col-span-8">
-            <div class="gif-preview-panel">
+            <div class="gif-mobile-preview-tabs" role="group" aria-label="预览内容">
+              <button type="button" :aria-pressed="mobilePreviewSide === 'original'" @click="mobilePreviewSide = 'original'">原视频</button>
+              <button type="button" :aria-pressed="mobilePreviewSide === 'gif'" :disabled="!gifUrl || isProcessing" @click="mobilePreviewSide = 'gif'">生成的 GIF</button>
+            </div>
+            <div v-show="!isMobileViewport || mobilePreviewSide === 'original'" class="gif-preview-panel">
               <video
                 ref="videoRef"
                 :src="videoUrl"
-                controls
+                :controls="!isProcessing"
+                preload="auto"
                 class="gif-preview-video"
                 @loadedmetadata="onVideoLoaded"
+                @error="onVideoError"
               ></video>
             </div>
 
-            <section v-if="gifUrl" class="gif-result-panel animate-fade-in">
+            <section v-if="gifUrl" v-show="!isMobileViewport || mobilePreviewSide === 'gif'" class="gif-result-panel animate-fade-in">
               <div class="gif-result-head">
                 <div>
                   <span class="gif-result-status">处理完成</span>
                   <h3>GIF 已生成</h3>
                 </div>
-                <button type="button" class="gif-download" @click="downloadGif">下载 GIF</button>
+                <button type="button" class="gif-download" :disabled="isCheckingDownload || isProcessing" @click="downloadGif">下载 GIF</button>
               </div>
 
-              <VideoResultComparison :metrics="resultComparisonMetrics" class="mb-4" />
+              <p v-if="!hasCurrentGifResult" class="gif-control-hint gif-stale-result">参数已修改，当前预览为上次生成的 GIF。</p>
+              <button type="button" class="gif-result-details-toggle" :aria-expanded="mobileResultDetailsExpanded" aria-controls="video-gif-result-details" @click="mobileResultDetailsExpanded = !mobileResultDetailsExpanded">结果详情 <span>{{ mobileResultDetailsExpanded ? '收起' : '展开' }}</span></button>
+              <div id="video-gif-result-details" v-show="!isMobileViewport || mobileResultDetailsExpanded"><VideoResultComparison :metrics="resultComparisonMetrics" class="mb-4" /></div>
 
               <div class="gif-result-preview">
                 <img :src="gifUrl" alt="生成后的 GIF 预览">
@@ -617,15 +660,28 @@ onUnmounted(() => {
       </section>
 
       <section class="gif-guide mb-4">
-        <h3>使用说明</h3>
-        <div class="gif-guide-grid">
+        <h3><button type="button" class="gif-guide-toggle" :aria-expanded="!isMobileViewport || mobileGuideExpanded" aria-controls="video-gif-guide" @click="mobileGuideExpanded = !mobileGuideExpanded">使用说明 <span>{{ mobileGuideExpanded ? '收起' : '展开' }}</span></button></h3>
+        <div id="video-gif-guide" v-show="!isMobileViewport || mobileGuideExpanded" class="gif-guide-grid">
           <div><strong>1. 选择片段</strong><p>拖动范围滑块或输入起止时间，单次最多处理 30 秒。</p></div>
           <div><strong>2. 控制体积</strong><p>优先降低宽度与帧率；帧数越少，生成速度越快。</p></div>
           <div><strong>3. 预览下载</strong><p>生成后检查尺寸、时长和体积，再下载最终 GIF。</p></div>
         </div>
       </section>
 
-    <ToolsRecommend :currentPath="route.path" />
+      <button type="button" class="gif-recommend-toggle" :aria-expanded="mobileRecommendationsExpanded" aria-controls="video-gif-recommendations" @click="mobileRecommendationsExpanded = !mobileRecommendationsExpanded">相关工具 <span>{{ mobileRecommendationsExpanded ? '收起' : '展开' }}</span></button>
+      <div id="video-gif-recommendations" v-show="!isMobileViewport || mobileRecommendationsExpanded"><ToolsRecommend :currentPath="route.path" /></div>
+      <MobileToolActions
+        :hidden="!videoUrl"
+        :title="mobileAction.title"
+        :description="mobileAction.description"
+        :action-label="mobileAction.label"
+        :disabled="!hasCurrentGifResult && (!isVideoReady || isLoadingVideo || clipDuration <= 0)"
+        :busy="isProcessing || isCheckingDownload"
+        :cancel-label="isCheckingDownload ? '取消下载' : '取消处理'"
+        aria-label="视频转 GIF 操作"
+        @action="handleMobileAction"
+        @cancel="cancelMobileAction"
+      />
     </div>
   </div>
 </template>
@@ -738,12 +794,13 @@ onUnmounted(() => {
 
 .gif-range-inputs {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
   gap: 8px;
 }
 
-.gif-range-inputs span {
+.gif-range-field { display: grid; min-width: 0; gap: 6px; }
+.gif-range-field > span {
   color: #94a3b8;
   font-size: 12px;
 }
@@ -866,7 +923,6 @@ onUnmounted(() => {
 
 .gif-result-panel {
   border: 1px solid #bbf7d0;
-  border-left: 4px solid #22c55e;
   border-radius: 8px;
   background: #ffffff;
   padding: 22px;
@@ -990,4 +1046,101 @@ onUnmounted(() => {
     flex-direction: column;
   }
 }
+
+@container video-mobile (max-width: 600px) {
+  .gif-controls,
+  .gif-result-panel {
+    padding: 16px 12px;
+  }
+
+  .gif-controls__head button,
+  .gif-speed-options button,
+  .gif-primary,
+  .gif-download {
+    min-height: 44px;
+  }
+
+  .gif-source-summary dd {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .gif-output-estimate {
+    gap: 10px;
+    padding: 10px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gif-result-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gif-preview-panel {
+    min-height: 180px;
+  }
+
+  .gif-guide-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 手机保留一个大预览，参数与说明按需展开；桌面继续使用完整双栏。 */
+.gif-mobile-toggle,
+.gif-mobile-preview-tabs,
+.gif-result-details-toggle,
+.gif-recommend-toggle { display: none; }
+.gif-guide-toggle { width: 100%; text-align: left; cursor: default; }
+.gif-guide-toggle > span { display: none; }
+.gif-clip-hint { margin: 10px 0 0; color: var(--gif-muted); font-size: 12px; line-height: 1.6; }
+.gif-stale-result { margin-block: 12px; }
+
+@media (max-width: 640px) {
+  .gif-tool-page { --gif-primary: var(--uied-color-primary); }
+  .gif-workspace :deep(.video-workspace-intro__notices) { display: none; }
+  .gif-editor { gap: 18px; }
+  .gif-controls { padding: 16px 12px; }
+  .gif-controls__head h3 { font-size: 16px; }
+  .gif-source-summary { grid-template-columns: minmax(0, 1fr) auto; gap: 12px; margin-top: 12px; padding-top: 12px; }
+  .gif-source-summary div:nth-child(n+3) { display: none; }
+  .gif-source-summary dd { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; overflow-wrap: anywhere; }
+  .gif-control-section { margin-top: 16px; padding-top: 16px; }
+  .gif-control-label { font-size: 14px; margin-bottom: 12px; }
+  .gif-range-inputs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .gif-range-field > span { color: var(--gif-muted); font-size: 12px; }
+  .gif-range-field :deep(.el-input__inner), .gif-advanced-settings :deep(.el-input__inner) { font-size: 16px; }
+  .gif-mobile-toggle { display: grid; width: 100%; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--gif-border); color: #334155; text-align: left; }
+  .gif-mobile-toggle strong { display: flex; align-items: center; justify-content: space-between; font-size: 14px; }
+  .gif-mobile-toggle strong > span, .gif-mobile-toggle > span { color: var(--gif-muted); font-size: 12px; line-height: 1.6; font-weight: 400; }
+  .gif-advanced-settings .gif-control-section { padding-top: 20px; margin-top: 20px; }
+  .gif-output-estimate { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px; }
+  .gif-output-estimate > div:last-child { grid-column: 1 / -1; }
+  .gif-primary, .gif-result-head .gif-download { display: none; }
+  .gif-mobile-preview-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .gif-mobile-preview-tabs button { min-height: 44px; border: 1px solid var(--gif-border); border-radius: 8px; color: #475569; font-size: 14px; background: #fff; }
+  .gif-mobile-preview-tabs button[aria-pressed="true"] { border-color: var(--gif-primary); color: var(--gif-primary); background: var(--uied-color-primary-soft); font-weight: 600; }
+  .gif-mobile-preview-tabs button:disabled { opacity: .45; cursor: not-allowed; }
+  .gif-preview-column { gap: 12px; }
+  .gif-preview-panel { min-height: 200px; }
+  .gif-preview-video { max-height: 360px; }
+  .gif-result-panel { display: flex; flex-direction: column; padding: 16px 12px; }
+  .gif-result-head { order: 0; margin-bottom: 16px; }
+  .gif-result-preview { order: 1; }
+  .gif-result-details-toggle { display: flex; align-items: center; justify-content: space-between; order: 2; min-height: 44px; margin-top: 12px; color: #334155; font-size: 14px; text-align: left; }
+  .gif-result-details-toggle span { color: var(--gif-muted); font-size: 12px; }
+  #video-gif-result-details { order: 3; }
+  .gif-stale-result { order: 4; }
+  .gif-result-head h3 { font-size: 17px; }
+  .gif-result-preview { min-height: 200px; padding: 12px; }
+  .gif-result-preview img { width: 100%; max-height: 360px; }
+  .gif-result-preview p { line-height: 1.6; }
+  .gif-guide { margin-top: 16px; padding: 16px 12px; border: 1px solid var(--gif-border); border-radius: 8px; }
+  .gif-guide-toggle, .gif-recommend-toggle { display: flex; min-height: 44px; align-items: center; justify-content: space-between; width: 100%; gap: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .gif-guide-toggle > span, .gif-recommend-toggle > span { display: inline; font-size: 12px; font-weight: 400; color: var(--gif-muted); }
+  .gif-recommend-toggle { padding: 16px 12px; border: 1px solid var(--gif-border); border-radius: 8px; background: #fff; }
+  .gif-tool-page button:focus-visible { outline: 2px solid var(--gif-primary); outline-offset: 3px; }
+}
 </style>
+
+<style scoped src="../Shared/videoMobile.css"></style>

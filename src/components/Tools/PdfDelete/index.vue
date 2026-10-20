@@ -9,27 +9,27 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="relative px-12 pdf-workspace-title-inner">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="!currentFile">
           <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
+            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
             :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -51,9 +51,9 @@
 
         <!-- PDF页面预览和操作区域 -->
         <div v-if="currentFile && pdfPages.length > 0" class="mt-6">
-          <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 mb-4">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="text-sm font-medium text-gray-700 truncate">{{ currentFile.name }}</span>
+          <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 mb-4 pdf-file-summary">
+            <div class="flex flex-wrap items-center gap-3 min-w-0">
+              <span class="text-sm font-medium text-gray-700 truncate pdf-file-name">{{ currentFile.name }}</span>
               <span class="text-xs text-gray-500">{{ formatFileSize(currentFile.size) }}</span>
             </div>
             <span class="text-xs text-gray-500">共 {{ pdfPages.length }} 页</span>
@@ -65,7 +65,7 @@
                 共 {{ pdfPages.length }} 页，已标记删除 {{pdfPages.filter(p => p.deleted).length}} 页
               </span>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 pdf-actions">
               <button @click="rotateSelectedPages(-90)" :disabled="!hasSelectedPages || saving || loading"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -106,7 +106,7 @@
 
           <!-- 页面网格 -->
           <draggable v-model="pdfPages" item-key="pageIndex"
-            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6" handle=".drag-handle"
+            class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 pdf-page-grid" handle=".drag-handle"
             :disabled="saving || loading" @start="drag = true" @end="drag = false">
             <template #item="{ element }">
               <div class="relative group bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all" :data-source-page="element.pageIndex + 1"
@@ -123,6 +123,7 @@
                     class="absolute inset-0 flex flex-col items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
                     <span class="text-white font-medium mb-3">已标记删除</span>
                     <button
+                      :aria-label="`恢复源第 ${element.pageIndex + 1} 页`"
                       class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded-full shadow-sm transition-colors"
                       :disabled="saving || loading" @click.stop="restoreDeletedPage(element)">
                       恢复页面
@@ -131,8 +132,9 @@
 
                   <!-- 悬浮操作按钮 -->
                   <div v-else
-                    class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-40 backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100">
+                    class="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 group-hover:bg-opacity-40 backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 focus-within:opacity-100 pdf-page-delete-action">
                     <button
+                      :aria-label="`标记删除源第 ${element.pageIndex + 1} 页`"
                       class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white text-sm rounded-full shadow-sm transition-colors"
                       :disabled="saving || loading" @click.stop="deleteSelectedPage(element)">
                       标记删除
@@ -141,7 +143,7 @@
 
                   <!-- 拖拽手柄 -->
                   <div
-                    class="drag-handle absolute top-2 left-2 cursor-move p-1.5 bg-white rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                    class="drag-handle absolute top-2 left-2 cursor-move p-1.5 bg-white rounded-lg shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pdf-page-drag-handle">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
                     </svg>
@@ -149,7 +151,7 @@
 
                   <!-- 选择框 -->
                   <button type="button" role="checkbox" :aria-checked="element.selected" :aria-label="`选择源第 ${element.pageIndex + 1} 页`"
-                    :disabled="saving || loading" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                    :disabled="saving || loading" class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity pdf-page-selection"
                     @click.stop="togglePageSelection(element)">
                     <div
                       class="w-6 h-6 rounded-lg border-2 flex items-center justify-center bg-white shadow-sm hover:shadow-md transition-all"
@@ -174,7 +176,7 @@
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
@@ -222,6 +224,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, shallowRef, reactive, computed, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

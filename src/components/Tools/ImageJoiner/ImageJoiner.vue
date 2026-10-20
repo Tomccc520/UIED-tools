@@ -1,4 +1,12 @@
 <!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-19
+ */
+-->
+<!--
  * @file ImageJoiner.vue
  * @description 图片拼接工具，支持多张图片横向或纵向拼接
  * @author UIED技术团队
@@ -7,30 +15,30 @@
  -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen uied-file-tool">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+      <div class="file-tool-card bg-white rounded-xl p-8 mb-4 shadow-sm">
+        <div class="file-tool-heading text-center mb-8 relative">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="file-tool-heading__title relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="file-tool-grid grid grid-cols-1 lg:grid-cols-3 gap-8">
           <!-- 左侧设置区域 -->
           <div class="lg:col-span-1 space-y-6">
             <!-- 上传区域 -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <div class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
               <div
                 class="relative border border-dashed rounded-lg min-h-[150px] flex flex-col items-center justify-center transition-colors duration-200 bg-gray-50"
                 :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
                 @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
                 <input ref="fileInputRef" type="file" class="hidden" multiple accept="image/*" @change="handleFileInputChange" />
-                <div class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></div>
+                <button type="button" aria-label="选择要拼接的图片" class="absolute inset-0 cursor-pointer z-10 border-0 bg-transparent" @click="triggerFileInput"></button>
                 <div class="text-center px-4">
                   <div class="w-8 h-8 mb-2 mx-auto">
                     <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -45,7 +53,7 @@
             </div>
 
             <!-- 拼接设置 -->
-            <div class="bg-white border border-gray-200 rounded-lg p-6">
+            <div class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
               <div class="mb-4 text-gray-700 font-medium border-b pb-2">拼接设置</div>
               <div class="space-y-4">
                 <div>
@@ -80,7 +88,7 @@
             </div>
 
             <!-- 图片列表（可拖拽排序） -->
-            <div v-if="fileList.length > 0" class="bg-white border border-gray-200 rounded-lg p-6">
+            <div v-if="fileList.length > 0" class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
               <div class="flex justify-between items-center mb-4 border-b pb-2">
                 <div class="text-gray-700 font-medium">图片列表 ({{ fileList.length }})</div>
                 <el-button type="text" class="!text-red-500" @click="clearAll">清空</el-button>
@@ -96,10 +104,10 @@
                     <span class="text-gray-400 text-xs w-4">{{ index + 1 }}</span>
                     <img :src="element.url" class="w-10 h-10 object-cover rounded" />
                     <div class="flex-1 min-w-0">
-                      <div class="text-xs text-gray-600 truncate" :title="element.name">{{ element.name }}</div>
+                      <div class="file-tool-filename text-xs text-gray-600 truncate" :title="element.name">{{ element.name }}</div>
                       <div class="text-xs text-gray-400">{{ formatSize(element.size) }}</div>
                     </div>
-                    <el-button type="text" @click="removeFile(index)">
+                    <el-button type="text" :aria-label="`移除 ${element.name}`" @click="removeFile(index)">
                       <el-icon class="text-gray-400 hover:text-red-500"><Close /></el-icon>
                     </el-button>
                   </div>
@@ -110,8 +118,8 @@
 
           <!-- 右侧预览区域 -->
           <div class="lg:col-span-2">
-            <div class="bg-white border border-gray-200 rounded-lg p-6 h-full flex flex-col">
-              <div class="flex justify-between items-center mb-4">
+            <div class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6 h-full flex flex-col">
+              <div class="file-tool-toolbar flex justify-between items-center mb-4">
                 <div class="text-gray-700 font-medium">效果预览</div>
                 <el-button type="primary" :loading="isProcessing" @click="generateAndDownload" :disabled="fileList.length === 0">
                   生成并下载
@@ -144,6 +152,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/styles/file-tool-responsive.css'
 import { ref, reactive, computed, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

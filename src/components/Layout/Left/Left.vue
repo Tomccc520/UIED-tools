@@ -1612,4 +1612,11 @@ onMounted(() => {
   height: 100%;
   display: block;
 }
+
+/* 抽屉导航保留至少 44px 的触摸行高，桌面菜单继续使用原有紧凑布局。 */
+@media (max-width: 991px) {
+  .el-menu {
+    --menu-item-height: 44px;
+  }
+}
 </style>

@@ -20,7 +20,7 @@
 * 3. 注意事项:
 *    - 热门工具区域支持外部链接,使用isExternal属性区分
 *    - 其他区域仅支持站内路由跳转
-*    - 每个区块必须展示8个工具,不能少
+*    - 每组最多8个工具；窄屏优先相关工具，其余分组按需展开
 *    - 组件依赖 @/components/Tools/tools.ts 中的工具获取方法
 *
 * 4. 样式说明:
@@ -37,14 +37,15 @@
     - gap-4 设置列间距为1rem
     - 移动端自动转为单列
   -->
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+  <section ref="recommendRoot" class="tools-recommend" aria-label="更多工具">
+  <div class="recommend-grid grid grid-cols-1 md:grid-cols-4 gap-4">
     <!-- 1. 相关工具区域
          - 使用闪电图标(蓝色)
          - 展示8个同类工具
          - 仅支持站内路由跳转
     -->
-    <div class="uied-tool-card bg-white rounded-lg border border-gray-100">
-      <div class="px-4 py-3 border-b border-gray-100">
+    <details open class="uied-tool-card bg-white rounded-lg border border-gray-100">
+      <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-500" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
@@ -52,7 +53,8 @@
           </svg>
           相关工具
         </h3>
-      </div>
+        <span class="recommend-chevron" aria-hidden="true">⌄</span>
+      </summary>
       <div class="recommend-list divide-y divide-gray-100">
         <button type="button" v-for="tool in relatedTools" :key="tool.id" @click="handleToolClick(tool)"
           :disabled="isToolDisabled(tool)" :aria-label="`${isToolDisabled(tool) ? '已停用：' : '打开'}${tool.title}`"
@@ -74,7 +76,7 @@
           </div>
         </button>
       </div>
-    </div>
+    </details>
 
     <!-- 2. 热门工具区域
          - 使用火焰图标(红色)
@@ -82,8 +84,8 @@
          - 支持外部链接跳转
          - 使用isExternal属性区分链接类型
     -->
-    <div class="uied-tool-card bg-white rounded-lg border border-gray-100">
-      <div class="px-4 py-3 border-b border-gray-100">
+    <details :open="!compactRecommendations" class="uied-tool-card bg-white rounded-lg border border-gray-100">
+      <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
@@ -92,7 +94,8 @@
           </svg>
           热门工具
         </h3>
-      </div>
+        <span class="recommend-chevron" aria-hidden="true">⌄</span>
+      </summary>
       <div class="recommend-list divide-y divide-gray-100">
         <button
           type="button"
@@ -121,15 +124,15 @@
             </div>
         </button>
       </div>
-    </div>
+    </details>
 
     <!-- 3. 新品工具区域
          - 使用勾选图标(绿色)
          - 随机展示8个最新工具
          - 仅支持站内路由跳转
     -->
-    <div class="uied-tool-card bg-white rounded-lg">
-      <div class="px-4 py-3 border-b border-gray-100">
+    <details :open="!compactRecommendations" class="uied-tool-card bg-white rounded-lg border border-gray-100">
+      <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
@@ -138,7 +141,8 @@
           </svg>
           新品上线
         </h3>
-      </div>
+        <span class="recommend-chevron" aria-hidden="true">⌄</span>
+      </summary>
       <div class="recommend-list divide-y divide-gray-100">
         <button type="button" v-for="tool in newTools" :key="tool.id" @click="handleToolClick(tool)"
           :disabled="isToolDisabled(tool)" :aria-label="`${isToolDisabled(tool) ? '已停用：' : '打开'}${tool.title}`"
@@ -161,15 +165,15 @@
           </div>
         </button>
       </div>
-    </div>
+    </details>
 
     <!-- 4. 实用工具区域
          - 使用工具图标(紫色)
          - 随机展示8个实用工具
          - 仅支持站内路由跳转
     -->
-    <div class="uied-tool-card bg-white rounded-lg">
-      <div class="px-4 py-3 border-b border-gray-100">
+    <details :open="!compactRecommendations" class="uied-tool-card bg-white rounded-lg border border-gray-100">
+      <summary class="recommend-heading px-4 py-3">
         <h3 class="text-base font-medium text-gray-700 flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-purple-500" fill="none" viewBox="0 0 24 24"
             stroke="currentColor">
@@ -178,7 +182,8 @@
           </svg>
           实用工具
         </h3>
-      </div>
+        <span class="recommend-chevron" aria-hidden="true">⌄</span>
+      </summary>
       <div class="recommend-list divide-y divide-gray-100">
         <button type="button" v-for="tool in utilityTools" :key="tool.id" @click="handleToolClick(tool)"
           :disabled="isToolDisabled(tool)" :aria-label="`${isToolDisabled(tool) ? '已停用：' : '打开'}${tool.title}`"
@@ -201,13 +206,15 @@
           </div>
         </button>
       </div>
-    </div>
+    </details>
   </div>
+  </section>
   <!-- 工具推荐区域 END -->
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useElementSize } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 import type { Tool } from '@/types/tools'
 import { getDefaultSitePublicConfig, getSitePublicConfig, type SiteHotToolItem } from '@/services/siteConfig'
@@ -226,6 +233,10 @@ const props = defineProps<{
 }>()
 
 const route = useRoute()
+const recommendRoot = ref<HTMLElement | null>(null)
+const { width: recommendWidth } = useElementSize(recommendRoot)
+/** 根据推荐区实际宽度折叠次要分组，保留完整推荐数据和用户展开操作。 */
+const compactRecommendations = computed(() => recommendWidth.value > 0 && recommendWidth.value < 640)
 const currentPath = computed(() => props.currentPath || route.fullPath || route.path)
 const toolsStore = useToolsStore()
 const { isToolDisabled, isExternalLink, openToolEntry } = useToolRuntimeGate()
@@ -320,6 +331,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.tools-recommend { min-width: 0; container: tools-recommend / inline-size; }
+.recommend-grid { align-items: start; }
+.recommend-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; list-style: none; cursor: pointer; }
+.recommend-heading::-webkit-details-marker { display: none; }
+.recommend-heading:focus-visible { outline: 2px solid var(--uied-color-primary); outline-offset: 2px; }
+.uied-tool-card[open] > .recommend-heading { border-bottom: 1px solid var(--uied-color-border); }
+.recommend-chevron { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 20px; color: var(--uied-color-text-secondary); }
+.uied-tool-card[open] > .recommend-heading .recommend-chevron { transform: rotate(180deg); }
 .tool-recommend-item {
   min-height: 62px;
   color: inherit;
@@ -335,7 +354,8 @@ onMounted(() => {
   box-shadow: var(--uied-focus-ring);
 }
 
-@media screen and (max-width: 767px) {
+@container tools-recommend (max-width: 639px) {
+  .recommend-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
   /* 移动端每组优先露出 4 个推荐，避免工具主任务后出现过长推荐瀑布。 */
   .recommend-list > .tool-recommend-item:nth-child(n + 5) {
     display: none;

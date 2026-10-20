@@ -8,24 +8,24 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="relative px-12 pdf-workspace-title-inner">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">PDF签名</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">在线为PDF文件添加手写签名，支持拖拽位置，支持多页应用，本地处理更安全。</p>
         </div>
 
         <div v-if="!file">
           <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
+            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
             :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -43,17 +43,18 @@
 
         <div v-else class="flex flex-col gap-8">
           <!-- 签名区域 -->
-          <div class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+          <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 pdf-settings-panel">
             <h3 class="font-bold text-gray-800 mb-4 flex items-center">
               <span
                 class="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm mr-2">1</span>
               创建签名
             </h3>
-            <div class="flex flex-col md:flex-row gap-6">
+            <div class="flex flex-col md:flex-row gap-6 pdf-editor-layout">
               <div
                 class="border-2 border-dashed border-gray-300 bg-white rounded-lg shadow-sm hover:border-blue-400 transition-colors"
-                style="width: 100%; max-width: 400px; height: 200px; position: relative;">
-                <canvas ref="signatureCanvas" width="400" height="200" class="cursor-crosshair w-full h-full touch-none"
+                style="width: 100%; max-width: 400px; height: auto; position: relative;">
+                <canvas ref="signatureCanvas" width="400" height="200" style="aspect-ratio: 2 / 1;"
+                  class="cursor-crosshair block w-full h-auto touch-none"
                   @mousedown="startDrawing" @mousemove="draw" @mouseup="stopDrawing" @mouseleave="stopDrawing"
                   @touchstart.prevent="startDrawing" @touchmove.prevent="draw" @touchend.prevent="stopDrawing"></canvas>
                 <div v-if="isEmptySignature"
@@ -62,7 +63,7 @@
                 </div>
               </div>
               <div class="flex flex-col gap-3 justify-center min-w-[150px]">
-                <el-button @click="clearSignature">
+                <el-button @click="clearSignature" :disabled="previewRendering">
                   <template #icon>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -71,7 +72,7 @@
                   </template>
                   清除
                 </el-button>
-                <el-button type="primary" @click="confirmSignature" :disabled="isEmptySignature">
+                <el-button type="primary" @click="confirmSignature" :loading="previewRendering" :disabled="isEmptySignature || previewRendering">
                   <template #icon>
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -84,7 +85,7 @@
           </div>
 
           <!-- 预览和放置区域 -->
-          <div v-if="signatureImage" class="bg-gray-50 p-6 rounded-lg border border-gray-100">
+          <div v-if="signatureImage" class="bg-gray-50 p-6 rounded-lg border border-gray-100 pdf-settings-panel">
             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
               <h3 class="font-bold text-gray-800 flex items-center">
                 <span
@@ -92,7 +93,7 @@
                 放置签名
               </h3>
               <div class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border shadow-sm">
-                <el-button size="small" circle @click="changePage(-1)" :disabled="currentPage <= 1">
+                <el-button size="small" circle aria-label="上一页" @click="changePage(-1)" :disabled="currentPage <= 1 || previewRendering">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                   </svg>
@@ -100,7 +101,7 @@
                 <span class="text-sm font-medium text-gray-700 min-w-[80px] text-center">第 {{ currentPage }} / {{
                   totalPages }}
                   页</span>
-                <el-button size="small" circle @click="changePage(1)" :disabled="currentPage >= totalPages">
+                <el-button size="small" circle aria-label="下一页" @click="changePage(1)" :disabled="currentPage >= totalPages || previewRendering">
                   <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                   </svg>
@@ -109,7 +110,10 @@
             </div>
 
             <p class="text-sm text-gray-500 mb-4">拖动签名调整位置，拖动右下角调整大小。签名位置将基于当前预览页面。</p>
+            <p v-if="previewRendering" role="status" class="text-sm text-gray-500 mb-4">正在加载 PDF 页面预览…</p>
+            <p v-if="previewError" role="alert" class="text-sm text-red-600 mb-4">{{ previewError }}</p>
 
+            <div class="pdf-canvas-scroll" tabindex="0" role="region" aria-label="PDF 签名预览，可横向滚动查看完整页面">
             <div class="relative overflow-hidden border bg-gray-200 mx-auto shadow-lg"
               :style="{ width: pdfViewportWidth + 'px', height: pdfViewportHeight + 'px' }">
               <canvas ref="pdfCanvas" class="block"></canvas>
@@ -126,7 +130,7 @@
                   draggable="false" />
                 <!-- 缩放手柄 -->
                 <div
-                  class="absolute bottom-[-6px] right-[-6px] w-5 h-5 bg-blue-500 rounded-full cursor-se-resize flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                  class="absolute bottom-[-6px] right-[-6px] w-5 h-5 bg-blue-500 rounded-full cursor-se-resize flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity pdf-signature-resize"
                   @mousedown.stop="startResizeSignature" @touchstart.stop.prevent="startResizeSignature">
                   <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -135,6 +139,7 @@
                 </div>
               </div>
             </div>
+            </div>
 
             <div class="mt-6 flex flex-col sm:flex-row justify-end items-center gap-4 border-t pt-4">
               <label class="flex items-center cursor-pointer select-none">
@@ -142,9 +147,10 @@
                   class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
                 <span class="ml-2 text-gray-700">应用到每一页 (相同位置)</span>
               </label>
-              <div class="flex gap-3 w-full sm:w-auto">
-                <el-button class="flex-1 sm:flex-none" @click="clearFile">重新上传</el-button>
+              <div class="flex gap-3 w-full sm:w-auto pdf-actions">
+                <el-button class="flex-1 sm:flex-none" @click="clearFile" :disabled="previewRendering">重新上传</el-button>
                 <el-button type="primary" class="flex-1 sm:flex-none" :loading="processing"
+                  :disabled="previewRendering || !!previewError || pdfViewportWidth <= 0 || pdfViewportHeight <= 0"
                   @click="saveSignedPdf">生成并下载PDF</el-button>
               </div>
             </div>
@@ -158,12 +164,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive, nextTick, onUnmounted } from 'vue'
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
+import { ref, shallowRef, onMounted, reactive, nextTick, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { getSignatureCanvasCoordinates } from './signatureCoordinates'
 
 const route = useRoute()
 const maxFileSizeMB = 50
@@ -182,9 +190,12 @@ const ctx = ref<CanvasRenderingContext2D | null>(null)
 const pdfCanvas = ref<HTMLCanvasElement | null>(null)
 const currentPage = ref(1)
 const totalPages = ref(0)
-const pdfDocProxy = ref<any>(null)
+// PDF.js 文档含原生私有字段，不能通过 Vue 深层 Proxy 访问其方法。
+const pdfDocProxy = shallowRef<any>(null)
 const pdfViewportWidth = ref(0)
 const pdfViewportHeight = ref(0)
+const previewRendering = ref(false)
+const previewError = ref('')
 const scale = ref(1) // 缩放比例，用于显示
 
 // Signature Placement
@@ -250,12 +261,8 @@ const stopDrawing = () => {
 const getCoordinates = (e: MouseEvent | TouchEvent) => {
   if (!signatureCanvas.value) return { offsetX: 0, offsetY: 0 }
   const rect = signatureCanvas.value.getBoundingClientRect()
-  if (e instanceof MouseEvent) {
-    return { offsetX: e.offsetX, offsetY: e.offsetY }
-  } else {
-    const touch = e.touches[0]
-    return { offsetX: touch.clientX - rect.left, offsetY: touch.clientY - rect.top }
-  }
+  const point = e instanceof MouseEvent ? e : e.touches[0]
+  return getSignatureCanvasCoordinates(point, rect, signatureCanvas.value)
 }
 
 /**
@@ -269,18 +276,24 @@ const clearSignature = () => {
 }
 
 /**
- * 确认签名并生成预览图
+ * 确认签名，等待预览画布挂载后渲染当前页，再按实际尺寸居中签名。
  */
-const confirmSignature = () => {
-  if (!signatureCanvas.value) return
+const confirmSignature = async () => {
+  if (!signatureCanvas.value || !pdfDocProxy.value || previewRendering.value) return
+  previewRendering.value = true
+  previewError.value = ''
   signatureImage.value = signatureCanvas.value.toDataURL('image/png')
-  // Reset position to center or sensible default
-  if (pdfViewportWidth.value > 0) {
-    signaturePos.x = (pdfViewportWidth.value - signatureSize.width) / 2
-    signaturePos.y = (pdfViewportHeight.value - signatureSize.height) / 2
-  } else {
-    signaturePos.x = 50
-    signaturePos.y = 50
+  try {
+    // 预览由 signatureImage 的 v-if 创建，必须等待 DOM 更新后再获取画布。
+    await nextTick()
+    await renderPage(currentPage.value)
+    signaturePos.x = Math.max(0, (pdfViewportWidth.value - signatureSize.width) / 2)
+    signaturePos.y = Math.max(0, (pdfViewportHeight.value - signatureSize.height) / 2)
+  } catch (error) {
+    console.error('PDF 签名预览加载失败', error)
+    previewError.value = 'PDF 预览加载失败，请重新确认签名'
+  } finally {
+    previewRendering.value = false
   }
 }
 
@@ -324,7 +337,6 @@ const loadPdf = async (f: File) => {
   pdfDocProxy.value = await pdfjsLib.getDocument(arrayBuffer).promise
   totalPages.value = pdfDocProxy.value.numPages
   currentPage.value = 1
-  await renderPage(1)
 
   // Init signature canvas context
   nextTick(() => {
@@ -385,6 +397,11 @@ const clearFile = () => {
   file.value = null
   pdfDocProxy.value = null
   signatureImage.value = null
+  isEmptySignature.value = true
+  ctx.value = null
+  previewError.value = ''
+  pdfViewportWidth.value = 0
+  pdfViewportHeight.value = 0
   if (fileInputRef.value) fileInputRef.value.value = ''
 }
 
@@ -493,7 +510,8 @@ const stopResizeSignature = () => {
  * 将签名绘制到PDF并下载
  */
 const saveSignedPdf = async () => {
-  if (!file.value || !signatureImage.value) return
+  if (!file.value || !signatureImage.value || previewRendering.value || previewError.value ||
+    pdfViewportWidth.value <= 0 || pdfViewportHeight.value <= 0) return
   processing.value = true
 
   try {

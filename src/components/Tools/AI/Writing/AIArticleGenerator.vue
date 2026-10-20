@@ -57,20 +57,20 @@
       </template>
 
       <template #primary-action>
-        <button class="article-primary-action" :disabled="isGenerating || !form.topic" @click="generateArticle">
+        <button type="button" class="article-primary-action" :disabled="isGenerating || !form.topic" @click="generateArticle">
           <span v-if="!isGenerating">开始生成</span>
           <span v-else>AI 正在创作中…</span>
         </button>
       </template>
 
       <template #result-actions>
-        <button v-if="resultText && mode !== 'preview'" class="article-action" @click="copyResult">复制 Markdown</button>
-        <button v-if="resultText" class="article-action" @click="copyPreviewHtml">复制预览样式</button>
-        <button v-if="resultText" class="article-action article-action--danger" @click="clearResult">清空</button>
+        <button type="button" v-if="resultText && mode !== 'preview'" class="article-action" @click="copyResult">复制 Markdown</button>
+        <button type="button" v-if="resultText" class="article-action" @click="copyPreviewHtml">复制预览样式</button>
+        <button type="button" v-if="resultText" class="article-action article-action--danger" @click="clearResult">清空</button>
       </template>
 
       <template #assist-actions>
-        <button v-for="item in assistActions" :key="item.type" class="article-assist-action" :disabled="isGenerating || !resultText" @click="handleAiAssist(item.type)">{{ item.label }}</button>
+        <button type="button" v-for="item in assistActions" :key="item.type" class="article-assist-action" :disabled="isGenerating || !resultText" @click="handleAiAssist(item.type)">{{ item.label }}</button>
       </template>
 
       <template #result>
@@ -524,7 +524,7 @@ const save = (text: string, _html: string) => {
 .article-field span { display: flex; justify-content: space-between; gap: 8px; }
 .article-field b { color: #d92d20; }
 .article-field em { color: #98a2b3; font-size: 11px; font-style: normal; font-weight: 500; }
-.article-primary-action { width: 100%; min-height: 42px; border: 0; color: #fff; background: var(--uied-color-primary); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .2s ease, transform .2s ease; }
+.article-primary-action { width: 100%; min-height: 44px; border: 0; color: #fff; background: var(--uied-color-primary); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .2s ease, transform .2s ease; }
 .article-primary-action:hover:not(:disabled) { opacity: .9; transform: translateY(-1px); }
 .article-primary-action:disabled { opacity: .45; cursor: not-allowed; }
 .article-action, .article-assist-action { border: 1px solid #dfe2ea; padding: 6px 10px; color: #596273; background: #fff; font-size: 11px; cursor: pointer; }
@@ -564,6 +564,15 @@ const save = (text: string, _html: string) => {
 :deep(.v-md-textarea-editor pre),
 :deep(.v-md-textarea-editor textarea) {
   font-size: 14px;
+}
+
+@container ai-tool (max-width: 600px) {
+  .article-result-editor { min-height: 0; }
+  .article-empty-result { min-height: 280px; padding: 28px 16px; }
+  .article-empty-result span { line-height: 1.6; }
+  .article-field { min-width: 0; }
+  .article-form { gap: 16px; }
+  .article-action, .article-assist-action { min-height: 44px; font-size: 12px; }
 }
 
 /* 动画 */

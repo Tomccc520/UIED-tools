@@ -690,13 +690,13 @@ onBeforeRouteLeave((to, from, next) => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="video-mobile-page min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4">
+      <div class="video-mobile-workspace bg-white rounded-xl p-8 mb-4">
         <div class="text-center mb-6">
-          <h2 class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
+          <h1 class="video-mobile-title text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
             免费视频格式转换
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm sm:text-base max-w-3xl mx-auto">
             在线转换 MP4、WebM、MOV 等常见格式，支持本地处理与快速导出。
           </p>
@@ -711,7 +711,7 @@ onBeforeRouteLeave((to, from, next) => {
 
         <div
           v-if="!videoUrl"
-          class="border-2 border-dashed rounded-xl p-16 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
+          class="video-mobile-upload border-2 border-dashed rounded-xl p-16 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
           :class="[
             isDragOver
               ? 'border-indigo-500 bg-indigo-50 scale-[1.02]'
@@ -721,7 +721,7 @@ onBeforeRouteLeave((to, from, next) => {
           @dragover.prevent="isDragOver = true"
           @dragleave.prevent="isDragOver = false"
           @drop.prevent="handleDrop"
-        >
+         role="button" tabindex="0" aria-label="选择视频" @keydown.enter="triggerSelectVideo" @keydown.space.prevent="triggerSelectVideo">
           <input
             ref="fileInput"
             type="file"
@@ -740,9 +740,9 @@ onBeforeRouteLeave((to, from, next) => {
           <p class="text-gray-500">支持 MP4、AVI、MOV、MKV、WMV、WebM 等格式</p>
         </div>
 
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div v-else class="video-mobile-editor grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="video-mobile-controls bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
               <h3 class="text-lg font-semibold text-gray-800 mb-6">转换参数</h3>
 
               <div class="bg-white rounded-lg p-4 border border-gray-200 mb-6 space-y-3">
@@ -831,7 +831,7 @@ onBeforeRouteLeave((to, from, next) => {
               <div class="flex flex-col gap-5">
                 <div class="flex items-center justify-between gap-3 flex-wrap">
                   <h3 class="text-xl font-bold text-gray-800">转换完成</h3>
-                  <div class="flex items-center gap-2">
+                  <div class="video-mobile-actions flex items-center gap-2">
                     <button
                       class="inline-flex items-center px-4 py-2 border border-gray-300 hover:border-indigo-400 hover:text-indigo-700 text-gray-700 font-medium rounded-lg transition-colors"
                       @click="triggerSelectVideo"
@@ -886,3 +886,5 @@ onBeforeRouteLeave((to, from, next) => {
   animation: fadeIn 0.3s ease-out;
 }
 </style>
+
+<style scoped src="../Shared/videoMobile.css"></style>

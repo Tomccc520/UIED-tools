@@ -8,23 +8,23 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h1>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="!file">
           <div
-            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="handleDragover" @dragleave.prevent="handleDragleave">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -42,8 +42,8 @@
 
         <!-- 提取结果区域 -->
         <div v-else class="flex flex-col gap-6">
-          <div class="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-100">
-            <div class="flex items-center gap-3 overflow-hidden">
+          <div class="flex items-center justify-between bg-gray-50 p-4 rounded-lg border border-gray-100 pdf-file-summary">
+            <div class="flex items-center gap-3 min-w-0">
               <div class="w-16 h-20 bg-gray-200 rounded overflow-hidden flex-shrink-0 relative border border-gray-300">
                 <canvas ref="thumbnailCanvas" class="w-full h-full object-contain"></canvas>
                 <div v-if="!hasThumbnail" class="absolute inset-0 flex items-center justify-center text-gray-400">
@@ -54,11 +54,11 @@
                 </div>
               </div>
               <div class="min-w-0">
-                <h3 class="font-medium text-gray-900 truncate">{{ file.name }}</h3>
+                <h3 class="font-medium text-gray-900 truncate pdf-file-name">{{ file.name }}</h3>
                 <p class="text-sm text-gray-500">{{ (file.size / 1024 / 1024).toFixed(2) }} MB</p>
               </div>
             </div>
-            <div class="flex gap-3">
+            <div class="flex gap-3 pdf-actions">
               <button @click="clearFile"
                 class="px-4 py-2 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                 重新上传
@@ -81,7 +81,7 @@
 
           <!-- 提取结果 -->
           <div v-if="extractedText" class="space-y-4">
-            <div class="flex justify-between items-center">
+            <div class="flex justify-between items-center pdf-file-summary">
               <h3 class="font-medium text-gray-900 flex items-center">
                 <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -89,7 +89,7 @@
                 </svg>
                 提取结果
               </h3>
-              <div class="flex gap-2">
+              <div class="flex gap-2 pdf-actions">
                 <button @click="copyText"
                   class="flex items-center px-3 py-1.5 text-sm text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
                   <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,7 +121,7 @@
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
@@ -181,6 +181,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, reactive, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

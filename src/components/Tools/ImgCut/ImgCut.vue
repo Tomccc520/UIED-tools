@@ -1,4 +1,12 @@
 <!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-19
+ */
+-->
+<!--
  * @file ImgCut.vue
  * @description 图片切割工具组件，支持自定义行列数的九宫格切图
  * @author UIED技术团队
@@ -14,6 +22,7 @@
 -->
 
 <script setup lang="ts">
+import '@/styles/file-tool-responsive.css'
 import type { UploadProps, UploadRawFile, UploadFile } from 'element-plus'
 import { ElMessage } from 'element-plus'
 import { genFileId } from 'element-plus'
@@ -271,28 +280,28 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen uied-file-tool">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+      <div class="file-tool-card bg-white rounded-xl p-8 mb-4 shadow-sm">
+        <div class="file-tool-heading text-center mb-8 relative">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="file-tool-heading__title relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
-        <div class="grid grid-cols-1 gap-8">
+        <div class="file-tool-grid grid grid-cols-1 gap-8">
           <!-- 上传区域 -->
-          <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <div class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
             <div
               class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-gray-50"
               :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-blue-400'"
               @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
               <input ref="dataFileRef" type="file" class="hidden" accept="image/*" @change="handleFileInputChange" />
-              <div class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></div>
+              <button type="button" aria-label="选择要切割的图片" class="absolute inset-0 cursor-pointer z-10 border-0 bg-transparent" @click="triggerFileInput"></button>
               <div class="text-center px-4">
                 <div class="w-8 h-8 mb-2 mx-auto">
                   <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,9 +317,9 @@ onMounted(() => {
           </div>
 
           <!-- 切割设置 -->
-          <div v-if="image.src" class="bg-white border border-gray-200 rounded-lg p-6">
+          <div v-if="image.src" class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">切割设置</div>
-            <div class="flex items-center gap-4">
+            <div class="file-tool-toolbar flex items-center gap-4">
               <div class="flex-1">
                 <label class="text-sm font-medium text-gray-700 mb-2 block">切割行列数</label>
                 <el-slider v-model="lineNum" :min="1" :max="10" :step="1" show-stops class="!max-w-md" />
@@ -339,7 +348,7 @@ onMounted(() => {
           </div>
 
           <!-- 切割预览 -->
-          <div v-if="cutImg.length" class="bg-white border border-gray-200 rounded-lg p-6">
+          <div v-if="cutImg.length" class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">切割预览</div>
             <div class="flex justify-center">
               <div class="grid gap-1 bg-gray-50 p-2 rounded-lg" :style="cutImgStyle">
@@ -351,7 +360,7 @@ onMounted(() => {
           </div>
 
           <!-- 功能说明 -->
-          <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <div class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">功能说明</div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div v-for="feature in features" :key="feature.title" class="flex items-center gap-3 text-gray-600">
@@ -370,7 +379,7 @@ onMounted(() => {
           </div>
 
           <!-- 适用场景 -->
-          <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <div class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
             <div class="mb-4 text-gray-700 font-medium">适用场景</div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div v-for="(scenario, index) in usageScenarios" :key="index"
@@ -382,7 +391,7 @@ onMounted(() => {
           </div>
 
           <!-- 常见问题 -->
-          <div class="bg-white border border-gray-200 rounded-lg p-6">
+          <div class="file-tool-panel bg-white border border-gray-200 rounded-lg p-6">
             <h3 class="text-xl font-semibold text-gray-900 mb-6">常见问题</h3>
             <div class="space-y-6">
               <div v-for="faq in faqs" :key="faq.question"

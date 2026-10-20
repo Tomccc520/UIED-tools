@@ -646,30 +646,26 @@ const addToBookmark = () => {
   }
 }
 
-// 添加左侧菜单控制
-const isCollapse = ref(false)
-const isMobile = ref(window.innerWidth <= 768)
+// 菜单显示断点与 App.vue 的 c-md 侧栏断点保持一致，不影响其他内容布局。
+const isDrawerNavigation = ref(window.innerWidth < 992)
+/** 函数说明：从当前导航模式及真实菜单状态推导折叠状态，保持遮罩关闭后的按钮提示同步。 */
+const isCollapse = computed(() => isDrawerNavigation.value ? !componentStore.leftComDrawer : componentStore.leftCom)
 
+/** 函数说明：窗口跨过桌面侧栏断点时切换导航模式，并关闭抽屉以释放遮罩和滚动锁定。 */
 const handleResize = () => {
-  const newIsMobile = window.innerWidth <= 768
-  if (isMobile.value !== newIsMobile) {
-    isMobile.value = newIsMobile
-    // 在设备类型改变时重置菜单状态
-    if (newIsMobile) {
-      isCollapse.value = componentStore.leftComDrawer
-    } else {
-      isCollapse.value = componentStore.leftCom
-    }
+  const nextIsDrawerNavigation = window.innerWidth < 992
+  if (isDrawerNavigation.value !== nextIsDrawerNavigation) {
+    isDrawerNavigation.value = nextIsDrawerNavigation
+    componentStore.setleftComDrawerStatus(false)
   }
 }
 
+/** 函数说明：平板与手机打开抽屉，桌面切换固定侧栏，保留桌面的独立折叠偏好。 */
 const toggleSidebar = () => {
-  isCollapse.value = !isCollapse.value
-  // 判断是否为移动端
-  if (isMobile.value) {
+  if (isDrawerNavigation.value) {
     componentStore.setleftComDrawerStatus(!componentStore.leftComDrawer)
   } else {
-    componentStore.setLeftComStatus(isCollapse.value)
+    componentStore.setLeftComStatus(!componentStore.leftCom)
   }
 }
 
@@ -680,13 +676,6 @@ onMounted(() => {
   window.addEventListener('resize', handleResize)
   window.addEventListener(FRONTEND_USER_AUTH_EVENT, handleFrontendAuthChanged as EventListener)
   window.addEventListener(FRONTEND_USER_LOGIN_PROMPT_EVENT, handleFrontendLoginPromptEvent as EventListener)
-
-  // 初始化菜单状态，根据设备类型设置不同的初始值
-  if (isMobile.value) {
-    isCollapse.value = componentStore.leftComDrawer
-  } else {
-    isCollapse.value = componentStore.leftCom
-  }
 })
 
 // 在组件卸载时移除事件监听
@@ -704,12 +693,12 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <header class="relative h-14 sm:h-16 w-full flex items-center bg-white border-b border-gray-200 rounded-b-xl overflow-hidden">
+  <header class="relative h-14 c-md:h-16 w-full flex items-center bg-white border-b border-gray-200 rounded-b-xl overflow-hidden">
     <div class="header-left-zone flex items-center min-w-0">
       <!-- 菜单折叠按钮 -->
       <button
         type="button"
-        class="menu-toggle ml-1 md:ml-3"
+        class="menu-toggle ml-1 c-md:ml-3"
         :aria-label="isCollapse ? '展开侧边栏' : '收起侧边栏'"
         :aria-expanded="!isCollapse"
         @click="toggleSidebar"
@@ -721,7 +710,7 @@ onUnmounted(() => {
       </button>
 
       <!-- 左侧一言 - 仅在 PC 端显示 -->
-      <button type="button" class="daily-word-outer hidden md:flex" aria-label="换一条每日一言" @click.stop="getDailyWord">
+      <button type="button" class="daily-word-outer hidden c-md:flex" aria-label="换一条每日一言" @click.stop="getDailyWord">
         <div class="daily-word-wrapper">
           <span class="daily-word-prefix">每日一言：</span>
           <div class="daily-word-content">
@@ -736,14 +725,14 @@ onUnmounted(() => {
       </button>
     </div>
 
-    <router-link class="mobile-brand md:hidden" to="/" aria-label="返回 UIED-Tools 首页">
+    <router-link class="mobile-brand c-md:hidden" to="/" aria-label="返回 UIED-Tools 首页">
       UIED <span>Tools</span>
     </router-link>
 
-    <div class="header-right-zone px-0 md:px-4">
+    <div class="header-right-zone px-0 c-md:px-4">
       <div class="flex justify-end items-center w-full">
         <div class="flex items-center gap-4">
-          <div class="header-action-cluster pr-4 md:pr-0">
+          <div class="header-action-cluster pr-1 c-md:pr-0">
             <!-- 搜索按钮 -->
             <button type="button" class="menu-icon-btn" aria-label="搜索工具" @click="toggleSearch">
               <el-icon>
@@ -751,9 +740,9 @@ onUnmounted(() => {
               </el-icon>
             </button>
 
-            <span class="header-action-divider hidden md:block" aria-hidden="true"></span>
+            <span class="header-action-divider hidden c-md:block" aria-hidden="true"></span>
 
-            <div class="header-link-group hidden md:flex">
+            <div class="header-link-group hidden c-md:flex">
               <a
                 v-for="(item, index) in displayHeaderLinks"
                 :key="`${item.name}-${item.link}-${index}`"
@@ -782,7 +771,7 @@ onUnmounted(() => {
             <el-tooltip content="收藏到书签" placement="bottom">
               <button
                 type="button"
-                class="header-bookmark-action hidden md:inline-flex"
+                class="header-bookmark-action hidden c-md:inline-flex"
                 aria-label="收藏到书签"
                 @click="addToBookmark"
               >
@@ -1446,14 +1435,22 @@ onUnmounted(() => {
   color: #8a91a0;
 }
 
-/* 移动端适配 */
-@media screen and (max-width: 768px) {
+/* 抽屉导航使用相同断点与触摸尺寸，避免平板横屏提前切换为桌面头部。 */
+@media screen and (max-width: 991px) {
+  .header-left-zone {
+    flex: 0 0 auto;
+    max-width: none;
+  }
+
   .menu-toggle,
   .menu-icon-btn {
     width: 44px;
     height: 44px;
   }
+}
 
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
   .daily-word-outer {
     display: none;
   }

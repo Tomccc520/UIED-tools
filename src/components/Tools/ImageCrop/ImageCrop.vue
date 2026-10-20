@@ -1,4 +1,12 @@
 <!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-19
+ */
+-->
+<!--
   @file ImageCrop.vue
   @description 图片裁切工具组件，支持自由裁切和预设比例裁切
   @copyright UIED技术团队 (https://fsuied.com)
@@ -14,16 +22,16 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen uied-file-tool">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+      <div class="file-tool-card bg-white rounded-xl p-8 mb-4 shadow-sm">
+        <div class="file-tool-heading text-center mb-8 relative">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="file-tool-heading__title relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
@@ -34,7 +42,7 @@
             :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @drop.prevent="handleDrop"
             @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
             <input ref="fileInputRef" type="file" accept="image/*"
-              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileChange" />
+              class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" aria-label="选择要裁剪的图片" @change="handleFileChange" />
 
             <div class="text-center px-4">
               <div class="w-8 h-8 mb-2 mx-auto">
@@ -51,15 +59,15 @@
 
         <!-- 裁切工具区域 -->
         <div v-else class="space-y-4">
-          <div class="border rounded-lg p-6 bg-white">
+          <div class="file-tool-panel border rounded-lg p-6 bg-white">
             <!-- 顶部工具栏 -->
             <div class="mb-6 space-y-4">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center space-x-2">
+              <div class="file-tool-toolbar flex items-center justify-between">
+                <div class="file-tool-toolbar flex items-center space-x-2">
                   <h3 class="text-sm font-medium text-gray-700">裁切工具</h3>
-                  <span class="text-xs text-gray-400">{{ currentFile?.name }}</span>
+                  <span class="file-tool-filename text-xs text-gray-400">{{ currentFile?.name }}</span>
                 </div>
-                <div class="flex items-center space-x-3">
+                <div class="file-tool-toolbar flex items-center space-x-3">
                   <!-- 格式选择 -->
                   <div class="flex rounded-lg border overflow-hidden shadow-sm">
                     <button v-for="format in ['JPG', 'PNG', 'WebP']" :key="format" @click="selectedFormat = format"
@@ -74,16 +82,18 @@
                     </button>
                   </div>
                   <!-- 下载按钮 -->
-                  <button v-if="croppedImageUrl" @click="handleDownload"
+                  <button type="button" :disabled="!cropReady || isDownloading" @click="handleDownload"
                     class="flex items-center space-x-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors shadow-sm">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    <span>下载</span>
+                    <span>{{ isDownloading ? '导出中…' : '下载' }}</span>
                   </button>
                 </div>
               </div>
+
+              <p v-if="exportError" role="alert" class="text-sm text-red-600">{{ exportError }}</p>
 
               <!-- 裁切比例按钮组 -->
               <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
@@ -102,25 +112,23 @@
             <!-- 裁切区域 -->
             <div class="relative bg-white rounded-lg overflow-hidden border">
               <vue-cropper ref="cropperRef" :src="imageUrl" :aspect-ratio="aspectRatio" :view-mode="2" :guides="true"
-                :background="true" :rotatable="true" :scalable="true" :zoomable="true" :movable="true" :crop="onCrop"
-                class="max-h-[600px]" />
+                :background="true" :rotatable="true" :scalable="true" :zoomable="true" :movable="true" :crop="onCrop" :ready="onCrop"
+                class="image-crop-preview max-h-[600px]" :style="{ '--crop-brightness': brightness + '%', '--crop-contrast': contrast + '%' }" />
 
               <!-- 图片调整控制面板 -->
               <div
-                class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 space-y-4 min-w-[200px]">
+                class="file-tool-crop-adjustments absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 space-y-4 min-w-[200px]">
                 <div>
                   <label class="text-sm text-gray-600 mb-1 block">亮度</label>
                   <div class="flex items-center space-x-2">
-                    <input type="range" v-model="brightness" min="0" max="200" class="flex-1 accent-blue-500"
-                      @input="updateImageAdjustments" />
+                    <input type="range" v-model="brightness" min="0" max="200" class="flex-1 accent-blue-500" />
                     <span class="text-xs text-gray-500 w-8 text-right">{{ brightness }}%</span>
                   </div>
                 </div>
                 <div>
                   <label class="text-sm text-gray-600 mb-1 block">对比度</label>
                   <div class="flex items-center space-x-2">
-                    <input type="range" v-model="contrast" min="0" max="200" class="flex-1 accent-blue-500"
-                      @input="updateImageAdjustments" />
+                    <input type="range" v-model="contrast" min="0" max="200" class="flex-1 accent-blue-500" />
                     <span class="text-xs text-gray-500 w-8 text-right">{{ contrast }}%</span>
                   </div>
                 </div>
@@ -128,7 +136,7 @@
 
               <!-- 缩放和旋转控制 -->
               <div
-                class="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 flex items-center space-x-6">
+                class="file-tool-crop-controls absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 flex items-center space-x-6">
                 <!-- 缩放控制 -->
                 <div class="flex items-center space-x-3">
                   <button @click="zoom(-0.1)" class="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="缩小">
@@ -251,12 +259,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from '@vue/runtime-core'
+import '@/styles/file-tool-responsive.css'
+import { ref, reactive, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import VueCropper from 'vue-cropperjs'
 import 'cropperjs/dist/cropper.css'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { encodeImageCanvas } from '@/utils/imageFormatConversion'
 
 // 获取当前路由
 const route = useRoute()
@@ -270,7 +280,10 @@ const info = reactive({
 // 状态管理
 const currentFile = ref<File | null>(null)
 const imageUrl = ref('')
-const croppedImageUrl = ref('')
+const cropReady = ref(false)
+const isDownloading = ref(false)
+const exportError = ref('')
+let activeExportId = 0
 const isDragging = ref(false)
 const selectedFormat = ref('JPG')
 const aspectRatio = ref<number | undefined>(undefined)
@@ -312,7 +325,7 @@ const faq = [
   }
 ]
 
-// 文件处理方法
+/** 从文件选择事件读取首张图片并交给统一加载入口。 */
 const handleFileChange = (e: Event) => {
   const input = e.target as HTMLInputElement
   if (!input.files?.length) return
@@ -321,6 +334,7 @@ const handleFileChange = (e: Event) => {
   handleFile(file)
 }
 
+/** 接收拖入的首张图片，并结束拖拽高亮。 */
 const handleDrop = (e: DragEvent) => {
   e.preventDefault()
   isDragging.value = false
@@ -329,17 +343,19 @@ const handleDrop = (e: DragEvent) => {
   if (file) handleFile(file)
 }
 
+/** 校验图片类型，释放上一张本地资源并初始化当前图片。 */
 const handleFile = (file: File) => {
   if (!file.type.startsWith('image/')) {
     ElMessage.warning('请只选择图片文件')
     return
   }
 
+  clearImage()
   currentFile.value = file
   imageUrl.value = URL.createObjectURL(file)
 }
 
-// 裁切相关方法
+/** 更新裁切比例，实际导出始终读取 Cropper 的当前区域。 */
 const setAspectRatio = (value: string | number) => {
   aspectRatio.value = value === 'free' ? undefined : Number(value)
   if (cropperRef.value) {
@@ -347,68 +363,86 @@ const setAspectRatio = (value: string | number) => {
   }
 }
 
-const onCrop = (data: any) => {
-  if (!cropperRef.value) return
-
-  const canvas = cropperRef.value.getCroppedCanvas({
-    width: data.width,
-    height: data.height,
-    imageSmoothingEnabled: true,
-    imageSmoothingQuality: 'high',
-    fillColor: selectedFormat.value === 'PNG' ? 'transparent' : '#fff'
-  })
-
-  if (canvas) {
-    const mimeType = `image/${selectedFormat.value.toLowerCase()}`
-    const quality = selectedFormat.value === 'PNG' ? 1 : 0.9
-    croppedImageUrl.value = canvas.toDataURL(mimeType, quality)
-  }
+/** 使用 Cropper 事件 detail 或当前数据判断是否可导出，不在每次拖动时重复编码大图。 */
+const onCrop = (event?: { detail?: { width?: number; height?: number } }) => {
+  const data = event?.detail?.width ? event.detail : cropperRef.value?.getData(true)
+  cropReady.value = Number(data?.width) > 0 && Number(data?.height) > 0
+  exportError.value = ''
 }
 
+/** 获取当前裁切画布并应用与预览一致的亮度和对比度，返回待编码画布。 */
+const createExportCanvas = (format: string): HTMLCanvasElement => {
+  const canvas = cropperRef.value?.getCroppedCanvas({
+    imageSmoothingEnabled: true,
+    imageSmoothingQuality: 'high',
+    fillColor: format === 'jpg' ? '#fff' : 'transparent'
+  }) as HTMLCanvasElement | null
+  if (!canvas || !canvas.width || !canvas.height) throw new Error('裁切区域尚未就绪，请调整后重试')
+  if (Number(brightness.value) === 100 && Number(contrast.value) === 100) return canvas
+  const adjusted = document.createElement('canvas')
+  adjusted.width = canvas.width
+  adjusted.height = canvas.height
+  const context = adjusted.getContext('2d')
+  if (!context) throw new Error('图片绘制失败，请重试')
+  context.filter = `brightness(${brightness.value}%) contrast(${contrast.value}%)`
+  context.drawImage(canvas, 0, 0)
+  return adjusted
+}
+
+/** 按比例缩放当前图片，使用 vue-cropperjs 实际提供的 relativeZoom 方法。 */
 const zoom = (delta: number) => {
   if (!cropperRef.value) return
   scale.value = Math.max(0.5, Math.min(3, scale.value + delta))
-  cropperRef.value.zoom(delta)
+  cropperRef.value.relativeZoom(delta)
 }
 
+/** 在当前裁切区域中旋转图片并更新角度提示。 */
 const rotate = (angle: number) => {
   if (!cropperRef.value) return
   rotateAngle.value = (rotateAngle.value + angle) % 360
   cropperRef.value.rotate(angle)
 }
 
-const updateImageAdjustments = () => {
-  if (!cropperRef.value) return
-
-  const canvas = cropperRef.value.getCroppedCanvas()
-  if (!canvas) return
-
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return
-
-  ctx.filter = `brightness(${brightness.value}%) contrast(${contrast.value}%)`
-  ctx.drawImage(canvas, 0, 0)
+/** 点击时重新生成当前格式的真实编码结果；失败给出反馈，清除或换图后取消旧下载。 */
+const handleDownload = async () => {
+  if (!currentFile.value || !cropReady.value || isDownloading.value) return
+  const source = currentFile.value
+  const format = selectedFormat.value.toLowerCase()
+  const exportId = ++activeExportId
+  isDownloading.value = true
+  exportError.value = ''
+  try {
+    const canvas = createExportCanvas(format)
+    const blob = await encodeImageCanvas(canvas, format, format === 'png' ? 1 : 0.9)
+    if (exportId !== activeExportId || source !== currentFile.value) return
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${source.name.replace(/\.[^/.]+$/, '')}_cropped.${format}`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.setTimeout(() => URL.revokeObjectURL(url), 30000)
+  } catch (error) {
+    if (exportId !== activeExportId) return
+    console.error('[ImageCrop] 图片导出失败', error)
+    exportError.value = error instanceof Error && /裁切|图片|格式|不支持/.test(error.message)
+      ? error.message : '图片导出失败，请调整裁切范围或更换格式后重试'
+    ElMessage.error(exportError.value)
+  } finally {
+    if (exportId === activeExportId) isDownloading.value = false
+  }
 }
 
-// 下载处理
-const handleDownload = () => {
-  if (!croppedImageUrl.value || !currentFile.value) return
-
-  const link = document.createElement('a')
-  link.href = croppedImageUrl.value
-  const ext = selectedFormat.value.toLowerCase()
-  const fileName = currentFile.value.name.replace(/\.[^/.]+$/, '')
-  link.download = `${fileName}_cropped.${ext}`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-}
-
-// 清除图片
+/** 清除当前图片并释放对象地址，同时使未完成的旧导出失效。 */
 const clearImage = () => {
+  activeExportId++
+  if (imageUrl.value) URL.revokeObjectURL(imageUrl.value)
   currentFile.value = null
   imageUrl.value = ''
-  croppedImageUrl.value = ''
+  cropReady.value = false
+  isDownloading.value = false
+  exportError.value = ''
   aspectRatio.value = undefined
   brightness.value = 100
   contrast.value = 100
@@ -416,7 +450,7 @@ const clearImage = () => {
   rotateAngle.value = 0
 }
 
-// 键盘事件处理
+/** 在裁切工具就绪时响应方向键微调，Shift 可扩大移动步长。 */
 const handleKeyDown = (e: KeyboardEvent) => {
   if (!cropperRef.value) return
 
@@ -440,9 +474,21 @@ const handleKeyDown = (e: KeyboardEvent) => {
 
 // 添加键盘事件监听
 window.addEventListener('keydown', handleKeyDown)
+
+/** 离开页面时释放图片与键盘监听，避免后续页面仍响应裁切操作。 */
+onBeforeUnmount(() => {
+  clearImage()
+  window.removeEventListener('keydown', handleKeyDown)
+})
 </script>
 
 <style scoped>
+.image-crop-preview :deep(.cropper-canvas img),
+.image-crop-preview :deep(.cropper-view-box img) {
+  filter: brightness(var(--crop-brightness, 100%)) contrast(var(--crop-contrast, 100%));
+}
+.file-tool-toolbar button:disabled { opacity: .5; cursor: not-allowed; }
+
 .cropper-container {
   max-height: 600px;
 }

@@ -8,23 +8,23 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h1>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="!currentFile">
           <div
-            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -43,9 +43,9 @@
 
         <!-- 文件预览和操作区域 -->
         <div v-if="currentFile" class="mt-6">
-          <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 mb-4">
-            <div class="flex items-center gap-3 min-w-0">
-              <span class="text-sm font-medium text-gray-700 truncate">{{ currentFile.name }}</span>
+          <div class="flex items-center justify-between bg-gray-50 border border-gray-100 rounded-lg px-4 py-3 mb-4 pdf-file-summary">
+            <div class="flex flex-wrap items-center gap-3 min-w-0">
+              <span class="text-sm font-medium text-gray-700 truncate pdf-file-name">{{ currentFile.name }}</span>
               <span class="text-xs text-gray-500">{{ formatFileSize(currentFile.size) }}</span>
             </div>
             <span class="text-xs text-gray-500">共 {{ pageCount }} 页</span>
@@ -58,7 +58,7 @@
                 共 {{ pageCount }} 页，已旋转 {{ rotatedPages }} 页
               </span>
             </div>
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2 pdf-actions">
               <button @click="rotateAll(-90)" :disabled="processing || loading"
                 class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-all">
                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,7 +108,7 @@
           <p v-if="loading" role="status" class="mb-4 text-sm text-gray-500">正在加载 PDF 页面预览...</p>
 
           <!-- 页面网格 -->
-          <VueDraggable v-model="pages" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6" :item-key="'id'"
+          <VueDraggable v-model="pages" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-6 pdf-page-grid" :item-key="'id'"
             :animation="300" :disabled="processing || loading" @start="isDragging = true" @end="isDragging = false">
             <template #item="{ element, index }">
               <div class="relative bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all group" :data-source-page="element.id + 1">
@@ -123,8 +123,9 @@
                 </div>
 
                 <!-- 操作按钮 -->
-                <div class="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="absolute top-4 right-4 flex space-x-2 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity pdf-page-actions">
                   <button @click="rotatePage(index, -90)" :disabled="processing || loading"
+                    :aria-label="`将源第 ${element.id + 1} 页逆时针旋转 90°`"
                     class="p-2 rounded-lg bg-white shadow-sm hover:shadow-md hover:bg-gray-50 transition-all"
                     title="逆时针旋转">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,6 +134,7 @@
                     </svg>
                   </button>
                   <button @click="rotatePage(index, 90)" :disabled="processing || loading"
+                    :aria-label="`将源第 ${element.id + 1} 页顺时针旋转 90°`"
                     class="p-2 rounded-lg bg-white shadow-sm hover:shadow-md hover:bg-gray-50 transition-all"
                     title="顺时针旋转">
                     <svg class="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -148,7 +150,7 @@
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
@@ -196,6 +198,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, reactive, computed, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

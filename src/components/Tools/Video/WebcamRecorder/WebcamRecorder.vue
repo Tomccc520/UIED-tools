@@ -203,19 +203,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="">
+  <div class="video-mobile-page ">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
+      <div class="video-mobile-workspace bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
         <div class="text-center mb-8">
-          <h2 class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">免费摄像头录制</h2>
+          <h1 class="video-mobile-title text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">免费摄像头录制</h1>
           <p class="text-gray-500 text-sm">在线录制摄像头视频，支持高清录制和音频采集</p>
         </div>
         <VideoToolNotice class="mb-8" />
 
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div class="video-mobile-editor grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- Left: Configuration Panel -->
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="video-mobile-controls bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
               <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                 <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -363,3 +363,5 @@ onUnmounted(() => {
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
+
+<style scoped src="../Shared/videoMobile.css"></style>

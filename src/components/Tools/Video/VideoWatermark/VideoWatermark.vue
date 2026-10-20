@@ -615,23 +615,23 @@ onBeforeRouteLeave((to, from, next) => {
 </script>
 
 <template>
-  <div class="">
+  <div class="video-mobile-page ">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl min-h-[600px] p-6 sm:p-8">
+      <div class="video-mobile-workspace bg-white rounded-xl min-h-[600px] p-6 sm:p-8">
         <div class="text-center mb-8">
-          <h2
-            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
-            免费视频加水印</h2>
+          <h1
+            class="video-mobile-title text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+            免费视频加水印</h1>
           <p class="text-gray-500 text-sm">在线为视频添加文字或图片水印，支持拖拽调节位置，本地处理保护隐私</p>
         </div>
         <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"
-          class="border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer mb-8 group"
+          class="video-mobile-upload border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer mb-8 group"
           :class="[isDragOver ? 'border-indigo-500 bg-indigo-50 scale-[1.02]' : 'border-gray-300 hover:border-indigo-500 hover:bg-indigo-50']"
           @click="fileInput?.click()" @dragover.prevent="isDragOver = true" @dragleave.prevent="isDragOver = false"
-          @drop.prevent="handleDrop">
+          @drop.prevent="handleDrop" role="button" tabindex="0" aria-label="选择视频" @keydown.enter="fileInput?.click()" @keydown.space.prevent="fileInput?.click()">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
           <div
             class="w-20 h-20 mx-auto bg-indigo-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -645,10 +645,10 @@ onBeforeRouteLeave((to, from, next) => {
         </div>
 
         <!-- Editor Area -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div v-else class="video-mobile-editor grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- Left: Configuration Panel -->
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="video-mobile-controls bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
               <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                 <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -682,7 +682,7 @@ onBeforeRouteLeave((to, from, next) => {
                       class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none" />
                   </div>
 
-                  <div class="grid grid-cols-2 gap-4">
+                  <div class="video-mobile-pair grid grid-cols-2 gap-4">
                     <div>
                       <label class="block text-sm font-medium text-gray-700 mb-2">颜色</label>
                       <input type="color" v-model="settings.textColor"
@@ -776,7 +776,7 @@ onBeforeRouteLeave((to, from, next) => {
 
                 <!-- Watermark Overlay -->
                 <div ref="watermarkRef"
-                  class="absolute cursor-move hover:ring-2 hover:ring-indigo-500 hover:ring-dashed p-1 rounded"
+                  class="video-watermark-overlay absolute cursor-move hover:ring-2 hover:ring-indigo-500 hover:ring-dashed p-1 rounded"
                   :style="{
                     left: `${x}px`,
                     top: `${y}px`,
@@ -855,3 +855,11 @@ onBeforeRouteLeave((to, from, next) => {
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
+
+<style scoped src="../Shared/videoMobile.css"></style>
+
+<style scoped>
+.video-watermark-overlay {
+  touch-action: none;
+}
+</style>

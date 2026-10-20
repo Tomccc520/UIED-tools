@@ -42,16 +42,16 @@ const props = withDefaults(defineProps<Props>(), {
 
     <ul class="space-y-2 text-xs sm:text-sm text-slate-600">
       <li class="flex items-start gap-2">
-        <span class="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-sky-500" />
-        <span>{{ props.formats }}</span>
+        <span class="mt-[6px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />
+        <span class="min-w-0 break-words">{{ props.formats }}</span>
       </li>
       <li class="flex items-start gap-2">
-        <span class="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-        <span>{{ props.compatibility }}</span>
+        <span class="mt-[6px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+        <span class="min-w-0 break-words">{{ props.compatibility }}</span>
       </li>
       <li class="flex items-start gap-2">
-        <span class="mt-[6px] inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
-        <span>{{ props.privacy }}</span>
+        <span class="mt-[6px] inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />
+        <span class="min-w-0 break-words">{{ props.privacy }}</span>
       </li>
     </ul>
   </section>

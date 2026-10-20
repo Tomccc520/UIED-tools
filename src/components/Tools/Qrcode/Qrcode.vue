@@ -1,4 +1,13 @@
+<!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-19
+ */
+-->
 <script setup lang="ts">
+import '@/styles/file-tool-responsive.css'
 import { ref, reactive, watch, nextTick } from '@vue/runtime-core'
 import DetailHeader from '@/components/Layout/DetailHeader/DetailHeader.vue'
 import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
@@ -225,25 +234,25 @@ const downloadQRCode = () => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen uied-file-tool">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
-        <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+      <div class="file-tool-card bg-white rounded-xl p-8 mb-4 shadow-sm">
+        <div class="file-tool-heading text-center mb-8 relative">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="file-tool-heading__title relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">生成精美的二维码，支持自定义样式和内容</p>
         </div>
 
         <!-- 配置区域 -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div class="file-tool-grid grid grid-cols-1 lg:grid-cols-2 gap-8">
           <!-- 左侧配置区域 -->
           <div class="space-y-6">
             <!-- 类型选择 -->
-            <div class="bg-gray-50 rounded-lg p-6">
+            <div class="file-tool-panel bg-gray-50 rounded-lg p-6">
               <div class="mb-4 text-gray-700 font-medium">类型</div>
               <el-radio-group v-model="info.mode" class="flex flex-wrap gap-4">
                 <el-radio label="url" class="!mr-0">网址</el-radio>
@@ -252,15 +261,15 @@ const downloadQRCode = () => {
             </div>
 
             <!-- 内容输入区域 -->
-            <div class="bg-gray-50 rounded-lg p-6">
+            <div class="file-tool-panel bg-gray-50 rounded-lg p-6">
               <div class="mb-4 text-gray-700 font-medium">内容</div>
-              <el-input v-model="info.content" type="textarea" rows="3" class="w-full"
+              <el-input v-model="info.content" type="textarea" rows="3" class="w-full" aria-label="二维码内容"
                 :placeholder="info.mode === 'url' ? '请输入网址，如：www.example.com' : '请输入英文、数字或符号，暂不支持中文'">
               </el-input>
             </div>
 
             <!-- 样式配置区域 -->
-            <div class="bg-gray-50 rounded-lg p-6">
+            <div class="file-tool-panel bg-gray-50 rounded-lg p-6">
               <div class="mb-4 text-gray-700 font-medium">样式设置</div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- 尺寸选择 -->
@@ -334,7 +343,7 @@ const downloadQRCode = () => {
           <!-- 预览和设置区域 -->
           <div class="w-full">
             <!-- 预览区域 -->
-            <div class="bg-gray-50 rounded-lg p-6 sm:p-8">
+            <div class="file-tool-panel bg-gray-50 rounded-lg p-6 sm:p-8">
               <div class="mb-6">
                 <h3 class="text-lg font-medium text-gray-800 mb-2">预览效果</h3>
                 <p class="text-sm text-gray-500">实时预览生成的二维码效果</p>

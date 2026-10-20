@@ -13,14 +13,16 @@ withDefaults(defineProps<{
   title: string
   description: string
   workspaceLabel?: string
+  compact?: boolean
 }>(), {
   eyebrow: '标准工具',
-  workspaceLabel: '工作区'
+  workspaceLabel: '工作区',
+  compact: false
 })
 </script>
 
 <template>
-  <article class="standard-tool-template">
+  <article class="standard-tool-template" :class="{ 'standard-tool-template--compact': compact }">
     <header class="standard-tool-header">
       <div class="standard-tool-header__marker" aria-hidden="true">
         <span>01</span>
@@ -47,7 +49,7 @@ withDefaults(defineProps<{
       <div class="standard-tool-workspace__content">
         <slot></slot>
       </div>
-      <footer class="standard-tool-workspace__actions">
+      <footer v-if="!compact || $slots.actions" class="standard-tool-workspace__actions">
         <slot name="actions"></slot>
       </footer>
     </section>
@@ -214,7 +216,59 @@ withDefaults(defineProps<{
   margin-top: 18px;
 }
 
+/* 紧凑工作区按页面启用，让上传和参数操作更早出现在首屏。 */
+.standard-tool-template--compact .standard-tool-header {
+  display: block;
+  min-height: 0;
+  padding: 24px;
+  border-radius: 12px 12px 0 0;
+  background: #fff;
+}
+
+.standard-tool-template--compact .standard-tool-header::after,
+.standard-tool-template--compact .standard-tool-header__marker,
+.standard-tool-template--compact .standard-tool-header__eyebrow,
+.standard-tool-template--compact .standard-tool-header__stamp,
+.standard-tool-template--compact .standard-tool-workspace::before {
+  display: none;
+}
+
+.standard-tool-template--compact .standard-tool-header h1 {
+  font-size: 28px;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.standard-tool-template--compact .standard-tool-header__description {
+  margin-top: 8px;
+  font-size: 14px;
+}
+
+.standard-tool-template--compact .standard-tool-header__meta {
+  gap: 8px 16px;
+  margin-top: 12px;
+}
+
+.standard-tool-template--compact .standard-tool-workspace {
+  padding: 0 24px 24px;
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  box-shadow: none;
+}
+
 @media (max-width: 720px) {
+  .standard-tool-template--compact .standard-tool-header {
+    padding: 20px 16px;
+  }
+
+  .standard-tool-template--compact .standard-tool-header h1 {
+    font-size: 24px;
+  }
+
+  .standard-tool-template--compact .standard-tool-workspace {
+    padding: 0 16px 16px;
+  }
+
   .standard-tool-header {
     grid-template-columns: 42px minmax(0, 1fr);
     gap: 14px;

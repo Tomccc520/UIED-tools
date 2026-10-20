@@ -14,10 +14,10 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen json-tran-page">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="json-tran-card bg-white rounded-xl p-8 mb-4 shadow-sm">
         <!-- 标题区域 -->
         <div class="text-center mb-8 relative">
           <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
@@ -28,18 +28,18 @@
           <p class="text-gray-500 text-sm mt-6">专业的JSON格式化工具，支持语法高亮、校验、压缩等功能</p>
         </div>
 
-        <div class="space-y-6">
+        <div class="json-tran-workspace space-y-6">
           <!-- 编辑器区域 -->
-          <div class="bg-gray-50 rounded-lg p-6">
+          <div class="json-tran-editor-panel bg-gray-50 rounded-lg p-6">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-base font-medium text-gray-700">JSON内容</h3>
             </div>
-            <div class="border rounded-lg overflow-hidden bg-white">
+            <div class="json-tran-editor border rounded-lg overflow-hidden bg-white">
               <AsyncCodemirror
                 v-model="info.code"
                 placeholder="在此输入JSON内容..."
                 :height="400"
-                :autofocus="true"
+                :autofocus="false"
                 :indent-with-tab="true"
                 :tab-size="2"
                 :extensions="info.extensions"
@@ -48,7 +48,7 @@
           </div>
 
           <!-- 操作按钮 -->
-          <div class="flex flex-wrap gap-3">
+          <div class="json-tran-actions flex flex-wrap gap-3">
             <el-button type="primary" @click="formatJson" class="px-6 h-10">校验/格式化</el-button>
             <el-button type="primary" @click="compress" class="px-6 h-10">压缩</el-button>
             <el-button type="primary" @click="tran" class="px-6 h-10">转义</el-button>
@@ -318,6 +318,46 @@ const copyRes = async () => {
 </script>
 
 <style scoped>
+.json-tran-page {
+  container-type: inline-size;
+  container-name: json-tran;
+  min-width: 0;
+}
+
+.json-tran-card,
+.json-tran-workspace,
+.json-tran-editor-panel,
+.json-tran-editor {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.json-tran-editor :deep(.cm-editor) {
+  max-width: 100%;
+}
+
+.json-tran-editor :deep(.cm-scroller) {
+  overflow: auto;
+}
+
+.json-tran-actions :deep(.el-button) {
+  margin-left: 0;
+}
+
+@container json-tran (max-width: 640px) {
+  .json-tran-card { padding: 20px 12px; }
+  .json-tran-card h1 { font-size: 26px; line-height: 1.3; }
+  .json-tran-card h1 > span { padding-inline: 0; }
+  .json-tran-editor-panel { padding: 12px 8px; }
+  .json-tran-editor :deep(.cm-editor) { height: 320px !important; }
+  .json-tran-editor :deep(.cm-content) { font-size: 16px; }
+  .json-tran-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .json-tran-actions :deep(.el-button) { width: 100%; min-width: 0; min-height: 44px; padding-inline: 8px; }
+  .json-tran-card :deep(.grid) { grid-template-columns: minmax(0, 1fr); }
+  .json-tran-card :deep(.grid > div) { min-width: 0; }
+  .json-tran-card :deep(p) { overflow-wrap: anywhere; }
+}
+
 .cm-editor {
   height: 100%;
 }

@@ -18,19 +18,19 @@
 -->
 
 <template>
-  <div class="">
+  <div class="clip-path-page">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="clip-path-card bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 CSS Clip-path 生成器</h2>
+          <h1 class="text-4xl font-bold mb-3 text-gray-800">免费 CSS Clip-path 生成器</h1>
           <p class="text-gray-500 text-sm">在线可视化生成 CSS clip-path 代码，支持拖拽调整多边形顶点，提供多种常用形状预设</p>
         </div>
 
-        <div class="max-w-6xl mx-auto flex flex-col lg:flex-row gap-8">
+        <div class="clip-path-layout max-w-6xl mx-auto flex flex-col gap-8">
           <!-- Preview Area -->
           <div
-            class="flex-1 bg-gray-50 rounded-xl p-8 border border-gray-100 flex items-center justify-center min-h-[500px]">
-            <div class="relative w-[300px] h-[300px] md:w-[400px] md:h-[400px] bg-white shadow-lg select-none group"
+            class="clip-path-preview flex-1 bg-gray-50 rounded-xl p-8 border border-gray-100 flex items-center justify-center min-h-[500px]">
+            <div class="clip-path-board relative bg-white shadow-lg select-none group"
               ref="previewRef"
               :style="{ backgroundImage: showImage ? `url(${demoImage})` : 'none', backgroundSize: 'cover' }">
               <!-- The Clipped Element -->
@@ -40,8 +40,8 @@
 
               <!-- Handles -->
               <div v-for="(point, index) in points" :key="index"
-                class="absolute w-4 h-4 -ml-2 -mt-2 bg-white border-2 border-blue-600 rounded-full cursor-move z-10 hover:scale-125 transition-transform shadow-sm"
-                :class="{ 'bg-blue-600 ring-2 ring-blue-200': activeIndex === index }"
+                class="clip-path-point absolute cursor-move z-10"
+                :class="{ 'is-active': activeIndex === index }"
                 :style="{ left: point.x + '%', top: point.y + '%' }" @mousedown.stop="startDrag(index, $event)"
                 @touchstart.stop.prevent="startTouch(index, $event)">
                 <!-- Delete button on hover (optional, maybe overkill for now) -->
@@ -50,15 +50,15 @@
           </div>
 
           <!-- Controls -->
-          <div class="w-full lg:w-96 flex flex-col gap-6">
+          <div class="clip-path-controls w-full flex flex-col gap-6">
 
             <!-- Presets -->
             <div class="bg-gray-50 p-6 rounded-xl border border-gray-100">
               <h3 class="font-bold text-gray-800 mb-4">形状预设</h3>
               <div class="grid grid-cols-4 gap-2">
-                <button v-for="preset in presets" :key="preset.name"
+                <button v-for="preset in presets" :key="preset.name" type="button"
                   class="aspect-square bg-white border border-gray-200 rounded hover:border-blue-500 hover:bg-blue-50 transition-all flex items-center justify-center p-2"
-                  @click="applyPreset(preset.points)" :title="preset.name">
+                  @click="applyPreset(preset.points)" :title="preset.name" :aria-label="preset.name">
                   <div class="w-full h-full bg-gray-800" :style="{ clipPath: getPolygonCss(preset.points) }"></div>
                 </button>
               </div>
@@ -82,10 +82,10 @@
 
             <!-- Code -->
             <div class="bg-gray-900 rounded-xl p-4 relative group">
-              <div class="absolute top-4 right-4">
+              <div class="clip-path-code-heading flex flex-wrap items-center justify-between gap-2 mb-3">
+                <span class="text-gray-400 text-xs">CSS 代码</span>
                 <el-button type="primary" size="small" :icon="CopyDocument" @click="copyCss">复制 CSS</el-button>
               </div>
-              <div class="text-gray-400 text-xs mb-2">CSS Code</div>
               <pre
                 class="text-blue-300 font-mono text-sm overflow-x-auto break-all whitespace-pre-wrap">clip-path: {{ cssClipPath }};</pre>
             </div>
@@ -221,5 +221,40 @@ const onTouchEnd = () => {
 </script>
 
 <style scoped>
-/* Optional specific styles */
+
+.clip-path-page { container-type: inline-size; container-name: clip-path; min-width: 0; }
+.clip-path-layout, .clip-path-preview, .clip-path-controls { min-width: 0; }
+.clip-path-board { width: 300px; max-width: 100%; aspect-ratio: 1; flex-shrink: 0; }
+/* 视觉顶点保持 16px，拖拽命中区域扩大到 44px；坐标仍以画板实际边界计算。 */
+.clip-path-point { width: 44px; height: 44px; margin: -22px 0 0 -22px; touch-action: none; }
+.clip-path-point::before {
+  content: "";
+  position: absolute;
+  inset: 14px;
+  border: 2px solid #2563eb;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgb(0 0 0 / 12%);
+}
+.clip-path-point.is-active::before { background: #2563eb; box-shadow: 0 0 0 3px #bfdbfe; }
+.clip-path-controls button:focus-visible { outline: 2px solid var(--uied-color-primary); outline-offset: 3px; }
+@media (min-width: 768px) {
+  .clip-path-board { width: 400px; }
+}
+@container clip-path (min-width: 900px) {
+  .clip-path-layout { flex-direction: row; }
+  .clip-path-controls { width: 384px; flex-shrink: 0; }
+}
+@container clip-path (max-width: 600px) {
+  .clip-path-card { padding: 20px 12px; }
+  .clip-path-card h1 { font-size: 26px; line-height: 1.3; }
+  .clip-path-layout { gap: 16px; }
+  .clip-path-preview { min-height: 0; padding: 24px; }
+  .clip-path-controls > div { padding: 16px 12px; }
+  .clip-path-controls .grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .clip-path-controls .grid button { min-height: 44px; min-width: 0; }
+  .clip-path-controls .el-button { min-height: 44px; }
+  .clip-path-controls .flex.justify-between { flex-wrap: wrap; gap: 8px; }
+}
+
 </style>

@@ -15,10 +15,12 @@
  * @author UIED技术团队
  * @createDate 2026-03-19
  */
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import MobileToolActions from '@/components/Common/MobileToolActions.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
 import VideoUploadZone from '@/components/Tools/Video/Shared/VideoUploadZone.vue'
@@ -87,6 +89,15 @@ const resultVideoRef = ref<HTMLVideoElement | null>(null)
 const videoFile = ref<File | null>(null)
 const videoUrl = ref('')
 const resultVideoUrl = ref('')
+const isMobileViewport = useMediaQuery('(max-width: 640px)')
+const mobilePreviewSide = ref<'original' | 'compressed'>('original')
+const mobileSettingsChanged = ref(false)
+
+/** 结果生成后切换大预览；清理结果时恢复原视频，视频节点始终保留供压缩读取。 */
+watch(resultVideoUrl, (url) => {
+  mobilePreviewSide.value = url ? 'compressed' : 'original'
+  if (url) mobileSettingsChanged.value = false
+})
 const resultFileExt = ref('webm')
 const resultFileSizeMB = ref(0)
 const resultDownloadName = ref('')
@@ -127,6 +138,14 @@ const settings = reactive({
   frameRate: 24,
   outputFormat: 'auto' as OutputFormat
 })
+
+/** 保留旧输出供检查，但参数变化后手机主操作必须重新压缩，不能把旧文件当作新参数的结果。 */
+watch(settings, () => {
+  if (resultVideoUrl.value && !isProcessing.value) mobileSettingsChanged.value = true
+}, { deep: true })
+
+/** 更换源文件时清除参数变更标记，不继承上一份视频的下载状态。 */
+watch(videoFile, () => { mobileSettingsChanged.value = false })
 
 const toolFeatures = [
   '支持多种格式：兼容 MP4、AVI、MOV、MKV、WMV、WebM 等常见视频格式。',
@@ -1366,10 +1385,10 @@ onBeforeRouteLeave((to, from, next) => {
 </script>
 
 <template>
-  <div class="video-compress-page min-h-screen">
+  <div class="video-mobile-page video-compress-page min-h-screen">
     <div class="mx-auto">
-      <section class="video-compress-workspace mb-4">
-        <VideoWorkspaceIntro
+      <section class="video-mobile-workspace video-compress-workspace mb-4">
+        <VideoWorkspaceIntro heading-tag="h1"
           title="视频压缩"
           description="自动输出兼容性更好的 H.264 MP4，压缩后可直接预览并下载。"
           :specs="[`最大 ${serverConfig?.maxSizeMB || DEFAULT_MAX_FILE_SIZE_MB}MB`, 'H.264 + AAC', '最高 30fps']"
@@ -1386,16 +1405,16 @@ onBeforeRouteLeave((to, from, next) => {
           />
         </template>
 
-        <div v-else class="video-compress-editor grid grid-cols-1 lg:grid-cols-12">
+        <div v-else class="video-mobile-editor video-compress-editor grid grid-cols-1 lg:grid-cols-12">
           <div class="lg:col-span-4 space-y-6">
-            <div class="video-compress-controls sticky top-4">
+            <div class="video-mobile-controls video-compress-controls sticky top-4">
               <div class="video-compress-controls__head">
                 <h3>压缩设置</h3>
                 <button type="button" :disabled="isProcessing" @click="triggerSelectVideo">更换视频</button>
               </div>
 
               <div class="video-source-summary">
-                <div class="flex items-center justify-between text-sm">
+                <div class="video-source-summary__name flex items-center justify-between text-sm">
                   <span class="text-gray-500">文件名</span>
                   <span class="text-gray-800 max-w-[170px] truncate text-right">{{ videoFile?.name }}</span>
                 </div>
@@ -1415,11 +1434,14 @@ onBeforeRouteLeave((to, from, next) => {
               </div>
 
               <div class="space-y-4">
+                <details class="video-compress-settings" :open="!isMobileViewport">
+                  <summary><strong>压缩参数</strong><span>{{ settings.engine === 'server' ? '专业 H.264' : '浏览器本地' }} · 点击调整</span></summary>
+                  <div class="video-compress-settings__body space-y-5">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">压缩方式</label>
-                  <el-radio-group v-model="settings.engine" class="w-full">
-                    <el-radio-button label="server">专业 H.264</el-radio-button>
-                    <el-radio-button label="browser">浏览器本地</el-radio-button>
+                  <el-radio-group v-model="settings.engine" :disabled="isProcessing" class="w-full">
+                    <el-radio-button value="server">专业 H.264</el-radio-button>
+                    <el-radio-button value="browser">浏览器本地</el-radio-button>
                   </el-radio-group>
                 </div>
 
@@ -1438,10 +1460,10 @@ onBeforeRouteLeave((to, from, next) => {
                 <template v-if="settings.engine === 'browser'">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">压缩模式</label>
-                  <el-radio-group v-model="settings.mode" class="w-full">
-                    <el-radio-button label="ratio">按压缩比例</el-radio-button>
-                    <el-radio-button label="target-size">按目标大小</el-radio-button>
-                    <el-radio-button label="bitrate">按目标码率</el-radio-button>
+                  <el-radio-group v-model="settings.mode" :disabled="isProcessing" class="w-full">
+                    <el-radio-button value="ratio">按压缩比例</el-radio-button>
+                    <el-radio-button value="target-size">按目标大小</el-radio-button>
+                    <el-radio-button value="bitrate">按目标码率</el-radio-button>
                   </el-radio-group>
                 </div>
 
@@ -1450,23 +1472,23 @@ onBeforeRouteLeave((to, from, next) => {
                     <span>压缩比例</span>
                     <span>{{ settings.compressionRatio }}%</span>
                   </div>
-                  <el-slider v-model="settings.compressionRatio" :min="5" :max="90" />
+                  <el-slider v-model="settings.compressionRatio" :min="5" :max="90" :disabled="isProcessing" />
                 </div>
 
                 <div v-if="settings.mode === 'target-size'">
                   <label class="block text-sm font-medium text-gray-700 mb-2">目标大小（MB）</label>
-                  <el-input-number v-model="settings.targetSizeMB" :min="1" :max="Math.max(2, Number(sourceSizeMB.toFixed(0)))" :step="1" class="w-full" />
+                  <el-input-number v-model="settings.targetSizeMB" :min="1" :max="Math.max(2, Number(sourceSizeMB.toFixed(0)))" :step="1" :disabled="isProcessing" class="w-full" />
                 </div>
 
                 <div v-if="settings.mode === 'bitrate'">
                   <label class="block text-sm font-medium text-gray-700 mb-2">目标视频码率（kbps）</label>
-                  <el-input-number v-model="settings.customBitrateKbps" :min="120" :max="20000" :step="100" class="w-full" />
+                  <el-input-number v-model="settings.customBitrateKbps" :min="120" :max="20000" :step="100" :disabled="isProcessing" class="w-full" />
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="video-mobile-pair grid grid-cols-2 gap-4">
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">帧率</label>
-                    <el-select v-model="settings.frameRate" class="w-full">
+                    <el-select v-model="settings.frameRate" :disabled="isProcessing" class="w-full">
                       <el-option :value="24" label="24 fps" />
                       <el-option :value="30" label="30 fps" />
                       <el-option :value="60" label="60 fps" />
@@ -1474,7 +1496,7 @@ onBeforeRouteLeave((to, from, next) => {
                   </div>
                   <div>
                     <label class="block text-sm font-medium text-gray-700 mb-2">输出格式</label>
-                    <el-select v-model="settings.outputFormat" class="w-full">
+                    <el-select v-model="settings.outputFormat" :disabled="isProcessing" class="w-full">
                       <el-option value="auto" label="自动" />
                       <el-option value="webm" label="WebM" />
                       <el-option value="mp4" label="MP4（实验）" />
@@ -1484,12 +1506,12 @@ onBeforeRouteLeave((to, from, next) => {
 
                 <div class="flex items-center justify-between rounded-lg bg-white border border-gray-200 p-3">
                   <span class="text-sm text-gray-700">保留音频</span>
-                  <el-switch v-model="settings.keepAudio" />
+                  <el-switch v-model="settings.keepAudio" :disabled="isProcessing" />
                 </div>
 
                 <div v-if="settings.keepAudio">
                   <label class="block text-sm font-medium text-gray-700 mb-2">音频码率（kbps）</label>
-                  <el-input-number v-model="settings.audioBitrateKbps" :min="64" :max="320" :step="32" class="w-full" />
+                  <el-input-number v-model="settings.audioBitrateKbps" :min="64" :max="320" :step="32" :disabled="isProcessing" class="w-full" />
                 </div>
 
                 <div class="rounded-lg bg-indigo-50 border border-indigo-100 p-4 text-sm space-y-1">
@@ -1503,6 +1525,10 @@ onBeforeRouteLeave((to, from, next) => {
                   </div>
                 </div>
                 </template>
+                  </div>
+                </details>
+
+                <p v-if="mobileSettingsChanged && resultVideoUrl" class="video-compress-stale" role="status">参数已修改，当前预览仍是上次结果；重新压缩后生效。</p>
 
                 <VideoProcessStatus
                   v-if="isProcessing"
@@ -1529,12 +1555,18 @@ onBeforeRouteLeave((to, from, next) => {
             </div>
           </div>
 
-          <div class="lg:col-span-8 space-y-6">
-            <div class="video-preview-panel">
+          <div class="video-compress-output lg:col-span-8 space-y-6">
+            <div class="video-compress-preview-tabs" role="group" aria-label="视频预览对比">
+              <button type="button" :aria-pressed="mobilePreviewSide === 'original'" @click="mobilePreviewSide = 'original'">原视频</button>
+              <button type="button" :aria-pressed="mobilePreviewSide === 'compressed'" :disabled="!resultVideoUrl || isProcessing" @click="mobilePreviewSide = 'compressed'">压缩后</button>
+            </div>
+            <div class="video-preview-panel" :class="{ 'video-compress-preview--mobile-hidden': mobilePreviewSide !== 'original' }">
               <video
                 ref="previewVideoRef"
                 :src="videoUrl"
                 controls
+                playsinline
+                aria-label="原视频预览"
                 class="w-full max-h-[500px]"
                 @loadedmetadata="onSourceVideoLoaded"
               />
@@ -1542,8 +1574,8 @@ onBeforeRouteLeave((to, from, next) => {
 
             <div v-if="resultVideoUrl" class="video-result-panel animate-fade-in">
               <div class="flex flex-col gap-5">
-                <div class="flex items-center justify-between gap-3 flex-wrap">
-                  <div class="flex items-center gap-2">
+                <div class="video-compress-result-heading flex items-center justify-between gap-3 flex-wrap">
+                  <div class="video-mobile-actions flex items-center gap-2">
                     <h3 class="text-xl font-bold text-gray-800">压缩完成</h3>
                     <span
                       v-if="serverResultCompressed !== null"
@@ -1551,7 +1583,7 @@ onBeforeRouteLeave((to, from, next) => {
                       :class="serverResultCompressed ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'"
                     >{{ serverResultCompressed ? 'H.264 MP4' : '已保留原视频' }}</span>
                   </div>
-                  <div class="flex items-center gap-2">
+                  <div class="video-mobile-actions flex items-center gap-2">
                     <button
                       class="inline-flex items-center px-4 py-2 border border-gray-300 hover:border-indigo-400 hover:text-indigo-700 text-gray-700 font-medium rounded-lg transition-colors"
                       @click="triggerSelectVideo"
@@ -1567,20 +1599,23 @@ onBeforeRouteLeave((to, from, next) => {
                   </div>
                 </div>
 
-                <VideoResultComparison :metrics="resultComparisonMetrics" :summary="getCompressionText()" />
+                <VideoResultComparison class="video-compress-result-metrics" :metrics="resultComparisonMetrics" :summary="getCompressionText()" />
 
                 <MemberCoreToolTips
+                  class="video-compress-result-tips"
                   tool-key="video-compress"
                   eyebrow="完成提醒"
                   title="下载前请检查压缩结果"
                   :items="videoCompressExperienceTips"
                 />
 
-                <div class="bg-black rounded-lg overflow-hidden flex items-center justify-center">
+                <div class="video-compress-result-preview bg-black rounded-lg overflow-hidden flex items-center justify-center" :class="{ 'video-compress-preview--mobile-hidden': mobilePreviewSide !== 'compressed' }">
                   <video
                     ref="resultVideoRef"
                     :src="resultVideoUrl"
                     controls
+                    playsinline
+                    aria-label="压缩视频预览"
                     class="w-full max-h-[500px]"
                     @loadedmetadata="onResultVideoLoaded"
                   />
@@ -1591,7 +1626,8 @@ onBeforeRouteLeave((to, from, next) => {
         </div>
       </section>
 
-      <section class="video-compress-guide mb-4">
+      <details class="video-compress-guide mb-4" :open="!isMobileViewport">
+        <summary class="video-compress-guide__summary">使用指南与常见问题 <span aria-hidden="true">⌄</span></summary>
         <div class="video-guide-intro">
           <h3>关于视频压缩</h3>
           <p>
@@ -1622,7 +1658,16 @@ onBeforeRouteLeave((to, from, next) => {
             <p>{{ faq.answer }}</p>
           </details>
         </div>
-      </section>
+      </details>
+
+      <MobileToolActions v-if="videoFile"
+        aria-label="视频压缩操作"
+        :title="isProcessing ? '正在压缩视频' : mobileSettingsChanged && resultVideoUrl ? '参数已修改' : resultVideoUrl ? '压缩已完成' : '已选择视频'"
+        :description="isProcessing ? `${Math.round(progress)}% · ${statusText}` : resultVideoUrl && !mobileSettingsChanged ? getCompressionText() : '可展开参数调整，预览保留原视频'"
+        :action-label="isProcessing ? '压缩中…' : resultVideoUrl && !mobileSettingsChanged ? '下载视频' : mobileSettingsChanged ? '重新压缩' : '开始压缩'"
+        :busy="isProcessing" cancel-label="取消"
+        @action="resultVideoUrl && !mobileSettingsChanged ? downloadResult() : compressVideo()"
+        @cancel="cancelProcessing" />
 
       <ToolsRecommend :currentPath="route.path" />
     </div>
@@ -1634,7 +1679,7 @@ onBeforeRouteLeave((to, from, next) => {
   --video-border: #e2e8f0;
   --video-muted: #64748b;
   --video-strong: #0f172a;
-  --video-primary: #2563eb;
+  --video-primary: var(--uied-color-primary);
   color: var(--video-strong);
 }
 
@@ -1769,6 +1814,14 @@ onBeforeRouteLeave((to, from, next) => {
   overflow: hidden;
 }
 
+.video-compress-settings > summary { display: none; }
+.video-compress-preview-tabs { display: none; }
+.video-compress-stale { margin: 0; color: var(--uied-color-text-secondary); font-size: 13px; line-height: 1.7; }
+.video-compress-guide__summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 48px; margin-bottom: 16px; list-style: none; color: var(--uied-color-text); font-size: 16px; font-weight: 600; cursor: pointer; }
+.video-compress-guide__summary::-webkit-details-marker { display: none; }
+.video-compress-guide:not([open]) > summary { margin-bottom: 0; }
+.video-compress-guide[open] > summary span { transform: rotate(180deg); }
+
 .video-result-panel {
   border: 1px solid #bbf7d0;
   border-left: 4px solid #22c55e;
@@ -1871,6 +1924,33 @@ onBeforeRouteLeave((to, from, next) => {
 }
 
 @media (max-width: 640px) {
+  .video-compress-settings { border-top: 1px solid var(--uied-color-border); }
+  .video-compress-settings > summary { display: grid; gap: 4px; min-height: 64px; padding: 12px 0; list-style: none; cursor: pointer; }
+  .video-compress-settings > summary::-webkit-details-marker { display: none; }
+  .video-compress-settings > summary strong { font-size: 15px; }
+  .video-compress-settings > summary span { color: var(--uied-color-text-secondary); font-size: 13px; }
+  .video-compress-settings__body { padding-top: 16px; }
+  .video-compress-settings__body > * + * { margin-top: 24px; }
+  .video-compress-primary { display: none; }
+  .video-source-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 0; border-bottom: 0; }
+  .video-source-summary > div { flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; font-size: 13px; }
+  .video-source-summary__name { grid-column: 1 / -1; }
+  .video-source-summary__name > span:last-child { max-width: 100%; text-align: left; white-space: normal; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+  .video-compress-output { display: grid; gap: 16px; }
+  .video-compress-output > * { margin-top: 0 !important; }
+  .video-compress-preview-tabs { display: grid; order: 0; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; border-radius: 8px; background: var(--uied-color-page); }
+  .video-compress-preview-tabs button { min-height: 44px; border: 1px solid transparent; border-radius: 6px; color: var(--uied-color-text-secondary); background: transparent; font-size: 14px; cursor: pointer; }
+  .video-compress-preview-tabs button[aria-pressed='true'] { border-color: var(--uied-color-border); background: var(--uied-color-surface); color: var(--uied-color-primary); font-weight: 600; }
+  .video-compress-preview-tabs button:disabled { opacity: .5; cursor: not-allowed; }
+  .video-preview-panel, .video-compress-result-preview { order: 1; min-height: 200px; }
+  .video-preview-panel video, .video-compress-result-preview video { min-height: 200px; max-height: 320px; background: #020617; }
+  .video-compress-output > .video-result-panel,
+  .video-compress-output > .video-result-panel > .flex { display: contents; }
+  .video-compress-result-heading { order: 2; }
+  .video-compress-result-heading .video-mobile-actions:last-child { display: none; }
+  .video-compress-result-metrics { order: 3; }
+  .video-compress-result-tips { order: 4; }
+  .video-compress-preview--mobile-hidden { display: none !important; }
   .video-compress-workspace {
     padding: 16px;
   }
@@ -1902,4 +1982,31 @@ onBeforeRouteLeave((to, from, next) => {
     border-top: 1px solid var(--video-border);
   }
 }
+
+@container video-mobile (max-width: 600px) {
+  .video-compress-controls,
+  .video-result-panel {
+    padding: 16px 12px;
+  }
+
+  .video-compress-controls__head button,
+  .video-guide-faq summary {
+    min-height: 44px;
+    align-content: center;
+  }
+
+  .video-server-specs__head {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .video-source-summary .truncate {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
 </style>
+
+<style scoped src="../Shared/videoMobile.css"></style>

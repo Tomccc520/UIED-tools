@@ -7,6 +7,7 @@
 -->
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -383,17 +384,17 @@ const formatFileSize = (bytes: number) => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="relative px-12 pdf-workspace-title-inner">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
@@ -401,10 +402,12 @@ const formatFileSize = (bytes: number) => {
         <div class="grid grid-cols-1 gap-8">
           <!-- 上传区域 -->
           <div
-            class="relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
+            class="pdf-upload-area relative border border-dashed rounded-lg min-h-[200px] flex flex-col items-center justify-center transition-colors duration-200 bg-white hover:border-blue-400"
             :class="isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-200'" @dragover.prevent="handleDragover"
-            @dragleave.prevent="handleDragleave" @drop.prevent="handleDrop" @click="triggerFileInput">
-            <input ref="fileInputRef" type="file" multiple accept=".jpg,.jpeg,.png" class="hidden"
+            @dragleave.prevent="handleDragleave" @drop.prevent="handleDrop" @click="triggerFileInput" role="button" tabindex="0"
+            @keydown.enter.prevent="triggerFileInput" @keydown.space.prevent="triggerFileInput"
+            aria-label="选择图片">
+            <input ref="fileInputRef" type="file" aria-label="选择图片" multiple accept=".jpg,.jpeg,.png" class="hidden"
               @change="handleFileInputChange" />
             <div class="text-center px-4">
               <div class="w-8 h-8 mb-2 mx-auto">
@@ -419,7 +422,7 @@ const formatFileSize = (bytes: number) => {
           </div>
 
           <!-- 转换选项面板 -->
-          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6">
+          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6 pdf-settings-panel">
             <div class="mb-4 text-gray-700 font-medium">转换设置</div>
             <div class="space-y-6">
               <!-- 合并方式 -->
@@ -427,7 +430,7 @@ const formatFileSize = (bytes: number) => {
                 <div class="flex items-center justify-between mb-2">
                   <span class="text-sm font-medium text-gray-600">合并方式</span>
                 </div>
-                <div class="flex space-x-3">
+                <div class="flex flex-wrap gap-3 pdf-actions">
                   <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors"
                     :class="[config.mergeType === 'merge' ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500']"
                     @click="config.mergeType = 'merge'">
@@ -466,7 +469,7 @@ const formatFileSize = (bytes: number) => {
               </div>
 
               <!-- 操作按钮 -->
-              <div class="flex space-x-3">
+              <div class="flex flex-wrap gap-3 pdf-actions">
                 <el-button type="primary" size="large" :loading="isProcessing" @click="convertToPdf"
                   class="flex-1 !h-10">
                   {{ isProcessing ? '转换中...' : '开始转换' }}
@@ -479,8 +482,8 @@ const formatFileSize = (bytes: number) => {
           </div>
 
           <!-- 文件列表展示区域 -->
-          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6">
-            <div class="flex items-center justify-between mb-4">
+          <div v-if="fileList.length > 0" class="bg-gray-50 rounded-lg p-6 pdf-settings-panel">
+            <div class="flex items-center justify-between mb-4 pdf-file-summary">
               <div class="flex items-center space-x-2">
                 <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -496,7 +499,7 @@ const formatFileSize = (bytes: number) => {
               </button>
             </div>
 
-            <draggable v-model="fileList" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4"
+            <draggable v-model="fileList" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pdf-page-grid"
               item-key="id" :animation="200" ghost-class="ghost">
               <template #item="{ element }">
                 <div
@@ -508,11 +511,11 @@ const formatFileSize = (bytes: number) => {
                   </div>
                   <!-- 文件信息 -->
                   <div class="p-2">
-                    <div class="text-xs text-gray-600 truncate">{{ element.name }}</div>
+                    <div class="text-xs text-gray-600 truncate pdf-file-name">{{ element.name }}</div>
                     <div class="text-xs text-gray-400">{{ formatFileSize(element.file.size) }}</div>
                   </div>
                   <!-- 删除按钮 -->
-                  <button @click.stop="handleRemove(element)"
+                  <button @click.stop="handleRemove(element)" :aria-label="`移除 ${element.name}`"
                     class="absolute top-2 right-2 w-6 h-6 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"

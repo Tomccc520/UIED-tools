@@ -66,6 +66,7 @@ const handleDrop = (event: DragEvent) => {
   justify-content: center;
   padding: 36px 20px;
   text-align: center;
+  overflow-wrap: anywhere;
   transition: border-color 160ms ease, background-color 160ms ease;
 }
 
@@ -112,9 +113,15 @@ const handleDrop = (event: DragEvent) => {
   color: #ffffff;
   font-size: 14px;
   font-weight: 650;
-  line-height: 40px;
+  min-height: 44px;
+  line-height: 1.5;
   padding: 0 18px;
   transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.video-upload-zone__button:focus-visible {
+  outline: 2px solid var(--uied-color-primary, #5b54e8);
+  outline-offset: 4px;
 }
 
 .video-upload-zone__button:hover {
@@ -131,7 +138,7 @@ const handleDrop = (event: DragEvent) => {
 
 @media (max-width: 640px) {
   .video-upload-zone {
-    min-height: 260px;
+    min-height: 236px;
     padding: 28px 16px;
   }
 }

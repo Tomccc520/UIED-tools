@@ -743,13 +743,13 @@ onBeforeRouteLeave((to, from, next) => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="video-mobile-page min-h-screen">
     <div class="mx-auto">
-      <div class="rounded-xl bg-white p-8 mb-4">
+      <div class="video-mobile-workspace rounded-xl bg-white p-8 mb-4">
         <div class="mb-6 text-center">
-          <h2 class="mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
+          <h1 class="video-mobile-title mb-3 bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-3xl font-bold text-transparent sm:text-4xl">
             免费视频分辨率重设
-          </h2>
+          </h1>
           <p class="mx-auto max-w-3xl text-sm text-gray-500 sm:text-base">
             一键将视频重设为 1080p / 720p / 480p 或自定义尺寸，默认等比缩放并本地处理。
           </p>
@@ -764,7 +764,7 @@ onBeforeRouteLeave((to, from, next) => {
 
         <div
           v-if="!videoUrl"
-          class="group relative mb-8 cursor-pointer overflow-hidden rounded-xl border-2 border-dashed p-16 text-center transition-all"
+          class="video-mobile-upload group relative mb-8 cursor-pointer overflow-hidden rounded-xl border-2 border-dashed p-16 text-center transition-all"
           :class="[
             isDragOver
               ? 'border-sky-500 bg-sky-50 scale-[1.01]'
@@ -774,7 +774,7 @@ onBeforeRouteLeave((to, from, next) => {
           @dragover.prevent="isDragOver = true"
           @dragleave.prevent="isDragOver = false"
           @drop.prevent="handleDrop"
-        >
+         role="button" tabindex="0" aria-label="选择视频" @keydown.enter="triggerSelectVideo" @keydown.space.prevent="triggerSelectVideo">
           <input
             ref="fileInput"
             type="file"
@@ -796,9 +796,9 @@ onBeforeRouteLeave((to, from, next) => {
           <p class="text-gray-500">支持 MP4、AVI、MOV、MKV、WMV、WebM 等格式</p>
         </div>
 
-        <div v-else class="grid grid-cols-1 gap-8 lg:grid-cols-12">
+        <div v-else class="video-mobile-editor grid grid-cols-1 gap-8 lg:grid-cols-12">
           <div class="space-y-6 lg:col-span-4">
-            <div class="sticky top-4 rounded-xl border border-gray-100 bg-gray-50 p-6">
+            <div class="video-mobile-controls sticky top-4 rounded-xl border border-gray-100 bg-gray-50 p-6">
               <h3 class="mb-6 text-lg font-semibold text-gray-800">重设参数</h3>
 
               <div class="mb-6 space-y-3 rounded-lg border border-gray-200 bg-white p-4">
@@ -831,7 +831,7 @@ onBeforeRouteLeave((to, from, next) => {
                   </el-select>
                 </div>
 
-                <div v-if="settings.preset === 'custom'" class="grid grid-cols-2 gap-3">
+                <div v-if="settings.preset === 'custom'" class="video-mobile-pair grid grid-cols-2 gap-3">
                   <div>
                     <label class="mb-1 block text-xs text-gray-500">宽度</label>
                     <el-input-number v-model="settings.customWidth" :min="2" :max="4096" :step="2" class="w-full" controls-position="right" />
@@ -908,7 +908,7 @@ onBeforeRouteLeave((to, from, next) => {
               <div class="flex flex-col gap-5">
                 <div class="flex flex-wrap items-center justify-between gap-3">
                   <h3 class="text-xl font-bold text-gray-800">处理完成</h3>
-                  <div class="flex items-center gap-2">
+                  <div class="video-mobile-actions flex items-center gap-2">
                     <button
                       class="inline-flex items-center rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700 transition-colors hover:border-sky-400 hover:text-sky-700"
                       @click="triggerSelectVideo"
@@ -945,3 +945,5 @@ onBeforeRouteLeave((to, from, next) => {
     </div>
   </div>
 </template>
+
+<style scoped src="../Shared/videoMobile.css"></style>

@@ -82,6 +82,7 @@ const crop = reactive({
 
 // Dragging state
 const dragStart = reactive({ x: 0, y: 0, cropX: 0, cropY: 0, cropW: 0, cropH: 0 })
+let activeCropPointerId: number | null = null
 
 /**
  * 格式化时长文本
@@ -194,6 +195,8 @@ const loadVideo = (file: File) => {
   }
 
   isCancelRequested.value = true
+  stopDrag()
+  stopResize()
   stopCurrentProcessing()
 
   videoFile.value = file
@@ -240,21 +243,26 @@ const handleDrop = (event: DragEvent) => {
   }
 }
 
-// Mouse Event Handlers for Crop Box
-const startDrag = (e: MouseEvent) => {
+/** 开始移动裁剪框，统一支持鼠标、触摸与触控笔。 */
+const startDrag = (e: PointerEvent) => {
+  if (e.button !== 0 || !e.isPrimary || activeCropPointerId !== null) return
   e.preventDefault()
+  activeCropPointerId = e.pointerId
   crop.isDragging = true
   dragStart.x = e.clientX
   dragStart.y = e.clientY
   dragStart.cropX = crop.x
   dragStart.cropY = crop.y
 
-  window.addEventListener('mousemove', onDrag)
-  window.addEventListener('mouseup', stopDrag)
+  window.addEventListener('pointermove', onDrag)
+  window.addEventListener('pointerup', stopDrag)
+  window.addEventListener('pointercancel', stopDrag)
+  window.addEventListener('blur', interruptCropPointer)
 }
 
-const onDrag = (e: MouseEvent) => {
-  if (!crop.isDragging || !containerRef.value) return
+/** 根据指针相对位移更新裁剪位置，并保持在视频画面范围内。 */
+const onDrag = (e: PointerEvent) => {
+  if (!crop.isDragging || !containerRef.value || e.pointerId !== activeCropPointerId) return
 
   const containerRect = containerRef.value.getBoundingClientRect()
   const deltaX = ((e.clientX - dragStart.x) / containerRect.width) * 100
@@ -271,16 +279,23 @@ const onDrag = (e: MouseEvent) => {
   crop.y = newY
 }
 
-const stopDrag = () => {
+/** 结束拖动并清理指针监听，包含系统取消触摸的情况。 */
+const stopDrag = (event?: PointerEvent) => {
+  if (event && event.pointerId !== activeCropPointerId) return
   crop.isDragging = false
-  window.removeEventListener('mousemove', onDrag)
-  window.removeEventListener('mouseup', stopDrag)
+  activeCropPointerId = null
+  window.removeEventListener('pointermove', onDrag)
+  window.removeEventListener('pointerup', stopDrag)
+  window.removeEventListener('pointercancel', stopDrag)
+  window.removeEventListener('blur', interruptCropPointer)
 }
 
-// Resize Handlers
-const startResize = (e: MouseEvent, handle: string) => {
+/** 从指定角开始缩放裁剪框，使用同一套指针交互。 */
+const startResize = (e: PointerEvent, handle: string) => {
+  if (e.button !== 0 || !e.isPrimary || activeCropPointerId !== null) return
   e.preventDefault()
   e.stopPropagation()
+  activeCropPointerId = e.pointerId
   crop.isResizing = true
   crop.resizeHandle = handle
   dragStart.x = e.clientX
@@ -290,12 +305,15 @@ const startResize = (e: MouseEvent, handle: string) => {
   dragStart.cropW = crop.width
   dragStart.cropH = crop.height
 
-  window.addEventListener('mousemove', onResize)
-  window.addEventListener('mouseup', stopResize)
+  window.addEventListener('pointermove', onResize)
+  window.addEventListener('pointerup', stopResize)
+  window.addEventListener('pointercancel', stopResize)
+  window.addEventListener('blur', interruptCropPointer)
 }
 
-const onResize = (e: MouseEvent) => {
-  if (!crop.isResizing || !containerRef.value) return
+/** 根据拖动角和指针位移调整裁剪区域，保持最小尺寸及边界约束。 */
+const onResize = (e: PointerEvent) => {
+  if (!crop.isResizing || !containerRef.value || e.pointerId !== activeCropPointerId) return
 
   const containerRect = containerRef.value.getBoundingClientRect()
   const deltaX = ((e.clientX - dragStart.x) / containerRect.width) * 100
@@ -327,11 +345,22 @@ const onResize = (e: MouseEvent) => {
   }
 }
 
-const stopResize = () => {
+/** 结束裁剪框缩放并移除窗口指针监听。 */
+const stopResize = (event?: PointerEvent) => {
+  if (event && event.pointerId !== activeCropPointerId) return
   crop.isResizing = false
+  activeCropPointerId = null
   crop.resizeHandle = ''
-  window.removeEventListener('mousemove', onResize)
-  window.removeEventListener('mouseup', stopResize)
+  window.removeEventListener('pointermove', onResize)
+  window.removeEventListener('pointerup', stopResize)
+  window.removeEventListener('pointercancel', stopResize)
+  window.removeEventListener('blur', interruptCropPointer)
+}
+
+/** 窗口失焦时解除裁剪交互锁，覆盖指针在浏览器外释放的情况。 */
+const interruptCropPointer = () => {
+  stopDrag()
+  stopResize()
 }
 
 /**
@@ -624,10 +653,13 @@ onUnmounted(() => {
   clearMediaResources()
   if (videoUrl.value) URL.revokeObjectURL(videoUrl.value)
   clearResultVideo()
-  window.removeEventListener('mousemove', onDrag)
-  window.removeEventListener('mouseup', stopDrag)
-  window.removeEventListener('mousemove', onResize)
-  window.removeEventListener('mouseup', stopResize)
+  window.removeEventListener('pointermove', onDrag)
+  window.removeEventListener('pointerup', stopDrag)
+  window.removeEventListener('pointercancel', stopDrag)
+  window.removeEventListener('pointermove', onResize)
+  window.removeEventListener('pointerup', stopResize)
+  window.removeEventListener('pointercancel', stopResize)
+  window.removeEventListener('blur', interruptCropPointer)
   window.removeEventListener('beforeunload', handleBeforeUnload)
 })
 
@@ -649,23 +681,23 @@ onBeforeRouteLeave((to, from, next) => {
 </script>
 
 <template>
-  <div class="">
+  <div class="video-mobile-page ">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl min-h-[600px] p-6 sm:p-8">
+      <div class="video-mobile-workspace bg-white rounded-xl min-h-[600px] p-6 sm:p-8">
         <!-- 头部区域 -->
         <div class="text-center mb-8">
-          <h2
-            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+          <h1
+            class="video-mobile-title text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
             免费视频画面裁剪
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm">在线裁剪视频画面区域，支持自由调整比例，本地处理保护隐私</p>
         </div>
         <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"
-          class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer mb-8 group"
-          @click="fileInput?.click()">
+          class="video-mobile-upload border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer mb-8 group"
+          @click="fileInput?.click()" role="button" tabindex="0" aria-label="选择视频" @keydown.enter="fileInput?.click()" @keydown.space.prevent="fileInput?.click()">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
           <div class="w-20 h-20 mx-auto bg-indigo-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
             <svg class="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -676,10 +708,10 @@ onBeforeRouteLeave((to, from, next) => {
           <p class="text-sm text-gray-500">支持 MP4, WebM, MOV 等常见视频格式</p>
         </div>
 
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div v-else class="video-mobile-editor grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- 左侧：配置区域 -->
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="video-mobile-controls bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
               <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                 <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -699,7 +731,7 @@ onBeforeRouteLeave((to, from, next) => {
                     </svg>
                     裁剪参数
                   </h4>
-                  <div class="grid grid-cols-2 gap-4 text-sm text-gray-600">
+                  <div class="video-mobile-pair grid grid-cols-2 gap-4 text-sm text-gray-600">
                     <div class="flex justify-between p-2 bg-gray-50 rounded"><span>X:</span> <span class="font-mono font-medium text-indigo-600">{{ Math.round(crop.x) }}%</span></div>
                     <div class="flex justify-between p-2 bg-gray-50 rounded"><span>Y:</span> <span class="font-mono font-medium text-indigo-600">{{ Math.round(crop.y) }}%</span></div>
                     <div class="flex justify-between p-2 bg-gray-50 rounded"><span>宽:</span> <span class="font-mono font-medium text-indigo-600">{{ Math.round(crop.width) }}%</span></div>
@@ -782,13 +814,13 @@ onBeforeRouteLeave((to, from, next) => {
 
                     <!-- Crop Box -->
                     <div
-                      class="absolute border-2 border-white pointer-events-auto cursor-move transition-all duration-75"
+                      class="video-crop-box absolute border-2 border-white pointer-events-auto cursor-move transition-all duration-75"
                       :style="{
                         left: `${crop.x}%`,
                         top: `${crop.y}%`,
                         width: `${crop.width}%`,
                         height: `${crop.height}%`
-                      }" @mousedown.stop="startDrag">
+                      }" @pointerdown.stop="startDrag">
                       <!-- Grid Lines -->
                       <div class="absolute top-1/3 left-0 right-0 h-px bg-white/30 pointer-events-none"></div>
                       <div class="absolute top-2/3 left-0 right-0 h-px bg-white/30 pointer-events-none"></div>
@@ -796,14 +828,14 @@ onBeforeRouteLeave((to, from, next) => {
                       <div class="absolute left-2/3 top-0 bottom-0 w-px bg-white/30 pointer-events-none"></div>
 
                       <!-- Resize Handles -->
-                      <div class="absolute -top-1.5 -left-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-nw-resize hover:scale-125 transition-transform"
-                        @mousedown.stop="startResize($event, 'nw')"></div>
-                      <div class="absolute -top-1.5 -right-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-ne-resize hover:scale-125 transition-transform"
-                        @mousedown.stop="startResize($event, 'ne')"></div>
-                      <div class="absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-sw-resize hover:scale-125 transition-transform"
-                        @mousedown.stop="startResize($event, 'sw')"></div>
-                      <div class="absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-se-resize hover:scale-125 transition-transform"
-                        @mousedown.stop="startResize($event, 'se')"></div>
+                      <div class="video-crop-handle absolute -top-1.5 -left-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-nw-resize hover:scale-125 transition-transform"
+                        @pointerdown.stop="startResize($event, 'nw')"></div>
+                      <div class="video-crop-handle absolute -top-1.5 -right-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-ne-resize hover:scale-125 transition-transform"
+                        @pointerdown.stop="startResize($event, 'ne')"></div>
+                      <div class="video-crop-handle absolute -bottom-1.5 -left-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-sw-resize hover:scale-125 transition-transform"
+                        @pointerdown.stop="startResize($event, 'sw')"></div>
+                      <div class="video-crop-handle absolute -bottom-1.5 -right-1.5 w-3 h-3 bg-indigo-500 border border-white cursor-se-resize hover:scale-125 transition-transform"
+                        @pointerdown.stop="startResize($event, 'se')"></div>
                     </div>
                   </div>
                 </div>
@@ -866,3 +898,18 @@ onBeforeRouteLeave((to, from, next) => {
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
+
+<style scoped src="../Shared/videoMobile.css"></style>
+
+<style scoped>
+.video-crop-box,
+.video-crop-handle {
+  touch-action: none;
+}
+
+.video-crop-handle::before {
+  position: absolute;
+  inset: -16px;
+  content: '';
+}
+</style>

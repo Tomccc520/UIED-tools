@@ -9,27 +9,27 @@
  -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen uied-file-tool">
     <!-- 头部区域 -->
-    <div class="bg-white rounded-xl p-6 lg:p-8 mb-4 shadow-sm relative">
-      <div class="text-center mb-8 relative">
-        <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-          <div class="relative px-12">
+    <div class="file-tool-card bg-white rounded-xl p-6 lg:p-8 mb-4 shadow-sm relative">
+      <div class="file-tool-heading text-center mb-8 relative">
+        <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+          <div class="file-tool-heading__title relative px-12">
             <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">免费应用图标生成器</span>
           </div>
-        </h2>
+        </h1>
         <p class="text-gray-500 text-sm mt-2">支持多平台尺寸、实时预览和批量导出</p>
       </div>
 
       <!-- 主要工作区 -->
       <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col lg:flex-row gap-8">
+        <div class="file-tool-columns flex flex-col lg:flex-row gap-8">
 
           <!-- 左侧：编辑器 -->
           <div class="lg:w-5/12 space-y-6">
             <!-- 图层编辑卡片 -->
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
-              <div class="flex items-center justify-between mb-4">
+            <div class="file-tool-panel bg-gray-50 rounded-xl p-6 border border-gray-100">
+              <div class="file-tool-toolbar flex items-center justify-between mb-4">
                 <h3 class="font-bold text-gray-800 flex items-center">
                   <el-icon class="mr-2">
                     <Edit />
@@ -37,21 +37,21 @@
                 </h3>
                 <div class="flex gap-2">
                   <el-tooltip content="重置" placement="top">
-                    <el-button circle size="small" @click="resetConfig">
+                    <el-button circle size="small" aria-label="重置图标设置" @click="resetConfig">
                       <el-icon>
                         <RefreshRight />
                       </el-icon>
                     </el-button>
                   </el-tooltip>
                   <el-tooltip content="撤销" placement="top">
-                    <el-button circle size="small" :disabled="historyIndex <= 0" @click="undo">
+                    <el-button circle size="small" aria-label="撤销" :disabled="historyIndex <= 0" @click="undo">
                       <el-icon>
                         <ArrowLeft />
                       </el-icon>
                     </el-button>
                   </el-tooltip>
                   <el-tooltip content="重做" placement="top">
-                    <el-button circle size="small" :disabled="historyIndex >= history.length - 1" @click="redo">
+                    <el-button circle size="small" aria-label="重做" :disabled="historyIndex >= history.length - 1" @click="redo">
                       <el-icon>
                         <ArrowRight />
                       </el-icon>
@@ -61,7 +61,7 @@
               </div>
 
               <!-- 快速预设 -->
-              <div class="flex gap-2 mb-4 overflow-x-auto pb-2">
+              <div class="file-tool-presets flex gap-2 mb-4 overflow-x-auto pb-2">
                 <el-button size="small" round @click="applyPreset('ios')">iOS 风格</el-button>
                 <el-button size="small" round @click="applyPreset('android')">Android 风格</el-button>
                 <el-button size="small" round @click="applyPreset('circle')">圆形图标</el-button>
@@ -98,7 +98,7 @@
                 <!-- 背景设置 -->
                 <div>
                   <label class="text-sm font-medium text-gray-700 mb-2 block">背景样式</label>
-                  <div class="flex items-center gap-4">
+                  <div class="file-tool-toolbar flex items-center gap-4">
                     <el-color-picker v-model="config.backgroundColor" show-alpha @change="saveHistory" />
                     <span class="text-xs text-gray-500">{{ config.backgroundColor }}</span>
                     <el-checkbox v-model="config.transparentBg" label="透明背景" @change="handleTransparentChange" />
@@ -120,7 +120,7 @@
             </div>
 
             <!-- 导出设置 -->
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100">
+            <div class="file-tool-panel bg-gray-50 rounded-xl p-6 border border-gray-100">
               <h3 class="font-bold text-gray-800 mb-4 flex items-center">
                 <el-icon class="mr-2">
                   <Setting />
@@ -144,7 +144,7 @@
               <!-- 自定义尺寸 -->
               <div class="mb-4">
                 <label class="text-sm font-medium text-gray-700 mb-2 block">自定义尺寸</label>
-                <div class="flex gap-2">
+                <div class="file-tool-toolbar flex gap-2">
                   <el-input-number v-model="customSize" :min="16" :max="1024" size="small" placeholder="大小" />
                   <el-button type="primary" plain size="small" @click="addCustomSize">添加</el-button>
                 </div>
@@ -184,13 +184,13 @@
               </div>
 
               <!-- 主预览画布 -->
-              <div class="p-8 flex items-center justify-center bg-checkered min-h-[300px]">
+              <div class="file-tool-preview-canvas p-8 flex items-center justify-center bg-checkered min-h-[300px]">
                 <canvas ref="mainCanvasRef" width="512" height="512"
                   class="shadow-lg rounded-xl max-w-full h-auto"></canvas>
               </div>
 
               <!-- 多尺寸预览 -->
-              <div class="p-6 bg-gray-50 border-t border-gray-100">
+              <div class="file-tool-previews p-6 bg-gray-50 border-t border-gray-100">
                 <h4 class="text-sm font-bold text-gray-700 mb-4">各平台效果预览</h4>
                 <el-tabs v-model="activePreviewTab">
                   <el-tab-pane label="iOS" name="ios">
@@ -241,6 +241,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/styles/file-tool-responsive.css'
 import { ref, reactive, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { useHead } from '@unhead/vue'

@@ -8,12 +8,15 @@
 -->
 
 <script setup lang="ts">
-import { ref, reactive, watch, onUnmounted, h } from 'vue'
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
+import { ref, reactive, computed, watch, nextTick, onUnmounted, h } from 'vue'
+import { useMediaQuery } from '@vueuse/core'
 import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import JSZip from 'jszip'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import MobileToolActions from '@/components/Common/MobileToolActions.vue'
 import { getPdfFileError, ensurePdfjsRuntime } from '@/utils/pdf'
 import { ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 
@@ -59,6 +62,19 @@ const isProcessing = ref(false)
 const isDragging = ref(false)
 const dataFileRef = ref()
 const processedFiles = ref<Map<string, ProcessedFile>>(new Map())
+const isDownloadingAll = ref(false)
+const isMobileViewport = useMediaQuery('(max-width: 640px)')
+/** 汇总首次待处理和失败待重试的文件，避免手机入口重复压缩已成功结果。 */
+const pendingFiles = computed(() => fileList.value.filter(file => file.status === 'ready' || file.status === 'error'))
+/** 汇总可直接下载的成功文件，供手机完成状态和批量操作使用。 */
+const successfulFiles = computed(() => fileList.value.filter(file => file.status === 'success'))
+/** 根据当前压缩、打包与队列阶段返回手机主按钮文案。 */
+const mobileActionLabel = computed(() => {
+  if (isProcessing.value) return '正在压缩…'
+  if (isDownloadingAll.value) return '正在打包…'
+  if (pendingFiles.value.length) return `开始压缩 (${pendingFiles.value.length})`
+  return successfulFiles.value.length === 1 ? '下载 PDF' : `下载全部 (${successfulFiles.value.length})`
+})
 let disposed = false
 
 const guideSteps = [
@@ -147,6 +163,121 @@ const previewDialogVisible = ref(false)
 const previewFile = ref<UploadFile | null>(null)
 const previewUrl = ref('')
 const previewType = ref<'original' | 'compressed'>('original')
+const mobilePreviewCanvas = ref<HTMLCanvasElement | null>(null)
+const mobilePreviewLoading = ref(false)
+const mobilePreviewError = ref('')
+const mobilePreviewPage = ref(1)
+const mobilePreviewPageCount = ref(0)
+// PDF.js 文档保持普通实例，避免深层响应式代理破坏原生私有字段。
+let mobilePreviewDocument: import('pdfjs-dist').PDFDocumentProxy | null = null
+let mobilePreviewTask: import('pdfjs-dist').PDFDocumentLoadingTask | null = null
+let mobileRenderTask: import('pdfjs-dist').RenderTask | null = null
+let mobilePreviewVersion = 0
+let mobilePreviewTimeout: ReturnType<typeof setTimeout> | undefined
+
+/** 关闭、换源或卸载时终止手机预览，旧异步任务不得再写入当前画布。 */
+const releaseMobilePreview = () => {
+  mobilePreviewVersion += 1
+  clearTimeout(mobilePreviewTimeout)
+  const rendering = mobileRenderTask
+  mobileRenderTask = null
+  rendering?.cancel()
+  void rendering?.promise.catch(() => undefined)
+  const loading = mobilePreviewTask
+  const document = mobilePreviewDocument
+  mobilePreviewTask = null
+  mobilePreviewDocument = null
+  if (loading) void loading.destroy().catch(() => undefined)
+  else if (document) void document.destroy().catch(() => undefined)
+  mobilePreviewLoading.value = false
+}
+
+/** 使用原始 File 或压缩 Blob 直接渲染手机单页；翻页复用文档，换源重新解析。 */
+const renderMobilePreview = async (reloadDocument = true) => {
+  if (!previewDialogVisible.value || !isMobileViewport.value || disposed) return
+  const previousRender = mobileRenderTask
+  if (reloadDocument) releaseMobilePreview()
+  else {
+    mobilePreviewVersion += 1
+    clearTimeout(mobilePreviewTimeout)
+    mobileRenderTask = null
+    previousRender?.cancel()
+  }
+  const version = mobilePreviewVersion
+  mobilePreviewLoading.value = true
+  mobilePreviewError.value = ''
+  mobilePreviewTimeout = setTimeout(() => {
+    if (version !== mobilePreviewVersion) return
+    releaseMobilePreview()
+    mobilePreviewError.value = 'PDF 预览加载超时，请重试'
+  }, 30000)
+  try {
+    await previousRender?.promise.catch(() => undefined)
+    await nextTick()
+    if (version !== mobilePreviewVersion) return
+    if (reloadDocument) {
+      mobilePreviewPage.value = 1
+      mobilePreviewPageCount.value = 0
+      const selected = previewFile.value
+      const source = previewType.value === 'compressed'
+        ? processedFiles.value.get(selected?.uid || '')?.blob
+        : selected?.raw
+      if (!source) throw new Error('预览源文件不存在')
+      const bytes = await source.arrayBuffer()
+      const pdfjs = await ensurePdfjsRuntime()
+      if (version !== mobilePreviewVersion) return
+      const loading = pdfjs.getDocument({ data: bytes })
+      mobilePreviewTask = loading
+      const document = await loading.promise
+      if (version !== mobilePreviewVersion) { await document.destroy(); return }
+      mobilePreviewDocument = document
+      mobilePreviewPageCount.value = document.numPages
+      if (!document.numPages) throw new Error('PDF 没有可预览页面')
+    }
+    const document = mobilePreviewDocument
+    const canvas = mobilePreviewCanvas.value
+    if (!document || !canvas) throw new Error('预览画布尚未就绪')
+    const page = await document.getPage(mobilePreviewPage.value)
+    if (version !== mobilePreviewVersion) return
+    const viewport = page.getViewport({ scale: 1 })
+    if (viewport.width <= 0 || viewport.height <= 0) throw new Error('PDF 页面尺寸无效')
+    const availableWidth = canvas.parentElement?.clientWidth || 320
+    const pixelRatio = Math.min(2, window.devicePixelRatio || 1)
+    const scaled = page.getViewport({ scale: Math.min(2, availableWidth * pixelRatio / viewport.width) })
+    canvas.width = Math.max(1, Math.round(scaled.width))
+    canvas.height = Math.max(1, Math.round(scaled.height))
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('浏览器无法创建预览画布')
+    const rendering = page.render({ canvasContext: context, viewport: scaled })
+    mobileRenderTask = rendering
+    await rendering.promise
+    if (version !== mobilePreviewVersion) return
+    mobileRenderTask = null
+    page.cleanup()
+  } catch {
+    if (version !== mobilePreviewVersion) return
+    console.error('[pdf-compress] 手机 PDF 预览失败')
+    mobilePreviewError.value = 'PDF 预览加载失败，请重试；有密码或损坏的文件可能无法预览'
+  } finally {
+    if (version === mobilePreviewVersion) {
+      clearTimeout(mobilePreviewTimeout)
+      mobilePreviewLoading.value = false
+    }
+  }
+}
+
+/** 在已打开的手机预览文档内翻页，不重新读取整个文件。 */
+const changeMobilePreviewPage = (delta: number) => {
+  const page = mobilePreviewPage.value + delta
+  if (mobilePreviewLoading.value || page < 1 || page > mobilePreviewPageCount.value) return
+  mobilePreviewPage.value = page
+  void renderMobilePreview(false)
+}
+
+watch([previewDialogVisible, previewFile, previewType, isMobileViewport], () => {
+  if (previewDialogVisible.value && isMobileViewport.value) void renderMobilePreview()
+  else releaseMobilePreview()
+})
 
 // 功能特点
 const features = [
@@ -176,7 +307,7 @@ const features = [
 const faqs = [
   {
     question: 'DPI 参数如何选择？',
-    answer: 'DPI 决定了文档的分辨率。72 DPI 适合屏幕阅读（体积最小）；150 DPI 适合办公文档（清晰度适中）；300 DPI 以上适合打印输出（高清无损）。'
+    answer: 'DPI 决定了文档的分辨率。72 DPI 适合屏幕阅读（体积较小）；150 DPI 适合办公文档（清晰度适中）；300 DPI 以上适合打印输出（清晰度较高）。此工具会重新绘制页面，并非无损压缩。'
   },
   {
     question: '灰度模式有什么用？',
@@ -677,6 +808,26 @@ const downloadAllFiles = async () => {
   setTimeout(() => URL.revokeObjectURL(zipUrl), 1000)
 }
 
+/** 复用原打包下载流程，提供防重复触发和可恢复的失败反馈。 */
+const downloadAllWithFeedback = async () => {
+  if (isDownloadingAll.value || isProcessing.value) return
+  isDownloadingAll.value = true
+  try {
+    await downloadAllFiles()
+  } catch {
+    console.error('[pdf-compress] 文件打包失败')
+    ElMessage.error('下载文件准备失败，请重试')
+  } finally {
+    isDownloadingAll.value = false
+  }
+}
+
+/** 手机主操作按队列状态进入压缩或下载，保留现有失败重试和成功文件。 */
+const handleMobileAction = async () => {
+  if (pendingFiles.value.length) await compressPDF()
+  else await downloadAllWithFeedback()
+}
+
 /** 释放本页队列及输出文件的 Blob 地址。 */
 const clearAll = () => {
   fileList.value.forEach(f => {
@@ -738,37 +889,39 @@ const showLogs = (file: UploadFile) => {
 /** 离开页面后停止后续处理并释放已生成的文件地址。 */
 onUnmounted(() => {
   disposed = true
+  releaseMobilePreview()
   clearAll()
 })
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 标题区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4">
+      <div class="bg-white rounded-xl p-8 mb-4 pdf-workspace-panel">
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h1>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div
-          class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+          class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+          :data-has-files="fileList.length > 0"
           :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
           @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
           <el-upload :disabled="isProcessing" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
             accept="application/pdf" :auto-upload="false" :on-change="handleChange" :show-file-list="false" multiple
             drag>
-            <div class="flex flex-col items-center justify-center h-full py-10">
-              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center">
+            <div class="flex flex-col items-center justify-center h-full py-10 pdf-compress-upload-content">
+              <div class="w-16 h-16 mb-4 rounded-full bg-blue-50 flex items-center justify-center pdf-compress-upload-icon">
                 <svg class="w-8 h-8 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                 </svg>
               </div>
               <div class="text-lg font-medium text-gray-700 mb-2">
-                点击或拖拽 PDF 文件到此处
+                {{ fileList.length ? '继续添加 PDF 文件' : '点击或拖拽 PDF 文件到此处' }}
               </div>
               <p class="text-sm text-gray-400">支持批量上传，单个文件最大 100MB</p>
               <p class="text-xs text-gray-400 mt-1">支持 PDF 格式</p>
@@ -776,8 +929,18 @@ onUnmounted(() => {
           </el-upload>
         </div>
 
-        <!-- 控制面板 -->
-        <div v-if="fileList.length > 0" class="mt-8 bg-gray-50 rounded-xl p-6 border border-gray-100">
+        <aside v-if="fileList.length > 0" class="pdf-raster-notice" role="note" aria-label="PDF 压缩方式说明">
+          <strong>压缩前请注意</strong>
+          <p>此方式会把页面转为图片，文字将无法选中、复制或搜索，表单、超链接等交互信息也不会保留。请保留原文件，下载后先检查内容。</p>
+        </aside>
+
+        <!-- 手机默认只展示参数摘要，重要压缩影响始终放在折叠区外。 -->
+        <details v-if="fileList.length > 0" :open="!isMobileViewport"
+          class="mt-8 bg-gray-50 rounded-xl p-6 border border-gray-100 pdf-settings-panel pdf-compress-parameters">
+          <summary class="pdf-compress-settings-summary">
+            <span>压缩参数</span>
+            <span>{{ presets[currentPreset].name }} · 图片质量 {{ config.imageQuality }}%</span>
+          </summary>
           <div class="flex flex-col gap-6">
 
             <!-- 预设选择 -->
@@ -796,7 +959,9 @@ onUnmounted(() => {
             </div>
 
             <!-- 高级设置 -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t border-gray-100">
+            <details :open="!isMobileViewport" class="pdf-compress-advanced">
+            <summary class="pdf-compress-settings-summary pdf-compress-advanced-summary">高级设置</summary>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t border-gray-100 pdf-settings-grid">
               <!-- DPI 设置 -->
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700 flex justify-between">
@@ -843,15 +1008,16 @@ onUnmounted(() => {
                 <p class="text-xs text-gray-400">开启后将清空作者、主题等文档属性</p>
               </div>
             </div>
+            </details>
 
             <!-- 操作按钮 -->
-            <div class="flex gap-4 justify-end border-t border-gray-100 pt-4">
+            <div class="flex gap-4 justify-end border-t border-gray-100 pt-4 pdf-actions">
               <button @click="clearAll" :disabled="isProcessing"
                 class="px-6 py-2.5 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 font-medium transition-colors disabled:opacity-50">
                 清空列表
               </button>
               <button @click="compressPDF" :disabled="isProcessing"
-                class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all flex items-center disabled:opacity-60 disabled:cursor-not-allowed">
+                class="px-8 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all flex items-center disabled:opacity-60 disabled:cursor-not-allowed pdf-compress-inline-start">
                 <svg v-if="isProcessing" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none"
                   viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -863,16 +1029,20 @@ onUnmounted(() => {
               </button>
             </div>
           </div>
-        </div>
+        </details>
 
         <!-- 文件列表 -->
         <div v-if="fileList.length > 0" class="mt-6 space-y-4">
+          <div class="pdf-compress-mobile-list-heading">
+            <h2>文件列表 <span>{{ fileList.length }}</span></h2>
+            <button type="button" @click="clearAll" :disabled="isProcessing || isDownloadingAll">清空文件</button>
+          </div>
           <div v-for="file in fileList" :key="file.uid"
-            class="bg-white border border-gray-100 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4">
+            class="bg-white border border-gray-100 rounded-xl p-4 flex flex-col sm:flex-row items-center gap-4 pdf-compress-file-card">
 
             <!-- 缩略图 -->
             <div
-              class="w-16 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 group relative">
+              class="w-16 h-20 bg-gray-100 rounded-lg overflow-hidden flex-shrink-0 border border-gray-200 group relative pdf-compress-file-thumbnail">
               <img v-if="file.previewImage" :src="file.previewImage" class="w-full h-full object-cover" />
               <div v-else class="w-full h-full flex items-center justify-center text-gray-300">
                 <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -884,13 +1054,13 @@ onUnmounted(() => {
             </div>
 
             <!-- 文件信息 -->
-            <div class="flex-1 w-full">
-              <div class="flex justify-between items-start mb-2">
+            <div class="flex-1 w-full min-w-0 pdf-compress-file-information">
+              <div class="flex justify-between items-start mb-2 pdf-file-summary pdf-compress-file-heading">
                 <div>
-                  <h4 class="font-medium text-gray-900 truncate max-w-[200px] sm:max-w-md" :title="file.name">{{
+                  <h4 class="font-medium text-gray-900 truncate max-w-[200px] sm:max-w-md pdf-file-name" :title="file.name">{{
                     file.name }}
                   </h4>
-                  <div class="flex items-center text-xs text-gray-500 mt-1 gap-3">
+                  <div class="flex flex-wrap items-center text-xs text-gray-500 mt-1 gap-3">
                     <span>原始: {{ formatSize(file.size) }}</span>
                     <span v-if="file.status === 'success'" class="text-green-600 font-medium">
                       压缩后: {{ formatSize(processedFiles.get(file.uid)?.size || 0) }}
@@ -901,7 +1071,7 @@ onUnmounted(() => {
                 <!-- 状态标签 -->
                 <div class="flex items-center gap-2">
                   <button v-if="file.logs && file.logs.length > 0" @click="showLogs(file)"
-                    class="text-gray-400 hover:text-blue-600" title="查看日志">
+                    class="text-gray-400 hover:text-blue-600" title="查看日志" :aria-label="`查看 ${file.name} 的处理日志`">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
@@ -913,7 +1083,7 @@ onUnmounted(() => {
                     <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
                     </svg>
-                    减小 {{ getCompressionRatio(file) }}
+                    {{ (processedFiles.get(file.uid)?.size || 0) >= file.size ? '保留原文件' : `减小 ${getCompressionRatio(file)}` }}
                   </span>
                   <span v-else-if="file.status === 'error'"
                     class="bg-red-100 text-red-700 text-xs px-2 py-1 rounded-full">失败</span>
@@ -932,8 +1102,9 @@ onUnmounted(() => {
             </div>
 
             <!-- 操作 -->
-            <div class="flex gap-2 w-full sm:w-auto justify-end">
+            <div class="flex gap-2 w-full sm:w-auto justify-end pdf-file-actions pdf-compress-card-actions">
               <button @click="showPreview(file)"
+                :aria-label="`预览 ${file.name}`"
                 class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="预览">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -943,8 +1114,10 @@ onUnmounted(() => {
                     d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
                   </path>
                 </svg>
+                <span class="pdf-compress-action-label">预览</span>
               </button>
               <button v-if="file.status === 'success'" @click="recompressFile(file)" :disabled="isProcessing"
+                :aria-label="`重新压缩 ${file.name}`"
                 class="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                 title="重新压缩">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -952,28 +1125,33 @@ onUnmounted(() => {
                     d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15">
                   </path>
                 </svg>
+                <span class="pdf-compress-action-label">重新压缩</span>
               </button>
               <button v-if="file.status === 'success'" @click="downloadFile(file)"
+                :aria-label="`下载 ${file.name}`"
                 class="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors" title="下载">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
                 </svg>
+                <span class="pdf-compress-action-label">下载</span>
               </button>
               <button @click="handleRemove(file)" :disabled="isProcessing"
+                :aria-label="`移除 ${file.name}`"
                 class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="删除">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                     d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
                   </path>
                 </svg>
+                <span class="pdf-compress-action-label">移除</span>
               </button>
             </div>
           </div>
 
           <!-- 底部批量下载 -->
-          <div v-if="fileList.some(f => f.status === 'success')" class="flex justify-center pt-4">
-            <button @click="downloadAllFiles"
+          <div v-if="fileList.some(f => f.status === 'success')" class="flex justify-center pt-4 pdf-compress-inline-download">
+            <button @click="downloadAllWithFeedback" :disabled="isProcessing || isDownloadingAll"
               class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-medium transition-all flex items-center">
               <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -986,7 +1164,7 @@ onUnmounted(() => {
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
@@ -1046,9 +1224,20 @@ onUnmounted(() => {
     </div>
 
     <!-- 预览对话框 -->
-    <el-dialog v-model="previewDialogVisible" :title="previewFile?.name" width="90%" top="5vh" destroy-on-close
-      class="preview-dialog">
-      <div class="h-[80vh] flex flex-col">
+    <MobileToolActions v-if="fileList.length > 0"
+      :title="isProcessing ? '正在压缩 PDF' : `已选择 ${fileList.length} 个 PDF`"
+      :description="pendingFiles.length ? '页面将转为图片，文字不可复制或搜索' : `已完成 ${successfulFiles.length} 个文件`"
+      :action-label="mobileActionLabel"
+      :busy="isProcessing || isDownloadingAll"
+      :disabled="!pendingFiles.length && !successfulFiles.length"
+      :hidden="previewDialogVisible"
+      aria-label="PDF 压缩操作" @action="handleMobileAction" />
+
+    <el-dialog v-model="previewDialogVisible" :title="previewFile?.name"
+      :fullscreen="isMobileViewport" :width="isMobileViewport ? '100%' : '90%'"
+      :top="isMobileViewport ? '0' : '5vh'" append-to-body destroy-on-close
+      class="preview-dialog pdf-compress-preview-dialog">
+      <div class="h-[80vh] flex flex-col pdf-compress-preview-content">
         <!-- 顶部切换栏 -->
         <div class="flex justify-center gap-4 mb-4">
           <button @click="switchPreviewType('original')"
@@ -1064,8 +1253,24 @@ onUnmounted(() => {
         </div>
 
         <!-- 预览内容 -->
-        <div class="flex-1 bg-gray-100 rounded-lg overflow-hidden relative">
-          <iframe v-if="previewUrl" :src="previewUrl" class="w-full h-full border-0"></iframe>
+        <div v-if="isMobileViewport" class="pdf-compress-mobile-preview">
+          <nav class="pdf-compress-preview-pages" aria-label="PDF 预览翻页">
+            <button type="button" aria-label="预览上一页" :disabled="mobilePreviewLoading || mobilePreviewPage <= 1" @click="changeMobilePreviewPage(-1)">上一页</button>
+            <span>第 {{ mobilePreviewPage }} / {{ mobilePreviewPageCount || '…' }} 页</span>
+            <button type="button" aria-label="预览下一页" :disabled="mobilePreviewLoading || mobilePreviewPage >= mobilePreviewPageCount" @click="changeMobilePreviewPage(1)">下一页</button>
+          </nav>
+          <p v-if="mobilePreviewLoading" role="status">正在加载 PDF 页面…</p>
+          <div v-if="mobilePreviewError" class="pdf-compress-preview-error" role="alert">
+            <p>{{ mobilePreviewError }}</p>
+            <button type="button" @click="renderMobilePreview()">重试预览</button>
+          </div>
+          <div class="pdf-compress-preview-sheet">
+            <canvas ref="mobilePreviewCanvas" v-show="!mobilePreviewLoading && !mobilePreviewError"
+              :aria-label="`${previewType === 'original' ? '原始' : '压缩后'} PDF 第 ${mobilePreviewPage} 页预览`"></canvas>
+          </div>
+        </div>
+        <div v-else class="flex-1 bg-gray-100 rounded-lg overflow-hidden relative">
+          <iframe v-if="previewUrl" :src="previewUrl" :title="`PDF 预览：${previewFile?.name || ''}`" class="w-full h-full border-0"></iframe>
           <div v-else class="absolute inset-0 flex items-center justify-center text-gray-400">
             无法预览
           </div>
@@ -1076,6 +1281,85 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.pdf-raster-notice {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid var(--uied-color-border);
+  border-left: 3px solid var(--uied-color-primary);
+  border-radius: 8px;
+  background: var(--uied-color-page);
+  color: var(--uied-color-text);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.pdf-raster-notice strong { display: block; margin-bottom: 4px; }
+.pdf-raster-notice p { margin: 0; color: var(--uied-color-text-secondary); }
+.pdf-compress-settings-summary,
+.pdf-compress-mobile-list-heading,
+.pdf-compress-action-label { display: none; }
+.pdf-compress-mobile-preview { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 12px; }
+.pdf-compress-preview-pages { display: flex; flex-shrink: 0; align-items: center; justify-content: space-between; gap: 8px; font-size: 14px; }
+.pdf-compress-preview-pages button,
+.pdf-compress-preview-error button { min-height: 44px; padding: 8px 12px; border: 1px solid var(--uied-color-border); border-radius: 8px; background: var(--uied-color-surface); }
+.pdf-compress-preview-pages button:disabled { opacity: .45; }
+.pdf-compress-preview-error { color: var(--uied-color-danger); font-size: 14px; line-height: 1.6; }
+.pdf-compress-preview-error button { margin-top: 12px; color: var(--uied-color-text); }
+.pdf-compress-preview-sheet { flex: 1; min-height: 0; overflow: auto; padding: 8px; background: var(--uied-color-page); border-radius: 8px; }
+.pdf-compress-preview-sheet canvas { display: block; width: 100%; height: auto; margin-inline: auto; }
+
+@media (max-width: 640px) {
+  .pdf-upload-area[data-has-files='true'] { min-height: 104px; }
+  .pdf-upload-area[data-has-files='true'] .pdf-compress-upload-content { padding: 12px; }
+  .pdf-upload-area[data-has-files='true'] .pdf-compress-upload-icon { display: none; }
+  .pdf-compress-parameters { margin-top: 16px; }
+  .pdf-compress-settings-summary {
+    display: flex;
+    min-height: 44px;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    padding-right: 24px;
+    position: relative;
+    cursor: pointer;
+    color: var(--uied-color-text);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.6;
+    list-style: none;
+  }
+  .pdf-compress-settings-summary::-webkit-details-marker { display: none; }
+  .pdf-compress-settings-summary::after { content: '+'; position: absolute; right: 0; top: 10px; font-size: 20px; }
+  details[open] > .pdf-compress-settings-summary::after { content: '−'; }
+  details[open] > .pdf-compress-settings-summary { margin-bottom: 16px; }
+  .pdf-compress-settings-summary span + span { color: var(--uied-color-text-secondary); font-size: 13px; font-weight: 400; }
+  .pdf-compress-settings-summary:focus-visible { outline: 2px solid var(--uied-color-primary); outline-offset: 4px; border-radius: 4px; }
+  .pdf-compress-advanced-summary { border-top: 1px solid var(--uied-color-border); padding-top: 12px; }
+  .pdf-compress-advanced .pdf-settings-grid { padding-top: 0; border-top: 0; }
+  .pdf-compress-inline-start { display: none; }
+  .pdf-compress-inline-download { display: none; }
+  .pdf-compress-mobile-list-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .pdf-compress-mobile-list-heading h2 { font-size: 16px; font-weight: 600; }
+  .pdf-compress-mobile-list-heading h2 span { margin-left: 4px; color: var(--uied-color-text-secondary); font-size: 13px; }
+  .pdf-compress-mobile-list-heading button { color: var(--uied-color-text-secondary); font-size: 14px; }
+  .pdf-compress-file-card { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: start; gap: 12px; }
+  .pdf-compress-file-thumbnail { width: 48px; height: 64px; }
+  .pdf-compress-file-information { grid-column: 2; }
+  .pdf-compress-file-heading { gap: 8px; }
+  .pdf-compress-file-heading > div:first-child { width: 100%; }
+  .pdf-compress-file-card .pdf-file-name { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-all; font-size: 14px; line-height: 1.6; }
+  .pdf-compress-card-actions { grid-column: 1 / -1; justify-content: flex-start; padding-top: 12px; border-top: 1px solid var(--uied-color-border); }
+  .pdf-compress-card-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 76px; padding: 8px 12px; border: 1px solid var(--uied-color-border); border-radius: 8px; font-size: 14px; }
+  .pdf-compress-action-label { display: inline; }
+  :global(.pdf-compress-preview-dialog.is-fullscreen) { display: flex; flex-direction: column; height: 100dvh; max-height: 100dvh; margin: 0; padding: calc(12px + env(safe-area-inset-top, 0px)) 12px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  :global(.pdf-compress-preview-dialog .el-dialog__header) { flex-shrink: 0; margin-right: 0; padding: 0 44px 16px 0; }
+  :global(.pdf-compress-preview-dialog .el-dialog__title) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; font-size: 16px; line-height: 1.5; }
+  :global(.pdf-compress-preview-dialog .el-dialog__headerbtn) { width: 44px; height: 44px; top: 4px; right: 4px; }
+  :global(.pdf-compress-preview-dialog .el-dialog__body) { flex: 1; min-height: 0; display: flex; padding: 0; }
+  .pdf-compress-preview-content { flex: 1; min-width: 0; height: auto; }
+  .pdf-compress-preview-content > div:first-child { gap: 8px; }
+  .pdf-compress-preview-content button { min-height: 44px; }
+}
+
 .upload-area :deep(.el-upload-dragger) {
   width: 100%;
   height: 100%;

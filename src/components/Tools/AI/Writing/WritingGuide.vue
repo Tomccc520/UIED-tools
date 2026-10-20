@@ -8,20 +8,22 @@
  -->
 
 <template>
-  <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
-    <div class="flex items-center mb-4 cursor-pointer" @click="isExpanded = !isExpanded">
-      <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center mr-3">
+  <div class="writing-guide bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
+    <h3 class="text-lg font-semibold text-gray-800">
+    <button type="button" class="writing-guide__toggle flex items-center mb-4" :aria-expanded="isExpanded" @click="isExpanded = !isExpanded">
+      <span class="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center mr-3" aria-hidden="true">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
             d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-      </div>
-      <h3 class="text-lg font-semibold text-gray-800 flex-1">工具使用说明</h3>
+      </span>
+      <span class="flex-1">工具使用说明</span>
       <svg class="w-5 h-5 text-gray-400 transform transition-transform duration-200"
         :class="{ 'rotate-180': isExpanded }" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
       </svg>
-    </div>
+    </button>
+    </h3>
 
     <div v-show="isExpanded" class="space-y-4 text-gray-600 text-sm leading-relaxed border-t border-gray-100 pt-4">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -31,10 +33,10 @@
             基础生成
           </h4>
           <ul class="space-y-2 pl-4 list-disc list-outside text-gray-500">
-            <li>在左侧配置区域填写必要的主题、关键词等信息。</li>
+            <li>填写必要的主题、关键词等配置信息。</li>
             <li>根据需要选择文章类型、风格和篇幅长度。</li>
             <li>点击"开始生成"按钮，AI将根据您的要求自动创作。</li>
-            <li>生成过程中请耐心等待，内容会实时显示在右侧编辑器中。</li>
+            <li>生成过程中请耐心等待，内容会实时显示在结果编辑器中。</li>
           </ul>
         </div>
 
@@ -74,3 +76,14 @@ import { ref } from 'vue'
 
 const isExpanded = ref(true)
 </script>
+
+<style scoped>
+.writing-guide__toggle { width: 100%; min-height: 44px; text-align: left; }
+.writing-guide__toggle:focus-visible { outline: 2px solid var(--uied-color-primary); outline-offset: 4px; }
+@container ai-tool (max-width: 600px) {
+  .writing-guide { padding: 16px 12px; margin-top: 0; }
+  .writing-guide .grid { grid-template-columns: minmax(0, 1fr); }
+  .writing-guide h3 { font-size: 16px; }
+  .writing-guide li { overflow-wrap: anywhere; }
+}
+</style>

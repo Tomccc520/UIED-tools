@@ -337,18 +337,18 @@ const dragOverHandler = (ev: DragEvent) => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="video-mobile-page min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="video-mobile-workspace bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-10 relative">
           <div class="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
             <div class="w-64 h-64 bg-indigo-400 rounded-full blur-3xl"></div>
             <div class="w-64 h-64 bg-purple-400 rounded-full blur-3xl -ml-20"></div>
           </div>
-          <h2
-            class="text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-pink-600">
+          <h1
+            class="video-mobile-title text-4xl font-bold mb-4 relative inline-block bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-pink-600">
             免费视频抽帧工具
-          </h2>
+          </h1>
           <p class="text-gray-500 text-lg max-w-2xl mx-auto relative z-10">
             在线提取视频画面，支持精确截图和一键批量下载，本地处理保护隐私
           </p>
@@ -357,8 +357,8 @@ const dragOverHandler = (ev: DragEvent) => {
 
         <!-- Initial Upload Area -->
         <div v-if="!videoUrl" @drop="dropHandler" @dragover="dragOverHandler"
-          class="border-2 border-dashed border-gray-300 rounded-xl p-16 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer mb-8 group"
-          @click="fileInput?.click()">
+          class="video-mobile-upload border-2 border-dashed border-gray-300 rounded-xl p-16 text-center hover:border-indigo-500 hover:bg-indigo-50 transition-all cursor-pointer mb-8 group"
+          @click="fileInput?.click()" role="button" tabindex="0" aria-label="选择视频" @keydown.enter="fileInput?.click()" @keydown.space.prevent="fileInput?.click()">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
           <div
             class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
@@ -374,10 +374,10 @@ const dragOverHandler = (ev: DragEvent) => {
         </div>
 
         <!-- Editor Area -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div v-else class="video-mobile-editor grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- Left: Configuration Panel -->
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="video-mobile-controls bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
               <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                 <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -516,7 +516,7 @@ const dragOverHandler = (ev: DragEvent) => {
               <div v-if="isExtracting"
                 class="absolute inset-0 bg-black/70 flex flex-col items-center justify-center text-white z-20 backdrop-blur-sm">
                 <div class="text-xl font-bold mb-3">正在智能提取画面...</div>
-                <div class="w-64 h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div class="w-64 max-w-[80%] h-2 bg-gray-700 rounded-full overflow-hidden">
                   <div class="h-full bg-gradient-to-r from-indigo-500 to-pink-500 transition-all duration-300"
                     :style="{ width: `${extractProgress}%` }">
                   </div>
@@ -528,7 +528,7 @@ const dragOverHandler = (ev: DragEvent) => {
             <!-- Screenshots Grid -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
               <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-                <div class="flex items-center space-x-2">
+                <div class="video-mobile-actions flex items-center space-x-2">
                   <h3 class="font-semibold text-gray-700">截图列表</h3>
                   <span class="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded-full">{{ screenshots.length }}</span>
                 </div>
@@ -568,8 +568,8 @@ const dragOverHandler = (ev: DragEvent) => {
                         </svg>
                       </button>
                     </div>
-                    <button @click="removeScreenshot(index)"
-                      class="absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-sm backdrop-blur-sm">
+                    <button @click="removeScreenshot(index)" :aria-label="`删除第 ${index + 1} 张截图`"
+                      class="video-frame-remove absolute top-1 right-1 bg-red-500/80 hover:bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-all shadow-sm backdrop-blur-sm">
                       <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                       </svg>
@@ -583,7 +583,7 @@ const dragOverHandler = (ev: DragEvent) => {
 
         <!-- Usage Instructions -->
         <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
-          <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <h3 class="video-mobile-actions text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -616,6 +616,14 @@ const dragOverHandler = (ev: DragEvent) => {
 </template>
 
 <style scoped>
+@media (hover: none), (pointer: coarse) {
+  .video-frame-remove {
+    min-width: 44px;
+    min-height: 44px;
+    opacity: 1;
+  }
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -632,3 +640,5 @@ const dragOverHandler = (ev: DragEvent) => {
   animation: fadeIn 0.3s ease-out;
 }
 </style>
+
+<style scoped src="../Shared/videoMobile.css"></style>

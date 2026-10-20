@@ -181,7 +181,7 @@ useToolRankingTracker()
     <!-- 根据左侧菜单状态调整左边距 -->
     <el-container :class="!componentStore.leftCom ? 'c-md:ml-[15rem]' : ''">
       <!-- 顶部导航栏 -->
-      <el-header class="!h-16 uied-shell-gutter">
+      <el-header class="!h-14 c-md:!h-16 uied-shell-gutter">
         <Header />
       </el-header>
 
@@ -221,13 +221,10 @@ useToolRankingTracker()
               </div>
             </div>
           </section>
-          <!-- 路由视图，使用过渡动画 -->
+          <!-- 直接切换路由内容，避免同步离场钩子重入渲染造成热榜主区域空白。 -->
           <div v-if="!isCurrentToolDisabled" class="uied-tool-view">
             <router-view v-slot="{ Component }">
-              <!-- 热榜是全宽负边距页面，关闭路由平移动画，避免移动端过渡帧把整页撑出视口。 -->
-              <transition name="animation" mode="out-in" :css="route.path !== '/tools/hot-ranking'">
-                <component :is="Component" :key="route.fullPath" />
-              </transition>
+              <component :is="Component" :key="route.fullPath" />
             </router-view>
           </div>
         </el-main>
@@ -251,14 +248,6 @@ useToolRankingTracker()
 </template>
 
 <style scoped>
-/**
- * 页面切换动画样式
- * 1. enter-from: 进入前的起始状态
- * 2. enter-to: 进入后的最终状态
- * 3. leave-from: 离开前的起始状态
- * 4. leave-to: 离开后的最终状态
- */
-
 /* 覆盖 el-main 的默认内边距 */
 :deep(.el-main) {
   --el-main-padding: 0px;
@@ -275,27 +264,6 @@ useToolRankingTracker()
     padding-block: 0.5rem !important;
     margin-top: 1rem !important;
   }
-}
-
-.animation-enter-from,
-.animation-leave-to {
-  transform: translateX(20px);
-  opacity: 0;
-}
-
-.animation-enter-to,
-.animation-leave-from {
-  opacity: 1;
-}
-
-/* 进入动画时间和效果 */
-.animation-enter-active {
-  transition: all 0.7s ease;
-}
-
-/* 离开动画时间和效果 */
-.animation-leave-active {
-  transition: all 0.3s cubic-bezier(1, 0.6, 0.6, 1);
 }
 
 /* 右侧边栏样式 */

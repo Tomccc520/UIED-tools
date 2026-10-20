@@ -8,23 +8,23 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">免费 PDF分割</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">免费 PDF分割</h1>
           <p class="text-gray-500 text-sm">将PDF文件拆分为多个文件，支持按页面范围拆分或提取每一页</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="!currentFile">
           <div
-            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="handleDragover" @dragleave.prevent="handleDragleave">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -48,9 +48,9 @@
 
         <!-- PDF页面预览和操作区域 -->
         <div v-if="currentFile && pdfPages.length > 0" class="mt-6">
-          <div class="flex flex-col md:flex-row gap-6">
+          <div class="flex flex-col md:flex-row gap-6 pdf-editor-layout">
             <!-- 左侧设置区域 -->
-            <div class="w-full md:w-1/3 space-y-6">
+            <div class="w-full md:w-1/3 space-y-6 pdf-editor-sidebar">
               <div class="bg-gray-50 p-6 rounded-lg">
                 <h3 class="font-medium text-gray-900 mb-4">拆分设置</h3>
 
@@ -116,7 +116,7 @@
             </div>
 
             <!-- 右侧预览区域 -->
-            <div class="w-full md:w-2/3 relative">
+            <div class="w-full md:w-2/3 relative pdf-editor-main">
               <div v-if="previewLoading"
                 class="absolute inset-0 z-10 bg-white/60 backdrop-blur-sm flex items-center justify-center">
                 <div class="flex flex-col items-center">
@@ -124,7 +124,7 @@
                   <div class="text-sm text-gray-600">正在生成预览，已完成 {{ previewProgress }}%</div>
                 </div>
               </div>
-              <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center justify-between mb-4 pdf-file-summary">
                 <h3 class="font-medium text-gray-900">页面预览 ({{ pdfPages.length }}页)</h3>
                 <div class="text-sm text-gray-500">
                   点击页面可快速添加到范围输入框
@@ -132,7 +132,7 @@
               </div>
 
               <div
-                class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-[600px] overflow-y-auto p-2 bg-gray-50 rounded-lg">
+                class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-5 gap-4 max-h-[600px] overflow-y-auto p-2 bg-gray-50 rounded-lg pdf-page-grid">
                 <div v-for="page in pdfPages" :key="page.pageIndex" class="relative group cursor-pointer"
                   @click="togglePageSelection(page.pageNumber)">
                   <div class="aspect-[1/1.4] bg-white shadow-sm rounded border border-gray-200 overflow-hidden relative"
@@ -162,7 +162,7 @@
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
@@ -223,6 +223,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, computed, onUnmounted } from 'vue'
 import type { PDFDocumentLoadingTask } from 'pdfjs-dist'
 import { parsePdfPageRanges } from '@/utils/pdfPageRanges'

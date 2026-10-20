@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
 import VideoCompress from './VideoCompress.vue'
+import MobileToolActions from '@/components/Common/MobileToolActions.vue'
 
 const services = vi.hoisted(() => ({ consume: vi.fn(), config: vi.fn(), compress: vi.fn() }))
 vi.mock('@/composables/useToolConsume', () => ({ useToolConsume: () => ({ ensureToolConsume: services.consume }) }))
@@ -32,7 +33,7 @@ async function mountVideo() {
     global: {
       stubs: {
         VideoProcessStatus: { template: '<button data-test="cancel" @click="$emit(\'cancel\')">取消处理</button>' },
-        ElRadioGroup: { template: '<div><slot /></div>' },
+        ElRadioGroup: { name: 'ElRadioGroup', template: '<div><slot /></div>' },
         ElRadioButton: { template: '<span><slot /></span>' },
         ElSlider: true,
         ElInputNumber: true,
@@ -63,6 +64,66 @@ afterEach(() => {
 })
 
 describe('视频压缩任务的取消和重试', () => {
+  it('手机主操作复用压缩流程，完成后切换结果，预览切换不卸载原视频', async () => {
+    services.compress.mockResolvedValueOnce({
+      blob: new Blob(['video']), outputSize: 5, fileName: 'result.mp4', compressed: true, elapsedMs: 10
+    })
+    const view = await mountVideo()
+    const original = view.get('video[aria-label="原视频预览"]').element
+    const dock = view.findComponent(MobileToolActions)
+    expect(dock.props('actionLabel')).toBe('开始压缩')
+    dock.vm.$emit('action')
+    await flushPromises()
+    expect(services.compress).toHaveBeenCalledOnce()
+    expect(dock.props('actionLabel')).toBe('下载视频')
+    expect(view.get('.video-compress-preview-tabs button:last-child').attributes('aria-pressed')).toBe('true')
+    await view.get('.video-compress-preview-tabs button:first-child').trigger('click')
+    expect(view.get('video[aria-label="原视频预览"]').element).toBe(original)
+    expect(view.find('video[aria-label="压缩视频预览"]').exists()).toBe(true)
+  })
+
+  it('修改参数会明确标记旧结果，并把手机主操作改回重新压缩', async () => {
+    services.compress.mockResolvedValueOnce({
+      blob: new Blob(['video']), outputSize: 5, fileName: 'result.mp4', compressed: true, elapsedMs: 10
+    })
+    const view = await mountVideo()
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    view.findAllComponents({ name: 'ElRadioGroup' })[0].vm.$emit('update:modelValue', 'browser')
+    await flushPromises()
+    expect(view.findComponent(MobileToolActions).props('actionLabel')).toBe('重新压缩')
+    expect(view.get('.video-compress-stale').text()).toContain('上次结果')
+    expect(view.find('video[aria-label="压缩视频预览"]').exists()).toBe(true)
+  })
+
+  it.each(['取消', '拒绝'])('参数修改后，%s重压授权仍保持旧结果失效', async (outcome) => {
+    services.compress.mockResolvedValueOnce({
+      blob: new Blob(['video']), outputSize: 5, fileName: 'result.mp4', compressed: true, elapsedMs: 10
+    })
+    const view = await mountVideo()
+    const video = view.get('video[aria-label="原视频预览"]')
+    Object.defineProperties(video.element, {
+      duration: { configurable: true, value: 2 },
+      videoWidth: { configurable: true, value: 320 },
+      videoHeight: { configurable: true, value: 180 }
+    })
+    await video.trigger('loadedmetadata')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    view.findAllComponents({ name: 'ElRadioGroup' })[0].vm.$emit('update:modelValue', 'browser')
+    await flushPromises()
+    const pending = deferred<boolean>()
+    services.consume.mockReturnValueOnce(pending.promise)
+    view.findComponent(MobileToolActions).vm.$emit('action')
+    await flushPromises()
+    if (outcome === '取消') await view.get('[data-test="cancel"]').trigger('click')
+    pending.resolve(outcome === '取消')
+    await flushPromises()
+    expect(view.findComponent(MobileToolActions).props('actionLabel')).toBe('重新压缩')
+    expect(view.get('.video-compress-stale').text()).toContain('上次结果')
+    expect(services.compress).toHaveBeenCalledOnce()
+  })
+
   it('扣次响应未返回时禁止重复开始，取消后不能再上传', async () => {
     const consume = deferred<boolean>()
     services.consume.mockReturnValue(consume.promise)

@@ -1,0 +1,117 @@
+/* 视频工具组的窄屏布局；仅由组内页面通过 scoped 样式显式接入。 */
+.video-mobile-page {
+  container: video-mobile / inline-size;
+  min-width: 0;
+}
+
+.video-mobile-editor > *,
+.video-mobile-workspace {
+  min-width: 0;
+}
+
+.video-mobile-workspace video {
+  max-width: 100%;
+}
+
+@container video-mobile (max-width: 780px) {
+  .video-mobile-editor {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .video-mobile-editor > * {
+    grid-column: 1 / -1;
+  }
+
+  .video-mobile-controls {
+    position: static;
+  }
+}
+
+@container video-mobile (max-width: 600px) {
+  .video-mobile-workspace {
+    padding: 20px 12px;
+  }
+
+  .video-mobile-title {
+    font-size: 24px;
+    line-height: 1.4;
+    overflow-wrap: anywhere;
+  }
+
+  .video-mobile-upload {
+    padding: 28px 12px;
+  }
+
+  .video-mobile-controls {
+    padding: 16px 12px;
+  }
+
+  .video-mobile-workspace button,
+  .video-mobile-workspace :deep(.el-button),
+  .video-mobile-workspace :deep(.el-input__wrapper),
+  .video-mobile-workspace :deep(.el-select__wrapper),
+  .video-mobile-workspace input[type='number'] {
+    min-height: 44px;
+  }
+
+  .video-mobile-workspace button {
+    min-width: 44px;
+  }
+
+  .video-mobile-workspace :deep(.el-input-number) {
+    max-width: 100%;
+    min-width: 0;
+    width: 100%;
+    height: 44px;
+  }
+
+  .video-mobile-workspace :deep(.el-radio-group) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .video-mobile-workspace :deep(.el-radio-button) {
+    flex: 1 1 104px;
+  }
+
+  .video-mobile-workspace :deep(.el-radio-button__inner) {
+    display: flex;
+    min-height: 44px;
+    border: 1px solid var(--uied-color-border, #e4e7ec);
+    border-radius: 6px;
+    padding: 8px;
+    align-items: center;
+    justify-content: center;
+    white-space: normal;
+    line-height: 1.5;
+    box-shadow: none;
+  }
+
+  .video-mobile-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .video-mobile-actions > * {
+    margin-left: 0;
+  }
+
+  .video-mobile-upload:focus-visible {
+    outline: 2px solid var(--uied-color-primary, #5b54e8);
+    outline-offset: 4px;
+  }
+
+  .video-mobile-workspace :deep(.el-slider__button-wrapper) {
+    width: 44px;
+    height: 44px;
+    top: -19px;
+  }
+}
+
+@container video-mobile (max-width: 360px) {
+  .video-mobile-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -8,23 +8,23 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h1>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <!-- 上传区域 -->
         <div v-if="files.length === 0">
           <div
-            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" multiple accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" multiple accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -45,14 +45,14 @@
         <!-- 文件列表和操作按钮 -->
         <template v-if="files.length > 0">
           <div class="mb-6">
-            <div class="flex justify-between items-center mb-4">
-              <div class="flex items-center gap-4">
+            <div class="flex justify-between items-center mb-4 pdf-file-summary">
+              <div class="flex flex-wrap items-center gap-4">
                 <h2 class="text-lg font-medium">已选择的文件</h2>
                 <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
                   {{ files.length }} 个文件
                 </span>
               </div>
-              <input ref="fileInputRef" type="file" multiple accept=".pdf,application/pdf" class="hidden" @change="handleFileInputChange" />
+              <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" multiple accept=".pdf,application/pdf" class="hidden" @change="handleFileInputChange" />
               <button @click="triggerFileInput" :disabled="merging || files.length >= maxFiles" class="text-sm text-blue-600">添加文件</button>
               <button @click="clearFiles" class="text-sm text-gray-500 hover:text-red-500 transition-colors"
                 :disabled="merging">
@@ -67,7 +67,7 @@
                 <div
                   class="relative group bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all"
                   :class="{ 'border-2 border-blue-500 shadow-lg': drag }">
-                  <div class="flex items-center justify-between">
+                  <div class="flex items-center justify-between pdf-file-row">
                     <div class="flex items-center space-x-3 min-w-0 flex-1">
                       <!-- 拖拽手柄 -->
                       <div class="drag-handle cursor-move p-1 hover:bg-gray-100 rounded">
@@ -87,13 +87,13 @@
                         </div>
                       </div>
                       <div class="min-w-0">
-                        <p class="text-sm text-gray-700 font-medium break-all">{{ element.name }}</p>
+                        <p class="text-sm text-gray-700 font-medium break-all pdf-file-name">{{ element.name }}</p>
                         <p class="text-xs text-gray-500">{{ formatFileSize(element.size) }}</p>
                       </div>
                     </div>
-                    <div class="flex items-center space-x-2">
+                    <div class="flex items-center space-x-2 pdf-file-actions">
                       <!-- 预览按钮 -->
-                      <button @click="previewPDF(element)"
+                      <button @click="previewPDF(element)" :aria-label="`预览 ${element.name}`"
                         class="text-gray-400 hover:text-blue-500 p-1.5 rounded-full hover:bg-blue-50 transition-colors"
                         :disabled="merging">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -104,7 +104,7 @@
                         </svg>
                       </button>
                       <!-- 删除按钮 -->
-                      <button @click="removeFile(element)"
+                      <button @click="removeFile(element)" :aria-label="`移除 ${element.name}`"
                         class="text-gray-400 hover:text-red-500 p-1.5 rounded-full hover:bg-red-50 transition-colors"
                         :disabled="merging">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,7 +133,7 @@
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
@@ -215,6 +215,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, reactive, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

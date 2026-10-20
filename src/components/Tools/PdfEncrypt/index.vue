@@ -8,21 +8,21 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h1>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <div v-if="!file">
           <div
-            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -38,9 +38,9 @@
           </div>
         </div>
 
-        <div v-else class="flex flex-col lg:flex-row gap-8">
+        <div v-else class="flex flex-col lg:flex-row gap-8 pdf-editor-layout">
           <div
-            class="flex-1 bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[300px] relative overflow-hidden">
+            class="pdf-editor-main flex-1 bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[300px] relative overflow-hidden">
             <div v-if="rendering" class="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
@@ -48,13 +48,13 @@
               <canvas ref="pdfPreviewCanvas" class="max-w-full h-auto block"></canvas>
             </div>
             <div class="mt-4 text-center">
-              <p class="text-gray-700 font-medium">{{ file.name }}</p>
+              <p class="text-gray-700 font-medium pdf-file-name">{{ file.name }}</p>
               <p class="text-sm text-gray-500 mt-1">{{ (file.size / 1024 / 1024).toFixed(2) }} MB</p>
               <p v-if="previewError" role="alert" class="text-sm text-red-600 mt-2">{{ previewError }}</p>
             </div>
           </div>
 
-          <div class="w-full lg:w-96 space-y-6">
+          <div class="pdf-editor-sidebar w-full lg:w-96 space-y-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">打开密码 (用户密码)</label>
               <el-input v-model="userPassword" :disabled="processing" type="password" show-password placeholder="请输入打开文件所需的密码" />
@@ -79,7 +79,7 @@
         </div>
       </div>
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
@@ -136,6 +136,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, reactive, watch, nextTick, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

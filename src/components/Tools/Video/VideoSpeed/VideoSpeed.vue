@@ -206,27 +206,27 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="">
+  <div class="video-mobile-page ">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
+      <div class="video-mobile-workspace bg-white rounded-xl shadow-sm min-h-[600px] p-6 sm:p-8">
         <!-- 头部区域 -->
         <div class="text-center mb-8">
-          <h2
-            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+          <h1
+            class="video-mobile-title text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
             免费视频变速
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm">在线调整视频播放速度，支持 0.5x - 4.0x 变速，快速制作慢动作或快进效果</p>
         </div>
         <VideoToolNotice class="mb-8" />
 
         <!-- Upload Area -->
         <div v-if="!videoUrl"
-          class="border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer mb-8 group"
+          class="video-mobile-upload border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer mb-8 group"
           :class="[isDragOver ? 'border-indigo-500 bg-indigo-50 scale-[1.02]' : 'border-gray-300 hover:border-indigo-500 hover:bg-indigo-50']"
           @click="fileInput?.click()"
           @dragover.prevent="isDragOver = true"
           @dragleave.prevent="isDragOver = false"
-          @drop.prevent="handleDrop">
+          @drop.prevent="handleDrop" role="button" tabindex="0" aria-label="选择视频" @keydown.enter="fileInput?.click()" @keydown.space.prevent="fileInput?.click()">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
           <div class="w-20 h-20 mx-auto bg-indigo-50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
             <svg class="w-10 h-10 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,10 +237,10 @@ onUnmounted(() => {
           <p class="text-sm text-gray-500">支持 MP4, WebM, MOV 等常见视频格式</p>
         </div>
 
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div v-else class="video-mobile-editor grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- 左侧：配置区域 -->
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="video-mobile-controls bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
               <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                 <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -390,3 +390,5 @@ onUnmounted(() => {
     <ToolsRecommend :currentPath="route.path" />
   </div>
 </template>
+
+<style scoped src="../Shared/videoMobile.css"></style>

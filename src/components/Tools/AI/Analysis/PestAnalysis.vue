@@ -67,7 +67,7 @@
             <span>P</span><span>E</span><span>S</span><span>T</span>
           </div>
           <strong>报告区等待任务</strong>
-          <p>填写左侧分析对象，AI 将按四个环境维度生成可继续编辑的 Markdown 报告。</p>
+          <p>填写分析对象，AI 将按四个环境维度生成可继续编辑的 Markdown 报告。</p>
         </div>
       </template>
 
@@ -550,9 +550,10 @@ const save = (text: string, _html: string) => {
   }
 }
 
-@media (max-width: 720px) {
+@container ai-tool (max-width: 720px) {
   .pest-empty {
-    min-height: 430px;
+    min-height: 280px;
+    padding: 28px 16px;
   }
 
   .pest-page :deep(.ai-tool-guide__content ul) {

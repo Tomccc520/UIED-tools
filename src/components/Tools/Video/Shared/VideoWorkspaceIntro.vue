@@ -8,19 +8,20 @@
 -->
 
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   title: string
   description: string
   specs: string[]
   notices: string[]
-}>()
+  headingTag?: 'h1' | 'h2'
+}>(), { headingTag: 'h2' })
 </script>
 
 <template>
   <header class="video-workspace-intro">
     <div class="video-workspace-intro__top">
       <div class="video-workspace-intro__copy">
-        <h2>{{ title }}</h2>
+        <component :is="headingTag" class="video-workspace-intro__title">{{ title }}</component>
         <p>{{ description }}</p>
       </div>
       <div class="video-workspace-intro__specs" aria-label="工具参数摘要">
@@ -34,6 +35,11 @@ defineProps<{
 </template>
 
 <style scoped>
+.video-workspace-intro {
+  container: video-intro / inline-size;
+  min-width: 0;
+}
+
 .video-workspace-intro__top {
   display: flex;
   align-items: flex-start;
@@ -45,7 +51,7 @@ defineProps<{
   min-width: 0;
 }
 
-.video-workspace-intro h2 {
+.video-workspace-intro__title {
   margin: 0;
   color: #0f172a;
   font-size: 26px;
@@ -67,6 +73,7 @@ defineProps<{
   flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
+  max-width: 100%;
 }
 
 .video-workspace-intro__specs span {
@@ -76,7 +83,8 @@ defineProps<{
   color: #334155;
   font-size: 12px;
   font-weight: 650;
-  line-height: 1;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
   padding: 8px 10px;
 }
 
@@ -120,7 +128,7 @@ defineProps<{
 }
 
 @media (max-width: 640px) {
-  .video-workspace-intro h2 {
+  .video-workspace-intro__title {
     font-size: 22px;
   }
 
@@ -139,6 +147,23 @@ defineProps<{
   .video-workspace-intro__notices {
     flex-direction: column;
     gap: 6px;
+  }
+}
+
+@container video-intro (max-width: 640px) {
+  .video-workspace-intro__top {
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .video-workspace-intro__specs {
+    display: flex;
+    justify-content: flex-start;
+  }
+
+  .video-workspace-intro__specs span {
+    flex: 1 1 90px;
+    text-align: center;
   }
 }
 </style>

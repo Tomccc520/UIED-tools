@@ -77,7 +77,7 @@ const clearAll = () => {
 </script>
 
 <template>
-  <div>
+  <div class="json-format-page">
     <StandardToolPageTemplate
       eyebrow="DEVELOPER UTILITY"
       title="JSON 格式化"
@@ -105,6 +105,7 @@ const clearAll = () => {
             v-model="jsonInput"
             type="textarea"
             class="json-editor"
+            aria-label="输入 JSON"
             :input-style="{ height: '100%', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }"
             placeholder="在此粘贴 JSON 代码..."
             resize="none"
@@ -122,7 +123,7 @@ const clearAll = () => {
             </el-button>
           </header>
           <div class="json-result">
-            <textarea v-model="jsonOutput" class="json-result__textarea" readonly placeholder="格式化结果将显示在这里..."></textarea>
+            <textarea v-model="jsonOutput" class="json-result__textarea" aria-label="JSON 处理结果" readonly placeholder="格式化结果将显示在这里..."></textarea>
             <div v-if="errorMsg" class="json-result__error" role="alert">{{ errorMsg }}</div>
           </div>
         </section>
@@ -154,6 +155,11 @@ const clearAll = () => {
 </template>
 
 <style scoped>
+.json-format-page { container-type: inline-size; container-name: json-format; min-width: 0; }
+.json-editor, .json-result, .json-result__textarea { max-width: 100%; min-width: 0; }
+.json-result__textarea { overflow: auto; }
+.json-result__error { overflow-wrap: anywhere; }
+
 .json-meta { padding: 5px 9px; border: 1px solid #dfe2ea; color: #687083; font-size: 11px; }
 .json-workspace { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; min-height: 520px; }
 .json-pane { display: flex; flex-direction: column; min-width: 0; padding: 16px; border: 1px solid #e5e7ed; background: #fbfbfc; }
@@ -170,9 +176,17 @@ const clearAll = () => {
 .json-indent { width: 150px; }
 .json-support { display: flex; gap: 12px; padding: 14px 16px; border-left: 3px solid var(--uied-color-primary); background: #f6f5ff; color: #5d6373; font-size: 13px; line-height: 1.6; }
 .json-support strong { color: #242035; white-space: nowrap; }
-@media (max-width: 720px) {
+@container json-format (max-width: 720px) {
   .json-workspace { grid-template-columns: 1fr; min-height: 0; }
-  .json-editor, .json-editor :deep(.el-textarea__inner), .json-result, .json-result__textarea { min-height: 300px; }
+  .json-editor, .json-editor :deep(.el-textarea__inner), .json-result, .json-result__textarea { min-height: 240px; }
+  .json-pane { padding: 12px; }
+  .json-pane__header { gap: 8px; }
+  .json-pane__header :deep(.el-button) { min-height: 44px; padding: 8px; }
+  .json-editor :deep(.el-textarea__inner), .json-result__textarea { font-size: 16px; }
+  .json-indent { width: 100%; }
+  .json-format-page :deep(.standard-tool-workspace__actions) { min-width: 0; }
+  .json-format-page :deep(.standard-tool-workspace__actions .el-button) { min-height: 44px; margin-left: 0; }
+  .json-format-page :deep(.standard-tool-workspace__actions .el-select__wrapper) { min-height: 44px; }
   .json-support { display: block; }
   .json-support strong { display: block; margin-bottom: 4px; }
 }

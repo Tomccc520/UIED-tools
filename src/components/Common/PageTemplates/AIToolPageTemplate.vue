@@ -104,6 +104,9 @@ withDefaults(defineProps<{
   --ai-ink: #101828;
   --ai-panel: #f9fafb;
   width: 100%;
+  min-width: 0;
+  container-type: inline-size;
+  container-name: ai-tool;
   color: var(--ai-ink);
   font-family: "Avenir Next", "PingFang SC", "Microsoft YaHei", sans-serif;
 }
@@ -355,13 +358,21 @@ withDefaults(defineProps<{
   min-width: 0;
 }
 
+/* 长代码、表格和编辑器只在结果面板内部滚动。 */
+.ai-result-panel__body :deep(.v-md-editor__right-area),
+.ai-result-panel__body :deep(.v-md-editor__main),
+.ai-result-panel__body :deep(.v-md-editor__editor-wrapper),
+.ai-result-panel__body :deep(.v-md-editor__preview-wrapper) { min-width: 0; }
+.ai-result-panel__body :deep(.vuepress-markdown-body) { overflow-wrap: anywhere; }
+.ai-result-panel__body :deep(.vuepress-markdown-body pre) { max-width: 100%; overflow: auto; }
+
 @keyframes ai-state-pulse {
   50% {
     opacity: 0.45;
   }
 }
 
-@media (max-width: 960px) {
+@container ai-tool (max-width: 900px) {
   .ai-tool-workspace {
     grid-template-columns: 1fr;
   }
@@ -371,7 +382,7 @@ withDefaults(defineProps<{
   }
 }
 
-@media (max-width: 640px) {
+@container ai-tool (max-width: 600px) {
   .ai-tool-header {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 14px;
@@ -390,7 +401,7 @@ withDefaults(defineProps<{
   }
 
   .ai-tool-header__copy h1 {
-    font-size: 27px;
+    font-size: 25px;
   }
 
   .ai-tool-header__state {
@@ -407,23 +418,46 @@ withDefaults(defineProps<{
   }
 
   .ai-result-panel {
-    min-height: 620px;
+    min-height: 360px;
   }
 
   .ai-result-panel__header {
-    padding: 16px;
+    padding: 16px 12px;
+    gap: 8px;
+    flex-wrap: wrap;
   }
 
   .ai-result-panel__actions {
     justify-content: flex-start;
-    overflow-x: auto;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   .ai-result-panel__assist {
     align-items: flex-start;
     flex-direction: column;
   }
+
+  .ai-tool-header__copy { min-width: 0; overflow-wrap: anywhere; }
+  .ai-input-panel__body { margin-top: 20px; }
+  .ai-input-panel__body :deep(.el-input__inner),
+  .ai-input-panel__body :deep(.el-textarea__inner),
+  .ai-input-panel__body :deep(.el-select__selected-item) { font-size: 16px; }
+  .ai-input-panel__body :deep(.el-input__wrapper),
+  .ai-input-panel__body :deep(.el-select__wrapper) { min-height: 44px; }
+  .ai-input-panel__action :deep(button),
+  .ai-result-panel__actions :deep(button),
+  .ai-result-panel__assist :deep(button) { min-height: 44px; white-space: normal; }
+  .ai-result-panel__body :deep(.v-md-editor:not(.v-md-editor--fullscreen)) { height: 680px !important; min-height: 0; }
+  .ai-result-panel__body :deep(.v-md-editor__right-area),
+  .ai-result-panel__body :deep(.v-md-editor__editor-wrapper),
+  .ai-result-panel__body :deep(.v-md-editor__preview-wrapper) { min-width: 0; }
+  .ai-result-panel__body :deep(.v-md-editor--editable:not(.v-md-editor--fullscreen) .v-md-editor__main) { flex-direction: column; }
+  .ai-result-panel__body :deep(.v-md-editor--editable:not(.v-md-editor--fullscreen) .v-md-editor__editor-wrapper) { border-right: 0; border-bottom: 1px solid var(--uied-color-border); }
+  .ai-tool-workspace .ai-result-panel__body :deep(.v-md-textarea-editor textarea),
+  .ai-tool-workspace .ai-result-panel__body :deep(.v-md-textarea-editor pre) { font-size: 16px; padding: 12px; }
+  .ai-result-panel__body :deep(.v-md-editor__toolbar-item) { min-width: 44px; min-height: 44px; }
+  .ai-result-panel__body :deep(.vuepress-markdown-body) { padding: 16px 12px; overflow-wrap: anywhere; }
+  .ai-result-panel__body :deep(.vuepress-markdown-body pre) { max-width: 100%; overflow: auto; }
 
   .ai-tool-guide {
     grid-template-columns: 1fr;

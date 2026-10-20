@@ -2,25 +2,26 @@
  * @file ImageToGif.vue
  * @description 图片合成GIF工具，支持多张图片转GIF
  * @author UIED技术团队
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @createDate 2024-12-22
  -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="image-gif-page min-h-screen">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="image-gif-workspace bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+          <h1 class="image-gif-title text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <span class="relative px-4 sm:px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
-            </div>
-          </h2>
+            </span>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div class="image-gif-editor grid grid-cols-1 lg:grid-cols-3 gap-8">
           <!-- 左侧设置区域 -->
           <div class="lg:col-span-1 space-y-6">
             <!-- 上传区域 -->
@@ -32,7 +33,7 @@
                 @dragleave.prevent="isDragging = false">
                 <input ref="fileInputRef" type="file" class="hidden" multiple accept="image/*"
                   @change="handleFileInputChange" />
-                <div class="absolute inset-0 cursor-pointer z-10" @click="triggerFileInput"></div>
+                <button type="button" aria-label="选择合成 GIF 的图片" class="absolute inset-0 cursor-pointer z-10 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4" @click="triggerFileInput"></button>
                 <div class="text-center px-4">
                   <div class="w-8 h-8 mb-2 mx-auto">
                     <svg class="w-full h-full text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -83,21 +84,25 @@
                 <div class="text-gray-700 font-medium">图片列表 ({{ fileList.length }})</div>
                 <el-button type="text" class="!text-red-500" @click="clearAll">清空</el-button>
               </div>
-              <draggable v-model="fileList" item-key="id" class="space-y-2" ghost-class="ghost">
+              <draggable v-model="fileList" :disabled="isProcessing" item-key="id" class="space-y-2" ghost-class="ghost">
                 <template #item="{ element, index }">
                   <div
-                    class="flex items-center gap-3 p-2 bg-gray-50 rounded border border-gray-100 cursor-move hover:bg-gray-100 transition-colors">
+                    class="image-gif-item flex items-center gap-3 p-2 bg-gray-50 rounded border border-gray-100 cursor-move hover:bg-gray-100 transition-colors">
                     <span class="text-gray-400 text-xs w-4">{{ index + 1 }}</span>
-                    <img :src="element.url" class="w-10 h-10 object-cover rounded" />
+                    <img :src="element.url" :alt="`第 ${index + 1} 张图片`" class="w-10 h-10 object-cover rounded shrink-0" />
                     <div class="flex-1 min-w-0">
-                      <div class="text-xs text-gray-600 truncate" :title="element.name">{{ element.name }}</div>
+                      <div class="image-gif-filename text-xs text-gray-600 truncate" :title="element.name">{{ element.name }}</div>
                       <div class="text-xs text-gray-400">{{ formatSize(element.size) }}</div>
                     </div>
-                    <el-button type="text" @click="removeFile(index)">
+                    <el-button type="text" :aria-label="`移除第 ${index + 1} 张图片`" @click="removeFile(index)">
                       <el-icon class="text-gray-400 hover:text-red-500">
                         <Close />
                       </el-icon>
                     </el-button>
+                    <div class="image-gif-order">
+                      <button type="button" :disabled="index === 0 || isProcessing" :aria-label="`上移第 ${index + 1} 张图片`" @click="moveImage(index, -1)">上移</button>
+                      <button type="button" :disabled="index === fileList.length - 1 || isProcessing" :aria-label="`下移第 ${index + 1} 张图片`" @click="moveImage(index, 1)">下移</button>
+                    </div>
                   </div>
                 </template>
               </draggable>
@@ -107,7 +112,7 @@
           <!-- 右侧预览区域 -->
           <div class="lg:col-span-2">
             <div class="bg-white border border-gray-200 rounded-lg p-6 h-full flex flex-col">
-              <div class="flex justify-between items-center mb-4">
+              <div class="image-gif-preview-head flex justify-between items-center mb-4">
                 <div class="text-gray-700 font-medium">效果预览</div>
                 <div class="flex gap-2">
                   <el-button @click="generatePreview" :disabled="fileList.length === 0 || isProcessing">
@@ -120,7 +125,7 @@
               </div>
 
               <div
-                class="flex-1 bg-gray-100 rounded-lg overflow-auto p-4 flex justify-center min-h-[400px] items-center">
+                class="image-gif-preview flex-1 bg-gray-100 rounded-lg overflow-auto p-4 flex justify-center min-h-[400px] items-center">
                 <div v-if="fileList.length === 0" class="flex flex-col items-center justify-center text-gray-400">
                   <el-icon :size="48" class="mb-2">
                     <Picture />
@@ -188,6 +193,18 @@ const delay = ref(500)
 const quality = ref(10)
 const loop = ref(true)
 
+/** 撤销旧 GIF 预览并释放地址，避免图片顺序变化后下载到旧版本。 */
+const clearPreview = () => {
+  if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+  previewUrl.value = ''
+}
+
+/** 图片增删或顺序变化后统一撤销预览，覆盖按钮排序与拖拽排序。 */
+watch(() => fileList.value.map(item => item.id), (currentIds, previousIds) => {
+  if (currentIds.length === previousIds.length && currentIds.every((id, index) => id === previousIds[index])) return
+  clearPreview()
+})
+
 // 文件处理
 const handleFileInputChange = (e: Event) => {
   const input = e.target as HTMLInputElement
@@ -240,10 +257,23 @@ const removeFile = (index: number) => {
   fileList.value.splice(index, 1)
 }
 
+/**
+ * 调整图片顺序，为触屏和键盘提供拖拽排序之外的入口。
+ * @param index 当前图片位置。
+ * @param direction 移动方向，-1 为上移，1 为下移。
+ */
+const moveImage = (index: number, direction: -1 | 1) => {
+  const target = index + direction
+  if (isProcessing.value || target < 0 || target >= fileList.value.length) return
+  const next = [...fileList.value]
+  ;[next[index], next[target]] = [next[target], next[index]]
+  fileList.value = next
+}
+
 const clearAll = () => {
   fileList.value.forEach(f => URL.revokeObjectURL(f.url))
   fileList.value = []
-  previewUrl.value = ''
+  clearPreview()
 }
 
 const formatSize = (bytes: number) => {
@@ -342,6 +372,116 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.image-gif-page {
+  container: image-gif / inline-size;
+  min-width: 0;
+}
+
+.image-gif-editor > * {
+  min-width: 0;
+}
+
+.image-gif-order {
+  display: grid;
+  gap: 4px;
+}
+
+.image-gif-order button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--uied-color-border, #e4e7ec);
+  border-radius: 6px;
+  background: white;
+  font-size: 12px;
+}
+
+.image-gif-order button:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+@container image-gif (max-width: 780px) {
+  .image-gif-editor {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+
+  .image-gif-editor > * {
+    grid-column: 1 / -1;
+  }
+}
+
+@container image-gif (max-width: 600px) {
+  .image-gif-workspace {
+    padding: 20px 12px;
+  }
+
+  .image-gif-title {
+    font-size: 24px;
+    line-height: 1.4;
+  }
+
+  .image-gif-editor .p-6 {
+    padding: 16px 12px;
+  }
+
+  .image-gif-editor :deep(.el-button),
+  .image-gif-editor :deep(.el-input__wrapper) {
+    min-height: 44px;
+  }
+
+  .image-gif-editor :deep(.el-input-number) {
+    width: 100%;
+    height: 44px;
+  }
+
+  .image-gif-editor :deep(.el-button) {
+    min-width: 44px;
+  }
+
+  .image-gif-preview-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .image-gif-preview-head > div:last-child {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .image-gif-preview-head :deep(.el-button) {
+    min-width: 0;
+    margin-left: 0;
+    padding: 8px;
+  }
+
+  .image-gif-preview {
+    min-height: 240px;
+  }
+
+  .image-gif-filename {
+    display: -webkit-box;
+    overflow-wrap: anywhere;
+    white-space: normal;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .image-gif-item {
+    display: grid;
+    grid-template-columns: 16px 40px minmax(0, 1fr) 44px;
+    gap: 8px;
+  }
+
+  .image-gif-order {
+    display: flex;
+    grid-column: 2 / -1;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+}
+
 .ghost {
   opacity: 0.5;
   background: #c8ebfb;

@@ -9,25 +9,25 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
       <!-- 主要内容区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
-            <div class="relative px-12">
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+            <div class="relative px-12 pdf-workspace-title-inner">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">{{ $ensureFreeToolTitle(info.title) }}</span>
             </div>
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm mt-6">{{ info.subtitle }}</p>
         </div>
 
-        <div class="flex flex-col lg:flex-row gap-8">
+        <div class="flex flex-col lg:flex-row gap-8 pdf-editor-layout">
           <!-- 左侧编辑区域 -->
-          <div class="flex-1 flex flex-col gap-4">
+          <div class="flex-1 flex flex-col gap-4 pdf-editor-main">
             <!-- 工具栏 -->
-            <div class="flex flex-wrap gap-2 items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200">
+            <div class="flex flex-wrap gap-2 items-center justify-between bg-gray-50 p-3 rounded-lg border border-gray-200 pdf-editor-toolbar">
               <div class="flex gap-2">
                 <button @click="triggerFileInput" class="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-50 transition-colors flex items-center">
                   <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -54,7 +54,7 @@
           </div>
 
           <!-- 右侧设置与预览 -->
-          <div class="w-full lg:w-80 flex flex-col gap-6">
+          <div class="pdf-editor-sidebar w-full lg:w-80 flex flex-col gap-6">
             <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
               <h3 class="font-medium text-gray-900 mb-4 flex items-center">
                 <svg class="w-5 h-5 mr-2 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,7 +119,7 @@
       </div>
 
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div v-for="feature in features" :key="feature.title" class="bg-white p-4 rounded-lg border border-gray-100">
             <div class="flex items-start space-x-3">
@@ -145,6 +145,7 @@
 </template>
 
 <script setup lang="ts">
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
 import { ref, reactive, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'

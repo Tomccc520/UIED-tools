@@ -1,0 +1,213 @@
+/**
+ * PDF 工具共用的容器响应式规则，仅作用于主动标记的 PDF 工作区。
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-19
+ */
+.pdf-workspace {
+  container: pdf-workspace / inline-size;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.pdf-workspace .pdf-editor-main,
+.pdf-workspace .pdf-editor-sidebar,
+.pdf-workspace .pdf-file-summary > div,
+.pdf-workspace .pdf-file-row > div {
+  min-width: 0;
+}
+
+.pdf-workspace .pdf-canvas-scroll {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-x: contain;
+  border: 1px solid var(--uied-color-border);
+  border-radius: 8px;
+}
+
+.pdf-workspace .pdf-file-name {
+  overflow-wrap: anywhere;
+}
+
+.pdf-workspace .pdf-upload-area:focus-within,
+.pdf-workspace .pdf-upload-area:focus-visible {
+  outline: 2px solid var(--uied-color-primary);
+  outline-offset: 3px;
+}
+
+@container pdf-workspace (max-width: 760px) {
+  .pdf-workspace .pdf-editor-layout {
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  .pdf-workspace .pdf-editor-sidebar,
+  .pdf-workspace .pdf-editor-main {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
+@container pdf-workspace (max-width: 640px) {
+  .pdf-workspace .pdf-workspace-panel {
+    min-width: 0;
+    padding: 16px;
+  }
+
+  .pdf-workspace .pdf-workspace-title {
+    max-width: 100%;
+    font-size: 24px;
+    line-height: 32px;
+    overflow-wrap: anywhere;
+  }
+
+  .pdf-workspace .pdf-workspace-title-inner {
+    padding-inline: 0;
+  }
+
+  .pdf-workspace .pdf-settings-panel {
+    padding: 16px;
+  }
+
+  .pdf-workspace .pdf-settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .pdf-workspace .pdf-file-summary {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .pdf-workspace .pdf-file-name {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .pdf-workspace .pdf-actions,
+  .pdf-workspace .pdf-file-actions,
+  .pdf-workspace .pdf-pagination,
+  .pdf-workspace .pdf-editor-toolbar > div {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pdf-workspace .pdf-actions {
+    width: 100%;
+  }
+
+  .pdf-workspace .pdf-file-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .pdf-workspace .pdf-file-actions {
+    flex-shrink: 0;
+  }
+
+  .pdf-workspace .pdf-workspace-panel button {
+    min-width: 44px;
+    min-height: 44px;
+    height: auto;
+    white-space: normal;
+  }
+
+  .pdf-workspace .pdf-workspace-panel .el-button + .el-button {
+    margin-left: 0;
+  }
+
+  .pdf-workspace .pdf-workspace-panel .el-input__wrapper,
+  .pdf-workspace .pdf-workspace-panel .el-select__wrapper,
+  .pdf-workspace .pdf-workspace-panel select,
+  .pdf-workspace .pdf-workspace-panel input[type='text'],
+  .pdf-workspace .pdf-workspace-panel label:has(input[type='radio']),
+  .pdf-workspace .pdf-workspace-panel label:has(input[type='checkbox']),
+  .pdf-workspace .pdf-workspace-panel .el-radio,
+  .pdf-workspace .pdf-workspace-panel .el-checkbox,
+  .pdf-workspace .pdf-workspace-panel .el-slider {
+    min-height: 44px;
+  }
+
+  .pdf-workspace .pdf-workspace-panel .el-color-picker__trigger {
+    width: 44px;
+    height: 44px;
+  }
+
+  .pdf-workspace .pdf-workspace-panel .el-input-number {
+    width: 100%;
+    max-width: 100%;
+    line-height: 44px;
+  }
+
+  .pdf-workspace .pdf-workspace-panel .el-input-number__decrease,
+  .pdf-workspace .pdf-workspace-panel .el-input-number__increase {
+    width: 44px;
+  }
+
+  .pdf-workspace .pdf-workspace-panel .el-input-number:not(.is-without-controls) .el-input__wrapper {
+    padding-inline: 54px;
+  }
+
+  .pdf-workspace .pdf-page-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .pdf-workspace .pdf-page-grid > div {
+    min-width: 0;
+    padding: 8px;
+  }
+
+  .pdf-workspace .pdf-page-actions {
+    position: static;
+    justify-content: flex-end;
+    margin-top: 8px;
+    opacity: 1;
+  }
+
+  .pdf-workspace .pdf-page-delete-action {
+    align-items: flex-end;
+    padding-bottom: 8px;
+    opacity: 1;
+    backdrop-filter: none;
+  }
+
+  .pdf-workspace .pdf-page-drag-handle,
+  .pdf-workspace .pdf-page-selection {
+    display: flex;
+    min-width: 44px;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    opacity: 1;
+  }
+
+  .pdf-workspace .pdf-signature-resize {
+    width: 44px;
+    height: 44px;
+    right: 0;
+    bottom: 0;
+    opacity: 1;
+  }
+}
+
+/* 大屏触摸设备也不能依赖 hover 才显示单页操作。 */
+@media (hover: none) {
+  .pdf-workspace .pdf-page-actions,
+  .pdf-workspace .pdf-page-delete-action,
+  .pdf-workspace .pdf-page-drag-handle,
+  .pdf-workspace .pdf-page-selection,
+  .pdf-workspace .pdf-signature-resize {
+    opacity: 1;
+  }
+
+  .pdf-workspace .pdf-page-delete-action {
+    align-items: flex-end;
+    padding-bottom: 8px;
+    backdrop-filter: none;
+  }
+}

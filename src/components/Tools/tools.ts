@@ -2445,7 +2445,7 @@ const toolsCategories: ToolCategory[] = [
               id: 516,
               title: 'GIF动图压缩',
               logo: { type: 'svg', name: 'gifCompress' },
-              desc: '在线GIF动图压缩工具，支持批量压缩、调整尺寸，快速实现GIF体积压缩',
+              desc: '在线 GIF 动图压缩工具，支持尺寸、帧率和色彩参数调整，单文件在浏览器本地处理',
               url: '/tools/gif-compress',
               cate: '图片工具'
             },

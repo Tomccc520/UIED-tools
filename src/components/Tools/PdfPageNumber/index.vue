@@ -8,21 +8,21 @@
 -->
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen pdf-workspace">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 标题区域 -->
         <div class="text-center mb-8">
-          <h2 class="text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h2>
+          <h1 class="pdf-workspace-title text-4xl font-bold mb-3 text-gray-800">{{ $ensureFreeToolTitle(info.title) }}</h1>
           <p class="text-gray-500 text-sm">{{ info.subtitle }}</p>
         </div>
 
         <div v-if="!file">
           <div
-            class="relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
+            class="pdf-upload-area relative border-2 border-dashed rounded-xl min-h-[240px] flex flex-col items-center justify-center transition-all duration-300"
             :class="isDragging ? 'border-blue-500 bg-blue-50 scale-[1.02]' : 'border-gray-200 hover:border-blue-400 hover:bg-gray-50'"
             @drop.prevent="handleDrop" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false">
-            <input ref="fileInputRef" type="file" accept=".pdf,application/pdf"
+            <input ref="fileInputRef" type="file" aria-label="选择 PDF 文件" accept=".pdf,application/pdf"
               class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" @change="handleFileInputChange" />
 
             <div class="text-center px-4">
@@ -38,10 +38,10 @@
           </div>
         </div>
 
-        <div v-else class="flex flex-col lg:flex-row gap-8">
+        <div v-else class="flex flex-col lg:flex-row gap-8 pdf-editor-layout">
           <!-- 预览区域 -->
           <div
-            class="flex-1 bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden border border-gray-100">
+            class="pdf-editor-main flex-1 bg-gray-50 rounded-xl p-4 flex flex-col items-center justify-center min-h-[400px] relative overflow-hidden border border-gray-100">
             <div v-if="rendering" class="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
               <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
             </div>
@@ -56,7 +56,7 @@
               </div>
             </div>
 
-            <div class="mt-6 flex gap-4 items-center">
+            <div class="mt-6 flex gap-4 items-center pdf-pagination">
               <button @click="changePage(-1)" :disabled="currentPage <= 1"
                 class="px-3 py-1 bg-white border rounded hover:bg-gray-50 disabled:opacity-50 text-sm">上一页</button>
               <span class="text-sm text-gray-600 font-medium">第 {{ currentPage }} / {{ totalPages }} 页</span>
@@ -66,7 +66,7 @@
           </div>
 
           <!-- 设置区域 -->
-          <div class="w-full lg:w-80 space-y-6">
+          <div class="pdf-editor-sidebar w-full lg:w-80 space-y-6">
             <div class="bg-gray-50 p-4 rounded-xl border border-gray-100">
               <h3 class="font-medium text-gray-900 mb-4">页码设置</h3>
 
@@ -122,7 +122,7 @@
         </div>
       </div>
       <!-- 功能说明区域 -->
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm pdf-workspace-panel">
         <!-- 功能特点 -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <div v-for="feature in features" :key="feature.title"
@@ -182,7 +182,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch } from 'vue'
+import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
+import { ref, shallowRef, reactive, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPdfFileError, ensurePdfjsRuntime, ensurePdfLibRuntime } from '@/utils/pdf'
@@ -241,7 +242,8 @@ const file = ref<File | null>(null)
 const processing = ref(false)
 const rendering = ref(false)
 const pdfPreviewCanvas = ref<HTMLCanvasElement | null>(null)
-const pdfDoc = ref<any>(null)
+// 保留 PDF.js 文档实例，避免深层响应式代理破坏其原生私有字段。
+const pdfDoc = shallowRef<any>(null)
 const currentPage = ref(1)
 const totalPages = ref(0)
 const previewScale = ref(1)

@@ -239,26 +239,26 @@ const dragLeaveHandler = (ev: DragEvent) => {
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="video-mobile-page min-h-screen">
     <div class="mx-auto">
-      <div class="bg-white rounded-xl p-8 mb-4 shadow-sm">
+      <div class="video-mobile-workspace bg-white rounded-xl p-8 mb-4 shadow-sm">
         <div class="text-center mb-8">
-          <h2
-            class="text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
+          <h1
+            class="video-mobile-title text-3xl sm:text-4xl font-bold mb-3 bg-gradient-to-r from-indigo-600 to-pink-600 bg-clip-text text-transparent">
             免费视频时长剪辑
-          </h2>
+          </h1>
           <p class="text-gray-500 text-sm">在线截取视频片段，精准控制开始和结束时间，本地处理保护隐私</p>
         </div>
         <VideoToolNotice class="mb-8" />
 
         <!-- Initial Upload Area -->
         <div v-if="!videoUrl"
-          class="border-2 border-dashed rounded-xl p-16 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
+          class="video-mobile-upload border-2 border-dashed rounded-xl p-16 text-center transition-all cursor-pointer mb-8 relative overflow-hidden group"
           :class="[isDragOver ? 'border-indigo-500 bg-indigo-50 scale-[1.02]' : 'border-gray-300 hover:border-indigo-400 hover:bg-indigo-50']"
           @click="fileInput?.click()"
           @dragover="dragOverHandler"
           @dragleave="dragLeaveHandler"
-          @drop.prevent="handleDrop">
+          @drop.prevent="handleDrop" role="button" tabindex="0" aria-label="选择视频" @keydown.enter="fileInput?.click()" @keydown.space.prevent="fileInput?.click()">
           <input type="file" ref="fileInput" class="hidden" accept="video/*" @change="handleFileChange" />
           <div class="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300">
             <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -272,10 +272,10 @@ const dragLeaveHandler = (ev: DragEvent) => {
         </div>
 
         <!-- Editor Area -->
-        <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div v-else class="video-mobile-editor grid grid-cols-1 lg:grid-cols-12 gap-8">
           <!-- Left: Configuration Panel -->
           <div class="lg:col-span-4 space-y-6">
-            <div class="bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
+            <div class="video-mobile-controls bg-gray-50 rounded-xl p-6 border border-gray-100 sticky top-4">
               <h3 class="text-lg font-semibold text-gray-800 mb-6 flex items-center">
                 <span class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center mr-3">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -312,7 +312,7 @@ const dragLeaveHandler = (ev: DragEvent) => {
                 <!-- Range Inputs -->
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">截取时间 (秒)</label>
-                  <div class="grid grid-cols-2 gap-4 mb-2">
+                  <div class="video-mobile-pair grid grid-cols-2 gap-4 mb-2">
                     <div>
                       <span class="text-xs text-gray-500">开始</span>
                       <el-input-number v-model="timeRange[0]" :min="0" :max="timeRange[1]" :step="0.1" size="small" class="w-full" />
@@ -407,7 +407,7 @@ const dragLeaveHandler = (ev: DragEvent) => {
             <!-- Result -->
             <div v-if="resultVideoUrl" class="bg-white rounded-xl border border-green-200 p-6 shadow-sm animate-fade-in">
                <div class="flex items-center justify-between mb-4 border-b border-gray-100 pb-4">
-                 <div class="flex items-center space-x-2">
+                 <div class="video-mobile-actions flex items-center space-x-2">
                    <div class="w-8 h-8 bg-green-100 text-green-600 rounded-lg flex items-center justify-center">
                      ✓
                    </div>
@@ -429,7 +429,7 @@ const dragLeaveHandler = (ev: DragEvent) => {
 
         <!-- Usage Instructions -->
         <div class="bg-white rounded-xl p-6 shadow-sm border border-gray-100 mt-8">
-          <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+          <h3 class="video-mobile-actions text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
             <svg class="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -472,3 +472,5 @@ const dragLeaveHandler = (ev: DragEvent) => {
   margin-bottom: 8px;
 }
 </style>
+
+<style scoped src="../Shared/videoMobile.css"></style>
