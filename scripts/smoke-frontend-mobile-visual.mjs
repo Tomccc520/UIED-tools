@@ -382,68 +382,116 @@ const verifyAiToolboxMobileLayout = async (page, baseUrl) => {
 }
 
 /**
- * 函数说明：检查热榜移动端无阴影、无横向溢出，前三名展示在单列中。
+ * 函数说明：检查热榜移动端标题、周期触控区域和完整排行数据，确保统一列表无横向溢出。
  */
 const verifyHotRankingMobileLayout = async (page, baseUrl) => {
   await page.goto(`${baseUrl}/tools/hot-ranking`, { waitUntil: 'domcontentloaded' })
-  await page.waitForSelector('.tool-ranking-page__hero', { state: 'visible', timeout: 15000 })
-  await page.waitForSelector('.tool-ranking-board', { state: 'visible', timeout: 15000 })
+  await page.waitForSelector('.tool-ranking-page__header', { state: 'visible', timeout: 15000 })
+  await page.waitForSelector('.tool-ranking-page .tool-ranking-board', { state: 'visible', timeout: 15000 })
   await page.waitForFunction(
-    () =>
-      Boolean(
-        document.querySelector('.tool-ranking-board__podium') ||
-          document.querySelector('.tool-ranking-board__empty')
-      ),
+    () => document.querySelector('.tool-ranking-page .tool-ranking-board')?.getAttribute('aria-busy') === 'false',
+    undefined,
     { timeout: 15000 }
   )
 
   const metrics = await page.evaluate(() => {
     const html = document.documentElement
-    const readElement = (selector) => {
-      const element = document.querySelector(selector)
+    const rankingPage = document.querySelector('.tool-ranking-page')
+    /** 函数说明：读取元素的实际布局和可见性，返回空值表示目标未渲染。 */
+    const readElement = (element) => {
       if (!element) {
         return null
       }
       const rect = element.getBoundingClientRect()
       const style = window.getComputedStyle(element)
       return {
-        left: Math.round(rect.left),
-        right: Math.round(rect.right),
-        width: Math.round(rect.width),
-        height: Math.round(rect.height),
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
         boxShadow: style.boxShadow,
         display: style.display,
-        gridTemplateColumns: style.gridTemplateColumns
+        visible: rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden'
       }
     }
+    const rows = Array.from(
+      rankingPage.querySelectorAll('ol.tool-ranking-board__list > li > button.tool-ranking-board__item')
+    )
     return {
       scrollWidth: html.scrollWidth,
       clientWidth: html.clientWidth,
-      hero: readElement('.tool-ranking-page__hero'),
-      board: readElement('.tool-ranking-board'),
-      podium: readElement('.tool-ranking-board__podium'),
-      firstPodiumItem: readElement('.tool-ranking-board__podium-item'),
-      firstItem: readElement('.tool-ranking-board__item'),
-      podiumItemCount: document.querySelectorAll('.tool-ranking-board__podium-item').length,
-      listItemCount: document.querySelectorAll('.tool-ranking-board__item').length,
-      emptyText: String(document.querySelector('.tool-ranking-board__empty')?.textContent || '').trim()
+      h1Count: document.querySelectorAll('h1').length,
+      title: String(rankingPage.querySelector('h1')?.textContent || '').trim(),
+      header: readElement(rankingPage.querySelector('.tool-ranking-page__header')),
+      board: readElement(rankingPage.querySelector('.tool-ranking-board')),
+      list: readElement(rankingPage.querySelector('ol.tool-ranking-board__list')),
+      periodButtons: Array.from(rankingPage.querySelectorAll('.tool-ranking-page__periods button')).map((button) => ({
+        ...readElement(button),
+        label: String(button.textContent || '').trim(),
+        pressed: button.getAttribute('aria-pressed')
+      })),
+      rows: rows.map((button) => ({
+        ...readElement(button),
+        rank: Number(String(button.querySelector('.tool-ranking-board__rank')?.textContent || '').replace(/\D/g, '')),
+        title: String(button.querySelector('.tool-ranking-board__item-title')?.textContent || '').trim(),
+        viewCount: Number(button.querySelector('.tool-ranking-board__stat-value')?.textContent?.trim()),
+        cells: ['rank', 'content', 'stat', 'arrow'].map((name) => readElement(button.querySelector(`.tool-ranking-board__${name}`)))
+      })),
+      emptyText: String(rankingPage.querySelector('.tool-ranking-board__empty')?.textContent || '').trim()
     }
   })
 
   assertNoHorizontalOverflow(metrics, '热榜移动端')
-  assertNoBoxShadow(metrics.hero?.boxShadow, '热榜首屏')
+  assertNoBoxShadow(metrics.header?.boxShadow, '热榜标题区域')
   assertNoBoxShadow(metrics.board?.boxShadow, '热榜榜单容器')
-  assertNoBoxShadow(metrics.firstPodiumItem?.boxShadow, '热榜前三名卡片')
-  assertNoBoxShadow(metrics.firstItem?.boxShadow, '热榜列表项')
-  if (!metrics.podium || metrics.podiumItemCount < 3) {
-    throw new Error(`热榜移动端前三名未完整渲染：podium=${JSON.stringify(metrics.podium)}, emptyText=${metrics.emptyText}`)
+  if (metrics.h1Count !== 1 || !metrics.title) {
+    throw new Error(`热榜移动端应有且仅有一个有效主标题：h1Count=${metrics.h1Count}, title=${metrics.title}`)
   }
-  if (metrics.listItemCount < 1) {
-    throw new Error(`热榜移动端后续列表未渲染：listItemCount=${metrics.listItemCount}`)
+  const periodLabels = metrics.periodButtons.map((button) => button.label)
+  const activePeriods = metrics.periodButtons.filter((button) => button.pressed === 'true')
+  if (
+    periodLabels.join(',') !== '日榜,周榜,月榜,总榜' ||
+    activePeriods.length !== 1 ||
+    activePeriods[0].label !== '周榜'
+  ) {
+    throw new Error(`热榜周期按钮或默认选中状态异常：${JSON.stringify(metrics.periodButtons)}`)
   }
-  const podiumColumns = String(metrics.podium?.gridTemplateColumns || '').split(/\s+/).filter(Boolean)
-  if (podiumColumns.length !== 1) {
-    throw new Error(`热榜移动端前三名应为单列，当前 gridTemplateColumns=${metrics.podium?.gridTemplateColumns || '空'}`)
+  for (const button of metrics.periodButtons) {
+    if (
+      !button.visible || button.width < 44 || button.height < 44 ||
+      !['true', 'false'].includes(button.pressed) ||
+      button.left < -1 || button.right > metrics.clientWidth + 1
+    ) {
+      throw new Error(`热榜周期按钮应可见且触控区域不小于 44px：${JSON.stringify(button)}`)
+    }
+  }
+  if (!metrics.list?.visible || metrics.rows.length !== mockToolRankingItems.length) {
+    throw new Error(`热榜未完整渲染接口排行：实际=${metrics.rows.length}, 预期=${mockToolRankingItems.length}, emptyText=${metrics.emptyText}`)
+  }
+  for (const [index, row] of metrics.rows.entries()) {
+    const expected = mockToolRankingItems[index]
+    if (row.rank !== index + 1 || row.title !== expected.toolTitle || row.viewCount !== expected.viewCount) {
+      throw new Error(`热榜第 ${index + 1} 行与接口数据不一致：${JSON.stringify(row)}`)
+    }
+    assertNoBoxShadow(row.boxShadow, `热榜第 ${index + 1} 行`)
+    if (
+      !row.visible || row.height < 44 ||
+      row.left < metrics.list.left - 1 || row.right > metrics.list.right + 1 ||
+      Math.abs(row.width - metrics.list.width) > 1 ||
+      (index > 0 && row.top < metrics.rows[index - 1].bottom - 1)
+    ) {
+      throw new Error(`热榜第 ${index + 1} 行应完整占据单列且不重叠：${JSON.stringify(row)}`)
+    }
+    for (const [cellIndex, cell] of row.cells.entries()) {
+      if (
+        !cell?.visible || cell.left < row.left - 1 || cell.right > row.right + 1 ||
+        (cellIndex > 0 && cell.left < row.cells[cellIndex - 1].right - 1)
+      ) {
+        throw new Error(`热榜第 ${index + 1} 行的排名、工具、点击量和入口应可见且不重叠：${JSON.stringify(row.cells)}`)
+      }
+    }
   }
 }
 
