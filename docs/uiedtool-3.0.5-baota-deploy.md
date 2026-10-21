@@ -1,0 +1,243 @@
+<!--
+  @copyright Tomda (https://www.tomda.top)
+  @copyright UIED技术团队 (https://fsuied.com)
+  @author UIED技术团队
+  @createDate 2026-10-21
+-->
+
+# UIED-Tools 3.0.5 宝塔全栈部署
+
+本次发布包含主站静态前端、`/admin` 管理端、Go API 和用于新装的数据库初始化脚本。已有站点升级使用 `--code-only`，不会导入初始化 SQL。3.0.5 累计包含此前文件工具与移动端改进，并修复图片拼接重复叠色、CSV/Excel 读取竞态、JSON 大数字保真、GIF 帧序、图片编码/尺寸、WAV 样本、Logo 换图及后台配置误保存；同时统一主题和公共上传组件、收敛闲置依赖。本轮是代码发布，无需新增数据库迁移。AI 简历 Next.js 服务本次暂不部署，生产主站不会展示其入口；抠图独立代理服务也不在本包内，后续配置 API Provider 时再单独启用。
+
+## 一、发布目录
+
+```text
+uiedtool-3.0.5/
+├── web/                         主站静态文件
+├── admin/                       管理后台静态文件
+├── server/
+│   ├── uiedtool-api             Linux amd64 静态二进制
+│   ├── static/                  Go 服务默认静态资源
+│   ├── .env.example             生产配置模板
+│   └── uiedtool-api.service     systemd 服务
+├── nginx/                       宝塔 Nginx 扩展配置
+├── sql/install.sql              全新数据库初始化脚本
+├── docs/DEPLOY.md               本文档
+└── RELEASE-MANIFEST.txt         文件 SHA-256 清单
+```
+
+发布包中的 `web/frontend-route-allowlist.conf` 由 Vue Router 自动生成。Nginx 仅对已注册的前台路由回退到 `index.html`，未知路径返回 HTTP 404，避免搜索引擎把不存在页面识别为正常页面。独立 AI 简历代理、`/api/`、`/admin/` 和静态资源仍按各自 location 处理。`/assets/` 下的构建产物带内容哈希，按一年期不可变缓存下发。
+
+扩展配置同时将 404 请求转发到 `web/404.html`，保留 HTTP 404、`X-Robots-Tag: noindex, nofollow` 和“页面不存在”提示。本轮升级脚本会备份旧扩展配置，在切换 `app/current` 和 API 健康检查成功后自动安装新配置、执行 `nginx -t` 并 reload；配置校验或加载失败会恢复旧配置、前端和 API。首次初始化或手工修复时可执行以下命令：
+
+```bash
+cp "$APP_DIR/current/nginx/uiedtool.com.fullstack.locations.conf" \
+  /www/server/panel/vhost/nginx/extension/uiedtool.com/uiedtool-fullstack.conf
+/www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload
+```
+
+发布包中的 `web/sitemap.xml` 同样由 Vue Router 路由表自动生成（`scripts/release/generate-sitemap.mjs`），规范域为 `https://uiedtool.com`，404、登录、个人中心、未发布工具和跳转路由不参与收录。扩展配置会将 `www.uiedtool.com` 以 HTTP 301 跳转到非 www 规范域，完整保留路径与参数；宝塔站点必须绑定两个域名，HTTPS 证书也要覆盖两个域名。
+
+旧 sitemap 中 20 个有效工具旧地址已在路由表注册重定向，生成的 Nginx 白名单会直接返回 301，例如 `/tools/css-format` → `/tools/cssformat`、`/tools/random-password` → `/tools/randompassword`、`/tools/ai/outsource-quote` → `/tools/ai-outsource-quote`。`/tools/ip` 没有对应的现役 IP 查询页面，已从 sitemap 排除，保持明确 404，避免误导用户跳转到不相关工具。
+
+Nginx reload 后先在服务器执行 HTTP 验收（不能只看浏览器里的 404 文案）：
+
+```bash
+curl -sS -o /dev/null -w '有效工具: %{http_code}\n' https://uiedtool.com/tools/json
+curl -sS -o /dev/null -w '有效工具尾斜杠: %{http_code}\n' https://uiedtool.com/tools/json/
+curl -sS -D - -o /dev/null https://uiedtool.com/tools/qa-missing-20261018
+curl -sS -D - -o /dev/null https://uiedtool.com/404
+curl -sS -D - -o /dev/null 'https://uiedtool.com/tools/css-format?source=seo&value=1'
+curl -sS -D - -o /dev/null 'https://www.uiedtool.com/tools/json?source=seo&value=1'
+```
+
+两个有效工具地址应为 200；不存在路径与 `/404` 应为 404，并含 `X-Robots-Tag: noindex, nofollow`；后两个请求应为 301，`Location` 分别为 `https://uiedtool.com/tools/cssformat?source=seo&value=1` 和 `https://uiedtool.com/tools/json?source=seo&value=1`。随后在项目根目录执行 `npm run check:http-status`，脚本还会逐条请求 sitemap 中所有地址，确认它们匹配可索引路由并返回 200。如果线上启用了 CDN，应刷新旧的 HTML、robots、sitemap 缓存后复查。
+
+## 二、增量升级策略（重要）
+
+先确认承载现有 API 的容器名，继续使用该名称，不按产品版本另起一个容器：
+
+```bash
+docker ps --format 'table {{.Names}}\t{{.Image}}\t{{.Status}}'
+```
+
+脚本默认沿用 `uiedtool-api-v301-live`。如果当前承载 API 的是 `uiedtool-api-v303-live`，部署时显式指定 `UIEDTOOL_CONTAINER_NAME=uiedtool-api-v303-live bash deploy-update.sh --code-only`。容器名沿用已有服务，产品版本以健康接口为准。
+
+
+宝塔包中的 `deploy-update.sh` 默认采用“仅更新代码”模式：切换主站、管理端、Go API 和配套 Nginx 路由配置，不执行 SQL，不会因为普通页面发布重复改动数据库。执行前会先校验当前 Nginx 配置，避免发布途中才发现其他站点已有的配置错误。默认 Nginx 路径为 `/www/server/nginx/sbin/nginx`，托管扩展文件为 `/www/server/panel/vhost/nginx/extension/uiedtool.com/uiedtool-fullstack.conf`；自定义宝塔安装目录可通过 `UIEDTOOL_NGINX_BIN`、`UIEDTOOL_NGINX_EXTENSION_FILE` 显式指定。
+
+需要新增菜单、工具或配置时，再显式执行数据库迁移。脚本会先导出数据库到本次备份目录，然后按 `la_system_upgrade_log` 校验补丁哈希，已成功且内容未变化的补丁会自动跳过：
+
+```bash
+cd /www/wwwroot/uiedtool.com/app/packages/uiedtool-3.0.5-baota-deploy-版本号
+
+# 默认：代码发布，不改数据库
+bash deploy-update.sh
+
+# 显式：先备份数据库，再执行新增/变更 SQL
+bash deploy-update.sh --apply-db-patches
+```
+
+如果补丁文件内容被修改，脚本会提示哈希变化并重新执行该补丁；因此生产环境不要手工覆盖已发布补丁文件。每次执行结束后，请保留 `backups/<版本-时间>/database.sql.gz`，数据库回滚应先评估业务数据再操作。
+
+## 三、部署前备份
+
+以下命令在服务器执行。发布文件统一放在站点目录的 `app` 中，避免和其他项目、公开静态文件混放。
+
+```bash
+export SITE_DIR=/www/wwwroot/uiedtool.com
+export APP_DIR="$SITE_DIR/app"
+export RELEASE_DIR="$APP_DIR/releases/3.0.5"
+export BACKUP_DIR="$APP_DIR/backups/initial-$(date +%Y%m%d-%H%M%S)"
+
+mkdir -p "$BACKUP_DIR" "$APP_DIR/packages" "$APP_DIR/releases" \
+  "$APP_DIR/shared/uploads" "$APP_DIR/shared/logs" "$SITE_DIR/public/admin"
+tar -czf "$BACKUP_DIR/public.tar.gz" -C "$SITE_DIR" public 2>/dev/null || true
+cp -a /www/server/panel/vhost/nginx/uiedtool.com.conf "$BACKUP_DIR/"
+
+# 如果已有 uiedtool 数据库，再执行数据库备份；首次全栈部署可跳过。
+mysqldump -uroot -p --single-transaction --default-character-set=utf8mb4 uiedtool \
+  > "$BACKUP_DIR/uiedtool.sql"
+```
+
+## 四、初始化数据库
+
+当前正式环境只有旧前端时，按全新数据库安装。数据库密码建议使用只包含大小写字母和数字的长随机值，避免 MySQL DSN 中的特殊字符需要转义。
+
+```bash
+mysql -uroot -p
+```
+
+```sql
+CREATE DATABASE `uiedtool` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
+CREATE USER 'uiedtool'@'127.0.0.1' IDENTIFIED BY '替换为强密码';
+GRANT ALL PRIVILEGES ON `uiedtool`.* TO 'uiedtool'@'127.0.0.1';
+FLUSH PRIVILEGES;
+EXIT;
+```
+
+```bash
+mysql -uuiedtool -p -h127.0.0.1 uiedtool < "$RELEASE_DIR/sql/install.sql"
+```
+
+`install.sql` 面向全新数据库，会重建同名表，不要对已有正式数据库重复执行。
+
+## 五、准备 Go API
+
+```bash
+mkdir -p "$APP_DIR/current/backend" "$APP_DIR/shared/uploads"
+install -m 0755 "$RELEASE_DIR/server/uiedtool-api" "$APP_DIR/current/backend/uiedtool-api"
+cp -a "$RELEASE_DIR/server/static" "$APP_DIR/current/backend/"
+
+test -f "$APP_DIR/shared/.env" || \
+  cp "$RELEASE_DIR/server/.env.example" "$APP_DIR/shared/.env"
+
+sed -i "s#^UPLOAD_DIRECTORY=.*#UPLOAD_DIRECTORY='$APP_DIR/shared/uploads/'#" "$APP_DIR/shared/.env"
+chown -R www:www "$APP_DIR/current/backend" "$APP_DIR/shared"
+chmod 0755 "$APP_DIR/current/backend/uiedtool-api"
+chmod 0640 "$APP_DIR/shared/.env"
+```
+
+编辑 `$APP_DIR/shared/.env`：
+
+- 将 `DATABASE_URL` 的密码替换为刚创建的数据库密码。
+- 用 `openssl rand -hex 32` 生成 `MATTING_INTERNAL_TOKEN`。
+- 保持 `SERVER_PORT=8003`、`GIN_MODE=release` 和 `PUBLIC_URL=https://uiedtool.com`。
+
+当前 CentOS 7 宝塔环境使用已有 `node:20` 镜像承载静态 Go 二进制，不需要下载新镜像，也不会启动 Node 进程：
+
+```bash
+cp "$APP_DIR/shared/.env" "$APP_DIR/shared/.env.container"
+sed -i "s#^UPLOAD_DIRECTORY=.*#UPLOAD_DIRECTORY='/app/uploads/'#" "$APP_DIR/shared/.env.container"
+docker rm -f uiedtool-api-v303-live 2>/dev/null || true
+docker run -d --name uiedtool-api-v303-live --restart unless-stopped \
+  --network host --pull never --user 1001:1001 --workdir /app/backend \
+  -v "$APP_DIR/current/backend:/app/backend:ro" \
+  -v "$APP_DIR/shared/.env.container:/app/config/uiedtool.env:ro" \
+  -v "$APP_DIR/shared/uploads:/app/uploads" \
+  --entrypoint /app/backend/uiedtool-api node:20 \
+  -c /app/config/uiedtool.env
+curl -fsS http://127.0.0.1:8003/health
+```
+
+## 六、发布静态文件
+
+先执行 `--dry-run` 检查清单，再同步到独立的 `public` 目录。`app`、`.well-known` 和 `.user.ini` 不会进入公开目录。
+
+```bash
+mkdir -p "$SITE_DIR/public/admin"
+
+rsync -an --delete \
+  --exclude='.well-known/' --exclude='admin/' \
+  "$RELEASE_DIR/web/" "$SITE_DIR/public/"
+
+rsync -a --delete \
+  --exclude='.well-known/' --exclude='admin/' \
+  "$RELEASE_DIR/web/" "$SITE_DIR/public/"
+
+rsync -a --delete "$RELEASE_DIR/admin/" "$SITE_DIR/public/admin/"
+chown -R www:www "$SITE_DIR/public"
+```
+
+## 七、接入 Nginx
+
+现有站点已有 RSS、聊天和收藏代理，不覆盖主配置，只新增扩展文件：
+
+```bash
+mkdir -p /www/server/panel/vhost/nginx/extension/uiedtool.com
+cp "$RELEASE_DIR/nginx/uiedtool.com.fullstack.locations.conf" \
+  /www/server/panel/vhost/nginx/extension/uiedtool.com/uiedtool-fullstack.conf
+
+/www/server/nginx/sbin/nginx -t
+/www/server/nginx/sbin/nginx -s reload
+```
+
+## 八、上线验收
+
+```bash
+curl -fsSI https://uiedtool.com/
+curl -fsSI https://uiedtool.com/admin/
+curl -fsS https://uiedtool.com/api/health
+# 校验实际启动的 API 是本次 3.0.5，不能只看 HTTP 200。
+curl -fsS http://127.0.0.1:8003/health | \
+  python -c 'import json,sys; r=json.load(sys.stdin); assert r.get("code")==200 and r.get("data",{}).get("version")=="3.0.5", r; print(r)'
+curl -fsS https://uiedtool.com/api/common/index/config
+curl -sS -o /dev/null -w 'unknown route: %{http_code}\n' https://uiedtool.com/this-route-does-not-exist-xyz
+docker logs --tail 100 uiedtool-api-v303-live
+```
+
+浏览器重点检查：
+
+1. 首页、热榜、随机工具、GIF 压缩和视频压缩。
+2. `/admin/` 登录、Workbench、工具主数据、前端布局和渠道配置。
+3. 后台保存品牌文案或前端布局后，刷新主站确认配置回环。
+4. 生产主站不展示 AI 简历入口，访问旧入口不会影响其他工具。
+5. 首次登录后台后立即修改默认管理员密码，并关闭不使用的登录、支付和渠道能力。
+
+## 九、回滚
+
+静态页面异常时恢复部署前备份：
+
+```bash
+rm -rf "$SITE_DIR/public"
+tar -xzf "$BACKUP_DIR/public.tar.gz" -C "$SITE_DIR"
+cp -a "$BACKUP_DIR/uiedtool.com.conf" /www/server/panel/vhost/nginx/uiedtool.com.conf
+rm -f /www/server/panel/vhost/nginx/extension/uiedtool.com/uiedtool-fullstack.conf
+/www/server/nginx/sbin/nginx -t && /www/server/nginx/sbin/nginx -s reload
+```
+
+API 异常时先保留日志，再停止新服务：
+
+```bash
+docker logs --tail 300 uiedtool-api-v303-live > "$BACKUP_DIR/uiedtool-api.log" 2>&1
+docker stop uiedtool-api-v303-live
+```
+
+数据库只有在确认新库需要废弃时才回滚，不要直接覆盖仍有新增业务数据的数据库。
+
+## 十、服务器建议
+
+- 当前服务器无 Swap，建议部署前增加 2GB Swap，降低构建外服务同时运行时的内存风险。
+- MySQL 当前监听公网 `*:3306`，上线后应通过安全组和防火墙限制访问来源，能改为本机监听时优先本机监听。
+- 正式环境不需要 Node 或 Go 编译环境，本包已包含静态文件和 Linux amd64 Go 二进制。
+- AI 简历后续静态化并将 AI API 迁移到 Go 后，再纳入主站发布，不需要现在增加 Node 容器。

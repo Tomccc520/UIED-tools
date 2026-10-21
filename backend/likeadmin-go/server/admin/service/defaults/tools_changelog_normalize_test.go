@@ -20,13 +20,13 @@ func TestNormalizeToolsChangelogTimelineJSON(t *testing.T) {
 	if err := json.Unmarshal([]byte(normalizedJSON), &items); err != nil {
 		t.Fatalf("解析归一化结果失败: %v", err)
 	}
-	if len(items) != 3 {
-		t.Fatalf("期望补齐 3.0.4、3.0.3 并合并为 3 个版本，实际为 %d", len(items))
+	if len(items) != 4 {
+		t.Fatalf("期望补齐 3.0.5、3.0.4、3.0.3 并合并为 4 个版本，实际为 %d", len(items))
 	}
-	if items[0].Version != "3.0.4" || items[1].Version != "3.0.3" {
+	if items[0].Version != "3.0.5" || items[1].Version != "3.0.4" || items[2].Version != "3.0.3" {
 		t.Fatalf("期望最新版本排在首位，实际为 %s", items[0].Version)
 	}
-	legacyItem := items[2]
+	legacyItem := items[3]
 	if legacyItem.Title != "首次发布" {
 		t.Fatalf("期望保留首次版本标题，实际为 %s", legacyItem.Title)
 	}
@@ -45,9 +45,9 @@ func TestNormalizeToolsChangelogTimelineJSON(t *testing.T) {
 }
 
 /**
- * 函数说明：验证旧存储会补齐缺失的 3.0.4，且已有 3.0.3 自定义标题与数据保持不变。
+ * 函数说明：验证旧存储会补齐缺失的 3.0.5 和 3.0.4，且已有 3.0.3 自定义标题与数据保持不变。
  */
-func TestNormalizeToolsChangelogTimelineJSONAdds304ToStoredTimeline(t *testing.T) {
+func TestNormalizeToolsChangelogTimelineJSONAdds305And304ToStoredTimeline(t *testing.T) {
 	raw := `[{"id":"custom-303","version":"3.0.3","date":"2026-09-15","badgeText":"运营备注","badgeType":"warning","title":"我维护的旧版本","features":[{"title":"自定义功能","points":["保留这条运营描述"]}]}]`
 	var storedItems, defaults, items []toolsChangelogTimelineItem
 	for source, target := range map[string]*[]toolsChangelogTimelineItem{
@@ -61,14 +61,14 @@ func TestNormalizeToolsChangelogTimelineJSONAdds304ToStoredTimeline(t *testing.T
 	if err := json.Unmarshal([]byte(result), &items); err != nil {
 		t.Fatalf("解析归一化结果失败: %v", err)
 	}
-	if len(items) != 2 || items[0].Version != "3.0.4" {
+	if len(items) != 3 || items[0].Version != "3.0.5" || items[1].Version != "3.0.4" {
 		t.Fatalf("旧存储未正确补齐最新版本: %#v", items)
 	}
-	if !reflect.DeepEqual(items[0], defaults[0]) {
+	if !reflect.DeepEqual(items[0], defaults[0]) || !reflect.DeepEqual(items[1], defaults[1]) {
 		t.Fatalf("新版本内容应与默认发布记录一致: %#v", items[0])
 	}
-	if !reflect.DeepEqual(items[1], storedItems[0]) {
-		t.Fatalf("旧版本自定义内容被覆盖: %#v", items[1])
+	if !reflect.DeepEqual(items[2], storedItems[0]) {
+		t.Fatalf("旧版本自定义内容被覆盖: %#v", items[2])
 	}
 	if repeated := NormalizeToolsChangelogTimelineJSON(result); repeated != result {
 		t.Fatal("重复读取配置时不应重复补入发布记录")
@@ -90,7 +90,7 @@ func TestNormalizeToolsChangelogTimelineJSONPreservesCustom304(t *testing.T) {
 	if err := json.Unmarshal([]byte(NormalizeToolsChangelogTimelineJSON(raw)), &actual); err != nil {
 		t.Fatalf("解析归一化结果失败: %v", err)
 	}
-	if !reflect.DeepEqual(actual, expected) {
+	if len(actual) != 3 || actual[0].Version != "3.0.5" || !reflect.DeepEqual(actual[1:], expected) {
 		t.Fatalf("已有版本的自定义内容或顺序被修改: %#v", actual)
 	}
 	// 只有最新版本时，补齐的历史版本不能挤到最新版本前面。
@@ -101,7 +101,7 @@ func TestNormalizeToolsChangelogTimelineJSONPreservesCustom304(t *testing.T) {
 	if err := json.Unmarshal([]byte(NormalizeToolsChangelogTimelineJSON(string(latestOnly))), &actual); err != nil {
 		t.Fatalf("解析仅含最新版本的结果失败: %v", err)
 	}
-	if len(actual) != 2 || !reflect.DeepEqual(actual[0], expected[0]) || actual[1].Version != "3.0.3" {
+	if len(actual) != 3 || actual[0].Version != "3.0.5" || !reflect.DeepEqual(actual[1], expected[0]) || actual[2].Version != "3.0.3" {
 		t.Fatalf("补齐历史版本时改变了最新版本内容或顺序: %#v", actual)
 	}
 }
@@ -118,5 +118,46 @@ func TestGetToolsChangelogTimelineItemsDeduplicatesVersions(t *testing.T) {
 			t.Fatalf("默认时间线仍包含重复版本: %s", version)
 		}
 		versionSet[version] = struct{}{}
+	}
+}
+
+/**
+ * 函数说明：验证已维护的 3.0.5 不会被默认内容覆盖，缺失历史版本按发布顺序补齐且重复读取稳定。
+ */
+func TestNormalizeToolsChangelogTimelineJSONPreservesCustom305(t *testing.T) {
+	raw := `[{"id":"custom-305","version":"3.0.5","date":"2026-10-22","badgeText":"运营发布","badgeType":"warning","title":"自定义 3.0.5","features":[{"title":"自定义说明","points":["保留运营维护内容"]}]}]`
+	var stored, actual []toolsChangelogTimelineItem
+	if err := json.Unmarshal([]byte(raw), &stored); err != nil {
+		t.Fatalf("解析测试数据失败: %v", err)
+	}
+	result := NormalizeToolsChangelogTimelineJSON(raw)
+	if err := json.Unmarshal([]byte(result), &actual); err != nil {
+		t.Fatalf("解析归一化结果失败: %v", err)
+	}
+	if len(actual) != 3 || !reflect.DeepEqual(actual[0], stored[0]) || actual[1].Version != "3.0.4" || actual[2].Version != "3.0.3" {
+		t.Fatalf("自定义最新版本被覆盖或历史版本顺序错误: %#v", actual)
+	}
+	if repeated := NormalizeToolsChangelogTimelineJSON(result); repeated != result {
+		t.Fatal("重复读取不应改变自定义记录或重复添加历史版本")
+	}
+}
+
+/**
+ * 函数说明：验证同时存在的 3.0.5 与 3.0.4 自定义记录完整保留，只补入缺失的 3.0.3。
+ */
+func TestNormalizeToolsChangelogTimelineJSONPreservesCustom305And304(t *testing.T) {
+	raw := `[
+		{"id":"custom-305","version":"3.0.5","date":"2026-10-22","badgeText":"新发布","badgeType":"warning","title":"运营维护新版","features":[{"title":"新版说明","points":["保留新版本正文"]}]},
+		{"id":"custom-304","version":"3.0.4","date":"2026-10-20","badgeText":"旧发布","badgeType":"info","title":"运营维护旧版","features":[{"title":"旧版说明","points":["保留旧版本正文"]}]}
+	]`
+	var stored, actual []toolsChangelogTimelineItem
+	if err := json.Unmarshal([]byte(raw), &stored); err != nil {
+		t.Fatalf("解析测试数据失败: %v", err)
+	}
+	if err := json.Unmarshal([]byte(NormalizeToolsChangelogTimelineJSON(raw)), &actual); err != nil {
+		t.Fatalf("解析归一化结果失败: %v", err)
+	}
+	if len(actual) != 3 || !reflect.DeepEqual(actual[:2], stored) || actual[2].Version != "3.0.3" {
+		t.Fatalf("已有版本内容被覆盖或补齐位置错误: %#v", actual)
 	}
 }

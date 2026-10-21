@@ -163,7 +163,7 @@ onMounted(() => {
   <main class="changelog-page">
     <section class="changelog-hero" aria-labelledby="changelog-title">
       <div class="changelog-hero__copy">
-        <div class="changelog-kicker">UIED-Tools 3.0.4</div>
+        <div class="changelog-kicker">UIED-Tools 3.0.5</div>
         <h1 id="changelog-title">更新记录</h1>
         <p>{{ changelogIntroText }}</p>
       </div>

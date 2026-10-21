@@ -247,7 +247,7 @@ func getDefaultToolsChangelogMetaLinks() []map[string]interface{} {
  * 函数说明：返回更新记录页顶部统计说明默认值，供运营后台未配置时兜底渲染
  */
 func getDefaultToolsChangelogStatsText() string {
-	return "当前版本：3.0.4 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-20"
+	return "当前版本：3.0.5 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-21"
 }
 
 /**
@@ -616,12 +616,12 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 		toolsChangelogMetaLinks = getDefaultToolsChangelogMetaLinks()
 	}
 	toolsChangelogSplitTitle := strings.TrimSpace(website["toolsChangelogSplitTitle"])
-	if toolsChangelogSplitTitle == "" {
-		toolsChangelogSplitTitle = "3.0.4 全栈开源说明"
+	if toolsChangelogSplitTitle == "" || toolsChangelogSplitTitle == "3.0.1 全栈开源说明" || toolsChangelogSplitTitle == "3.0.3 全栈开源说明" || toolsChangelogSplitTitle == "3.0.4 全栈开源说明" {
+		toolsChangelogSplitTitle = "3.0.5 全栈开源说明"
 	}
 	toolsChangelogSplitDesc := strings.TrimSpace(website["toolsChangelogSplitDesc"])
 	if toolsChangelogSplitDesc == "" {
-		toolsChangelogSplitDesc = "本版本新增 Go API、Arco Pro 管理后台、数据库脚本与部署工具，并与 Vue 3 主站一起按 MIT 协议开放源码。项目优先服务免费使用、SEO 内容和社区贡献，非必要商业化入口默认不展示。"
+		toolsChangelogSplitDesc = "主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.5 集中完善文件处理、数据准确性、后台配置和组件复用，非必要商业化入口默认不展示。"
 	}
 	toolsChangelogSplitLink := strings.TrimSpace(website["toolsChangelogSplitLink"])
 	if toolsChangelogSplitLink == "" {
@@ -636,10 +636,12 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 		toolsChangelogStatsText = getDefaultToolsChangelogStatsText()
 	}
 	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前工具总数：333个", "当前工具总数：334个")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.1", "当前版本：3.0.4")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.3", "当前版本：3.0.4")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-08-28 18:00", "最后更新：2026-10-20")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-09-12 15:50", "最后更新：2026-10-20")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.1", "当前版本：3.0.5")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.3", "当前版本：3.0.5")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.4", "当前版本：3.0.5")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-08-28 18:00", "最后更新：2026-10-21")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-09-12 15:50", "最后更新：2026-10-21")
+	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-10-20", "最后更新：2026-10-21")
 	toolsChangelogTimeline := parseWebsiteJsonArray(website, "toolsChangelogTimeline")
 	if len(toolsChangelogTimeline) == 0 {
 		toolsChangelogTimeline = servicedefaults.GetToolsChangelogTimelineItems()

@@ -146,21 +146,22 @@ func NormalizeToolsChangelogTimelineJSON(raw string) string {
 	}
 	normalized := normalizeToolsChangelogTimeline(items)
 	// 已保存的旧站点配置补齐缺失发布版本，保留运营已经编辑的同版本内容。
-	if !hasChangelogVersion(normalized, "3.0.3") || !hasChangelogVersion(normalized, "3.0.4") {
+	if !hasChangelogVersion(normalized, "3.0.3") || !hasChangelogVersion(normalized, "3.0.4") || !hasChangelogVersion(normalized, "3.0.5") {
 		defaults := make([]toolsChangelogTimelineItem, 0)
 		if err := json.Unmarshal([]byte(toolsChangelogTimelineJSON), &defaults); err == nil {
 			normalizedDefaults := normalizeToolsChangelogTimeline(defaults)
-			// 先补历史版本再补最新版本，确保缺失的 3.0.4 最终位于列表首位。
-			for _, version := range []string{"3.0.3", "3.0.4"} {
+			// 按发布时间补齐，并将旧版本放在已存在的新版本后，保留自定义内容及其相对顺序。
+			releaseVersions := []string{"3.0.3", "3.0.4", "3.0.5"}
+			for releaseIndex, version := range releaseVersions {
 				if hasChangelogVersion(normalized, version) {
 					continue
 				}
 				for _, item := range normalizedDefaults {
 					if normalizeToolsChangelogTextKey(item.Version) == normalizeToolsChangelogTextKey(version) {
 						insertAt := 0
-						if version == "3.0.3" {
-							for index, existing := range normalized {
-								if normalizeToolsChangelogTextKey(existing.Version) == "3.0.4" {
+						for index, existing := range normalized {
+							for _, newerVersion := range releaseVersions[releaseIndex+1:] {
+								if normalizeToolsChangelogTextKey(existing.Version) == normalizeToolsChangelogTextKey(newerVersion) {
 									insertAt = index + 1
 									break
 								}
