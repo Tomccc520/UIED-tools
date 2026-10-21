@@ -12,6 +12,7 @@ VERSION="${RELEASE_VERSION:-$(node -p "require('${ROOT_DIR}/package.json').versi
 OUTPUT_DIR="${ROOT_DIR}/output"
 RELEASE_NAME="uiedtool-${VERSION}"
 DEPLOY_DOC="${ROOT_DIR}/docs/uiedtool-${VERSION}-baota-deploy.md"
+SOURCE_COMMIT="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
 SOURCE_REVISION="$(git -C "${ROOT_DIR}" rev-parse --short HEAD)"
 PRODUCTION_DIR="${OUTPUT_DIR}/production/${RELEASE_NAME}"
 STAGING_DIR="${OUTPUT_DIR}/.release-staging"
@@ -64,8 +65,29 @@ build_server_binary() {
   (
     cd "${SERVER_DIR}"
     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-      go build -trimpath -ldflags='-s -w' -o "${RELEASE_DIR}/server/uiedtool-api" .
+      go build -buildvcs=false -trimpath -ldflags='-s -w' -o "${RELEASE_DIR}/server/uiedtool-api" .
   )
+}
+
+# 函数说明：记录根仓提交和实际 API 文件哈希，避免嵌套 Git 仓库产生错误的构建来源标记。
+write_release_info() {
+  node - "${VERSION}" "${SOURCE_COMMIT}" "${RELEASE_DIR}" <<'NODE'
+const fs = require('node:fs')
+const path = require('node:path')
+const crypto = require('node:crypto')
+const [version, sourceRevision, releaseDir] = process.argv.slice(2)
+const binary = fs.readFileSync(path.join(releaseDir, 'server/uiedtool-api'))
+const releaseInfo = {
+  version,
+  sourceRevision,
+  generatedAt: new Date().toISOString(),
+  apiSha256: crypto.createHash('sha256').update(binary).digest('hex'),
+  apiTarget: 'linux/amd64',
+  cgoEnabled: false,
+  scope: ['site', 'admin', 'go-api']
+}
+fs.writeFileSync(path.join(releaseDir, 'RELEASE-INFO.json'), `${JSON.stringify(releaseInfo, null, 2)}\n`)
+NODE
 }
 
 # 函数说明：组装主站、管理端、服务配置、数据库和部署文档。
@@ -98,6 +120,7 @@ write_release_manifest() {
     cd "${RELEASE_DIR}"
     {
       printf "UIED-Tools %s 全栈发布包\n" "${VERSION}"
+      printf "源码提交: %s\n" "${SOURCE_COMMIT}"
       printf "生成时间: %s\n" "$(date '+%Y-%m-%d %H:%M:%S %z')"
       printf "发布范围: 主站静态前端、/admin 管理端、Go API；数据库补丁需显式执行 --apply-db-patches\n"
       printf "暂不包含: AI 简历 Next.js 服务、抠图独立代理服务\n\n"
@@ -133,6 +156,7 @@ create_runtime_archive() {
   cp "${RELEASE_DIR}/server/uiedtool-api" "${RUNTIME_DIR}/backend/"
   cp "${RELEASE_DIR}/server/.env.example" "${RUNTIME_DIR}/backend/"
   cp "${RELEASE_DIR}/nginx/uiedtool.com.fullstack.locations.conf" "${RUNTIME_DIR}/nginx/"
+  cp "${RELEASE_DIR}/RELEASE-INFO.json" "${RUNTIME_DIR}/"
 
   clean_macos_metadata "${RUNTIME_DIR}"
   rm -f "${RUNTIME_ARCHIVE_PATH}" "${RUNTIME_ARCHIVE_PATH}.sha256"
@@ -164,6 +188,8 @@ copy_release_database_patches() {
 
 # 函数说明：将运行包和部署配置收口到同一版本目录，避免本地发布文件分散。
 assemble_production_resources() {
+  cp "${RELEASE_DIR}/RELEASE-INFO.json" "${PRODUCTION_DIR}/"
+  cp "${RELEASE_DIR}/RELEASE-MANIFEST.txt" "${PRODUCTION_DIR}/"
   cp "${BACKEND_DIR}/sql/install.sql" "${PRODUCTION_DIR}/"
   copy_release_database_patches "${PRODUCTION_DIR}"
   cp "${ROOT_DIR}/deploy/env/uiedtool-api.env.example" "${PRODUCTION_DIR}/"
@@ -180,6 +206,7 @@ create_baota_bundle() {
   mkdir -p "${BAOTA_BUNDLE_DIR}"
   cp "${RUNTIME_ARCHIVE_PATH}" "${BAOTA_BUNDLE_DIR}/"
   cp "${RUNTIME_ARCHIVE_PATH}.sha256" "${BAOTA_BUNDLE_DIR}/"
+  cp "${PRODUCTION_DIR}/RELEASE-INFO.json" "${BAOTA_BUNDLE_DIR}/"
   copy_release_database_patches "${BAOTA_BUNDLE_DIR}"
   cp "${PRODUCTION_DIR}/deploy-update.sh" "${BAOTA_BUNDLE_DIR}/"
   chmod 755 "${BAOTA_BUNDLE_DIR}/deploy-update.sh"
@@ -218,6 +245,7 @@ main() {
   mkdir -p "${PRODUCTION_DIR}"
   build_server_binary
   assemble_release_files
+  write_release_info
   write_release_manifest
   create_runtime_archive
   assemble_production_resources
@@ -227,4 +255,6 @@ main() {
   printf "本地正式发布目录: %s\n" "${PRODUCTION_DIR}"
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+  main "$@"
+fi

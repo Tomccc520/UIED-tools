@@ -23,8 +23,11 @@ uiedtool-3.0.5/
 ├── nginx/                       宝塔 Nginx 扩展配置
 ├── sql/install.sql              全新数据库初始化脚本
 ├── docs/DEPLOY.md               本文档
+├── RELEASE-INFO.json            根仓完整提交、产品版本与 API SHA-256
 └── RELEASE-MANIFEST.txt         文件 SHA-256 清单
 ```
+
+正式输出目录和宝塔上传包均保留 `RELEASE-INFO.json`，运行包解压后也将其保存在 release 根目录。Go 编译关闭嵌套仓库的自动 VCS 标记，发布来源以该文件中的根仓 `sourceRevision` 和实际二进制 `apiSha256` 为准。
 
 发布包中的 `web/frontend-route-allowlist.conf` 由 Vue Router 自动生成。Nginx 仅对已注册的前台路由回退到 `index.html`，未知路径返回 HTTP 404，避免搜索引擎把不存在页面识别为正常页面。独立 AI 简历代理、`/api/`、`/admin/` 和静态资源仍按各自 location 处理。`/assets/` 下的构建产物带内容哈希，按一年期不可变缓存下发。
 
