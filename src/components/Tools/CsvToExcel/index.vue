@@ -47,9 +47,12 @@
             <span class="text-gray-700 font-medium">{{ file.name }}</span>
             <div class="space-x-4">
               <el-button type="danger" link @click="clearFile">重新上传</el-button>
-              <el-button type="primary" @click="downloadExcel">下载Excel</el-button>
+              <el-button type="primary" :disabled="isReading || !workbook" @click="downloadExcel">下载Excel</el-button>
             </div>
           </div>
+
+          <p v-if="isReading" role="status" class="text-sm text-gray-500">正在读取并解析文件，请稍候…</p>
+          <p v-else-if="readError" role="alert" class="text-sm text-red-600">{{ readError }}</p>
 
           <!-- 预览前10行 -->
           <div class="overflow-x-auto border rounded-lg">
@@ -93,6 +96,7 @@ import { ElMessage } from 'element-plus'
 import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { useSpreadsheetRead } from '../Spreadsheet/useSpreadsheetRead'
 
 const route = useRoute()
 const fileInputRef = ref<HTMLInputElement | null>(null)
@@ -116,13 +120,13 @@ const guideNotes = [
   '所有处理均在本地完成，数据不会上传到服务器。'
 ]
 
+/** 接收拖拽的表格文件，复用当前文件读取入口。 */
 const handleDrop = (e: DragEvent) => {
   isDragging.value = false
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
     const droppedFile = droppedFiles[0]
     if (droppedFile.name.endsWith('.csv')) {
-      file.value = droppedFile
       processFile(droppedFile)
     } else {
       ElMessage.error('请上传CSV文件')
@@ -130,52 +134,56 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
+/** 接收文件选择并立即清空输入值，允许失败后重选同一文件。 */
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    file.value = target.files[0]
     processFile(target.files[0])
+    target.value = ''
   }
 }
 
-/**
- * 解析 CSV 文件并生成 Excel 预览数据
- * 按需加载 xlsx，减少页面初始体积
- */
-const processFile = (file: File) => {
-  const reader = new FileReader()
-  reader.onload = async (e) => {
-    try {
-      const { XLSX } = await ensureXlsxRuntime()
-      const data = e.target?.result
-      // Try to read with default encoding first, if it fails or looks weird, might need encoding detection logic
-      // XLSX handles basic CSV well usually
-      workbook.value = XLSX.read(data, { type: 'binary' })
-      const firstSheetName = workbook.value.SheetNames[0]
-      const worksheet = workbook.value.Sheets[firstSheetName]
-      const jsonData = XLSX.utils.sheet_to_json<string[]>(worksheet, { header: 1 })
-
-      if (jsonData.length > 0) {
-        previewHeaders.value = jsonData[0] as string[]
-        previewRows.value = jsonData.slice(1, 11) as string[][]
-        totalRows.value = jsonData.length
-      }
-
-      ElMessage.success('解析成功')
-    } catch (error) {
-      console.error(error)
-      ElMessage.error('解析文件失败')
-    }
-  }
-  reader.readAsBinaryString(file)
-}
-
-const clearFile = () => {
-  file.value = null
+/** 清除当前表格预览和导出产物，避免新文件读取期间保留旧数据。 */
+const resetResult = () => {
   previewHeaders.value = []
   previewRows.value = []
   totalRows.value = 0
   workbook.value = null
+}
+
+const { isReading, readError, readFile, cancelRead } = useSpreadsheetRead({
+  mode: 'binary',
+  /** 纯解析文件数据，异步加载后不直接写入页面状态。 */
+  async parse(data) {
+    const { XLSX } = await ensureXlsxRuntime()
+    const parsedWorkbook = XLSX.read(data, { type: 'binary' })
+    const firstSheetName = parsedWorkbook.SheetNames[0]
+    if (!firstSheetName) throw new Error('Workbook has no worksheet')
+    const jsonData = XLSX.utils.sheet_to_json<string[]>(parsedWorkbook.Sheets[firstSheetName], { header: 1 })
+    return { parsedWorkbook, jsonData }
+  },
+  /** 读取器确认版本有效后，一次性提交当前文件的工作簿和预览。 */
+  onSuccess({ parsedWorkbook, jsonData }) {
+    workbook.value = parsedWorkbook
+    previewHeaders.value = jsonData[0] ?? []
+    previewRows.value = jsonData.slice(1, 11)
+    totalRows.value = jsonData.length
+    ElMessage.success('解析成功')
+  },
+  reset: resetResult
+})
+
+/** 选择新文件时设置其名称，取消旧任务并开始独立读取。 */
+const processFile = (selectedFile: File) => {
+  file.value = selectedFile
+  readFile(selectedFile)
+}
+
+/** 清空文件、产物及读取版本，阻止已经排队的旧回调恢复内容。 */
+const clearFile = () => {
+  cancelRead()
+  file.value = null
+  resetResult()
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }
@@ -185,9 +193,18 @@ const clearFile = () => {
  * 下载转换后的 Excel 文件
  */
 const downloadExcel = async () => {
-  if (!workbook.value) return
-  const { XLSX } = await ensureXlsxRuntime()
-  XLSX.writeFile(workbook.value, `${file.value?.name.replace('.csv', '')}.xlsx`)
-  ElMessage.success('下载成功')
+  if (isReading.value || !workbook.value || !file.value) return
+  const selectedFile = file.value
+  const selectedWorkbook = workbook.value
+  try {
+    const { XLSX } = await ensureXlsxRuntime()
+    if (isReading.value || file.value !== selectedFile || workbook.value !== selectedWorkbook) return
+    XLSX.writeFile(selectedWorkbook, `${selectedFile.name.replace(/\.[^.]+$/, '')}.xlsx`)
+    ElMessage.success('下载成功')
+  } catch (error) {
+    if (isReading.value || file.value !== selectedFile || workbook.value !== selectedWorkbook) return
+    console.error('[CsvToExcel] 导出失败', error)
+    ElMessage.error('文件导出失败，请重试')
+  }
 }
 </script>

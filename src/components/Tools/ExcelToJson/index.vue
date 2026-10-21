@@ -47,13 +47,16 @@
             <span class="text-gray-700 font-medium">{{ file.name }}</span>
             <div class="space-x-4">
               <el-button type="danger" link @click="clearFile">重新上传</el-button>
-              <el-button type="primary" @click="downloadJson">下载JSON</el-button>
+              <el-button type="primary" :disabled="isReading || !jsonContent" @click="downloadJson">下载JSON</el-button>
             </div>
           </div>
 
+          <p v-if="isReading" role="status" class="text-sm text-gray-500">正在读取并解析文件，请稍候…</p>
+          <p v-else-if="readError" role="alert" class="text-sm text-red-600">{{ readError }}</p>
+
           <div class="relative">
             <el-input v-model="jsonContent" type="textarea" :rows="20" readonly placeholder="转换结果将显示在这里" />
-            <el-button class="absolute top-2 right-2" type="primary" link @click="copyJson">复制</el-button>
+            <el-button class="absolute top-2 right-2" type="primary" link :disabled="isReading || !jsonContent" @click="copyJson">复制</el-button>
           </div>
         </div>
       </div>
@@ -71,6 +74,7 @@ import { ensureXlsxRuntime } from '@/utils/toolRuntimeLoaders'
 import useClipboard from 'vue-clipboard3'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
+import { useSpreadsheetRead } from '../Spreadsheet/useSpreadsheetRead'
 
 const route = useRoute()
 const { toClipboard } = useClipboard()
@@ -92,13 +96,13 @@ const guideNotes = [
   '所有处理均在本地完成，数据不会上传到服务器。'
 ]
 
+/** 接收拖拽的 Excel 文件，复用当前文件读取入口。 */
 const handleDrop = (e: DragEvent) => {
   isDragging.value = false
   const droppedFiles = e.dataTransfer?.files
   if (droppedFiles && droppedFiles.length > 0) {
     const droppedFile = droppedFiles[0]
     if (droppedFile.name.endsWith('.xlsx') || droppedFile.name.endsWith('.xls')) {
-      file.value = droppedFile
       processFile(droppedFile)
     } else {
       ElMessage.error('请上传Excel文件')
@@ -106,39 +110,44 @@ const handleDrop = (e: DragEvent) => {
   }
 }
 
+/** 接收文件选择并清空输入值，允许重新读取同一文件。 */
 const handleFileInputChange = (e: Event) => {
   const target = e.target as HTMLInputElement
   if (target.files && target.files.length > 0) {
-    file.value = target.files[0]
     processFile(target.files[0])
+    target.value = ''
   }
 }
 
-/**
- * 解析上传的 Excel 文件并转换为 JSON 文本
- * 按需加载 xlsx 运行时，避免工具页初始渲染时加载大体积解析库
- */
-const processFile = (file: File) => {
-  const reader = new FileReader()
-  reader.onload = async (e) => {
-    try {
-      const { XLSX } = await ensureXlsxRuntime()
-      const data = new Uint8Array(e.target?.result as ArrayBuffer)
-      const workbook = XLSX.read(data, { type: 'array' })
-      const firstSheetName = workbook.SheetNames[0]
-      const worksheet = workbook.Sheets[firstSheetName]
-      const jsonData = XLSX.utils.sheet_to_json(worksheet)
-      jsonContent.value = JSON.stringify(jsonData, null, 2)
-      ElMessage.success('转换成功')
-    } catch (error) {
-      console.error(error)
-      ElMessage.error('文件解析失败')
-    }
-  }
-  reader.readAsArrayBuffer(file)
+const { isReading, readError, readFile, cancelRead } = useSpreadsheetRead({
+  mode: 'array',
+  /** 在局部解析 Excel 并序列化 JSON，版本检查通过后才更新页面。 */
+  async parse(data) {
+    const { XLSX } = await ensureXlsxRuntime()
+    const parsedWorkbook = XLSX.read(new Uint8Array(data as ArrayBuffer), { type: 'array' })
+    const firstSheetName = parsedWorkbook.SheetNames[0]
+    if (!firstSheetName) throw new Error('Workbook has no worksheet')
+    const jsonData = XLSX.utils.sheet_to_json(parsedWorkbook.Sheets[firstSheetName])
+    return JSON.stringify(jsonData, null, 2)
+  },
+  /** 只提交当前文件对应的完整 JSON 内容。 */
+  onSuccess(content) {
+    jsonContent.value = content
+    ElMessage.success('转换成功')
+  },
+  /** 清空旧文件产物，让读取中和失败后的复制、下载保持禁用。 */
+  reset() { jsonContent.value = '' }
+})
+
+/** 设置新文件名称并开始带取消和版本校验的读取。 */
+const processFile = (selectedFile: File) => {
+  file.value = selectedFile
+  readFile(selectedFile)
 }
 
+/** 清除当前文件并使已经排队的旧读取和解析结果失效。 */
 const clearFile = () => {
+  cancelRead()
   file.value = null
   jsonContent.value = ''
   if (fileInputRef.value) {
@@ -146,21 +155,23 @@ const clearFile = () => {
   }
 }
 
+/** 下载当前文件已完成转换的 JSON，读取中不得复用旧产物。 */
 const downloadJson = () => {
-  if (!jsonContent.value) return
+  if (isReading.value || !jsonContent.value || !file.value) return
   const blob = new Blob([jsonContent.value], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
-  a.download = file.value ? `${file.value.name.split('.')[0]}.json` : 'data.json'
+  a.download = file.value ? `${file.value.name.replace(/\.[^.]+$/, '')}.json` : 'data.json'
   document.body.appendChild(a)
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
 }
 
+/** 复制当前转换结果，读取期间与没有产物时不触发剪贴板写入。 */
 const copyJson = async () => {
-  if (!jsonContent.value) return
+  if (isReading.value || !jsonContent.value) return
   try {
     await toClipboard(jsonContent.value)
     ElMessage.success('复制成功')
