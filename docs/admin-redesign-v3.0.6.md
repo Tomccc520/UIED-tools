@@ -22,12 +22,20 @@
 
 隔离函数回归使用真实源码和可控网络边界，覆盖权限、加载失败、失败留稿、保存重试、连续保存慢刷新、批量草稿、字段补丁与基线。浏览器组件验收使用样例菜单和拦截接口，不代表真实账号权限或数据库持久化已验收。
 
-正式后台当前需要用户完成图形验证码登录。登录后的真实“读取 → 修改 → 保存 → 回读 → 前台生效”仍需单独验收，不能用样例数据测试替代。
+2026-10-25 用户手动完成本地后台登录后，已在真实会话验收：单工具简介、每日学习标题、前台标语分别完成保存与公开接口回读；菜单标语还通过后台预览进入真实主站，确认新文案出现。随后三组验收值均恢复，公开配置的关注字段与验收前严格一致。没有创建账号、调整权限或读取/导出登录凭据。
+
+真实数据验收追加修复：
+
+- 预览地址缺省时曾错误回到后台 5180；现在仅开发环境本机后台缺省映射主站 5179，生产仍按显式配置或同域根路径，路径与参数保留。
+- 更新记录 Tab 被旧 CSS 隐藏；已恢复每日学习与更新记录两个入口，并验证 Enter 切换、草稿保留。
+- 334 条真实工具使手机搜索框和完整分页超出边界；已允许搜索框收缩并复用 Arco 简洁分页，实测 1/23 到第 2 页正常。桌面分页改用 defaultPageSize，避免固定受控 pageSize 导致容量选择无效，已实测选择 50 条/页并呈现 50 行。
+
+另完成真实账号下四种视图（菜单、每日学习、更新记录、工具管理）× 320/375/768/1440px 共 16 组检查。验证了实际 innerWidth，表格保持自身横向滚动，搜索和分页不被左右裁切。后台运行错误日志为空；测试用预览标签已关闭、临时视口已重置。
 
 ## 已运行检查
 
 - 后台 `npm run type-check`：通过；`COPY_TO_FRONTEND=0 npm run build`：通过（保留现有大分包提示，未同步到主站部署目录）。
-- 8 组 Node 回归：48 项通过，包括主题变量与连续保存慢刷新。
+- 9 组 Node 回归：54 项通过，包括主题变量、连续保存慢刷新和预览地址解析。
 - 静态 P0 操作入口检查：27 个页面通过。
 - 隔离浏览器：工具管理、首页内容、前台菜单三个实际页面，320/375/768/1440px 检查；12 组全部通过，无横向溢出，页面运行错误为 0；品牌紫、手机 44px 操作和标签左对齐均有真实 DOM 断言。API 全部使用样例，未携带真实凭据。
 - 本地 Go `/health`：3.0.6，后台开发服务 5180：HTTP 200。
@@ -36,7 +44,7 @@
 
 ```sh
 npm run type-check
-node --test scripts/admin-navigation.test.mjs scripts/admin-config-safety.test.mjs scripts/tool-catalog-editor.test.mjs scripts/tool-catalog-save-flow.test.mjs scripts/frontend-layout-save.test.mjs scripts/site-configuration.test.mjs scripts/seo-save-flow.test.mjs scripts/admin-theme.test.mjs
+node --test scripts/admin-navigation.test.mjs scripts/admin-config-safety.test.mjs scripts/tool-catalog-editor.test.mjs scripts/tool-catalog-save-flow.test.mjs scripts/frontend-layout-save.test.mjs scripts/site-configuration.test.mjs scripts/seo-save-flow.test.mjs scripts/admin-theme.test.mjs scripts/tools-preview-url.test.mjs
 node scripts/smoke-p0-actions.mjs
 node scripts/smoke-admin-design.mjs
 COPY_TO_FRONTEND=0 npm run build
@@ -44,8 +52,13 @@ COPY_TO_FRONTEND=0 npm run build
 
 隔离浏览器脚本运行时创建临时入口，结束时自动删除；报告和截图输出到被忽略的 `output/playwright/admin-redesign/`。不会写入数据库，不通过正式登录流程，也不操作图形验证码。
 
+真实会话的截图及视口报告在被忽略的 `output/playwright/admin-live/`。隔离脚本样例现已扩为 334 条，新增可见 Tab、搜索区域与分页左右边界断言；真实验收通过 CUA 已登录会话完成，不以验证码自动识别脚本代替人工登录。
+
 ## 后续覆盖范围
 
 - 网站基础资料、协议、备案、榜单等本轮已统一标题，其余字段分组与编辑流程继续按公共框架收敛。
 - 会员、订单、AI 模型、素材和系统权限页面继续保留原业务功能，尚未完成逐页设计和交互重构。
 - Go 网站保存接口在写入后读取详情；极端情况下若写入成功而服务端详情读取失败，当前契约仍可能返回失败。本轮没有改动该接口，后续需结合服务端事务与响应契约单独处理。
+
+- 存量内容另需整理：本地目录中的图片压缩描述仍含旧的 10MB 文案，更新记录统计说明仍含历史 3.0.1 文案。本轮遵守“验收后恢复原值”，未把测试操作变成存量内容迁移；主站的工具能力限制仍由现有统一配置控制。
+- 已打开的主站页面有前端配置/文章缓存。真实生效验收使用公开接口首读和新开的预览页，不据此宣称旧标签无需刷新就会同步所有内容。

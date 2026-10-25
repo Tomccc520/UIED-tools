@@ -24,7 +24,12 @@ const avatar = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" wid
 const toolTree = [{ title: '文件与媒体', list: [{ title: '文件处理', list: [
     { title: '视频压缩', url: '/tools/video/compress', toolKey: 'video-compress', desc: '样例：压缩视频体积，设置画质与目标尺寸', consumePoints: 0, memberFree: true, seoTitle: '在线视频压缩', seoDescription: '浏览器视频压缩工具', geoSummary: '压缩视频文件' },
     { title: '图片压缩', url: '/tools/image-compress', toolKey: 'image-compress', desc: '样例：批量处理 JPG、PNG 与 WebP 图片', consumePoints: 0, memberFree: true },
-    { title: 'PDF 压缩', url: '/tools/pdf-compress', toolKey: 'pdf-compress', desc: '样例：减少 PDF 文件大小', consumePoints: 0, memberFree: true }
+    { title: 'PDF 压缩', url: '/tools/pdf-compress', toolKey: 'pdf-compress', desc: '样例：减少 PDF 文件大小', consumePoints: 0, memberFree: true },
+    ...Array.from({ length: 331 }, (_, index) => ({
+        title: `样例文件工具 ${index + 1}`, url: `/tools/fixture-file-${index + 1}`,
+        toolKey: `fixture-file-${index + 1}`, desc: '样例：用于验证三位工具数量、长列表和多页布局',
+        consumePoints: 0, memberFree: true
+    }))
 ] }] }]
 let fixture = {
     webName: 'UIED-Tools · 样例', toolsSidebarBrandText: 'UIED-Tools', toolsSiteSlogan: '样例配置',
@@ -164,10 +169,26 @@ const captureResponsive = async (name, width) => {
     }
     const overflow = await page.evaluate(() => ({
         document: document.documentElement.scrollWidth - innerWidth,
-        content: [...document.querySelectorAll('.layout-main-inner, .pro-page-shell, .config-edit-frame')].map(element => ({ className: element.className, pixels: element.scrollWidth - element.clientWidth }))
+        content: [...document.querySelectorAll('.layout-main-inner, .pro-page-shell, .config-edit-frame, .catalog-editor__filters')].map(element => ({ className: element.className, pixels: element.scrollWidth - element.clientWidth }))
     }))
     assert.ok(overflow.document <= 1, `${name} ${width}px 文档横向溢出 ${overflow.document}px`)
     for (const item of overflow.content) assert.ok(item.pixels <= 1, `${name} ${width}px ${item.className} 横向溢出 ${item.pixels}px`)
+    if (name === 'tools-catalog') {
+        assert.match(await page.locator('.catalog-editor__count').innerText(), /^\d{3,} 个工具$/, '样例目录须覆盖三位工具数和多页分页')
+        const pagination = await page.locator('.catalog-editor .arco-pagination').evaluate(element => {
+            const editorRect = element.closest('.catalog-editor').getBoundingClientRect()
+            const bounds = [...element.querySelectorAll('.arco-pagination-item'), element]
+                .filter(item => item.getBoundingClientRect().width > 0)
+                .map(item => ({ className: item.className, left: item.getBoundingClientRect().left, right: item.getBoundingClientRect().right }))
+            return { editorLeft: editorRect.left, editorRight: editorRect.right, viewportWidth: innerWidth, simple: element.classList.contains('arco-pagination-simple'), bounds }
+        })
+        assert.equal(pagination.simple, width <= 900, '手机使用简洁分页，桌面保留完整分页')
+        for (const bounds of pagination.bounds) {
+            assert.ok(bounds.left >= Math.max(0, pagination.editorLeft) - 1 && bounds.right <= Math.min(pagination.viewportWidth, pagination.editorRight) + 1,
+                `${name} ${width}px 分页或按钮越界：${bounds.className} [${bounds.left}, ${bounds.right}]`)
+        }
+        checks.push(`工具目录 ${width}px：三位工具数、多页分页和前后页按钮均未越界`)
+    }
     const saveButton = page.locator('.config-edit-frame__actions .arco-btn-primary')
     assert.equal(await saveButton.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(108, 84, 255)', `${name} 保存按钮须采用品牌紫`)
     if (width <= 600) assert.ok(await saveButton.evaluate(element => element.getBoundingClientRect().height) >= 44, '手机保存操作至少44px高')
@@ -227,12 +248,29 @@ try {
         checks.push('工具抽屉：失败保留草稿、重试成功关闭、PATCH 白名单、刷新失败不误报保存失败、刷新不重复写入')
         await page.getByRole('textbox', { name: '搜索工具', exact: true }).fill('')
         for (const width of [320, 375, 768, 1440]) await captureResponsive('tools-catalog', width)
+        // 桌面容量选择须实际改变表体行数，避免受控 pageSize 把容量锁定在默认值。
+        await page.locator('.catalog-editor .arco-pagination-options .arco-select').click()
+        await page.getByText('50 条/页', { exact: true }).click()
+        await page.waitForFunction(() => document.querySelectorAll('.catalog-editor tbody > .arco-table-tr').length === 50)
+        assert.equal(await page.locator('.catalog-editor tbody > .arco-table-tr').count(), 50, '选择50条/页后须实际展示50行工具')
+        checks.push('工具目录桌面分页：选择50条/页后表体实际显示50行')
 
         await navigate('frontend_layout')
         assert.equal(await page.locator('[data-admin-smoke="frontend-layout-save-top"]').count(), 1)
         assert.equal(await page.locator('.config-edit-frame__actions button').count(), 1)
+        const contentTabs = page.locator('.layout-tabs > .arco-tabs-nav .arco-tabs-tab')
+        assert.equal(await contentTabs.count(), 2, '首页内容只保留每日学习和更新记录两个模块')
         await page.locator('input[maxlength="20"]').fill('样例：新的学习栏目')
         await waitSaveState('dirty')
+        await contentTabs.filter({ hasText: /^更新记录$/ }).click()
+        await page.getByText('更新页说明', { exact: true }).waitFor({ state: 'visible' })
+        const learningTab = contentTabs.filter({ hasText: /^每日学习$/ })
+        await learningTab.focus()
+        await learningTab.press('Enter')
+        await page.locator('input[maxlength="20"]').waitFor({ state: 'visible' })
+        assert.equal(await page.locator('input[maxlength="20"]').inputValue(), '样例：新的学习栏目')
+        await waitSaveState('dirty')
+        checks.push('首页模块：更新记录入口可点击，键盘 Enter 可返回每日学习，切换保留未保存草稿')
         failRefresh = true
         await page.locator('[data-admin-smoke="frontend-layout-save-top"]').click()
         await waitSaveState('saved')

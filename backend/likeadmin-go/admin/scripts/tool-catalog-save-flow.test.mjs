@@ -52,6 +52,7 @@ const createEditor = (source, persistChanges, overrides = {}) => {
     const calls = { updates: [], successes: [] }
     const editor = execute(readScript('components/catalog-tool-editor.vue'), {
         flattenCatalogEditorTree, updateCatalogEditorTool, resolveCatalogPreviewHref,
+        useAppStore: () => ({ isMobile: false }),
         withDefaults: (value) => value, defineProps: () => props,
         defineEmits: () => (event, value) => { calls.updates.push({ event, value }); props.modelValue = value },
         feedback: { msgSuccess: (text) => calls.successes.push(text), confirm: async () => {} },

@@ -9,14 +9,14 @@
 <template>
     <section class="catalog-editor" aria-label="工具管理">
         <div class="catalog-editor__filters">
-            <a-input-search v-model="query" :input-attrs="{ 'aria-label': '搜索工具' }" placeholder="搜索工具名称、用途、链接或标识" allow-clear />
+            <a-input-search v-model="query" class="catalog-editor__search" :input-attrs="{ 'aria-label': '搜索工具' }" placeholder="搜索工具名称、用途、链接或标识" allow-clear />
             <div class="catalog-editor__category"><a-select v-model="category" aria-label="筛选工具分类" placeholder="全部分类" allow-clear>
                 <a-option v-for="name in categories" :key="name" :value="name">{{ name }}</a-option>
             </a-select></div>
             <span class="catalog-editor__count" role="status">{{ filteredRows.length }} 个工具</span>
         </div>
         <a-alert v-if="parseError" type="error" :closable="false">{{ parseError }}，原始配置已保留。</a-alert>
-        <a-table v-else :data="filteredRows" row-key="key" :pagination="{ pageSize: 15, showTotal: true, showPageSize: true }" :scroll="{ x: 820 }" size="small">
+        <a-table v-else :data="filteredRows" row-key="key" :pagination="{ defaultPageSize: 15, simple: appStore.isMobile, showTotal: !appStore.isMobile, showPageSize: !appStore.isMobile }" :scroll="{ x: 820 }" size="small">
             <template #columns>
                 <a-table-column title="工具" :width="260">
                     <template #cell="{ record }">
@@ -90,9 +90,11 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
 import feedback from '@/utils/feedback'
+import useAppStore from '@/stores/modules/app'
 import { flattenCatalogEditorTree, updateCatalogEditorTool, resolveCatalogPreviewHref, type CatalogEditorRow } from '../composables/tool-catalog-editor'
 
 const props = withDefaults(defineProps<{ modelValue: string; disabled?: boolean; canEdit?: boolean; pendingChanges?: boolean; previewBase?: string; persistChanges?: (nextValue: string, sourceValue: string) => Promise<boolean> }>(), { disabled: false, canEdit: false, pendingChanges: false, previewBase: '' })
+const appStore = useAppStore()
 const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>()
 const query = ref('')
 const category = ref('')
@@ -205,9 +207,10 @@ onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunloa
 <style scoped lang="scss">
 .catalog-editor { min-width: 0; margin-top: 16px; }
 .catalog-editor__filters { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px;
-    > :first-child { flex: 1 1 260px; }
     > span { color: var(--color-text-3); font-size: 13px; }
 }
+.catalog-editor__search { flex: 1 1 260px; min-width: 0; max-width: 100%; }
+.catalog-editor__search :deep(.arco-input) { min-width: 0; }
 .catalog-editor__category { flex: 0 0 180px; min-width: 0; }
 .catalog-editor__desc { margin-top: 4px; color: var(--color-text-3); font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
 .catalog-editor__notice { margin-bottom: 16px; }
@@ -227,5 +230,5 @@ onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunloa
 .catalog-editor__footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
 .catalog-editor__count { white-space: nowrap; }
 @media (max-width: 600px) { .catalog-editor__identity { flex-direction: column; } .catalog-editor__footer-actions > :last-child { flex: 1 1 100%; } }
-@media (max-width: 600px) { .catalog-editor__category { flex: 1; } }
+@media (max-width: 600px) { .catalog-editor__search { flex-basis: 100%; width: 100%; } .catalog-editor__category { flex: 1; } }
 </style>

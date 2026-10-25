@@ -123,7 +123,7 @@
                         </section>
 
                         <section class="layout-config-zone">
-                            <a-tabs v-model:active-key="activeTab" class="layout-tabs" lazy-load>
+                            <a-tabs v-model:active-key="activeTab" class="layout-tabs" aria-label="内容模块" lazy-load>
                                 <a-tab-pane
                                     v-if="isModuleTabEnabled('homepageLearning')"
                                     key="homepageLearning"
@@ -6382,8 +6382,14 @@ onBeforeUnmount(() => {
     .layout-tabs {
         margin-top: 0;
 
-        :deep(.arco-tabs-nav) {
-            display: none;
+        :deep(.arco-tabs-tab) {
+            min-height: 44px;
+        }
+
+        :deep(.arco-tabs-tab:focus-visible) {
+            outline: 2px solid var(--uied-admin-accent);
+            outline-offset: -2px;
+            border-radius: 4px;
         }
 
         :deep(.arco-tabs-content) {
