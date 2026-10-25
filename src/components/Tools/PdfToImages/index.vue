@@ -100,14 +100,14 @@
                   quality === 150
                     ? 'bg-brand border-brand text-white'
                     : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand'
-                ]" @click="quality = 150">
+                ]" :disabled="converting" @click="quality = 150">
                   普通 (150dpi)
                 </button>
                 <button class="min-w-24 py-1 px-3 rounded border text-sm font-medium transition-colors" :class="[
                   quality === 300
                     ? 'bg-brand border-brand text-white'
                     : 'border-gray-300 text-gray-600 hover:border-brand hover:text-brand'
-                ]" @click="quality = 300">
+                ]" :disabled="converting" @click="quality = 300">
                   高清 (300dpi)
                 </button>
               </div>
@@ -310,17 +310,20 @@ const removeFile = (index: number) => {
   files.value.splice(index, 1)
 }
 
-// 开始转换
+/** 快照本批次文件与 DPI，避免异步渲染期间的参数变化影响后续页面。 */
 const startConversion = async () => {
+  if (converting.value) return
   if (files.value.length === 0) {
     ElMessage.warning('请先选择要转换的PDF文件')
     return
   }
 
+  const selectedFiles = [...files.value]
+  const selectedDpi = quality.value
   converting.value = true
   try {
-    for (const file of files.value) {
-      await convertPdfToImages(file)
+    for (const file of selectedFiles) {
+      await convertPdfToImages(file, selectedDpi)
     }
     ElMessage.success('转换完成')
   } catch (error) {
@@ -331,8 +334,8 @@ const startConversion = async () => {
   }
 }
 
-// PDF转图片
-const convertPdfToImages = async (file: File) => {
+/** 按本次启动时捕获的 DPI 转换所有页面，批次中不再读取可变质量设置。 */
+const convertPdfToImages = async (file: File, dpi: number) => {
   const pdfjsLib = await ensurePdfjsRuntime()
   const arrayBuffer = await file.arrayBuffer()
   const pdf = await pdfjsLib.getDocument(arrayBuffer).promise
@@ -340,7 +343,7 @@ const convertPdfToImages = async (file: File) => {
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i)
-    const viewport = page.getViewport({ scale: quality.value / 72 }) // dpi转换为scale
+    const viewport = page.getViewport({ scale: dpi / 72 }) // dpi转换为scale
 
     const canvas = document.createElement('canvas')
     const context = canvas.getContext('2d')

@@ -80,6 +80,8 @@ const TOOL_RANKING_TRACK_ENDPOINT = '/api/common/tool-ranking/track'
 const TOOL_RANKING_API_TIMEOUT_MS = 8000
 const TOOL_RANKING_VIEW_DEDUPE_TTL_MS = 10 * 60 * 1000
 const TOOL_RANKING_VIEW_DEDUPE_STORAGE_KEY = 'uiedtool.tool-ranking.view-dedupe'
+let toolRankingViewDedupeMemory: Record<string, number> = {}
+const toolRankingViewRequests = new Map<string, Promise<void>>()
 const TOOL_RANKING_ROUTE_ALIASES: Record<string, string> = {
   '/tools/ai-perler/focus': '/tools/ai-perler'
 }
@@ -295,12 +297,12 @@ const getToolRankingViewDedupeMap = (): Record<string, number> => {
   try {
     const rawText = window.sessionStorage.getItem(TOOL_RANKING_VIEW_DEDUPE_STORAGE_KEY)
     if (!rawText) {
-      return {}
+      return { ...toolRankingViewDedupeMemory }
     }
     const parsed = JSON.parse(rawText) as Record<string, number>
-    return parsed && typeof parsed === 'object' ? parsed : {}
+    return { ...(parsed && typeof parsed === 'object' ? parsed : {}), ...toolRankingViewDedupeMemory }
   } catch {
-    return {}
+    return { ...toolRankingViewDedupeMemory }
   }
 }
 
@@ -313,12 +315,18 @@ const saveToolRankingViewDedupeMap = (value: Record<string, number>) => {
   }
   const now = Date.now()
   const nextValue = Object.entries(value || {}).reduce<Record<string, number>>((result, [key, timestamp]) => {
-    if (now - Number(timestamp || 0) <= TOOL_RANKING_VIEW_DEDUPE_TTL_MS) {
-      result[key] = Number(timestamp || 0)
+    const trackedAt = Number(timestamp || 0)
+    if (Number.isFinite(trackedAt) && trackedAt > 0 && trackedAt <= now && now - trackedAt <= TOOL_RANKING_VIEW_DEDUPE_TTL_MS) {
+      result[key] = trackedAt
     }
     return result
   }, {})
-  window.sessionStorage.setItem(TOOL_RANKING_VIEW_DEDUPE_STORAGE_KEY, JSON.stringify(nextValue))
+  toolRankingViewDedupeMemory = nextValue
+  try {
+    window.sessionStorage.setItem(TOOL_RANKING_VIEW_DEDUPE_STORAGE_KEY, JSON.stringify(nextValue))
+  } catch {
+    // 隐私策略或存储配额不能阻止埋点，当前页面会继续使用内存去重。
+  }
 }
 
 /**
@@ -334,12 +342,14 @@ const shouldSkipToolRankingViewTrack = (toolKey: string, routePath: string): boo
   const dedupeMap = getToolRankingViewDedupeMap()
   const previousTimestamp = Number(dedupeMap[dedupeKey] || 0)
   const now = Date.now()
-  if (previousTimestamp > 0 && now - previousTimestamp <= TOOL_RANKING_VIEW_DEDUPE_TTL_MS) {
-    return true
-  }
-  dedupeMap[dedupeKey] = now
+  return previousTimestamp > 0 && previousTimestamp <= now && now - previousTimestamp <= TOOL_RANKING_VIEW_DEDUPE_TTL_MS
+}
+
+/** 函数说明：仅在服务端确认成功后记录去重时间，失败或取消不屏蔽后续重试。 */
+const markToolRankingViewTracked = (dedupeKey: string): void => {
+  const dedupeMap = getToolRankingViewDedupeMap()
+  dedupeMap[dedupeKey] = Date.now()
   saveToolRankingViewDedupeMap(dedupeMap)
-  return false
 }
 
 /**
@@ -422,7 +432,10 @@ export const trackToolVisitByRoute = async (routePath: string, source = 'route-v
   if (shouldSkipToolRankingViewTrack(resolvedMeta.toolKey, resolvedMeta.toolUrl)) {
     return
   }
-  await trackToolRankingEvent({
+  const dedupeKey = `${normalizeToolRankingKey(resolvedMeta.toolKey)}@@${normalizeToolRankingRoutePath(resolvedMeta.toolUrl)}`
+  const existingRequest = toolRankingViewRequests.get(dedupeKey)
+  if (existingRequest) return existingRequest
+  const request = trackToolRankingEvent({
     toolKey: resolvedMeta.toolKey,
     routePath: resolvedMeta.toolUrl,
     eventType: 'view',
@@ -430,7 +443,10 @@ export const trackToolVisitByRoute = async (routePath: string, source = 'route-v
     toolUrl: resolvedMeta.toolUrl,
     cateTitle: resolvedMeta.cateTitle,
     source
-  })
+  }).then(() => markToolRankingViewTracked(dedupeKey))
+    .finally(() => toolRankingViewRequests.delete(dedupeKey))
+  toolRankingViewRequests.set(dedupeKey, request)
+  return request
 }
 
 /**

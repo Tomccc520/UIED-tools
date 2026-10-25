@@ -32,6 +32,16 @@ describe('视频压缩接口响应解析', () => {
     expect(parseVideoCompressFileName('', 'fallback.mp4')).toBe('fallback.mp4')
   })
 
+  it.each([
+    ['attachment; filename="demo;v2_compressed.mp4"', 'demo;v2_compressed.mp4'],
+    ['attachment; filename="demo\\"quoted\\".mp4"', 'demo"quoted".mp4'],
+    ["attachment; filename*=UTF-8''%E6%B5%8B%E8%AF%95%20%2B%20%E8%A7%86%E9%A2%91.mp4", '测试 + 视频.mp4'],
+    ["attachment; filename=plain.mp4; filename*=UTF-8'zh'%E6%B5%8B%E8%AF%95.mp4", '测试.mp4'],
+    ["attachment; filename=plain.mp4; filename*=UTF-8''%ZZ", 'plain.mp4']
+  ])('下载名保留引号内分号、转义与 UTF-8 参数：%s', (header, expected) => {
+    expect(parseVideoCompressFileName(header, 'fallback.mp4')).toBe(expected)
+  })
+
   it('仅将 true 识别为已压缩', () => {
     expect(parseVideoCompressBoolean('true')).toBe(true)
     expect(parseVideoCompressBoolean('false')).toBe(false)

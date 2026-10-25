@@ -31,7 +31,7 @@ import ToolDetail from '@/components/Layout/ToolDetail/ToolDetail.vue'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import { useRoute } from 'vue-router'
 import JSZip from 'jszip'
-import { ref, computed, watch, onMounted } from '@vue/runtime-core'
+import { ref, computed, watch, onBeforeUnmount } from '@vue/runtime-core'
 
 const route = useRoute()
 
@@ -49,6 +49,28 @@ const cutImg = ref<string[]>([]) // 切割后的图片列表
 const dataFileRef = ref() // 上传组件引用
 const isDragging = ref(false) // 拖拽状态
 const isProcessing = ref(false) // 处理状态
+let readVersion = 0
+let activeReader: FileReader | null = null
+let activeDecoder: HTMLImageElement | null = null
+let disposed = false
+
+/** 取消当前读取和解码，并使已经排队的旧回调失效；不改动当前页面的处理状态。 */
+const cancelImageRead = () => {
+  readVersion++
+  if (activeReader) {
+    activeReader.onload = null
+    activeReader.onerror = null
+    activeReader.onabort = null
+    activeReader.abort()
+    activeReader = null
+  }
+  if (activeDecoder) {
+    activeDecoder.onload = null
+    activeDecoder.onerror = null
+    activeDecoder.src = ''
+    activeDecoder = null
+  }
+}
 
 // 功能特点
 const features = [
@@ -98,28 +120,54 @@ const faqs = [
  * 处理图片上传
  * @param params 上传参数
  */
-const updateDataFile = async (params: { file: File }) => {
+const updateDataFile = (params: { file: File }) => {
+  if (disposed) return
+  if (!params.file.type.startsWith('image/')) {
+    ElMessage.error('请选择图片文件')
+    return
+  }
+  cancelImageRead()
+  const version = readVersion
+  isProcessing.value = true
+
+  /** 仅当前任务可显示失败并结束处理中状态，旧任务不得影响更新的文件。 */
+  const failRead = (message: string) => {
+    if (disposed || version !== readVersion) return
+    cancelImageRead()
+    isProcessing.value = false
+    ElMessage.error(message)
+  }
+
   try {
-    isProcessing.value = true
-    let reader = new FileReader()
+    const reader = new FileReader()
+    activeReader = reader
+    reader.onerror = () => failRead('图片读取失败，请重新选择')
+    reader.onabort = () => failRead('图片读取已取消，请重新选择')
+    reader.onload = () => {
+      if (disposed || version !== readVersion) return
+      activeReader = null
+      reader.onload = null
+      reader.onerror = null
+      reader.onabort = null
+      const imageTmp = new Image()
+      activeDecoder = imageTmp
+      imageTmp.onerror = () => failRead('图片解码失败，请更换图片后重试')
+      imageTmp.onload = () => {
+        if (disposed || version !== readVersion) return
+        activeDecoder = null
+        imageTmp.onload = null
+        imageTmp.onerror = null
+        if (image.value.src) image.value.src = ''
+        image.value = imageTmp
+        cut()
+        isProcessing.value = false
+      }
+      imageTmp.src = reader.result as string
+    }
     reader.readAsDataURL(params.file)
-    reader.addEventListener(
-      'load',
-      async () => {
-        const imageTmp = new Image()
-        imageTmp.onload = () => {
-          image.value = imageTmp
-          cut()
-          isProcessing.value = false
-        }
-        imageTmp.src = reader.result as string
-      },
-      false
-    )
   } catch (error) {
     console.error('图片上传失败:', error)
-    ElMessage.error('图片上传失败，请重试')
-    isProcessing.value = false
+    failRead('图片上传失败，请重试')
   }
 }
 
@@ -189,6 +237,7 @@ const cut = () => {
     // 按行列进行切割
     for (let r = 0; r < lineNum.value; r++) {
       for (let c = 0; c < lineNum.value; c++) {
+        ctx?.clearRect(0, 0, wpiece, hpiece)
         ctx?.drawImage(
           img,
           c * wpiece,
@@ -226,15 +275,20 @@ const cutImgStyle = computed(() => {
  * 清除图片
  */
 const clearImage = () => {
+  cancelImageRead()
+  if (image.value.src) image.value.src = ''
   image.value = {}
   cutImg.value = []
   fileList.value = []
+  isProcessing.value = false
 }
 
 /**
  * 下载切割后的图片（打包下载）
  */
 const downloadImages = async () => {
+  if (disposed || isProcessing.value || !cutImg.value.length) return
+  const version = readVersion
   try {
     isProcessing.value = true
     const zip = new JSZip()
@@ -248,6 +302,7 @@ const downloadImages = async () => {
 
     // 生成压缩包
     const content = await zip.generateAsync({ type: 'blob' })
+    if (disposed || version !== readVersion) return
 
     // 下载压缩包
     const link = document.createElement('a')
@@ -256,13 +311,15 @@ const downloadImages = async () => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000)
 
     ElMessage.success('图片打包下载成功')
   } catch (error) {
+    if (disposed || version !== readVersion) return
     console.error('图片下载失败:', error)
     ElMessage.error('图片打包下载失败，请重试')
   } finally {
-    isProcessing.value = false
+    if (!disposed && version === readVersion) isProcessing.value = false
   }
 }
 
@@ -273,9 +330,10 @@ watch(lineNum, () => {
   }
 })
 
-// 组件挂载完成
-onMounted(() => {
-  // 初始化操作（如果需要）
+/** 离开工具时停止解码并释放当前图片，旧读取和打包结果都不再更新页面或触发下载。 */
+onBeforeUnmount(() => {
+  disposed = true
+  clearImage()
 })
 </script>
 

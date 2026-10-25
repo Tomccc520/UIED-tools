@@ -182,7 +182,8 @@
 
 <script setup lang="ts">
 import '@/components/Tools/PdfCompress/pdfWorkspaceResponsive.css'
-import { ref, reactive, watch } from 'vue'
+import { ref, reactive, watch, nextTick, onUnmounted } from 'vue'
+import type { PDFDocumentLoadingTask, RenderTask } from 'pdfjs-dist'
 import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPdfFileError, ensurePdfjsRuntime } from '@/utils/pdf'
@@ -243,45 +244,93 @@ const progress = ref(0)
 const extractedText = ref('')
 const thumbnailCanvas = ref<HTMLCanvasElement | null>(null)
 const hasThumbnail = ref(false)
+let fileRequestId = 0
+let disposed = false
+let extractionTask: PDFDocumentLoadingTask | undefined
+let thumbnailTask: PDFDocumentLoadingTask | undefined
+let thumbnailRender: RenderTask | undefined
 
-/**
- * 生成PDF缩略图（第一页）
- * @param f PDF文件
- */
-const generateThumbnail = async (f: File) => {
+/** 判断异步操作是否仍归属当前文件，防止清空、换文件或离开后回写旧状态。 */
+const isCurrentFile = (source: File, requestId: number) => !disposed && fileRequestId === requestId && file.value === source
+
+/** 释放独立 PDF.js 加载任务；主动取消产生的异常不作为用户错误反馈。 */
+const destroyPdfTask = async (task?: PDFDocumentLoadingTask) => {
+  try { await task?.destroy() } catch { /* 已取消或已销毁的任务无需重复反馈。 */ }
+}
+
+/** 使当前文件的所有任务失效，清理缩略图渲染和提取 worker，并立即恢复可用操作。 */
+const invalidateCurrentWork = () => {
+  fileRequestId += 1
+  thumbnailRender?.cancel()
+  thumbnailRender = undefined
+  void destroyPdfTask(thumbnailTask)
+  void destroyPdfTask(extractionTask)
+  thumbnailTask = undefined
+  extractionTask = undefined
+  processing.value = false
+  extractedText.value = ''
+  progress.value = 0
+  hasThumbnail.value = false
+}
+
+/** 生成当前文件首页缩略图；每个异步阶段校验文件身份，只操作本次捕获的画布。 */
+const generateThumbnail = async (source: File, requestId: number) => {
+  let task: PDFDocumentLoadingTask | undefined
+  let rendering: RenderTask | undefined
   try {
     const pdfjsLib = await ensurePdfjsRuntime()
-    const arrayBuffer = await f.arrayBuffer()
-    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
-    const pdf = await loadingTask.promise
+    if (!isCurrentFile(source, requestId)) return
+    const arrayBuffer = await source.arrayBuffer()
+    if (!isCurrentFile(source, requestId)) return
+    task = pdfjsLib.getDocument(arrayBuffer)
+    thumbnailTask = task
+    const pdf = await task.promise
+    if (!isCurrentFile(source, requestId)) return
     const page = await pdf.getPage(1)
+    if (!isCurrentFile(source, requestId)) return
     const viewport = page.getViewport({ scale: 0.5 })
-
-    if (thumbnailCanvas.value) {
-      thumbnailCanvas.value.width = viewport.width
-      thumbnailCanvas.value.height = viewport.height
-      const context = thumbnailCanvas.value.getContext('2d')
+    const canvas = thumbnailCanvas.value
+    if (canvas) {
+      canvas.width = viewport.width
+      canvas.height = viewport.height
+      const context = canvas.getContext('2d')
       if (context) {
-        await page.render({
+        rendering = page.render({
           canvasContext: context,
           viewport: viewport
-        }).promise
-        hasThumbnail.value = true
+        })
+        thumbnailRender = rendering
+        await rendering.promise
+        if (isCurrentFile(source, requestId) && thumbnailCanvas.value === canvas) hasThumbnail.value = true
       }
     }
-  } catch (e) {
-    console.error('Thumbnail generation failed', e)
-    hasThumbnail.value = false
+  } catch {
+    if (isCurrentFile(source, requestId)) {
+      console.error('[pdf-extract-text] 首页预览生成失败')
+      hasThumbnail.value = false
+    }
+  } finally {
+    if (thumbnailTask === task) thumbnailTask = undefined
+    if (thumbnailRender === rendering) thumbnailRender = undefined
+    await destroyPdfTask(task)
   }
 }
 
+/** 等待当前文件的画布挂载后生成缩略图，避免固定延迟与多次换文件发生竞态。 */
 watch(file, async (newFile) => {
   hasThumbnail.value = false
   if (newFile) {
-    // Wait for DOM update so canvas is available
-    setTimeout(() => generateThumbnail(newFile), 100)
+    const requestId = fileRequestId
+    await nextTick()
+    if (isCurrentFile(newFile, requestId)) await generateThumbnail(newFile, requestId)
   }
-})
+}, { flush: 'post' })
+
+/** 选择有效文件前取消上一个文件的操作，保持名称、预览与提取结果属于同一来源。 */
+const selectFile = (selected: File) => {
+  invalidateCurrentWork()
+  file.value = selected
+}
 
 const guideSteps = [
   { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，文件大小限制为100MB。' },
@@ -314,8 +363,7 @@ const handleDrop = (e: DragEvent) => {
       ElMessage.error(err)
       return
     }
-    file.value = droppedFile
-    extractedText.value = ''
+    selectFile(droppedFile)
   }
 }
 
@@ -327,17 +375,16 @@ const handleFileInputChange = (e: Event) => {
     if (err) {
       ElMessage.error(err)
     } else {
-      file.value = pickedFile
-      extractedText.value = ''
+      selectFile(pickedFile)
     }
     target.value = ''
   }
 }
 
+/** 取消当前提取及预览并清空文件，旧任务完成后不能重新显示结果。 */
 const clearFile = () => {
+  invalidateCurrentWork()
   file.value = null
-  extractedText.value = ''
-  progress.value = 0
   if (fileInputRef.value) {
     fileInputRef.value.value = ''
   }
@@ -347,7 +394,10 @@ const clearFile = () => {
  * 提取PDF文本内容（逐页）
  */
 const extractText = async () => {
-  if (!file.value) return
+  if (!file.value || processing.value || disposed) return
+  const source = file.value
+  const requestId = fileRequestId
+  let task: PDFDocumentLoadingTask | undefined
 
   processing.value = true
   progress.value = 0
@@ -355,16 +405,22 @@ const extractText = async () => {
 
   try {
     const pdfjsLib = await ensurePdfjsRuntime()
-    const arrayBuffer = await file.value.arrayBuffer()
-    const loadingTask = pdfjsLib.getDocument(arrayBuffer)
-    const pdf = await loadingTask.promise
+    if (!isCurrentFile(source, requestId)) return
+    const arrayBuffer = await source.arrayBuffer()
+    if (!isCurrentFile(source, requestId)) return
+    task = pdfjsLib.getDocument(arrayBuffer)
+    extractionTask = task
+    const pdf = await task.promise
+    if (!isCurrentFile(source, requestId)) return
     const totalPages = pdf.numPages
 
     let fullText = ''
 
     for (let i = 1; i <= totalPages; i++) {
       const page = await pdf.getPage(i)
+      if (!isCurrentFile(source, requestId)) return
       const textContent = await page.getTextContent()
+      if (!isCurrentFile(source, requestId)) return
 
       // Simple layout reconstruction
       let pageStr = ''
@@ -401,15 +457,26 @@ const extractText = async () => {
       progress.value = Math.round((i / totalPages) * 100)
     }
 
+    if (!isCurrentFile(source, requestId)) return
     extractedText.value = fullText
     ElMessage.success('文本提取成功')
-  } catch (error) {
-    console.error(error)
-    ElMessage.error('提取文本失败，可能是加密文件或扫描件')
+  } catch {
+    if (isCurrentFile(source, requestId)) {
+      console.error('[pdf-extract-text] 文本提取失败')
+      ElMessage.error('提取文本失败，可能是加密文件或扫描件')
+    }
   } finally {
-    processing.value = false
+    if (extractionTask === task) extractionTask = undefined
+    await destroyPdfTask(task)
+    if (isCurrentFile(source, requestId)) processing.value = false
   }
 }
+
+/** 离开页面时销毁仍在读取、渲染或提取的任务，禁止离开后弹出旧结果提示。 */
+onUnmounted(() => {
+  disposed = true
+  invalidateCurrentWork()
+})
 
 /**
  * 复制提取结果到剪贴板

@@ -59,16 +59,23 @@ const DEFAULT_SERVER_CONFIG: VideoCompressServerConfig = {
  */
 export const parseVideoCompressFileName = (headerValue: unknown, fallbackName: string) => {
   const raw = String(headerValue || '').trim()
-  const utf8Match = raw.match(/filename\*=UTF-8''([^;]+)/i)
-  if (utf8Match?.[1]) {
-    try {
-      return decodeURIComponent(utf8Match[1])
-    } catch {
-      return utf8Match[1]
+  let plainName = ''
+  let extendedName = ''
+  // 引号内的分号属于文件名，反斜杠只用于还原 quoted-string 转义。
+  const parameters = /(?:^|;)\s*(filename\*?)\s*=\s*("(?:[^"\\]|\\.)*"|[^;]*)/gi
+  for (const match of raw.matchAll(parameters)) {
+    const value = match[2].startsWith('"')
+      ? match[2].slice(1, -1).replace(/\\(.)/g, '$1')
+      : match[2].trim()
+    if (match[1].toLowerCase() === 'filename*') {
+      const utf8 = value.match(/^UTF-8'[^']*'(.*)$/i)
+      if (!utf8) continue
+      try { extendedName = decodeURIComponent(utf8[1]) } catch { /* 损坏的扩展参数回退到普通文件名。 */ }
+    } else {
+      plainName = value
     }
   }
-  const plainMatch = raw.match(/filename="?([^";]+)"?/i)
-  return plainMatch?.[1]?.trim() || fallbackName
+  return extendedName || plainName || fallbackName
 }
 
 /**

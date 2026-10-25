@@ -7,6 +7,7 @@
 package common
 
 import (
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -74,5 +75,11 @@ func (h videoCompressHandler) compress(c *gin.Context) {
 	c.Header("X-Video-Output-Size", strconv.FormatInt(result.OutputSize, 10))
 	c.Header("X-Video-Elapsed-Ms", strconv.FormatInt(result.Elapsed.Milliseconds(), 10))
 	c.Header("Content-Type", result.ContentType)
-	c.FileAttachment(result.Path, result.FileName)
+	sendVideoCompressAttachment(c, result.Path, result.FileName)
+}
+
+// sendVideoCompressAttachment 使用标准附件参数编码保留文件名中的空格、加号及引号，文件发送保持同步以便随后清理。
+func sendVideoCompressAttachment(c *gin.Context, filePath string, fileName string) {
+	c.Header("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": fileName}))
+	c.File(filePath)
 }

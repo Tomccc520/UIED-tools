@@ -169,3 +169,10 @@ export function formatJsonLosslessly(source: string, indent: number | string = 2
 export function minifyJsonLosslessly(source: string): string {
   return formatJsonLosslessly(source, 0)
 }
+
+/** 校验严格 JSON 并返回原始数字 token，供表格等有数值精度限制的输出在解析前检查；字符串内数字不会被当作数值。 */
+export function getJsonNumberLiterals(source: string): string[] {
+  const tokens = tokenizeJson(source)
+  validateStructure(tokens, source.length)
+  return tokens.filter(token => token.kind === 'number').map(token => token.raw)
+}

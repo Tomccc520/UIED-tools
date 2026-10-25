@@ -7,7 +7,7 @@
  * @createDate 2026-08-25
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
   getSitePublicConfig: vi.fn()
@@ -222,5 +222,71 @@ describe('toolRanking', () => {
         vi.useRealTimers()
       }
     })
+  })
+})
+
+describe('排行榜访问上报去重与失败恢复', () => {
+  let trackVisit: typeof import('./toolRanking').trackToolVisitByRoute
+
+  beforeEach(async () => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    vi.resetModules()
+    window.sessionStorage.clear()
+    mocks.getSitePublicConfig.mockResolvedValue({ toolCategories })
+    trackVisit = (await import('./toolRanking')).trackToolVisitByRoute
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
+  it('首次上报失败后允许重试，成功后才进入去重窗口', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new TypeError('network unavailable'))
+      .mockResolvedValue(new Response(JSON.stringify({ code: 200, data: {} })))
+    await expect(trackVisit('/tools/ai-perler')).rejects.toThrow('network unavailable')
+    await trackVisit('/tools/ai-perler')
+    await trackVisit('/tools/ai-perler')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('存储写入被拒绝时仍上报，并通过内存避免重复', async () => {
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new DOMException('denied', 'SecurityError') })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 200, data: {} })))
+    await expect(trackVisit('/tools/ai-perler')).resolves.toBeUndefined()
+    await trackVisit('/tools/ai-perler')
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('存储读取被拒绝时仍可上报', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new DOMException('denied', 'SecurityError') })
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ code: 200, data: {} })))
+    await expect(trackVisit('/tools/ai-perler')).resolves.toBeUndefined()
+    await trackVisit('/tools/ai-perler')
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('并发访问共享上报；失败清理在途任务后仍能重试', async () => {
+    let rejectRequest!: (error: Error) => void
+    const fetchMock = vi.spyOn(globalThis, 'fetch')
+      .mockImplementationOnce(() => new Promise<Response>((_resolve, reject) => { rejectRequest = reject }))
+      .mockResolvedValue(new Response(JSON.stringify({ code: 200, data: {} })))
+    const results = Promise.allSettled([trackVisit('/tools/ai-perler'), trackVisit('/tools/ai-perler')])
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce())
+    rejectRequest(new Error('temporarily unavailable'))
+    expect((await results).map((result) => result.status)).toEqual(['rejected', 'rejected'])
+    await trackVisit('/tools/ai-perler')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('成功去重在十分钟后失效，不会永久屏蔽访问', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () => new Response(JSON.stringify({ code: 200, data: {} })))
+    await trackVisit('/tools/ai-perler')
+    await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 1)
+    await trackVisit('/tools/ai-perler')
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 })
