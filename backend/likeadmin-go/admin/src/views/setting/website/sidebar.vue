@@ -8,23 +8,18 @@
 -->
 <template>
     <div class="website-sidebar-settings pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 菜单设置">
+        <admin-page-header class="layout-page-header" title="前台菜单与品牌">
             <template #subtitle>
                 维护前端品牌区、推荐入口、一级分类和底部菜单。
             </template>
             <template #extra>
                 <div class="layout-page-actions">
-                    <div class="layout-status-tags">
-                        <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
-                            {{ hasUnsavedChanges ? '待保存' : '已保存' }}
-                        </a-tag>
-                    </div>
                     <a-button size="small" data-admin-smoke="sidebar-reload" @click="reloadSidebarData">重新加载</a-button>
                     <a-button size="small" data-admin-smoke="sidebar-preview" @click="openToolsPreview">前端预览</a-button>
                     <a-button size="small" data-admin-smoke="sidebar-health-check" @click="runSidebarHealthCheck">一键体检</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-alert
             v-if="saveResultText"
@@ -39,12 +34,10 @@
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadSidebarData">
         <a-card class="page-card pro-panel-card" :bordered="false">
             <div class="mode-toolbar">
-                <a-space>
-                    <a-switch v-model="simpleMode" data-admin-smoke="sidebar-mode-switch" type="round" />
-                    <span class="mode-toolbar__label">{{
-                        simpleMode ? '运营简版（推荐）' : '高级模式'
-                    }}</span>
-                </a-space>
+                <span class="mode-toolbar__label">按下方分组编辑，完成后统一保存。</span>
+                <a-button size="small" data-admin-smoke="sidebar-mode-switch" :aria-expanded="!simpleMode" @click="simpleMode = !simpleMode">
+                    {{ simpleMode ? '显示高级配置' : '收起高级配置' }}
+                </a-button>
             </div>
 
             <div v-if="!simpleMode" class="stats-grid mt-4">
@@ -91,7 +84,7 @@
                             placeholder="如：免费在线工具集"
                         />
                     </a-form-item>
-                    <a-form-item label="品牌Logo(SVG)">
+                    <a-form-item label="品牌标识">
                         <div class="menu-icon-editor">
                             <material-picker
                                 :model-value="sidebarBrandLogoMaterialValue"
@@ -100,11 +93,15 @@
                                 file-size="90px"
                                 @update:model-value="handleSidebarBrandLogoMaterialChange"
                             />
-                            <a-textarea
-                                v-model="formData.toolsSidebarBrandLogo"
-                                :auto-size="{ minRows: 3, maxRows: 6 }"
-                                placeholder="支持 /uploads/*.svg、http(s) 链接、纯 <svg>...</svg> 或包含 SVG 的 HTML"
-                            />
+                            <details class="brand-logo-source">
+                                <summary>使用图片链接或 SVG 代码</summary>
+                                <a-textarea
+                                    v-model="formData.toolsSidebarBrandLogo"
+                                    :auto-size="{ minRows: 3, maxRows: 6 }"
+                                    aria-label="品牌标识链接或 SVG 代码"
+                                    placeholder="支持 /uploads/*.svg、https:// 链接或 SVG 代码"
+                                />
+                            </details>
                         </div>
                     </a-form-item>
                     <a-form-item label="品牌主文案">
@@ -151,10 +148,10 @@
                     <div class="row-actions">
                         <a-button
                             type="text"
-                            @click="moveLinkItem(sidebarRecommendLinks, index, -1)"
+                            :disabled="index === 0" @click="moveLinkItem(sidebarRecommendLinks, index, -1)"
                             >上移</a-button
                         >
-                        <a-button type="text" @click="moveLinkItem(sidebarRecommendLinks, index, 1)"
+                        <a-button type="text" :disabled="index === sidebarRecommendLinks.length - 1" @click="moveLinkItem(sidebarRecommendLinks, index, 1)"
                             >下移</a-button
                         >
                         <a-button
@@ -187,7 +184,7 @@
                     :key="`sidebar-category-${index}`"
                     class="menu-row"
                 >
-                    <a-input v-model="item.key" placeholder="菜单key，如：ai" />
+                    <a-input v-model="item.key" :input-attrs="{ 'aria-label': `第${index + 1}个菜单的标识` }" placeholder="菜单标识，如：ai" />
                     <a-input v-model="item.title" placeholder="菜单标题，如：AI工具箱" />
                     <div class="menu-icon-editor">
                         <material-picker
@@ -204,10 +201,10 @@
                         placeholder="直达链接（可选），如：/tools/ai/toolbox"
                     />
                     <div class="row-actions">
-                        <a-button type="text" @click="moveLinkItem(sidebarCategoryMenus, index, -1)"
+                        <a-button type="text" :disabled="index === 0" @click="moveLinkItem(sidebarCategoryMenus, index, -1)"
                             >上移</a-button
                         >
-                        <a-button type="text" @click="moveLinkItem(sidebarCategoryMenus, index, 1)"
+                        <a-button type="text" :disabled="index === sidebarCategoryMenus.length - 1" @click="moveLinkItem(sidebarCategoryMenus, index, 1)"
                             >下移</a-button
                         >
                         <a-button
@@ -279,10 +276,10 @@
                         placeholder="链接，如：/changelog 或 https://xxx"
                     />
                     <div class="row-actions">
-                        <a-button type="text" @click="moveLinkItem(sidebarBottomLinks, index, -1)"
+                        <a-button type="text" :disabled="index === 0" @click="moveLinkItem(sidebarBottomLinks, index, -1)"
                             >上移</a-button
                         >
-                        <a-button type="text" @click="moveLinkItem(sidebarBottomLinks, index, 1)"
+                        <a-button type="text" :disabled="index === sidebarBottomLinks.length - 1" @click="moveLinkItem(sidebarBottomLinks, index, 1)"
                             >下移</a-button
                         >
                         <a-button
@@ -323,10 +320,10 @@
                     <div class="row-actions">
                         <a-button
                             type="text"
-                            @click="moveLinkItem(aiToolboxSidebarMenus, index, -1)"
+                            :disabled="index === 0" @click="moveLinkItem(aiToolboxSidebarMenus, index, -1)"
                             >上移</a-button
                         >
-                        <a-button type="text" @click="moveLinkItem(aiToolboxSidebarMenus, index, 1)"
+                        <a-button type="text" :disabled="index === aiToolboxSidebarMenus.length - 1" @click="moveLinkItem(aiToolboxSidebarMenus, index, 1)"
                             >下移</a-button
                         >
                         <a-button
@@ -348,6 +345,7 @@
 </template>
 
 <script lang="ts" setup name="websiteSidebarSettings">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import type { WebsiteSettingPayload } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
@@ -1274,6 +1272,12 @@ onBeforeUnmount(() => {
     color: var(--color-text-3);
 }
 
+.brand-logo-source {
+    width: 100%;
+    summary { padding: 8px 0; color: var(--color-text-3); cursor: pointer; font-size: 12px; }
+    summary:focus-visible { outline: 2px solid var(--uied-admin-accent); outline-offset: 2px; }
+}
+
 .menu-icon-editor {
     display: flex;
     align-items: center;
@@ -1282,7 +1286,7 @@ onBeforeUnmount(() => {
 
 .link-row {
     display: grid;
-    grid-template-columns: minmax(180px, 220px) minmax(320px, 1fr) auto;
+    grid-template-columns: minmax(0, 220px) minmax(0, 1fr) auto;
     gap: 12px;
     align-items: flex-start;
     padding: 12px 0;
@@ -1291,14 +1295,16 @@ onBeforeUnmount(() => {
 
 .menu-row {
     display: grid;
-    grid-template-columns:
-        minmax(120px, 160px) minmax(160px, 220px) minmax(200px, 1fr) minmax(160px, 220px)
-        minmax(220px, 1fr) auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
     align-items: flex-start;
     padding: 12px 0;
     border-top: 1px solid var(--color-border-2);
 }
+
+.menu-row > .menu-icon-editor,
+.menu-row > .row-actions { grid-column: 1 / -1; }
+.menu-row > * { min-width: 0; }
 
 .link-row:first-of-type,
 .menu-row:first-of-type {
@@ -1335,12 +1341,6 @@ onBeforeUnmount(() => {
     margin-top: 12px;
     font-size: 13px;
     line-height: 1.7;
-}
-
-@media (max-width: 1280px) {
-    .menu-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
 @media (max-width: 920px) {

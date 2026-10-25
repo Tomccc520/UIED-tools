@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="website-tool-ranking-manage pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 热榜管理">
+        <admin-page-header class="layout-page-header" title="榜单数据">
             <template #subtitle>
                 按站内真实点击量排序，并补充开始处理、成功与下载数据，方便运营判断哪些工具值得优先曝光。
             </template>
@@ -25,7 +25,7 @@
                     <a-button size="small" type="outline" @click="goConfigPage">榜单配置</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-card class="page-card pro-panel-card" :bordered="false">
 
@@ -152,6 +152,7 @@
 </template>
 
 <script setup lang="ts">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import vCharts from 'vue-echarts'
 import { useRouter } from 'vue-router'

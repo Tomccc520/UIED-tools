@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="website-license pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 源码授权">
+        <admin-page-header class="layout-page-header" title="源码授权">
             <template #subtitle>
                 管理 UIED-Tools 商业源码授权、绑定域名与 FSUIED
                 授权中心激活配置。授权拦截仅作用于后台受保护接口，不影响前台工具页面与静态访问。
@@ -27,7 +27,7 @@
                     >
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-card class="setting-card pro-panel-card" :bordered="false">
 
@@ -408,6 +408,7 @@
 </template>
 
 <script lang="ts" setup name="websiteLicense">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getOrderLinkageSummary } from '@/api/consumer'
 import {
     getLicenseDetail,

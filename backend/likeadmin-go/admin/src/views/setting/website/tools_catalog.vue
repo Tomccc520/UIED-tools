@@ -8,9 +8,9 @@
 -->
 <template>
     <div class="website-tools-catalog pro-page-shell">
-        <a-page-header class="layout-page-header" title="工具管理">
+        <admin-page-header class="layout-page-header" title="工具管理">
             <template #subtitle>
-                搜索并编辑工具信息、SEO 与 GEO；分类结构与批量操作放在高级编辑。
+                搜索工具并直接保存；分类调整与批量维护使用统一保存。
             </template>
             <template #extra>
                 <div class="layout-page-actions">
@@ -24,15 +24,19 @@
                     </a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadCatalogData">
-        <a-card class="page-card pro-panel-card general-card"  :bordered="false">
+        <a-alert v-if="catalogRefreshWarning" type="warning" :closable="false" class="catalog-refresh-warning">
+            {{ catalogRefreshWarning }}
+            <template #action><a-button size="small" :loading="isRefreshingCatalogConfig" @click="refreshCatalogConfig">重试刷新</a-button></template>
+        </a-alert>
+        <a-card class="page-card pro-panel-card general-card" :bordered="false">
             <section class="catalog-command-bar">
                 <div class="catalog-command-bar__status">
-                    <a-tag color="arcoblue" bordered>一级分类 {{ toolsCategoryCount }}</a-tag>
-                    <a-tag color="arcoblue" bordered>二级分类 {{ toolsSubCategoryCount }}</a-tag>
-                    <a-tag color="green" bordered>工具 {{ toolsTotalCount }}</a-tag>
+                    <a-tag bordered>一级分类 {{ toolsCategoryCount }}</a-tag>
+                    <a-tag bordered>二级分类 {{ toolsSubCategoryCount }}</a-tag>
+                    <a-tag bordered>工具 {{ toolsTotalCount }}</a-tag>
                     <a-tag :color="toolKeyConflictCount > 0 ? 'orangered' : 'green'" bordered>
                         toolKey 冲突 {{ toolKeyConflictCount }}
                     </a-tag>
@@ -123,7 +127,15 @@
                 </span>
             </a-alert>
 
-            <catalog-tool-editor v-if="simpleMode" v-model="toolsCategoryTreeEditor" :disabled="isSubmitting || isLoadingData || !hasLoadedData" />
+            <catalog-tool-editor
+                v-if="simpleMode"
+                v-model="toolsCategoryTreeEditor"
+                :disabled="isSubmitting || isLoadingData || !hasLoadedData || Boolean(loadErrorMessage)"
+                :can-edit="canSaveCatalog"
+                :pending-changes="hasUnsavedChanges"
+                :preview-base="resolveToolsPreviewUrl(appStore.config)"
+                :persist-changes="persistToolChanges"
+            />
             <details v-if="simpleMode" class="catalog-batch-actions mt-4">
                 <summary>批量维护与同步</summary>
                 <p class="form-tips">补齐内容会先加入待保存更改；同步计费策略和同步高频工具会单独保存，请先保存正在编辑的目录。</p>
@@ -376,6 +388,8 @@ import {
 } from '@/api/setting/website'
 import { getLogin, setLogin, type LoginSetup } from '@/api/setting/user'
 import useAppStore from '@/stores/modules/app'
+import useUserStore from '@/stores/modules/user'
+import AdminPageHeader from '@/components/page-header/index.vue'
 import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
@@ -505,6 +519,13 @@ const memberCoreToolPresets: MemberCoreToolPreset[] = [
 
 const appStore = useAppStore()
 const { getConfig } = appStore
+const userStore = useUserStore()
+/** 计算目录写入权限，除按钮权限指令外同时保护脚本调用和抽屉保存。 */
+const canSaveCatalog = computed(() => userStore.perms.some((permission) => permission === '*' || permission === 'setting:website:catalog:save'))
+const catalogRefreshWarning = ref('')
+const isRefreshingCatalogConfig = ref(false)
+let catalogRefreshVersion = 0
+let catalogRefreshPromise: Promise<boolean> | null = null
 const router = useRouter()
 const pageTab = ref<
     'hot_tools' | 'frontend_layout' | 'sidebar' | 'header' | 'footer' | 'tools_catalog' | 'seo'
@@ -1338,10 +1359,10 @@ const toolPolicyOverrideCount = computed<number>(() => {
 /**
  * 函数说明：校验工具分类树配置，确保分类/分组/工具的核心字段完整。
  */
-const validateToolsCategoryTree = (): boolean => {
-    try { readCatalogEditorTree(toolsCategoryTreeEditor.value) }
+const validateToolsCategoryTree = (source = toolsCategoryTreeEditor.value): boolean => {
+    try { readCatalogEditorTree(source) }
     catch (error) { feedback.msgError(error instanceof Error ? error.message : '工具目录结构错误'); return false }
-    const result = parseToolsCategoryTree(toolsCategoryTreeEditor.value)
+    const result = parseToolsCategoryTree(source)
     if (result.error) {
         feedback.msgError(result.error)
         return false
@@ -1790,21 +1811,64 @@ const syncToolPoliciesToLoginConfig = async () => {
     )
 }
 
-/**
- * 函数说明：保存工具分类树配置到网站配置项，仅提交当前页面相关字段。
- */
-const handleSubmit = async () => {
-    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
-    if (!validateToolsCategoryTree()) {
-        return
+/** 标记一次缓存刷新需求；连续保存时排队读取最新版本，持久化成功与刷新失败分别反馈。 */
+const refreshCatalogConfig = async (): Promise<boolean> => {
+    catalogRefreshVersion++
+    if (catalogRefreshPromise) return catalogRefreshPromise
+    isRefreshingCatalogConfig.value = true
+    /** 串行完成刷新队列；旧请求不能清除新版本警告，最新请求结束后才结算刷新结果。 */
+    const drainRefreshQueue = async (): Promise<boolean> => {
+        let completedVersion = 0
+        let refreshed = false
+        try {
+            do {
+                completedVersion = catalogRefreshVersion
+                try { await getConfig(); refreshed = true }
+                catch { refreshed = false }
+                if (completedVersion === catalogRefreshVersion) {
+                    catalogRefreshWarning.value = refreshed ? '' : '工具目录已保存，但配置缓存刷新失败。可重试刷新，您的保存结果不会丢失。'
+                }
+            } while (completedVersion !== catalogRefreshVersion)
+            return refreshed
+        } finally {
+            isRefreshingCatalogConfig.value = false
+            catalogRefreshPromise = null
+        }
     }
-    await runSubmit(async () => {
-        await setWebsite({
-            toolsCategoryTree: JSON.stringify(JSON.parse(toolsCategoryTreeEditor.value))
-        })
-        await getConfig()
-        await getData()
+    // 延后启动，保证同步异常也会在任务引用建立后清理，不残留已结束的刷新任务。
+    catalogRefreshPromise = Promise.resolve().then(drainRefreshQueue)
+    return catalogRefreshPromise
+}
+
+/** 持久化指定目录快照，只提交 toolsCategoryTree；成功后更新基线，再单独刷新缓存。 */
+const saveCatalogSource = async (source: string): Promise<boolean> => {
+    if (!canSaveCatalog.value || isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return false
+    if (!validateToolsCategoryTree(source)) return false
+    const payload = JSON.stringify(JSON.parse(source))
+    const saved = await runSubmit(async () => {
+        await setWebsite({ toolsCategoryTree: payload })
+        formData.toolsCategoryTree = payload
+        toolsCategoryTreeEditor.value = JSON.stringify(JSON.parse(payload), null, 2)
+        updateBaselineSnapshot()
     })
+    if (!saved) return false
+    await refreshCatalogConfig()
+    return true
+}
+
+/** 单工具直接保存前检查页面草稿与来源，防止顺带发布其它尚未确认的目录更改。 */
+const persistToolChanges = async (nextValue: string, sourceValue: string): Promise<boolean> => {
+    if (!canSaveCatalog.value) return false
+    if (hasUnsavedChanges.value || sourceValue !== toolsCategoryTreeEditor.value) {
+        feedback.msgWarning('列表还有未保存更改，请先统一保存，或将本次修改应用到列表后一起保存。')
+        return false
+    }
+    return saveCatalogSource(nextValue)
+}
+
+/** 统一保存页面的多工具或高级编辑草稿，仅提交工具目录字段。 */
+const handleSubmit = async () => {
+    await saveCatalogSource(toolsCategoryTreeEditor.value)
 }
 
 /**
@@ -1847,6 +1911,7 @@ onBeforeUnmount(() => {
 .pro-page-shell {
     padding-bottom: 24px;
 }
+.catalog-refresh-warning { margin-bottom: 16px; }
 
 .layout-page-header {
     margin-bottom: 16px;

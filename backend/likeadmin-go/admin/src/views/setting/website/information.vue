@@ -8,9 +8,9 @@
 -->
 <template>
     <div class="website-information pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 基础信息">
+        <admin-page-header class="layout-page-header" title="后台品牌与基础资料">
             <template #subtitle>
-                统一维护站点品牌、登录视觉和商城基础资料，保存后前后台页面立即生效。
+                维护管理后台的品牌、登录视觉和商城资料。前台品牌文案在“前台菜单”中维护。
             </template>
             <template #extra>
                 <div class="layout-page-actions">
@@ -25,7 +25,7 @@
                     <a-button size="small" @click="goFrontendLayout">前端布局</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-card class="page-card pro-panel-card" :bordered="false">
 
@@ -147,6 +147,7 @@
 </template>
 
 <script lang="ts" setup name="webInformation">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'

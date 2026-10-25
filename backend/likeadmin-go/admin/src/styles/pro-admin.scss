@@ -8,7 +8,7 @@
 :root {
     --uied-pro-page-max-width: 1480px;
     --uied-pro-page-gap: 16px;
-    --uied-pro-card-radius: 12px;
+    --uied-pro-card-radius: var(--uied-admin-radius, 8px);
     --uied-pro-card-border: 1px solid var(--color-border-2, #e5e6eb);
 }
 
@@ -19,7 +19,7 @@
 }
 
 .pro-panel-card {
-    border-radius: var(--uied-pro-card-radius);
+    border-radius: var(--uied-pro-card-radius) !important;
     border: var(--uied-pro-card-border);
     background: #fff;
 }
@@ -77,48 +77,7 @@
     margin: 0 auto;
 }
 
-.channel-metrics,
-.admin-metrics,
-.menu-metrics,
-.role-metrics,
-.dept-metrics,
-.post-metrics,
-.cache-metrics,
-.journal-metrics,
-.stats-grid,
-.catalog-overview-grid,
-.footer-summary-grid,
-.linkage-summary-grid {
-    max-height: 88px;
-    overflow: hidden;
-}
-
-.channel-card--notice,
-.channel-config-side,
-.menu-editor-layout__side,
-.layout-inline-guide,
-.layout-basic-workflow,
-.repair-context-block,
-.delivery-workspace-checklist {
-    max-height: 120px;
-    overflow: auto;
-}
-
-.admin-filter-strip,
-.menu-filter-strip,
-.role-filter-strip,
-.dept-filter-strip,
-.post-filter-strip,
-.journal-filter-strip,
-.page-entry-grid,
-.catalog-stat-row,
-.material-workspace,
-.icons-workspace,
-.delivery-workspace {
-    max-height: 160px;
-    overflow: auto;
-}
-
+/* 配置、筛选与说明区随内容展开，避免固定高度裁切操作或产生嵌套滚动。 */
 .channel-page .arco-card,
 .admin-page .arco-card,
 .menu-page .arco-card,
@@ -133,7 +92,7 @@
 .material-index .arco-card,
 .material-icons-page .arco-card,
 .consumer-order-page .arco-card {
-    border-radius: 4px !important;
+    border-radius: var(--uied-pro-card-radius) !important;
     box-shadow: none !important;
 }
 
@@ -148,9 +107,7 @@
 .dept-page .general-card,
 .post-page .general-card,
 .cache-page .general-card,
-.journal-page .general-card,
-.website-tools-catalog .general-card,
-.website-frontend-layout .general-card {
+.journal-page .general-card {
     min-height: calc(100vh - 144px);
 }
 
@@ -159,41 +116,4 @@
 .material-icons-page .material-icons-card,
 .consumer-order-page .pro-card {
     border: var(--uied-pro-card-border) !important;
-}
-
-/* 移动端不保留统计/说明卡的内部滚动，避免页面、卡片和表格三层滚动叠加。 */
-@media (max-width: 920px) {
-    .channel-metrics,
-    .admin-metrics,
-    .menu-metrics,
-    .role-metrics,
-    .dept-metrics,
-    .post-metrics,
-    .cache-metrics,
-    .journal-metrics,
-    .stats-grid,
-    .catalog-overview-grid,
-    .footer-summary-grid,
-    .linkage-summary-grid,
-    .channel-card--notice,
-    .channel-config-side,
-    .menu-editor-layout__side,
-    .layout-inline-guide,
-    .layout-basic-workflow,
-    .repair-context-block,
-    .delivery-workspace-checklist,
-    .admin-filter-strip,
-    .menu-filter-strip,
-    .role-filter-strip,
-    .dept-filter-strip,
-    .post-filter-strip,
-    .journal-filter-strip,
-    .page-entry-grid,
-    .catalog-stat-row,
-    .material-workspace,
-    .icons-workspace,
-    .delivery-workspace {
-        max-height: none;
-        overflow: visible;
-    }
 }

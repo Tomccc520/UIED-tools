@@ -244,7 +244,7 @@ const ensureLoggedIn = async (page) => {
 }
 
 /**
- * 函数说明：制造前端布局页的临时未保存状态，用于真实检查底部浮动保存按钮。
+ * 函数说明：制造首页内容页的临时未保存状态，用于检查唯一保存条和草稿状态。
  */
 const prepareFrontendLayoutUnsaved = async (page) => {
   await page.waitForSelector('[data-admin-smoke="frontend-layout-save-top"]', {
@@ -260,21 +260,13 @@ const prepareFrontendLayoutUnsaved = async (page) => {
     undefined,
     { timeout: actionTimeout }
   )
-  if (
-    await page
-      .locator('[data-admin-smoke="frontend-layout-save-floating"]')
-      .first()
-      .isVisible({ timeout: 500 })
-      .catch(() => false)
-  ) {
-    return
-  }
   const learningSwitch = page.locator('[data-admin-smoke="frontend-layout-learning-enabled"]').first()
   await learningSwitch.click({ timeout: actionTimeout })
-  await page.waitForSelector('[data-admin-smoke="frontend-layout-save-floating"]', {
-    state: 'visible',
-    timeout: actionTimeout
-  })
+  await page.waitForFunction(
+    () => document.querySelector('.config-edit-frame__save')?.getAttribute('data-state') === 'dirty',
+    undefined,
+    { timeout: actionTimeout }
+  )
 }
 
 /**

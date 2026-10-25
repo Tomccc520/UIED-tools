@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="website-filing-page pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 备案与版权">
+        <admin-page-header class="layout-page-header" title="备案与版权">
             <template #subtitle>
                 配置页脚备案信息与版权链接，支持多条展示和可选跳转地址。
             </template>
@@ -26,7 +26,7 @@
                     <a-button size="small" @click="runHealthCheck">一键体检</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-card class="page-card pro-panel-card" :bordered="false">
 
@@ -119,6 +119,7 @@
 </template>
 
 <script lang="ts" setup name="webFilling">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getCopyright, setCopyright } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'

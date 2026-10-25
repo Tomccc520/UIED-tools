@@ -7,24 +7,23 @@
  */
 -->
 <template>
-    <section v-if="menuList.length" class="task-panel" aria-labelledby="workbench-tasks-title">
+    <section v-if="groups.length" class="task-panel" aria-labelledby="workbench-tasks-title">
         <h2 id="workbench-tasks-title">常用任务</h2>
-        <div class="task-grid">
-            <router-link
-                v-for="item in menuList"
-                :key="item.url"
-                :to="item.url"
-                class="task-link"
-                :aria-label="`${item.name}：${item.desc}`"
-                data-admin-smoke="workbench-quick-operation"
-            >
-                <span class="task-icon" aria-hidden="true">{{ item.short }}</span>
-                <span class="task-copy"
-                    ><strong>{{ item.name }}</strong
-                    ><span>{{ item.desc }}</span></span
+        <div class="task-groups">
+            <section v-for="group in groups" :key="group.key" class="task-group" :aria-labelledby="`workbench-task-${group.key}`">
+                <h3 :id="`workbench-task-${group.key}`">{{ group.title }}</h3>
+                <router-link
+                    v-for="item in group.items"
+                    :key="item.url"
+                    :to="item.url"
+                    class="task-link"
+                    :aria-label="`${item.name}：${item.desc}`"
+                    data-admin-smoke="workbench-quick-operation"
                 >
-                <span class="task-arrow" aria-hidden="true">›</span>
-            </router-link>
+                    <span class="task-copy"><strong>{{ item.name }}</strong><span>{{ item.desc }}</span></span>
+                    <span class="task-arrow" aria-hidden="true">→</span>
+                </router-link>
+            </section>
         </div>
     </section>
 </template>
@@ -32,11 +31,15 @@
 <script lang="ts" setup>
 interface QuickMenuCard {
     name: string
-    short: string
     url: string
     desc: string
 }
-defineProps<{ menuList: QuickMenuCard[] }>()
+interface QuickMenuGroup {
+    key: string
+    title: string
+    items: QuickMenuCard[]
+}
+defineProps<{ groups: QuickMenuGroup[] }>()
 </script>
 
 <style lang="scss" scoped>
@@ -47,43 +50,46 @@ defineProps<{ menuList: QuickMenuCard[] }>()
     border-radius: var(--uied-admin-radius);
 }
 h2 {
-    margin: 0 0 12px;
+    margin: 0 0 20px;
     font-size: 16px;
     color: var(--uied-admin-ink);
 }
-.task-grid {
+.task-groups {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 8px;
+    gap: 24px;
+}
+.task-group {
+    min-width: 0;
+}
+.task-group + .task-group {
+    border-left: 1px solid var(--uied-admin-border);
+    padding-left: 24px;
+}
+h3 {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 20px;
+    color: var(--uied-admin-muted);
 }
 .task-link {
     display: flex;
     align-items: center;
-    gap: 12px;
-    min-height: 80px;
-    padding: 12px;
+    gap: 8px;
+    min-height: 64px;
+    padding: 12px 8px;
+    box-sizing: border-box;
     color: var(--color-text-1);
     text-decoration: none;
-    border: 1px solid var(--uied-admin-border);
-    border-radius: 8px;
-    transition: border-color 160ms ease, background-color 160ms ease;
-}
-.task-icon {
-    display: grid;
-    place-items: center;
-    flex-shrink: 0;
-    width: 36px;
-    height: 36px;
-    background: var(--color-fill-2);
-    color: var(--color-text-2);
     border-radius: 6px;
-    font-size: 12px;
-    font-weight: 600;
+    transition: color 160ms ease, background-color 160ms ease;
 }
 .task-copy {
     display: grid;
     gap: 4px;
     min-width: 0;
+    overflow-wrap: anywhere;
 }
 .task-copy strong {
     font-size: 14px;
@@ -100,27 +106,28 @@ h2 {
     color: var(--color-text-3);
 }
 .task-link:hover {
-    border-color: var(--uied-admin-accent);
+    color: var(--uied-admin-accent);
     background: var(--uied-admin-accent-soft);
 }
 .task-link:focus-visible {
     outline: 2px solid var(--uied-admin-accent);
     outline-offset: 2px;
 }
-@media (max-width: 1100px) {
-    .task-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-}
 @media (max-width: 640px) {
     .task-panel {
         padding: 16px;
     }
-    .task-grid {
+    .task-groups {
         grid-template-columns: 1fr;
+        gap: 16px;
+    }
+    .task-group + .task-group {
+        border-left: 0;
+        border-top: 1px solid var(--uied-admin-border);
+        padding: 16px 0 0;
     }
     .task-link {
-        min-height: 68px;
+        min-height: 60px;
     }
 }
 @media (prefers-reduced-motion: reduce) {

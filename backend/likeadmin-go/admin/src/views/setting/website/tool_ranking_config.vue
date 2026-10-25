@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="website-tool-ranking-config pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 榜单配置">
+        <admin-page-header class="layout-page-header" title="榜单展示设置">
             <template #subtitle>
                 统一配置工具热榜的独立页展示与右侧栏入口，保存后前台会直接读取这套配置。
             </template>
@@ -29,7 +29,7 @@
                     <a-button size="small" type="outline" @click="goManagePage">查看热榜数据</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadRankingConfig">
         <a-card class="page-card pro-panel-card" :bordered="false">
@@ -156,6 +156,7 @@
 </template>
 
 <script lang="ts" setup name="toolRankingConfig">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { computed, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import useAppStore from '@/stores/modules/app'

@@ -8,15 +8,12 @@
 -->
 <template>
     <div class="website-seo pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · SEO设置">
+        <admin-page-header class="layout-page-header" title="全站 SEO">
             <template #subtitle>
                 维护全站默认 SEO、页面级 SEO 和默认分享图。
             </template>
             <template #extra>
                 <div class="layout-page-actions">
-                    <div class="layout-status-tags">
-                        <a-tag v-if="seoPages.length > 0" color="orange" bordered>页面 {{ seoPages.length }} 条</a-tag>
-                    </div>
                     <a-button data-admin-smoke="website-seo-reload" size="small" @click="reloadSeoData"
                         >重新加载</a-button
                     >
@@ -28,7 +25,7 @@
                     >
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadSeoData">
         <a-card class="page-card pro-panel-card" :bordered="false">
@@ -169,6 +166,7 @@
 </template>
 
 <script lang="ts" setup name="websiteSeo">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'
@@ -630,7 +628,8 @@ const handleSubmit = async () => {
     if (!validateSeoConfig()) {
         return
     }
-    await runSubmit(async () => {
+    const submittedSnapshot = buildSeoSnapshot()
+    const success = await runSubmit(async () => {
         await setWebsite({
             toolsSeoDefaultTitle: formData.toolsSeoDefaultTitle.trim(),
             toolsSeoDefaultKeywords: formData.toolsSeoDefaultKeywords.trim(),
@@ -646,9 +645,9 @@ const handleSubmit = async () => {
                 }))
             ),
         })
-        await appStore.getConfig()
-        await getData()
     })
+    // 保存接口确认后提交本次快照；不通过重复读取来判断写入成功，保留提交期间的新编辑。
+    if (success) baselineSnapshot.value = submittedSnapshot
 }
 
 /**

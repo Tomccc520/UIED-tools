@@ -50,7 +50,7 @@ export const generateVars = (color: string, type = 'primary', isDark = false) =>
         colos[`--ui-color-${type}-${key}`] = toneColor
     }
 
-    // 新变量桥接：输出 Arco 需要的 --color-*-1..10 色阶变量
+    // 保留项目历史色阶变量，实际 Arco RGB 通道在写入样式时同步生成。
     for (const level in arcoColorScaleConfig) {
         colos[`--color-${type}-${level}`] = `color(${color} ${arcoColorScaleConfig[level]})`
     }
@@ -80,9 +80,22 @@ export const setTheme = (options: Record<string, string>, isDark = false) => {
 
     let theme = Object.keys(varsMap).reduce((prev, key) => {
         const color = colors.convert(varsMap[key])
-        return `${prev}${key}:${color};`
+        const arcoKey = key.match(/^--color-([a-z]+)-(\d+)$/)
+        let arcoDeclaration = ''
+        if (arcoKey) {
+            // Arco 使用 rgb(var(--primary-6)) 等通道变量，不能直接写十六进制颜色。
+            const rgbColor = colors.convert(`color(${color})`)
+            const channels = rgbColor.match(/^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/)
+            if (channels) {
+                const rgb = channels.slice(1).join(',')
+                arcoDeclaration = `--${arcoKey[1]}-${arcoKey[2]}:${rgb};`
+                if (arcoKey[1] === 'primary') arcoDeclaration += `--link-${arcoKey[2]}:${rgb};`
+            }
+        }
+        return `${prev}${key}:${color};${arcoDeclaration}`
     }, '')
-    theme = `:root{${theme}}`
+    // 组件库把默认通道定义在 body 上，仅修改 :root 无法覆盖其局部定义。
+    theme = `:root,body,body[arco-theme='dark']{${theme}}`
     let style = document.getElementById(themeId)
     if (style) {
         style.innerHTML = theme

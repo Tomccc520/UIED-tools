@@ -11,17 +11,16 @@
         <header class="workbench-heading">
             <div>
                 <h1>工作台</h1>
-                <p>{{ adminName }}，从常用任务开始管理站点。</p>
+                <p>{{ adminName }}，选择要处理的任务。</p>
             </div>
             <div class="heading-actions">
-                <span v-if="versionText" class="version-text">v{{ versionText }}</span>
                 <a-button :loading="loading" data-admin-smoke="workbench-refresh" @click="getData">
                     刷新数据
                 </a-button>
             </div>
         </header>
 
-        <quick-operation-panel :menu-list="quickMenuCards" />
+        <quick-operation-panel :groups="quickMenuGroups" />
 
         <section class="data-section" aria-labelledby="workbench-data-title" :aria-busy="loading">
             <div class="section-heading">
@@ -123,42 +122,31 @@ const workbenchData = reactive({
 let requestSequence = 0
 let requestTimer: ReturnType<typeof setTimeout> | undefined
 
-const quickTasks = [
+const quickTaskGroups = [
     {
-        path: '/official_site/tools_catalog',
-        name: '工具管理',
-        desc: '编辑工具信息、分类与使用规则',
-        short: '工具'
+        key: 'content',
+        title: '内容维护',
+        tasks: [
+            { path: '/official_site/tools_catalog', name: '工具管理', desc: '工具信息、分类与工具 SEO / GEO' },
+            { path: '/official_site/frontend_layout', name: '首页内容', desc: '每日学习与更新记录' },
+            { path: '/operation/advertising', name: '广告与推荐', desc: '首页横幅、热门推荐与运营位' }
+        ]
     },
     {
-        path: '/official_site/sidebar',
-        name: '站点导航',
-        desc: '调整分类、侧栏菜单与展示顺序',
-        short: '导航'
+        key: 'website',
+        title: '网站配置',
+        tasks: [
+            { path: '/official_site/sidebar', name: '前台品牌与导航', desc: '品牌文案、分类与菜单顺序' },
+            { path: '/official_site/seo', name: '全站搜索优化', desc: '默认元数据与固定页面 SEO' }
+        ]
     },
     {
-        path: '/official_site/frontend_layout',
-        name: '首页与广告',
-        desc: '维护首页内容、推荐位和广告',
-        short: '首页'
-    },
-    {
-        path: '/official_site/seo',
-        name: '搜索优化',
-        desc: '维护站点与工具的 SEO、GEO',
-        short: '搜索'
-    },
-    {
-        path: '/ai_model_manage/ai_ability',
-        name: 'AI 能力',
-        desc: '配置模型、提供商与能力调用',
-        short: 'AI'
-    },
-    {
-        path: '/material/index',
-        name: '素材中心',
-        desc: '管理图片、图标等站点素材',
-        short: '素材'
+        key: 'operations',
+        title: '运营数据',
+        tasks: [
+            { path: '/official_site/tool_ranking_manage', name: '工具访问排行', desc: '访问、使用与下载记录' },
+            { path: '/consumer/order', name: '订单管理', desc: '查看订单与支付状态' }
+        ]
     }
 ]
 const maintenancePaths = [
@@ -208,11 +196,16 @@ const lastUpdated = computed(() => String(workbenchData.today.time || '').trim()
 const findAccessibleEntry = (path: string) =>
     navigationItems.value.find((item) => !item.external && item.path.split('?')[0] === path)
 
-const quickMenuCards = computed(() =>
-    quickTasks.flatMap((item) => {
-        const entry = findAccessibleEntry(item.path)
-        return entry ? [{ ...item, url: entry.path }] : []
-    })
+/** 按运营任务组织已授权入口，保留菜单查询参数；没有可访问项目的分组不显示。 */
+const quickMenuGroups = computed(() =>
+    quickTaskGroups.map((group) => ({
+        key: group.key,
+        title: group.title,
+        items: group.tasks.flatMap((item) => {
+            const entry = findAccessibleEntry(item.path)
+            return entry ? [{ name: item.name, desc: item.desc, url: entry.path }] : []
+        })
+    })).filter((group) => group.items.length > 0)
 )
 const maintenanceLinks = computed(() =>
     navigationItems.value
@@ -428,10 +421,6 @@ h1 {
 }
 .heading-actions {
     justify-content: flex-end;
-}
-.version-text {
-    color: var(--color-text-3);
-    white-space: nowrap;
 }
 .data-section {
     margin-top: 24px;

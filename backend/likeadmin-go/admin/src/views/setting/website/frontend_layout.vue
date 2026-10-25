@@ -8,8 +8,8 @@
 -->
 <template>
     <div class="website-frontend-layout pro-page-shell">
-        <a-page-header class="layout-page-header" title="首页内容与更新记录">
-            <template #subtitle> 集中维护每日学习和更新记录；首页广告已迁移到独立的“运营管理 → 广告管理”。 </template>
+        <admin-page-header title="每日学习与更新记录">
+            <template #subtitle>管理首页学习文章与版本更新内容，保存后在前台预览效果。</template>
             <template #extra>
                 <div class="layout-page-actions">
                     <div class="layout-status-tags">
@@ -21,44 +21,53 @@
                     <a-button data-admin-smoke="frontend-layout-preview" @click="openToolsHomePreview"
                         >预览前端</a-button
                     >
-                    <a-dropdown trigger="click" position="br">
-                        <a-button>其他设置</a-button>
-                        <template #content>
-                            <a-doption
-                                v-for="item in officialSiteEntryCards"
-                                :key="item.key"
-                                @click="goOfficialSiteEntry(item.path)"
-                                >{{ item.title }}</a-doption
-                            >
-                        </template>
-                    </a-dropdown>
-                    <a-button data-admin-smoke="frontend-layout-health-check" @click="runLayoutHealthCheck"
-                        >一键体检</a-button
+                    <a-button
+                        data-admin-smoke="frontend-layout-reload"
+                        :loading="isLoadingData"
+                        :disabled="isSubmitting"
+                        @click="retryLoadData"
+                        >重新加载</a-button
                     >
                     <a-button
-                        v-perms="['setting:website:layout:save']"
-                        data-admin-smoke="frontend-layout-save-top"
-                        type="primary"
-                        :loading="isSubmitting"
-                        :disabled="isLoadingData || !hasLoadedData || Boolean(loadErrorMessage)"
-                        @click="handleSubmit"
-                        >保存配置</a-button
+                        data-admin-smoke="frontend-layout-health-check"
+                        :disabled="isLoadingData || isSubmitting || !hasLoadedData || Boolean(loadErrorMessage)"
+                        @click="runLayoutHealthCheck"
+                        >一键体检</a-button
                     >
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
-        <a-alert v-if="loadErrorMessage" class="layout-load-alert" type="warning" show-icon :closable="false">
-            {{ loadErrorMessage }}
+        <a-alert
+            v-if="previewRefreshWarning"
+            class="layout-refresh-warning"
+            type="warning"
+            show-icon
+            :closable="false"
+        >
+            {{ previewRefreshWarning }}
             <template #action>
-                <a-button data-admin-smoke="frontend-layout-reload" size="mini" type="outline" @click="retryLoadData"
-                    >重新加载</a-button
+                <a-button
+                    size="small"
+                    type="outline"
+                    :loading="isRefreshingPreview"
+                    :disabled="isSubmitting"
+                    @click="refreshSavedPreview"
+                    >重试刷新</a-button
                 >
             </template>
         </a-alert>
 
-        <a-spin :loading="isLoadingData" tip="正在加载前端布局配置...">
-            <fieldset class="layout-edit-fields" :disabled="isLoadingData || isSubmitting || !hasLoadedData || Boolean(loadErrorMessage)" :inert="isLoadingData || isSubmitting || !hasLoadedData || Boolean(loadErrorMessage) ? '' : undefined">
+        <config-edit-frame
+            :loading="isLoadingData"
+            :ready="hasLoadedData"
+            :error="loadErrorMessage"
+            :save-error="submitError"
+            :dirty="hasUnsavedChanges"
+            :saving="isSubmitting"
+            :saved-at="lastSavedAt"
+            @retry="retryLoadData"
+        >
             <a-card class="layout-main-card pro-panel-card general-card" :bordered="false">
                 <div class="layout-workspace">
                     <div class="layout-workspace-main">
@@ -118,7 +127,7 @@
                                 <a-tab-pane
                                     v-if="isModuleTabEnabled('homepageLearning')"
                                     key="homepageLearning"
-                                    title="每日学习（首页文章）"
+                                    title="每日学习"
                                 >
                                     <a-card class="panel-card">
                                         <template #title>
@@ -130,8 +139,7 @@
                                             </div>
                                         </template>
                                         <a-alert class="layout-section-alert" type="info" :closable="false" show-icon>
-                                            后端会代理并解析 UIED RSS，前端不直连跨域
-                                            XML。支持全部文章、分类别名、单个或多个分类 ID，不支持标签 ID。
+                                            自动同步 UIED 文章，可选择全部内容或按分类筛选。
                                         </a-alert>
                                         <a-form
                                             :model="formData"
@@ -160,7 +168,7 @@
                                                     placeholder="https://www.uied.cn/api/open/v1/rss.xml"
                                                 />
                                                 <template #extra>
-                                                    仅允许 https://uied.cn 或 https://www.uied.cn，后端会再次校验。
+                                                    仅支持 uied.cn 或 www.uied.cn 的 HTTPS 文章源。
                                                 </template>
                                             </a-form-item>
                                             <a-form-item label="筛选方式">
@@ -191,7 +199,7 @@
                                                     placeholder="单分类 307，多分类 417,3351"
                                                 />
                                                 <template #extra>
-                                                    仅填数字分类 ID，多个用英文逗号分隔。原标签 3842 不能放入此字段。
+                                                    填写数字分类 ID，多个用英文逗号分隔。
                                                 </template>
                                             </a-form-item>
                                             <a-form-item label="展示条数">
@@ -206,9 +214,6 @@
                                                 </template>
                                             </a-form-item>
                                         </a-form>
-                                        <div class="panel-description">
-                                            接口示例：<code>/api/open/v1/rss.xml</code>、<code>?category_slug=ai</code>、<code>?categories=307</code>、<code>?categories=417,3351</code>。
-                                        </div>
                                     </a-card>
                                 </a-tab-pane>
 
@@ -843,7 +848,7 @@
                                 <a-tab-pane
                                     v-if="isModuleTabEnabled('pageOps')"
                                     key="pageOps"
-                                    title="页面运营（更新记录）"
+                                    title="更新记录"
                                 >
                                     <a-alert
                                         v-if="simpleMode"
@@ -1743,32 +1748,25 @@
                 </a-modal>
             </a-card>
 
-            <div v-if="hasUnsavedChanges" class="layout-floating-submit">
-                <div class="layout-floating-submit__left">
-                    <a-tag color="orange" bordered>有未保存更改</a-tag>
-                    <span class="layout-floating-submit__text">建议保存后再切换页面，避免运营配置丢失。</span>
-                </div>
-                <a-space>
-                    <a-button data-admin-smoke="frontend-layout-health-check-floating" @click="runLayoutHealthCheck"
-                        >一键体检</a-button
-                    >
-                    <a-button
-                        data-admin-smoke="frontend-layout-save-floating"
-                        type="primary"
-                        :loading="isSubmitting"
-                        :disabled="isLoadingData || !hasLoadedData || Boolean(loadErrorMessage)"
-                        @click="handleSubmit"
-                        >立即保存</a-button
-                    >
-                </a-space>
-            </div>
-            </fieldset>
-        </a-spin>
+            <template #actions>
+                <a-button
+                    v-perms="['setting:website:layout:save']"
+                    data-admin-smoke="frontend-layout-save-top"
+                    type="primary"
+                    :loading="isSubmitting"
+                    :disabled="isLoadingData || isRefreshingPreview || !hasLoadedData || Boolean(loadErrorMessage)"
+                    @click="handleSubmit"
+                    >保存网站内容</a-button
+                >
+            </template>
+        </config-edit-frame>
     </div>
 </template>
 
 <script lang="ts" setup name="websiteFrontendLayout">
 import { getWebsite, setWebsite } from '@/api/setting/website'
+import AdminPageHeader from '@/components/page-header/index.vue'
+import ConfigEditFrame from './components/config-edit-frame.vue'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
@@ -2608,6 +2606,9 @@ const isSubmitting = ref(false)
 const isLoadingData = ref(false)
 const hasLoadedData = ref(false)
 const loadErrorMessage = ref('')
+const submitError = ref('')
+const previewRefreshWarning = ref('')
+const isRefreshingPreview = ref(false)
 const simpleMode = ref(true)
 const layoutContextCollapseKeys = ref<(string | number)[]>([])
 /**
@@ -2628,38 +2629,6 @@ const pageOpsAdvancedCollapseKeys: (string | number)[] = ['changelog_intro']
  * 函数说明：维护页脚模块折叠分组展开状态，默认展开基础文案分组。
  */
 const footerSectionCollapseKeys = ref<(string | number)[]>(['basic'])
-const officialSiteEntryCards = [
-    {
-        key: 'sidebar',
-        title: '菜单设置',
-        desc: '维护前端左侧菜单、推荐链接、一级菜单、底部入口与 AI 工具箱独立左栏。',
-        path: '/official_site/sidebar',
-    },
-    {
-        key: 'tools_catalog',
-        title: '工具主数据',
-        desc: '维护左侧菜单点击后的工具分类树、工具列表、工具简介与工具页 SEO 字段。',
-        path: '/official_site/tools_catalog',
-    },
-    {
-        key: 'header',
-        title: '头部设置',
-        desc: '维护顶部快捷入口、搜索面板快捷入口和 AI 页统一头部运营链接。',
-        path: '/official_site/header',
-    },
-    {
-        key: 'footer',
-        title: '页脚设置',
-        desc: '维护页脚版权、备案、分组链接与官方媒体入口。',
-        path: '/official_site/footer',
-    },
-    {
-        key: 'seo',
-        title: 'SEO设置',
-        desc: '维护全站默认 SEO、页面级 SEO 与分享图配置。',
-        path: '/official_site/seo',
-    },
-] as const
 const basicModeTabs: LayoutModuleKey[] = ['homepageLearning', 'pageOps']
 const layoutModuleLabelMap: Record<string, string> = {
     banner: '顶部Banner',
@@ -2682,13 +2651,6 @@ const layoutModuleDescMap: Record<string, string> = {
     pageOps: '更新记录页说明、时间线与资料链接',
     header: '全站顶部快捷链接',
     footer: '全站底部文案与分组链接',
-}
-
-/**
- * 函数说明：从官网设置总览卡片跳转到对应独立运营页，减少运营寻找入口的成本。
- */
-const goOfficialSiteEntry = (path: string) => {
-    router.push(path)
 }
 
 /**
@@ -5642,6 +5604,7 @@ const getData = async () => {
         applyLayoutFormFromJson()
         updateBaselineLayoutSnapshot()
         hasLoadedData.value = true
+        submitError.value = ''
     } catch {
         loadErrorMessage.value = '前端布局配置加载失败，请检查接口连通性或重新登录后重试。'
         feedback.msgError('前端布局配置加载失败，请检查接口或登录状态')
@@ -5707,10 +5670,30 @@ const buildFrontendLayoutPayload = (): Record<string, string> => {
 }
 
 /**
- * 函数说明：校验并保存前端布局配置
+ * 函数说明：刷新已保存配置的全局预览缓存，失败仅提示刷新警告，不改变保存状态或重复提交数据。
+ * 返回值：缓存刷新完成时返回 true，失败或已有刷新请求时返回 false。
+ */
+const refreshSavedPreview = async (): Promise<boolean> => {
+    if (isRefreshingPreview.value) return false
+    isRefreshingPreview.value = true
+    try {
+        await getConfig()
+        previewRefreshWarning.value = ''
+        return true
+    } catch {
+        previewRefreshWarning.value = '配置已保存，前台预览刷新未完成，可重试刷新。'
+        feedback.msgWarning(previewRefreshWarning.value)
+        return false
+    } finally {
+        isRefreshingPreview.value = false
+    }
+}
+
+/**
+ * 函数说明：只提交本页允许维护的字段，保存确认后更新基线；保存失败保留草稿，预览刷新失败独立重试。
  */
 const handleSubmit = async () => {
-    if (isSubmitting.value || isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value) {
+    if (isSubmitting.value || isLoadingData.value || isRefreshingPreview.value || !hasLoadedData.value || loadErrorMessage.value) {
         return
     }
     if (!validateHomepageLearningForm()) {
@@ -5721,14 +5704,20 @@ const handleSubmit = async () => {
     }
 
     isSubmitting.value = true
+    submitError.value = ''
     try {
-        await setWebsite(buildFrontendLayoutPayload())
-        feedback.msgSuccess('前端布局配置已保存')
+        try {
+            await setWebsite(buildFrontendLayoutPayload())
+        } catch (error) {
+            submitError.value = '配置保存失败，您的修改已保留，请重试。'
+            if (!(error as { notified?: boolean })?.notified) feedback.msgError(submitError.value)
+            return
+        }
+        updateBaselineLayoutSnapshot()
         lastSavedAt.value = formatDateTimeText(new Date())
-        await getConfig()
-        await getData()
-    } catch {
-        feedback.msgError('配置保存失败，您的修改已保留，请重试。')
+        if (await refreshSavedPreview()) {
+            feedback.msgSuccess('网站内容已保存')
+        }
     } finally {
         isSubmitting.value = false
     }
@@ -5771,13 +5760,12 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.layout-edit-fields { min-width: 0; margin: 0; padding: 0; border: 0; }
 .website-frontend-layout {
     padding-bottom: 12px;
 
-    .layout-load-alert {
-        margin-bottom: 10px;
-        border-radius: 10px;
+    .layout-refresh-warning {
+        margin-bottom: 16px;
+        border-radius: var(--uied-admin-radius);
     }
 
     .layout-current-module {
@@ -5807,27 +5795,6 @@ onBeforeUnmount(() => {
         font-size: 12px;
         text-overflow: ellipsis;
         white-space: nowrap;
-    }
-
-    .layout-page-header {
-        margin-bottom: 10px;
-        border: 1px solid var(--color-border-2, #e5e6eb);
-        border-radius: 8px;
-        background: #fff;
-
-        :deep(.arco-page-header-wrapper) {
-            padding: 14px 16px;
-        }
-
-        :deep(.arco-page-header-title) {
-            font-size: 18px;
-        }
-
-        :deep(.arco-page-header-subtitle) {
-            max-width: 820px;
-            line-height: 1.6;
-            color: var(--color-text-3, #86909c);
-        }
     }
 
     .layout-page-actions {
@@ -6894,37 +6861,6 @@ onBeforeUnmount(() => {
         margin-bottom: 10px;
     }
 
-    .layout-floating-submit {
-        position: fixed;
-        right: 20px;
-        bottom: 20px;
-        z-index: 50;
-        border: 1px solid var(--color-border-2, #e5e6eb);
-        border-radius: 12px;
-        background: rgba(255, 255, 255, 0.96);
-        backdrop-filter: blur(8px);
-        padding: 10px 12px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        min-width: 360px;
-        max-width: calc(100vw - 40px);
-    }
-
-    .layout-floating-submit__left {
-        min-width: 0;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .layout-floating-submit__text {
-        font-size: 12px;
-        color: var(--color-text-3, #86909c);
-        white-space: nowrap;
-    }
-
     @media (max-width: 1080px) {
         .layout-workspace.is-advanced {
             grid-template-columns: 1fr;
@@ -7064,24 +7000,6 @@ onBeforeUnmount(() => {
 
         .section-title-row {
             grid-template-columns: 1fr;
-        }
-
-        .layout-floating-submit {
-            left: 12px;
-            right: 12px;
-            bottom: 12px;
-            min-width: 0;
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .layout-floating-submit__left {
-            width: 100%;
-            justify-content: flex-start;
-        }
-
-        .layout-floating-submit__text {
-            white-space: normal;
         }
     }
 }

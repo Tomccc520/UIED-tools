@@ -8,17 +8,12 @@
 -->
 <template>
     <div class="website-footer-settings pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 页脚设置">
+        <admin-page-header class="layout-page-header" title="页脚与友情链接">
             <template #subtitle>
                 维护页脚文案、备案版权、链接分组和官方媒体入口。
             </template>
             <template #extra>
                 <div class="layout-page-actions">
-                    <div class="layout-status-tags">
-                        <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
-                            {{ hasUnsavedChanges ? '待保存' : '已保存' }}
-                        </a-tag>
-                    </div>
                     <a-button data-admin-smoke="website-footer-reload" size="small" @click="reloadFooterData"
                         >重新加载</a-button
                     >
@@ -30,7 +25,7 @@
                     >
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadFooterData">
         <a-card class="page-card pro-panel-card" :bordered="false">
@@ -229,6 +224,7 @@
 </template>
 
 <script lang="ts" setup name="websiteFooterSettings">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'

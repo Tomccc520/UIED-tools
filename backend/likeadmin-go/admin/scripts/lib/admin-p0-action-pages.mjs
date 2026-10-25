@@ -316,11 +316,9 @@ export const ADMIN_P0_ACTION_PAGES = [
             'frontend-layout-preview',
             'frontend-layout-health-check',
             'frontend-layout-save-top',
-            'frontend-layout-health-check-floating',
-            'frontend-layout-save-floating',
+            'frontend-layout-reload',
         ],
-        safeClickMarkers: ['frontend-layout-health-check', 'frontend-layout-health-check-floating'],
-        staticMarkers: ['frontend-layout-reload'],
+        safeClickMarkers: ['frontend-layout-health-check'],
     },
     {
         name: '广告管理',

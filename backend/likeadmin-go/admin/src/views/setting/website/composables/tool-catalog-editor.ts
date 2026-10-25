@@ -11,6 +11,16 @@ export interface CatalogEditorRow {
     tool: Record<string, any>
 }
 
+/** 解析工具预览链接，只允许站内路径或 HTTP(S) 地址，保留业务查询参数并拒绝脚本协议。 */
+export const resolveCatalogPreviewHref = (value: unknown, baseUrl: string): string => {
+    const input = String(value || '').trim()
+    if (!input || (!input.startsWith('/') && !/^https?:\/\//i.test(input))) return ''
+    try {
+        const parsed = new URL(input, baseUrl || undefined)
+        return /^https?:$/.test(parsed.protocol) ? parsed.href : ''
+    } catch { return '' }
+}
+
 /** 读取原始分类树并验证层级；保留未识别字段，不在可视编辑时过滤或重建业务数据。 */
 export const readCatalogEditorTree = (source: string): Record<string, any>[] => {
     const tree = JSON.parse(source || '[]')

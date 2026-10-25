@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="website-hot-tools pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 热门工具">
+        <admin-page-header class="layout-page-header" title="热门工具">
             <template #subtitle>
                 配置首页热门推荐区，支持标题、简介、链接和排序。其它官网设置项请直接通过左侧菜单切换，不再在页面里二次跳转。
             </template>
@@ -26,7 +26,7 @@
                     <a-button size="small" @click="runHotToolsHealthCheck">一键体检</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-card class="page-card pro-panel-card" :bordered="false">
 
@@ -116,6 +116,7 @@
 </template>
 
 <script lang="ts" setup name="websiteHotTools">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'

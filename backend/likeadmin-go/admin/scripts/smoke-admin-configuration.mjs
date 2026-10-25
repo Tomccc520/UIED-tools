@@ -67,30 +67,44 @@ try {
     await page.getByRole('button', { name: 'Close', exact: true }).click()
     await page.locator('.arco-modal').getByRole('button', { name: '取消', exact: true }).click()
     assert.match(await page.getByRole('textbox', { name: '工具简介', exact: true }).inputValue(), /本地验收草稿/)
-    await page.getByRole('button', { name: '加入待保存更改', exact: true }).click()
-    await page.getByText('有未保存更改', { exact: true }).waitFor()
+    await page.getByRole('button', { name: '应用到列表', exact: true }).click()
+    await page.getByText('有未保存的更改', { exact: true }).waitFor()
     await page.getByRole('button', { name: '重新加载', exact: true }).click()
     await page.locator('.arco-modal').getByRole('button', { name: '取消', exact: true }).click()
-    await page.getByText('有未保存更改', { exact: true }).waitFor()
+    await page.getByText('有未保存的更改', { exact: true }).waitFor()
     await page.getByRole('button', { name: '保存配置', exact: true }).click()
-    await page.getByText('正在保存配置', { exact: true }).waitFor()
+    await page.getByText('正在保存更改', { exact: true }).waitFor()
     assert.equal(await page.getByPlaceholder('搜索工具名称、用途、链接或标识').isEnabled(), false)
-    await page.getByText('配置已保存', { exact: true }).waitFor()
+    await page.getByText('所有更改已保存', { exact: true }).waitFor()
     const toolTree = JSON.parse(savedPayload.toolsCategoryTree)
     const changed = toolTree.flatMap(category => category.list.flatMap(group => group.list)).find(tool => tool.title === '视频压缩')
     assert.equal(changed.desc, originalDesc + '〔本地验收草稿〕')
     assert.deepEqual(Object.keys(savedPayload), ['toolsCategoryTree'])
 
+    // 单工具直接保存：故障不关抽屉、不丢草稿，重试成功只写一次目录补丁。
     await row.getByRole('button', { name: '编辑视频压缩', exact: true }).click()
     await page.getByRole('textbox', { name: '工具简介', exact: true }).fill(originalDesc)
-    await page.getByRole('button', { name: '加入待保存更改', exact: true }).click()
     failSave = true
-    await page.getByRole('button', { name: '保存配置', exact: true }).click()
-    await page.getByText('配置保存失败，您的修改已保留，请重试。', { exact: true }).waitFor()
-    await page.getByText('有未保存更改', { exact: true }).waitFor()
+    await page.getByRole('button', { name: '保存工具并生效', exact: true }).click()
+    await page.getByText('工具未保存，您的修改已保留。请检查页面提示后重试。', { exact: true }).waitFor()
+    assert.equal(await page.getByRole('textbox', { name: '工具简介', exact: true }).inputValue(), originalDesc)
     failSave = false
+    await page.getByRole('button', { name: '保存工具并生效', exact: true }).click()
+    await page.locator('.arco-drawer:visible').waitFor({ state: 'hidden' })
+    await page.getByText('所有更改已保存', { exact: true }).waitFor()
+    assert.deepEqual(Object.keys(savedPayload), ['toolsCategoryTree'])
+    assert.equal(JSON.parse(savedPayload.toolsCategoryTree).flatMap(category => category.list.flatMap(group => group.list)).find(tool => tool.title === '视频压缩').desc, originalDesc)
+
+    // 页面存在其它工具草稿时，抽屉禁止直接发布，仍可选择应用列表后统一保存。
+    await row.getByRole('button', { name: '编辑视频压缩', exact: true }).click()
+    await page.getByRole('textbox', { name: '工具简介', exact: true }).fill(originalDesc + '〔待批量保存〕')
+    await page.getByRole('button', { name: '应用到列表', exact: true }).click()
+    await row.getByRole('button', { name: '编辑视频压缩', exact: true }).click()
+    await page.getByRole('textbox', { name: '工具名称', exact: true }).fill('视频压缩〔批量草稿〕')
+    assert.equal(await page.getByRole('button', { name: '保存工具并生效', exact: true }).isEnabled(), false)
+    await page.getByRole('button', { name: '应用到列表', exact: true }).click()
     await page.getByRole('button', { name: '保存配置', exact: true }).click()
-    await page.getByText('配置已保存', { exact: true }).waitFor()
+    await page.getByText('所有更改已保存', { exact: true }).waitFor()
 
     // 首次加载失败不允许把默认空配置保存到后端，重试后恢复。
     failLoad = true
@@ -99,8 +113,8 @@ try {
     assert.equal(await page.getByRole('button', { name: '保存配置', exact: true }).isEnabled(), false)
     const priorSaves = saveRequests
     failLoad = false
-    await page.getByRole('button', { name: '重试', exact: true }).click()
-    await page.getByText('当前无未保存更改', { exact: true }).waitFor()
+    await page.locator('.config-edit-frame__alert').getByRole('button', { name: '重新加载', exact: true }).click()
+    await page.getByText('当前没有未保存更改', { exact: true }).waitFor()
     assert.equal(saveRequests, priorSaves)
 
     for (const route of ['sidebar', 'header', 'footer', 'seo']) {
@@ -144,7 +158,7 @@ try {
         await page.screenshot({ path: path.join(outputDir, `tools-catalog-${width}.png`), fullPage: false })
     }
     assert.deepEqual(errors, [])
-    console.log('后台配置 Chrome 回归通过：可视工具编辑、×关闭取消保留草稿、重载确认、保存中禁用、保存失败/重试、首次加载失败禁存、唯一保存入口、320/375/768/1440px。未写入真实配置。')
+    console.log('后台配置 Chrome 回归通过：可视工具编辑、一次保存并生效、失败保留抽屉草稿、批量草稿禁止暗中发布、×关闭取消保留草稿、重载确认、保存中禁用、保存失败/重试、首次加载失败禁存、唯一保存入口、320/375/768/1440px。未写入真实配置。')
 } finally {
     await browser.close()
 }

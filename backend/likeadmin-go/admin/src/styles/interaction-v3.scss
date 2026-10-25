@@ -7,14 +7,15 @@
 
 /* 后台交互基线：用清晰层级、稳定点击区域和克制强调色统一高频运营页面。 */
 :root {
-    --uied-admin-accent: #315bd8;
-    --uied-admin-accent-soft: #eef3ff;
+    --uied-admin-accent: var(--ui-color-primary, #6C54FF);
+    --uied-admin-accent-soft: var(--ui-color-primary-light-9, #f8f7ff);
+    --uied-admin-accent-border: var(--ui-color-primary-light-7, #ded7ff);
     --uied-admin-ink: #182230;
-    --uied-admin-muted: #718096;
+    --uied-admin-muted: #667085;
     --uied-admin-surface: #ffffff;
-    --uied-admin-canvas: #f4f6fa;
-    --uied-admin-border: #e4e9f2;
-    --uied-admin-radius: 12px;
+    --uied-admin-canvas: #f6f7fb;
+    --uied-admin-border: #e4e7ec;
+    --uied-admin-radius: 8px;
 }
 
 .layout {
@@ -45,7 +46,7 @@
 .nav-btn:focus-visible {
     color: var(--uied-admin-accent) !important;
     background: var(--uied-admin-accent-soft) !important;
-    border-color: #d8e2ff !important;
+    border-color: var(--uied-admin-accent-border) !important;
 }
 
 .layout-sider {
@@ -58,33 +59,33 @@
     background: var(--uied-admin-surface) !important;
 }
 
-.side :deep(.arco-menu) {
+.side .arco-menu {
     background: transparent !important;
 }
 
-.side :deep(.arco-menu-item),
-.side :deep(.arco-menu-inline-header) {
+.side .arco-menu-item,
+.side .arco-menu-inline-header {
     min-height: 40px;
     margin: 3px 0;
-    border-radius: 9px;
+    border-radius: var(--uied-admin-radius);
     color: #536174;
     transition: color 160ms ease, background-color 160ms ease;
 }
 
-.side :deep(.arco-menu-item:hover),
-.side :deep(.arco-menu-inline-header:hover) {
+.side .arco-menu-item:hover,
+.side .arco-menu-inline-header:hover {
     color: var(--uied-admin-accent);
     background: #f5f7fc;
 }
 
-.side :deep(.arco-menu-item.arco-menu-selected),
-.side :deep(.arco-menu-inline-header.arco-menu-selected) {
+.side .arco-menu-item.arco-menu-selected,
+.side .arco-menu-inline-header.arco-menu-selected {
     color: var(--uied-admin-accent);
     background: var(--uied-admin-accent-soft);
     font-weight: 600;
 }
 
-.side :deep(.arco-menu-item.arco-menu-selected::before) {
+.side .arco-menu-item.arco-menu-selected::before {
     left: 0;
     width: 3px;
     height: 18px;

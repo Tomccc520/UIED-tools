@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="website-protocol-page pro-page-shell">
-        <a-page-header class="layout-page-header" title="官网设置 · 协议管理">
+        <admin-page-header class="layout-page-header" title="服务协议与隐私政策">
             <template #subtitle>
                 统一维护服务协议与隐私协议，支持富文本编辑并在保存后实时生效。
             </template>
@@ -26,7 +26,7 @@
                     <a-button size="small" @click="runHealthCheck">一键体检</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-card class="page-card pro-panel-card" :bordered="false">
 
@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts" name="webProtocol">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import { getProtocol, setProtocol } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'

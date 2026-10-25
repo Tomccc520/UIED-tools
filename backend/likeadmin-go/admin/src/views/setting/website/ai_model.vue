@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="setting-ai-model pro-page-shell">
-        <a-page-header class="layout-page-header" :title="currentPageMeta.title">
+        <admin-page-header class="layout-page-header" :title="currentPageMeta.title">
             <template #subtitle>
                 {{ currentPageMeta.subtitle }}
             </template>
@@ -31,7 +31,7 @@
                     </a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-card class="page-card pro-panel-card" :bordered="false">
 
@@ -510,6 +510,7 @@
 </template>
 
 <script lang="ts" setup name="settingAiModel">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import {
     fetchAiProviderModels,
     getAiModelDetail,
