@@ -146,12 +146,12 @@ func NormalizeToolsChangelogTimelineJSON(raw string) string {
 	}
 	normalized := normalizeToolsChangelogTimeline(items)
 	// 已保存的旧站点配置补齐缺失发布版本，保留运营已经编辑的同版本内容。
-	if !hasChangelogVersion(normalized, "3.0.3") || !hasChangelogVersion(normalized, "3.0.4") || !hasChangelogVersion(normalized, "3.0.5") {
+	if !hasChangelogVersion(normalized, "3.0.3") || !hasChangelogVersion(normalized, "3.0.4") || !hasChangelogVersion(normalized, "3.0.5") || !hasChangelogVersion(normalized, "3.0.6") {
 		defaults := make([]toolsChangelogTimelineItem, 0)
 		if err := json.Unmarshal([]byte(toolsChangelogTimelineJSON), &defaults); err == nil {
 			normalizedDefaults := normalizeToolsChangelogTimeline(defaults)
 			// 按发布时间补齐，并将旧版本放在已存在的新版本后，保留自定义内容及其相对顺序。
-			releaseVersions := []string{"3.0.3", "3.0.4", "3.0.5"}
+			releaseVersions := []string{"3.0.3", "3.0.4", "3.0.5", "3.0.6"}
 			for releaseIndex, version := range releaseVersions {
 				if hasChangelogVersion(normalized, version) {
 					continue

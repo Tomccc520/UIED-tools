@@ -361,11 +361,11 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
     { name: 'CSDN 博客', link: 'https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343' },
     { name: 'UIED技术团队', link: 'https://fsuied.com/' }
   ],
-  changelogSplitTitle: '3.0.5 全栈开源说明',
-  changelogSplitDesc: '主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.5 集中完善文件处理、数据准确性、后台配置和组件复用，非必要商业化入口默认不展示。',
+  changelogSplitTitle: '3.0.6 全栈开源说明',
+  changelogSplitDesc: '主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.6 完善站点配置请求可靠性、工具页首个 HTML 预渲染及独立 SEO，继续保持未知路径真实 404 与非必要商业化入口默认隐藏。',
   changelogSplitLink: 'https://github.com/Tomccc520/UIED-tools',
   changelogSplitLinkText: '查看完整源码与部署说明',
-  changelogStatsText: '当前版本：3.0.5 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-21',
+  changelogStatsText: '当前版本：3.0.6 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-25',
   changelogTimeline: (defaultChangelogTimeline as SiteChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)

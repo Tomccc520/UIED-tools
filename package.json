@@ -1,7 +1,7 @@
 {
   "name": "rbl-tools-web",
   "private": true,
-  "version": "3.0.5",
+  "version": "3.0.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -12,6 +12,7 @@
     "dev:upgrade:apply": "bash scripts/dev/apply-upgrade-patches.sh",
     "dev:delivery:check": "bash scripts/dev/check-delivery-readiness.sh",
     "check:http-status": "bash scripts/dev/check-http-status.sh",
+    "check:tool-seo": "node scripts/dev/check-tool-seo-http.mjs",
     "gen:sitemap": "node scripts/release/generate-sitemap.mjs public/sitemap.xml",
     "deploy:config:check": "bash scripts/dev/check-production-config.sh",
     "release:production": "bash scripts/release/package-fullstack.sh",

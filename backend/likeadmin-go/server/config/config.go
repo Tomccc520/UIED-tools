@@ -103,7 +103,7 @@ func loadConfig(envPath string) envConfig {
 		DbConnMaxLifetimeHours: 2,
 		// 全局配置
 		// 版本
-		Version: "3.0.5",
+		Version: "3.0.6",
 		// 系统加密字符
 		Secret: "UVTIyzCy",
 		// 静态资源URL路径

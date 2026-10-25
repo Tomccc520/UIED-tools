@@ -889,7 +889,7 @@
                                                             v-model="formData.toolsChangelogStatsText"
                                                             maxlength="80"
                                                             show-word-limit
-                                                            placeholder="例如：当前版本：3.0.5 全栈开源版 | 最后更新：2026-10-21"
+                                                            placeholder="例如：当前版本：3.0.6 全栈开源版 | 最后更新：2026-10-25"
                                                         />
                                                     </a-form-item>
                                                 </a-form>
@@ -2147,12 +2147,12 @@ const defaultChangelogMetaLinks: ToolsLinkItem[] = [
     },
     { name: 'UIED技术团队', link: 'https://fsuied.com/' },
 ]
-const defaultChangelogSplitTitle = '3.0.5 全栈开源说明'
+const defaultChangelogSplitTitle = '3.0.6 全栈开源说明'
 const defaultChangelogSplitDesc =
-    '主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.5 集中完善文件处理、数据准确性、后台配置和组件复用，非必要商业化入口默认不展示。'
+    '主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.6 完善站点配置请求可靠性、工具页首个 HTML 预渲染及独立 SEO，继续保持未知路径真实 404 与非必要商业化入口默认隐藏。'
 const defaultChangelogSplitLink = 'https://github.com/Tomccc520/UIED-tools'
 const defaultChangelogSplitLinkText = '查看完整源码与部署说明'
-const defaultChangelogStatsText = '当前版本：3.0.5 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-21'
+const defaultChangelogStatsText = '当前版本：3.0.6 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-25'
 const defaultChangelogTimeline = (defaultChangelogTimelineSource as ToolsChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)
@@ -4768,7 +4768,7 @@ const syncSidebarMenusFromCatalog = async () => {
  */
 const buildLayoutExportPayload = () => {
     return {
-        version: '3.0.5',
+        version: '3.0.6',
         exportedAt: formatDateTimeText(new Date()),
         websiteLayout: {
             toolsChangelogIntroText: formData.toolsChangelogIntroText,
