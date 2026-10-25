@@ -5,9 +5,24 @@
  * @createDate 2026-08-25
  */
 
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import defaultChangelogTimeline from '@/constants/changelogTimeline'
-import { getRequiredSitePublicConfig, normalizeBannerSlides, normalizeChangelogTimeline, normalizeToolSeoTitle } from './siteConfig'
+import {
+  getRequiredSitePublicConfig,
+  getSitePublicConfig,
+  getSiteConfigErrorMessage,
+  SiteConfigRequestError,
+  normalizeBannerSlides,
+  normalizeChangelogTimeline,
+  normalizeToolSeoTitle
+} from './siteConfig'
+
+/** 函数说明：构造包含明确登录策略的公共配置成功响应，用于隔离验证请求与失败关闭契约。 */
+const createConfigResponse = (loginEnabled: unknown = false) => ({
+  ok: true,
+  status: 200,
+  json: async () => ({ code: 200, data: { loginEnabled } })
+})
 
 describe('normalizeBannerSlides', () => {
   it('会将历史渐变文字广告迁移为 HTML 广告', () => {
@@ -107,11 +122,18 @@ describe('normalizeChangelogTimeline', () => {
 })
 
 describe('getRequiredSitePublicConfig', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
+
   it('请求公共配置时应携带防缓存参数并禁用浏览器缓存', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({ code: 200, data: {} })
-    })
+    const fetchMock = vi.fn().mockResolvedValue(createConfigResponse())
     vi.stubGlobal('fetch', fetchMock)
 
     await getRequiredSitePublicConfig({ endpoint: '/api/test/config', timeoutMs: 100 })
@@ -120,20 +142,136 @@ describe('getRequiredSitePublicConfig', () => {
     expect(requestUrl).toMatch(/^\/api\/test\/config\?_uied_config_ts=\d+$/)
     expect(requestOptions).toMatchObject({ method: 'GET', cache: 'no-store' })
 
-    vi.unstubAllGlobals()
   })
 
-  it('接口失败时应抛出异常，不得回退成登录关闭配置', async () => {
+  it('网络持续失败时只重试一次并抛错，不得回退成登录关闭配置', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('network error'))
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(
       getRequiredSitePublicConfig({ endpoint: '/api/test/config', timeoutMs: 100 })
-    ).rejects.toThrow('network error')
-    expect(fetchMock).toHaveBeenCalledOnce()
-
-    vi.unstubAllGlobals()
+    ).rejects.toMatchObject({ kind: 'network' })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(console.warn).toHaveBeenCalledWith('[site-config] 站点配置请求失败', {
+      kind: 'network', httpStatus: 0, attempts: 2
+    })
   })
+
+  it('短暂断网后自动重试成功，仍使用接口返回的真实登录策略', async () => {
+    const fetchMock = vi.fn()
+      .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+      .mockResolvedValueOnce(createConfigResponse(true))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getRequiredSitePublicConfig()).resolves.toMatchObject({ loginEnabled: true })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(console.warn).not.toHaveBeenCalled()
+  })
+
+  it('并发工具校验与页面配置读取共享同一在途请求', async () => {
+    let resolveRequest!: (response: ReturnType<typeof createConfigResponse>) => void
+    const fetchMock = vi.fn(() => new Promise((resolve) => { resolveRequest = resolve }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const display = getSitePublicConfig({ forceRefresh: true })
+    const first = getRequiredSitePublicConfig()
+    const second = getRequiredSitePublicConfig()
+    expect(fetchMock).toHaveBeenCalledOnce()
+    resolveRequest(createConfigResponse(true))
+    const results = await Promise.all([display, first, second])
+    expect(results.every((result) => result.loginEnabled)).toBe(true)
+  })
+
+  it('连续操作重新获取策略，不复用上一次成功读取的免登录配置', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(createConfigResponse(false))
+      .mockResolvedValueOnce(createConfigResponse(true))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getRequiredSitePublicConfig()).resolves.toMatchObject({ loginEnabled: false })
+    await expect(getRequiredSitePublicConfig()).resolves.toMatchObject({ loginEnabled: true })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
+  it('展示失败的默认配置不能作为工具运行的可信策略', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getSitePublicConfig({ forceRefresh: true })).resolves.toMatchObject({ loginEnabled: false })
+    await expect(getRequiredSitePublicConfig()).rejects.toMatchObject({ kind: 'network' })
+    expect(fetchMock).toHaveBeenCalledTimes(4)
+  })
+
+  it('临时 503 可重试恢复，权限失败不重复请求', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValueOnce(createConfigResponse())
+      .mockResolvedValueOnce({ ok: false, status: 403 })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getRequiredSitePublicConfig()).resolves.toMatchObject({ loginEnabled: false })
+    await expect(getRequiredSitePublicConfig()).rejects.toMatchObject({ kind: 'http', httpStatus: 403 })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it.each([300, 403, 500])('HTTP 200 的业务 code=%s 必须拒绝，不能转换成免费模式', async (code) => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ code, msg: 'internal server details', data: [] })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getRequiredSitePublicConfig()).rejects.toMatchObject({ kind: 'business' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(JSON.stringify(vi.mocked(console.warn).mock.calls)).not.toContain('internal server details')
+  })
+
+  it.each([null, [], {}, { loginEnabled: null }, { loginEnabled: 'invalid' }])(
+    '配置数据 %j 缺少有效登录开关时不能放行工具', async (data) => {
+      const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ code: 200, data }) })
+      vi.stubGlobal('fetch', fetchMock)
+
+      await expect(getRequiredSitePublicConfig()).rejects.toMatchObject({ kind: 'invalid-response' })
+      expect(fetchMock).toHaveBeenCalledOnce()
+    }
+  )
+
+  it('超时最多两次后终止，并允许下一次点击重新发起请求', async () => {
+    vi.useFakeTimers()
+    const fetchMock = vi.fn((_url: string, options: RequestInit) => new Promise((_resolve, reject) => {
+      options.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')))
+    }))
+    vi.stubGlobal('fetch', fetchMock)
+
+    const pending = getRequiredSitePublicConfig({ timeoutMs: 100 })
+    const rejected = expect(pending).rejects.toMatchObject({ kind: 'timeout' })
+    await vi.advanceTimersByTimeAsync(200)
+    await rejected
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+
+    fetchMock.mockImplementationOnce(async () => createConfigResponse(true))
+    await expect(getRequiredSitePublicConfig({ timeoutMs: 100 })).resolves.toMatchObject({ loginEnabled: true })
+    expect(fetchMock).toHaveBeenCalledTimes(3)
+  })
+
+  it('非法 JSON 不伪装成网络故障，也不会自动重复请求', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true, json: async () => { throw new SyntaxError('unexpected HTML') }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    await expect(getRequiredSitePublicConfig()).rejects.toMatchObject({ kind: 'invalid-response' })
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('错误提示区分超时、网络和服务异常，不显示服务端内部内容', () => {
+    expect(getSiteConfigErrorMessage(new SiteConfigRequestError('timeout'))).toBe('站点配置请求超时，请重试')
+    expect(getSiteConfigErrorMessage(new SiteConfigRequestError('network'))).toContain('无法连接')
+    expect(getSiteConfigErrorMessage(new SiteConfigRequestError('invalid-response'))).toContain('响应异常')
+    expect(getSiteConfigErrorMessage(new SiteConfigRequestError('http', 500))).toContain('服务暂时不可用')
+    expect(getSiteConfigErrorMessage(new Error('private details'))).not.toContain('private details')
+  })
+
 })
 
 describe('normalizeToolSeoTitle', () => {

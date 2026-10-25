@@ -19,6 +19,7 @@ import {
 import {
   getRequiredSitePublicConfig,
   getSitePublicConfig,
+  getSiteConfigErrorMessage,
   type SiteLoginToolConsumeRule,
   type SitePublicConfig
 } from '@/services/siteConfig'
@@ -319,8 +320,8 @@ export const useToolConsume = () => {
     let siteConfig: SitePublicConfig
     try {
       siteConfig = await getRequiredSitePublicConfig()
-    } catch {
-      ElMessage.error('站点配置读取失败，请检查网络后重试')
+    } catch (error) {
+      ElMessage.error(getSiteConfigErrorMessage(error))
       return false
     }
 

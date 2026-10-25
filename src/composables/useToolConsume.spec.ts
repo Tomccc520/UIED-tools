@@ -39,7 +39,8 @@ vi.mock('@/services/frontendUser', () => ({
   isFrontendUserLoggedIn: mocks.isFrontendUserLoggedIn
 }))
 
-vi.mock('@/services/siteConfig', () => ({
+vi.mock('@/services/siteConfig', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/services/siteConfig')>(),
   getRequiredSitePublicConfig: mocks.getRequiredSitePublicConfig,
   getSitePublicConfig: vi.fn()
 }))
@@ -85,7 +86,7 @@ describe('useToolConsume', () => {
     const { ensureToolConsume } = useToolConsume()
 
     await expect(ensureToolConsume({ toolKey: 'ai-ocr', action: 'run' })).resolves.toBe(false)
-    expect(mocks.error).toHaveBeenCalledWith('站点配置读取失败，请检查网络后重试')
+    expect(mocks.error).toHaveBeenCalledWith('站点配置服务暂时不可用，请稍后重试')
     expect(mocks.dispatchFrontendUserLoginPrompt).not.toHaveBeenCalled()
     expect(mocks.consumeFrontendUserPoints).not.toHaveBeenCalled()
   })

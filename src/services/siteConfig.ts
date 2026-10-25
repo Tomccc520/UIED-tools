@@ -446,6 +446,31 @@ type SiteConfigCacheState = {
 
 let siteConfigCacheState: SiteConfigCacheState | null = null
 let siteConfigPromise: Promise<SitePublicConfig> | null = null
+const siteConfigRequests = new Map<string, Promise<SitePublicConfig>>()
+
+type SiteConfigErrorKind = 'network' | 'timeout' | 'http' | 'business' | 'invalid-response'
+
+/** 函数说明：保存配置请求的错误类别和 HTTP 状态，不携带接口配置内容或服务端堆栈。 */
+export class SiteConfigRequestError extends Error {
+  /** 函数说明：以错误类别和可选 HTTP 状态构造配置请求异常，供日志与用户提示分别处理。 */
+  constructor(
+    readonly kind: SiteConfigErrorKind,
+    readonly httpStatus = 0
+  ) {
+    super(`站点配置请求失败：${kind}${httpStatus ? `（HTTP ${httpStatus}）` : ''}`)
+    this.name = 'SiteConfigRequestError'
+  }
+}
+
+/** 函数说明：把配置异常转换为面向用户的提示，不将业务接口内部错误直接展示给用户。 */
+export const getSiteConfigErrorMessage = (error: unknown): string => {
+  if (error instanceof SiteConfigRequestError) {
+    if (error.kind === 'timeout') return '站点配置请求超时，请重试'
+    if (error.kind === 'network') return '无法连接站点配置服务，请检查网络后重试'
+    if (error.kind === 'invalid-response') return '站点配置响应异常，请稍后重试'
+  }
+  return '站点配置服务暂时不可用，请稍后重试'
+}
 
 /**
  * 函数说明：将后端返回的布尔/数字/字符串标记统一转换为布尔值。
@@ -1288,9 +1313,27 @@ const mapToSitePublicConfig = (payload: unknown): SitePublicConfig => {
 }
 
 /**
- * 函数说明：请求后端站点公共配置接口
+ * 函数说明：校验公共配置成功响应和登录开关，避免 HTTP 200 的业务失败被映射成免登录配置。
  */
-const fetchSitePublicConfig = async (endpoint: string, timeoutMs: number): Promise<SitePublicConfig> => {
+const parseSitePublicConfigResponse = (payload: unknown): SitePublicConfig => {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    throw new SiteConfigRequestError('invalid-response')
+  }
+  const response = payload as Record<string, unknown>
+  if (Number(response.code) !== 200) throw new SiteConfigRequestError('business')
+  const data = response.data
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new SiteConfigRequestError('invalid-response')
+  }
+  const flag = (data as Record<string, unknown>).loginEnabled
+  const validFlag = typeof flag === 'boolean' || flag === 0 || flag === 1 ||
+    (typeof flag === 'string' && ['0', '1', 'true', 'false'].includes(flag.trim().toLowerCase()))
+  if (!validFlag) throw new SiteConfigRequestError('invalid-response')
+  return mapToSitePublicConfig(payload)
+}
+
+/** 函数说明：执行一次有超时的配置请求，并分类网络、HTTP、业务及格式异常。 */
+const requestSitePublicConfigOnce = async (endpoint: string, timeoutMs: number): Promise<SitePublicConfig> => {
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), timeoutMs)
   const separator = endpoint.includes('?') ? '&' : '?'
@@ -1299,16 +1342,50 @@ const fetchSitePublicConfig = async (endpoint: string, timeoutMs: number): Promi
     const response = await fetch(requestEndpoint, {
       method: 'GET',
       signal: controller.signal,
-      cache: 'no-store'
+      cache: 'no-store',
+      headers: { Accept: 'application/json' }
     })
     if (!response.ok) {
-      throw new Error(`获取站点配置失败（HTTP ${response.status}）`)
+      throw new SiteConfigRequestError('http', response.status)
     }
     const payload = await response.json()
-    return mapToSitePublicConfig(payload)
+    return parseSitePublicConfigResponse(payload)
+  } catch (error) {
+    if (error instanceof SiteConfigRequestError) throw error
+    if (controller.signal.aborted) throw new SiteConfigRequestError('timeout')
+    if (error instanceof SyntaxError) throw new SiteConfigRequestError('invalid-response')
+    throw new SiteConfigRequestError('network')
   } finally {
     window.clearTimeout(timer)
   }
+}
+
+/** 函数说明：合并同一接口的在途读取；仅对瞬态错误重试一次，不缓存失败或使用展示兜底配置放行工具。 */
+const fetchSitePublicConfig = (endpoint: string, timeoutMs: number): Promise<SitePublicConfig> => {
+  const requestKey = JSON.stringify([endpoint, timeoutMs])
+  const pending = siteConfigRequests.get(requestKey)
+  if (pending) return pending
+  const request = (async () => {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await requestSitePublicConfigOnce(endpoint, timeoutMs)
+      } catch (error) {
+        const retryable = error instanceof SiteConfigRequestError && (
+          error.kind === 'network' || error.kind === 'timeout' ||
+          (error.kind === 'http' && [408, 429, 502, 503, 504].includes(error.httpStatus))
+        )
+        if (attempt === 0 && retryable) continue
+        console.warn('[site-config] 站点配置请求失败', {
+          kind: error instanceof SiteConfigRequestError ? error.kind : 'unknown',
+          httpStatus: error instanceof SiteConfigRequestError ? error.httpStatus : 0,
+          attempts: attempt + 1
+        })
+        throw error
+      }
+    }
+  })().finally(() => siteConfigRequests.delete(requestKey))
+  siteConfigRequests.set(requestKey, request)
+  return request
 }
 
 /**
