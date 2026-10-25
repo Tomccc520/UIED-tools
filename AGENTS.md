@@ -32,6 +32,12 @@
 - 后台管理服务：`http://localhost:5180`。
 - 当前产品规划版本：3.0.6。`package.json`、发布文件和页面版本显示需要保持一致；版本变更必须单独确认范围。
 
+## Git 管理边界
+
+- 主站、后台管理端和 Go 后端统一由项目根目录的 Git 仓库管理；`backend/likeadmin-go/` 是根仓已跟踪的普通源码目录，不再维护嵌套 `.git`。
+- 当前公开发布仓库为 `opensource`（`Tomccc520/UIED-tools`），协作基线为 `opensource/main`。`origin/master` 是历史 Gitee 基线，不用它判断当前 GitHub 工作是否未提交或漏推送。
+- 不在已跟踪的后台目录内重新克隆上游仓库。历史 Git 元数据备份保留于被忽略的 `.runtime/git-metadata-backups/`；备份、运行配置、依赖和构建缓存不得加入提交。核对流程见 `docs/git-workspace-management.md`。
+
 ## 代码与页面规范
 
 - 新增函数必须添加函数级中文注释，说明作用、参数和返回值（适用时）。

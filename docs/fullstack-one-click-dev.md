@@ -23,13 +23,14 @@
 /Users/tangxiaoda/Desktop/网站备份/tools-web-master 2/tools-web/backend/likeadmin-go
 ```
 
-如不存在，请先拉取：
+当前 UIED-Tools 主仓已包含后台和 Go 源码，不需要再单独克隆上游 likeadmin-go。可在项目根目录确认文件已跟踪：
 
 ```bash
 cd /Users/tangxiaoda/Desktop/网站备份/tools-web-master\ 2/tools-web
-mkdir -p backend
-git clone --depth 1 https://gitee.com/likeadmin/likeadmin_go.git backend/likeadmin-go
+git ls-files --error-unmatch backend/likeadmin-go/server/main.go
 ```
+
+如果目录缺失，应取得完整的 UIED-Tools 源码，避免在已由主仓管理的后台目录内创建第二套 Git 仓库。所有前后端改动统一从项目根目录提交，详见 [Git 管理边界](./git-workspace-management.md)。
 
 然后执行：
 
