@@ -13,6 +13,8 @@ import process from 'node:process'
 import { extractStaticRouteInfos, readRouterSource } from './lib/vue-router-paths.mjs'
 
 const outputFile = path.resolve(process.argv[2] || path.join(import.meta.dirname, '../../output/frontend-route-allowlist.conf'))
+const prerenderRoutes = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../../src/config/prerender-routes.json'), 'utf8'))
+const prerenderPaths = new Set(prerenderRoutes.map((route) => route.path))
 
 /**
  * 函数说明：生成 Nginx 精确 location 配置，让已注册的 Vue 路由继续使用 SPA 入口。
@@ -34,6 +36,10 @@ const buildNginxAllowlist = (routeInfos) => {
       }
       if (redirectTo?.startsWith('/') && !/[\s;{}$]/.test(redirectTo)) {
         return `location = ${routePath} {\n    return 301 ${redirectTo}$is_args$args;\n}`
+      }
+      const canonicalPath = routePath.replace(/\/+$/, '')
+      if (prerenderPaths.has(canonicalPath)) {
+        return `location = ${routePath} {\n    try_files /_prerender${canonicalPath}.html =404;\n}`
       }
       return `location = ${routePath} {\n    try_files $uri $uri/ /index.html;\n}`
     })

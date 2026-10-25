@@ -50,6 +50,7 @@ import vue from '@vitejs/plugin-vue'
 import path from 'path'
 import { nodePolyfills } from 'vite-plugin-node-polyfills'
 import standaloneToolsConfig from './src/config/standalone-tools.json'
+import { toolPrerenderPlugin } from './scripts/build/prerender-tools.mjs'
 
 // 环境变量配置
 const isProd = process.env.NODE_ENV === 'production'
@@ -88,6 +89,7 @@ const fixTuiImageEditorCssTypo = () => ({
 export default defineConfig({
   plugins: [
     fixTuiImageEditorCssTypo(),
+    toolPrerenderPlugin(),
     vue(),
     // 添加Node.js polyfills
     nodePolyfills({

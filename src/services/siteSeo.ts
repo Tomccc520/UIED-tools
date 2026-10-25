@@ -11,6 +11,8 @@ import type { RouteLocationNormalizedLoaded, RouteLocationNormalized } from 'vue
 import type { SitePublicConfig, SiteSeoPageItem } from '@/services/siteConfig'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 import { getDefaultSitePublicConfig, getSitePublicConfig, normalizeToolSeoTitle } from '@/services/siteConfig'
+import { getToolsCate } from '@/components/Tools/tools'
+import toolSeoOverrides from '@/config/tool-seo-overrides.json'
 
 type RouteLike = Pick<RouteLocationNormalizedLoaded | RouteLocationNormalized, 'path' | 'fullPath' | 'meta'>
 
@@ -21,6 +23,14 @@ interface ResolvedSeoPayload {
   image: string
   geoSummary: string
   geoQuestions: string
+  canonicalPath: string
+}
+
+interface LocalToolSeo {
+  title: string
+  description: string
+  keywords: string
+  url: string
 }
 
 interface RouteStructuredDataPayload {
@@ -90,10 +100,33 @@ const findToolSeoSource = (siteConfig: SitePublicConfig, route: RouteLike): Tool
   }
 
   const flatTools = flattenToolCategories(siteConfig.toolCategories)
-  return (
-    flatTools.find((tool) => candidateList.includes(normalizeSeoPath(tool.url))) ||
-    null
-  )
+  for (const candidate of candidateList) {
+    const tool = flatTools.find((item) => normalizeSeoPath(item.url) === candidate)
+    if (tool) return tool
+  }
+  return null
+}
+
+let localToolList: Tool[] | null = null
+
+/** 函数说明：从本地工具注册表读取页面专属文案，接口不可用或目录为空时仍保留当前工具身份。 */
+const findLocalToolSeo = (route: RouteLike): LocalToolSeo | null => {
+  const path = normalizeSeoPath(route.path || '').split('?')[0]
+  const override = (toolSeoOverrides as Record<string, Omit<LocalToolSeo, 'url'>>)[path]
+  if (override) return { ...override, url: path }
+  if (!localToolList) localToolList = flattenToolCategories(getToolsCate())
+  for (const candidate of buildRouteMatchCandidates(route)) {
+    const tool = localToolList.find((item) => normalizeSeoPath(item.url) === candidate)
+    if (tool) {
+      return {
+        title: tool.title,
+        description: tool.desc,
+        keywords: [tool.title, tool.cate, '在线工具'].filter(Boolean).join(','),
+        url: tool.url
+      }
+    }
+  }
+  return null
 }
 
 /**
@@ -105,10 +138,11 @@ const findPageSeoSource = (siteConfig: SitePublicConfig, route: RouteLike): Site
     return null
   }
 
-  return (
-    siteConfig.seoPages.find((item) => candidateList.includes(normalizeSeoPath(item.path))) ||
-    null
-  )
+  for (const candidate of candidateList) {
+    const page = siteConfig.seoPages.find((item) => normalizeSeoPath(item.path) === candidate)
+    if (page) return page
+  }
+  return null
 }
 
 /**
@@ -122,6 +156,41 @@ const pickFirstText = (...values: unknown[]): string => {
     }
   }
   return ''
+}
+
+/** 函数说明：比较 SEO 文案时忽略大小写和标点，识别旧数据中复制到工具页的站点通用文案。 */
+const normalizeSeoComparison = (value: unknown): string => String(value || '')
+  .trim()
+  .toLowerCase()
+  .replace(/[\s\p{P}\p{S}]/gu, '')
+
+/** 函数说明：工具详情仅接受独立文案，拒绝全站默认值和常见历史通用标题；非工具页保留原有配置规则。 */
+const pickToolSpecificText = (siteConfig: SitePublicConfig, ...values: unknown[]): string => {
+  const siteWideValues = [
+    siteConfig.webName,
+    siteConfig.seoDefaultTitle,
+    siteConfig.seoDefaultDescription,
+    import.meta.env.VITE_APP_TITLE,
+    import.meta.env.VITE_APP_DESC
+  ].map(normalizeSeoComparison).filter(Boolean)
+  for (const value of values) {
+    const text = pickFirstText(value)
+    const comparable = normalizeSeoComparison(text)
+    if (!comparable || siteWideValues.includes(comparable)) continue
+    if (/^(?:uied(?:tools)?|tools)?(?:免费)?(?:在线)?工具(?:大全|集合|集|箱)?(?:tools)?$/.test(comparable)) continue
+    return text
+  }
+  return ''
+}
+
+/** 函数说明：移除统计查询参数；仅目录明确声明且与当前入口匹配的业务查询才进入规范链接。 */
+const resolveCanonicalPath = (route: RouteLike, declaredPaths: unknown[]): string => {
+  const candidates = buildRouteMatchCandidates(route)
+  for (const declaredPath of declaredPaths) {
+    const normalized = normalizeSeoPath(String(declaredPath || ''))
+    if (normalized.includes('?') && candidates.includes(normalized)) return normalized
+  }
+  return normalizeSeoPath(route.path || '/').split('?')[0] || '/'
 }
 
 /**
@@ -149,8 +218,17 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
   const routeMeta = route.meta || {}
   const toolSource = findToolSeoSource(siteConfig, route)
   const pageSource = findPageSeoSource(siteConfig, route)
+  const localSource = findLocalToolSeo(route)
+  const isToolPage = String(route.path || '').startsWith('/tools/')
   const webName = siteConfig.webName || import.meta.env.VITE_APP_TITLE || 'UIED Tools'
-  const fallbackTitle = pickFirstText(
+  const fallbackTitle = isToolPage ? pickToolSpecificText(
+    siteConfig,
+    pageSource?.title,
+    toolSource?.seoTitle,
+    routeMeta.title,
+    localSource?.title,
+    toolSource?.title
+  ) || webName : pickFirstText(
     pageSource?.title,
     toolSource?.seoTitle,
     routeMeta.title,
@@ -162,9 +240,17 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     toolSource?.seoKeywords,
     pageSource?.keywords,
     routeMeta.keywords,
+    localSource?.keywords,
     siteConfig.seoDefaultKeywords
   )
-  const fallbackDescription = pickFirstText(
+  const fallbackDescription = isToolPage ? pickToolSpecificText(
+    siteConfig,
+    toolSource?.seoDescription,
+    pageSource?.description,
+    routeMeta.description,
+    localSource?.description,
+    toolSource?.desc
+  ) : pickFirstText(
     toolSource?.seoDescription,
     pageSource?.description,
     routeMeta.description,
@@ -189,7 +275,8 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     description: fallbackDescription,
     image: fallbackImage,
     geoSummary,
-    geoQuestions
+    geoQuestions,
+    canonicalPath: resolveCanonicalPath(route, [pageSource?.path, toolSource?.url, localSource?.url])
   }
 }
 
@@ -261,7 +348,7 @@ const upsertRouteStructuredData = (route: RouteLike, payload: RouteStructuredDat
  */
 const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConfig, resolvedSeo: ResolvedSeoPayload): void => {
   const siteUrl = String(import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/+$/, '')
-  const canonicalPath = normalizeSeoPath(route.fullPath || route.path || '/') || '/'
+  const canonicalPath = resolvedSeo.canonicalPath
   const currentUrl = new URL(canonicalPath, `${siteUrl}/`).toString()
   const absoluteImageUrl = /^https?:\/\//i.test(resolvedSeo.image)
     ? resolvedSeo.image
@@ -309,6 +396,7 @@ const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConf
  * 函数说明：使用默认站点配置立即写入 SEO，作为后台配置异步回填前的同步兜底。
  */
 export const applyRouteSeoFallback = (route: RouteLike): void => {
+  seoRequestSerial += 1
   if (typeof document === 'undefined') {
     return
   }
@@ -325,7 +413,15 @@ export const applyRouteSeo = async (route: RouteLike): Promise<void> => {
     return
   }
   const requestSerial = ++seoRequestSerial
-  const siteConfig = await getSitePublicConfig()
+  const fallbackConfig = getDefaultSitePublicConfig()
+  applyResolvedSeoToDocument(route, fallbackConfig, resolveRouteSeoPayload(route, fallbackConfig))
+  let siteConfig: SitePublicConfig
+  try {
+    siteConfig = await getSitePublicConfig()
+  } catch {
+    // 配置不可用时保留已写入的工具专属兜底，避免拒绝的 Promise 清空元数据。
+    return
+  }
   if (requestSerial !== seoRequestSerial) {
     return
   }

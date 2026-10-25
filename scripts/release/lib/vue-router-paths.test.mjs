@@ -48,6 +48,11 @@ test('生成的 sitemap 全部命中可索引页面，旧链接生成保留参�
     }
     assert.match(allowlist, /location = \/404 \{\s+add_header X-Robots-Tag "noindex, nofollow" always;\s+return 404;/)
     assert.match(allowlist, /location = \/tools\/json\/ \{\s+try_files \$uri \$uri\/ \/index.html;/)
+    for (const route of ['/tools/qrcode', '/tools/dev/json-format']) {
+      for (const variant of [route, `${route}/`]) {
+        assert.ok(allowlist.includes(`location = ${variant} {\n    try_files /_prerender${route}.html =404;\n}`))
+      }
+    }
   } finally {
     fs.rmSync(temporaryDir, { recursive: true, force: true })
   }

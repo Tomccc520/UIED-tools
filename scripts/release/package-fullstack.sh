@@ -42,9 +42,14 @@ RELEASE_PATCH_FILES=(
 require_build_artifacts() {
   local required_paths=(
     "${ROOT_DIR}/dist/index.html"
+    "${ROOT_DIR}/dist/_prerender/manifest.json"
     "${BACKEND_DIR}/admin/dist/index.html"
     "${BACKEND_DIR}/sql/install.sql"
   )
+
+  while IFS= read -r route_path; do
+    required_paths+=("${ROOT_DIR}/dist/_prerender${route_path}.html")
+  done < <(node -p "require('${ROOT_DIR}/src/config/prerender-routes.json').map(route => route.path).join('\\n')")
 
   for required_path in "${required_paths[@]}"; do
     if [[ ! -f "${required_path}" ]]; then

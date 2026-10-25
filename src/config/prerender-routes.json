@@ -1,0 +1,12 @@
+[
+  {
+    "path": "/tools/qrcode",
+    "readySelector": ".uied-tool-view textarea[aria-label=\"二维码内容\"]",
+    "headingIncludes": "二维码"
+  },
+  {
+    "path": "/tools/dev/json-format",
+    "readySelector": ".json-format-page textarea[aria-label=\"输入 JSON\"]",
+    "headingIncludes": "JSON"
+  }
+]

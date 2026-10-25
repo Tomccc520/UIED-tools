@@ -1,0 +1,12 @@
+{
+  "/tools/qrcode": {
+    "title": "免费二维码生成器",
+    "description": "免费在线生成网址和文本二维码，支持自定义颜色、尺寸、纠错级别和点阵样式，实时预览并下载二维码图片。",
+    "keywords": "二维码生成器,在线二维码,网址二维码,文本二维码,二维码样式,自定义二维码"
+  },
+  "/tools/dev/json-format": {
+    "title": "JSON 格式化与压缩工具",
+    "description": "在线校验、格式化和压缩 JSON，支持 2 空格、4 空格与 Tab 缩进，保留大整数和小数原值，结果可一键复制；数据在浏览器本地处理。",
+    "keywords": "JSON格式化,JSON压缩,JSON校验,JSON缩进,JSON大整数,在线JSON工具"
+  }
+}
