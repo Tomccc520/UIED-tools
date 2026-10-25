@@ -11,6 +11,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { SitePublicConfig } from './siteConfig'
 import { getDefaultSitePublicConfig, getSitePublicConfig } from './siteConfig'
 import { applyRouteSeo, applyRouteSeoFallback } from './siteSeo'
+import toolSeoOverrides from '@/config/tool-seo-overrides.json'
+
+const compressionPaths = [
+  '/tools/image-compress',
+  '/tools/gif-compress',
+  '/tools/pdf-compress',
+  '/tools/video/compress'
+] as const
 
 vi.mock('./siteConfig', async (importOriginal) => ({
   ...await importOriginal<typeof import('./siteConfig')>(),
@@ -26,6 +34,17 @@ const currentSeo = () => ({
   description: document.querySelector('meta[name="description"]')?.getAttribute('content'),
   canonical: document.querySelector('link[rel="canonical"]')?.getAttribute('href')
 })
+
+/** 函数说明：按实际构建配置核对压缩工具元数据，避免测试另存一份容易失步的文案。 */
+const expectCompressionSeo = (path: typeof compressionPaths[number]) => {
+  const expected = toolSeoOverrides[path]
+  expect(currentSeo()).toEqual({
+    title: `${expected.title} - UIED-Tools`,
+    description: expected.description,
+    canonical: new URL(path, window.location.origin).href
+  })
+  expect(document.querySelector('meta[property="og:url"]')?.getAttribute('content')).toBe(currentSeo().canonical)
+}
 
 /** 函数说明：为测试配置添加一个后台工具目录项，其他配置保持默认值。 */
 const configWithTool = (url: string, fields: Record<string, unknown>): SitePublicConfig => ({
@@ -109,6 +128,41 @@ describe('siteSeo', () => {
     expect(document.title).toContain('图片压缩')
     expect(currentSeo().description).toMatch(/图片|JPG|PNG/)
     expect(currentSeo().description).not.toBe('UIED免费在线工具大全')
+  })
+
+  it('四款压缩工具均有独立标题描述，追踪参数和 hash 不进入 canonical', () => {
+    const titles = new Set<string>()
+    const descriptions = new Set<string>()
+    for (const path of compressionPaths) {
+      applyRouteSeoFallback(toolRoute(path, `${path}?utm_source=qa#upload`))
+      expectCompressionSeo(path)
+      titles.add(document.title)
+      descriptions.add(currentSeo().description || '')
+    }
+    expect(titles.size).toBe(compressionPaths.length)
+    expect(descriptions.size).toBe(compressionPaths.length)
+  })
+
+  it.each(compressionPaths)('%s 后台请求失败时仍保留工具专属 SEO', async (path) => {
+    vi.mocked(getSitePublicConfig).mockRejectedValue(new Error('network unavailable'))
+    applyRouteSeoFallback(toolRoute(path))
+
+    await expect(applyRouteSeo(toolRoute(path))).resolves.toBeUndefined()
+    expectCompressionSeo(path)
+  })
+
+  it.each(compressionPaths)('%s 不被后台工具或页面中复制的全站文案覆盖', async (path) => {
+    const config = configWithTool(path, {
+      seoTitle: 'UIED免费在线工具大全 - Tools',
+      seoDescription: 'UIED免费在线工具大全'
+    })
+    config.seoDefaultTitle = 'UIED免费在线工具大全'
+    config.seoDefaultDescription = 'UIED免费在线工具大全'
+    config.seoPages = [{ path, title: config.seoDefaultTitle, description: config.seoDefaultDescription, keywords: '', image: '' }]
+    vi.mocked(getSitePublicConfig).mockResolvedValue(config)
+
+    await applyRouteSeo(toolRoute(path))
+    expectCompressionSeo(path)
   })
 
   it('后台工具和页面中复制的全站泛文案不能覆盖详情页专属兜底', async () => {

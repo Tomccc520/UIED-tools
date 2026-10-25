@@ -8,5 +8,25 @@
     "path": "/tools/dev/json-format",
     "readySelector": ".json-format-page textarea[aria-label=\"输入 JSON\"]",
     "headingIncludes": "JSON"
+  },
+  {
+    "path": "/tools/image-compress",
+    "readySelector": ".image-upload__trigger[aria-label=\"选择图片\"]",
+    "headingIncludes": "图片压缩"
+  },
+  {
+    "path": "/tools/gif-compress",
+    "readySelector": ".gif-upload[role=\"button\"]",
+    "headingIncludes": "GIF"
+  },
+  {
+    "path": "/tools/pdf-compress",
+    "readySelector": ".pdf-upload-area .el-upload-dragger",
+    "headingIncludes": "PDF"
+  },
+  {
+    "path": "/tools/video/compress",
+    "readySelector": ".video-compress-page button[aria-label=\"上传需要压缩的视频\"]",
+    "headingIncludes": "视频压缩"
   }
 ]

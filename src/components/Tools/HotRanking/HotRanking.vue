@@ -75,16 +75,6 @@ const resolveToolRankingPageDescription = (value: string) => {
 }
 
 /**
- * 函数说明：同步独立热榜页浏览器标题，避免页面正文与浏览器标题口径不一致。
- */
-const syncToolRankingDocumentTitle = () => {
-  if (typeof document === 'undefined') {
-    return
-  }
-  document.title = `${toolRankingPageTitle.value} - Tools`
-}
-
-/**
  * 函数说明：读取后台热榜页面配置，并为榜单请求同步页面展示参数。
  */
 const loadToolRankingPageConfig = async () => {
@@ -103,7 +93,6 @@ const loadToolRankingPageConfig = async () => {
     activeToolRankingPeriod.value = 'week'
     toolRankingPageLimit.value = 12
   } finally {
-    syncToolRankingDocumentTitle()
     pageLoading.value = false
   }
 }

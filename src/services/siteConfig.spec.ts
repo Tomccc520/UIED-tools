@@ -7,6 +7,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import defaultChangelogTimeline from '@/constants/changelogTimeline'
+import toolSeoOverrides from '@/config/tool-seo-overrides.json'
+import { getImageCompressToolDescription } from '@/constants/imageCompress'
 import {
   getRequiredSitePublicConfig,
   getSitePublicConfig,
@@ -272,6 +274,46 @@ describe('getRequiredSitePublicConfig', () => {
     expect(getSiteConfigErrorMessage(new Error('private details'))).not.toContain('private details')
   })
 
+})
+
+describe('历史压缩工具描述', () => {
+  afterEach(() => vi.unstubAllGlobals())
+
+  const compressionPaths = ['/tools/image-compress', '/tools/gif-compress', '/tools/pdf-compress', '/tools/video/compress'] as const
+
+  /** 函数说明：经公共配置读取链路返回单个工具，校验真实字段适配而非单独复述转换函数。 */
+  const readTool = async (url: string, fields: Record<string, string>) => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200,
+      json: async () => ({ code: 200, data: { loginEnabled: false, toolsCategoryTree: [
+        { id: 1, title: '工具', list: [{ id: 2, title: '压缩', list: [{ id: 3, title: '后台工具', url, ...fields }] }] }
+      ] } })
+    }))
+    const config = await getRequiredSitePublicConfig()
+    return config.toolCategories[0].list[0].list[0]
+  }
+
+  it.each(compressionPaths)('%s 的已知旧默认描述、SEO 和 GEO 均使用真实能力文案', async (url) => {
+    const seo = toolSeoOverrides[url]
+    const legacy = seo.legacyDescriptions[0]
+    const tool = await readTool(url, { desc: legacy, seoDescription: legacy, geoSummary: legacy, seoTitle: '运营独立标题' })
+    expect(tool.desc).toBe(url === '/tools/image-compress' ? getImageCompressToolDescription() : seo.description)
+    expect(tool.seoDescription).toBe(seo.description)
+    expect(tool.geoSummary).toBe(seo.description)
+    expect(tool.seoTitle).toBe('运营独立标题')
+  })
+
+  it.each(compressionPaths)('%s 的后台自定义描述和独立 SEO/GEO 保持不变', async (url) => {
+    const fields = { desc: '自定义工具说明', seoDescription: '运营编写的工具 SEO 文案', geoSummary: '运营编写的 GEO 摘要', seoTitle: '运营独立标题' }
+    const tool = await readTool(url, fields)
+    expect(tool).toMatchObject({ ...fields, desc: url === '/tools/image-compress' ? getImageCompressToolDescription() : fields.desc })
+  })
+
+  it('相同文字出现在其他工具中时不跨路由替换', async () => {
+    const legacy = toolSeoOverrides['/tools/gif-compress'].legacyDescriptions[0]
+    const tool = await readTool('/tools/other', { desc: legacy, seoDescription: legacy, geoSummary: legacy })
+    expect(tool).toMatchObject({ desc: legacy, seoDescription: legacy, geoSummary: legacy })
+  })
 })
 
 describe('normalizeToolSeoTitle', () => {

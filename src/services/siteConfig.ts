@@ -15,6 +15,7 @@ import {
   sanitizeAdvertisingHtml
 } from '@/utils/safeAdvertisingHtml'
 import { getImageCompressToolDescription } from '@/constants/imageCompress'
+import toolSeoOverrides from '@/config/tool-seo-overrides.json'
 
 /**
  * 函数说明：清理后台 SEO 标题中重复拼接的固定短语，兼容历史配置数据。
@@ -990,6 +991,13 @@ const normalizeLoginToolConsumeRules = (input: unknown): SiteLoginToolConsumeRul
     .filter((item): item is SiteLoginToolConsumeRule => Boolean(item))
 }
 
+/** 函数说明：按工具路径精确迁移已知旧默认描述；未登记的文字和后台自定义文案原样保留。 */
+const normalizeLegacyToolDescription = (url: string, value: unknown): string => {
+  const text = String(value || '').trim()
+  const defaults = (toolSeoOverrides as Record<string, { description: string; legacyDescriptions?: string[] }>)[url]
+  return defaults?.legacyDescriptions?.includes(text) ? defaults.description : text
+}
+
 /**
  * 函数说明：清洗后台工具分类树配置，仅保留前端渲染所需字段
  */
@@ -1041,7 +1049,7 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
               // 图片压缩限制是浏览器本地能力，后台旧文案不能覆盖前端真实上限。
               const toolDesc = toolUrl === '/tools/image-compress'
                 ? getImageCompressToolDescription()
-                : rawToolDesc
+                : normalizeLegacyToolDescription(toolUrl, rawToolDesc)
               const isExternal = /^https?:\/\//i.test(toolUrl)
               const cate = String(toolRecord.cate || subCategoryTitle).trim() || subCategoryTitle
               const releaseDate = String(toolRecord.releaseDate || '').trim()
@@ -1051,9 +1059,9 @@ const normalizeToolCategories = (input: unknown): ToolCategory[] => {
               const text = String(toolRecord.text || '').trim()
               const seoTitle = normalizeToolSeoTitle(toolRecord.seoTitle)
               const seoKeywords = String(toolRecord.seoKeywords || '').trim()
-              const seoDescription = String(toolRecord.seoDescription || '').trim()
+              const seoDescription = normalizeLegacyToolDescription(toolUrl, toolRecord.seoDescription)
               const seoImage = String(toolRecord.seoImage || '').trim()
-              const geoSummary = String(toolRecord.geoSummary || '').trim()
+              const geoSummary = normalizeLegacyToolDescription(toolUrl, toolRecord.geoSummary)
               const geoQuestions = String(toolRecord.geoQuestions || '').trim()
               const toolKey = String(toolRecord.toolKey || '').trim().toLowerCase()
               const consumePointsRaw = Number(toolRecord.consumePoints)

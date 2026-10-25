@@ -8,5 +8,29 @@
     "title": "JSON 格式化与压缩工具",
     "description": "在线校验、格式化和压缩 JSON，支持 2 空格、4 空格与 Tab 缩进，保留大整数和小数原值，结果可一键复制；数据在浏览器本地处理。",
     "keywords": "JSON格式化,JSON压缩,JSON校验,JSON缩进,JSON大整数,在线JSON工具"
+  },
+  "/tools/image-compress": {
+    "legacyDescriptions": ["支持JPG、PNG、GIF等格式图片压缩，最大支持10MB"],
+    "title": "免费在线图片压缩工具",
+    "description": "在线批量压缩 JPG、PNG 和 WebP 图片，支持调整质量、保持原尺寸、PNG 无损或减色压缩，预览对比后单张或打包下载；图片在浏览器本地处理。",
+    "keywords": "图片压缩,批量图片压缩,JPG压缩,PNG无损压缩,WebP压缩,保持原尺寸"
+  },
+  "/tools/gif-compress": {
+    "legacyDescriptions": ["在线GIF动图压缩工具，支持批量压缩、调整尺寸，快速实现GIF体积压缩"],
+    "title": "免费 GIF 动图压缩工具",
+    "description": "在浏览器本地压缩 GIF 动图，可调整尺寸、颜色数量和帧率，对比原图与压缩结果后下载；另有视频转 GIF 入口。",
+    "keywords": "GIF压缩,动图压缩,在线GIF压缩,GIF尺寸调整,GIF帧率,GIF减色"
+  },
+  "/tools/pdf-compress": {
+    "legacyDescriptions": ["在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传"],
+    "title": "免费在线 PDF 压缩工具",
+    "description": "在浏览器本地批量压缩 PDF，可调整 DPI、图片质量和色彩模式，预览后单个或打包下载。采用页面栅格化方式，文字搜索、复制和表单交互不会保留，请保留原文件。",
+    "keywords": "PDF压缩,批量PDF压缩,PDF体积优化,PDF图片质量,PDF栅格化,在线PDF工具"
+  },
+  "/tools/video/compress": {
+    "legacyDescriptions": ["在线压缩 MP4、AVI、MOV、MKV 等视频格式，在不改变分辨率前提下减小体积"],
+    "title": "免费视频压缩工具",
+    "description": "在线视频压缩，专业模式输出 H.264 MP4；浏览器本地模式可按比例、目标大小或码率调整，输出格式取决于浏览器支持。支持预览对比与下载，压缩效果取决于源视频。",
+    "keywords": "视频压缩,MP4压缩,H264压缩,视频目标大小,视频码率,视频分辨率"
   }
 }

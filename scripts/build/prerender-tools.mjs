@@ -77,8 +77,9 @@ export const validatePrerenderHtml = (html, route, seo, canonicalOrigin) => {
   const $ = load(html)
   const canonical = new URL(route.path, `${canonicalOrigin}/`).href
   const bodyText = $('#app .uied-tool-view').text().replace(/\s+/g, ' ').trim()
-  const heading = $('#app .uied-tool-view h1').first().text().trim()
-  if (!heading.includes(route.headingIncludes) || bodyText.length < 100 || !$(route.readySelector).length) {
+  const headings = $('#app .uied-tool-view h1')
+  const heading = headings.first().text().trim()
+  if (headings.length !== 1 || !heading.includes(route.headingIncludes) || bodyText.length < 100 || !$(route.readySelector).length) {
     throw new Error(`工具正文尚未渲染完成：${route.path}`)
   }
   if ($('head > title').length !== 1 || $('head meta[name="description"]').length !== 1 ||

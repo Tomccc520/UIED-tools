@@ -272,9 +272,9 @@ watch(timeLeft, () => {
   }
 })
 
+/** 函数说明：离开番茄钟时停止计时；新页面标题由统一路由 SEO 服务维护。 */
 onUnmounted(() => {
   if (timer) clearInterval(timer)
-  document.title = 'Tools Web' // 恢复默认标题
 })
 
 const guideSteps = [

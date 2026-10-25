@@ -31,6 +31,7 @@ test('首个 HTML 必须具备当前工具正文、H1、输入区和独立 SEO',
 test('空 SPA、错误工具或未就绪表单均不能通过构建验收', () => {
   assert.throws(() => validatePrerenderHtml('<div id="app"></div>', route, seo, 'https://uiedtool.com'), /正文/)
   assert.throws(() => validatePrerenderHtml(fixture().replace('免费二维码生成</h1>', '首页</h1>'), route, seo, 'https://uiedtool.com'), /正文/)
+  assert.throws(() => validatePrerenderHtml(fixture().replace('</main>', '<h1>额外标题</h1></main>'), route, seo, 'https://uiedtool.com'), /正文/)
   assert.throws(() => validatePrerenderHtml(fixture().replace('aria-label="二维码内容"', 'aria-label="其他"'), route, seo, 'https://uiedtool.com'), /正文/)
 })
 
