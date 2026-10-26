@@ -1,16 +1,26 @@
+<!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-26
+ */
+-->
 <template>
     <a-breadcrumb class="app-breadcrumb">
         <a-breadcrumb-item>
             <icon-apps />
         </a-breadcrumb-item>
         <a-breadcrumb-item v-for="item in breadcrumbs" :key="item.path">
-            {{ item.meta.title }}
+            {{ configurationTitle(resolveAdminNavigationTarget(item.path, item.meta.query), item.meta.title, item.children.length > 0) }}
         </a-breadcrumb-item>
     </a-breadcrumb>
 </template>
 <script setup lang="ts">
 import { IconApps } from '@arco-design/web-vue/es/icon'
 import { useWatchRoute } from '@/hooks/useWatchRoute'
+import { configurationTitle } from '@/utils/site-configuration'
+import { resolveAdminNavigationTarget } from '@/utils/admin-navigation'
 import type { RouteLocationMatched, RouteLocationNormalizedLoaded } from 'vue-router'
 const breadcrumbs = ref<RouteLocationMatched[]>([])
 

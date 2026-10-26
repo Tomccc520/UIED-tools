@@ -8,33 +8,33 @@
 -->
 <template>
     <div class="admin-page">
-        <a-page-header title="管理员管理" subtitle="统一维护后台管理员账号、状态与角色归属。">
+        <admin-page-header title="管理员管理" description="统一维护后台管理员账号、状态与角色归属。">
             <template #extra>
                 <a-space>
                     <a-tag color="arcoblue" bordered>已选 {{ selectedAdminRows.length }}</a-tag>
-                    <a-button data-admin-smoke="admin-query" @click="queryAdmins">查询</a-button>
-                    <a-button data-admin-smoke="admin-reset" @click="resetFilters">重置筛选</a-button>
-                    <a-button data-admin-smoke="admin-refresh" @click="refreshLists">
+                    <a-button data-admin-smoke="admin-query" :disabled="isBatchDeleting" @click="queryAdmins">查询</a-button>
+                    <a-button data-admin-smoke="admin-reset" :disabled="isBatchDeleting" @click="resetFilters">重置筛选</a-button>
+                    <a-button data-admin-smoke="admin-refresh" :disabled="isBatchDeleting" @click="refreshLists">
                         <template #icon>
                             <icon-refresh />
                         </template>
                         刷新
                     </a-button>
                     <a-button
-                        :disabled="selectedAdminRows.length === 0"
+                        :disabled="selectedAdminRows.length === 0 || isBatchDeleting"
                         @click="clearAdminSelection"
                     >
                         清空选择
                     </a-button>
-                    <a-button
+                    <a-button :loading="isBatchDeleting"
                         v-perms="['system:admin:del']"
                         status="danger"
-                        :disabled="selectedAdminRows.length === 0"
+                        :disabled="selectedAdminRows.length === 0 || isBatchDeleting"
                         @click="handleBatchDelete"
                     >
                         批量删除
                     </a-button>
-                    <a-button data-admin-smoke="admin-add" v-perms="['system:admin:add']" type="primary" @click="handleAdd">
+                    <a-button data-admin-smoke="admin-add" :disabled="isBatchDeleting" v-perms="['system:admin:add']" type="primary" @click="handleAdd">
                         <template #icon>
                             <icon-plus />
                         </template>
@@ -42,7 +42,7 @@
                     </a-button>
                 </a-space>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-grid :cols="{ xs: 1, md: 2, lg: 4 }" :col-gap="12" :row-gap="12" class="admin-metrics">
             <a-grid-item>
@@ -72,7 +72,7 @@
         </a-grid>
 
 
-        <a-card class="general-card" title="管理员列表" :bordered="false">
+        <a-card :inert="isBatchDeleting ? '' : undefined" class="general-card" title="管理员列表" :bordered="false">
             <a-grid :cols="{ xs: 1, md: 12 }" :col-gap="12" :row-gap="12" class="admin-filter-grid">
                 <a-grid-item :span="{ xs: 12, md: 3 }">
                     <a-input
@@ -133,8 +133,8 @@
                         </div>
                     </div>
                     <a-space wrap>
-                        <a-button @click="clearAdminSelection">清空选择</a-button>
-                        <a-button
+                        <a-button :disabled="isBatchDeleting" @click="clearAdminSelection">清空选择</a-button>
+                        <a-button :disabled="isBatchDeleting" :loading="isBatchDeleting"
                             v-perms="['system:admin:del']"
                             status="danger"
                             @click="handleBatchDelete"
@@ -158,7 +158,7 @@
                 class="mt-4"
                 :data="adminTableData"
                 :columns="adminColumns"
-                :loading="pager.loading"
+                :loading="pager.loading || isBatchDeleting"
                 :pagination="false"
                 :bordered="false"
                 row-key="id"
@@ -234,6 +234,7 @@
 </template>
 
 <script lang="ts" setup name="permissionAdmin">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { IconPlus, IconRefresh } from '@arco-design/web-vue/es/icon'
 import { adminDelete, adminLists, adminStatus } from '@/api/perms/admin'
@@ -250,6 +251,7 @@ interface ActionFeedbackState {
 
 const editRef = shallowRef<InstanceType<typeof EditPopup>>()
 const showEdit = ref(false)
+const isBatchDeleting = ref(false)
 const selectedAdminKeys = ref<Array<string | number>>([])
 const actionFeedback = reactive<ActionFeedbackState>({
     type: 'info',
@@ -353,6 +355,7 @@ const rowSelection = computed(() => ({
     showCheckedAll: true,
     selectedRowKeys: selectedAdminKeys.value,
     onChange: (keys: Array<string | number>) => {
+        if (isBatchDeleting.value) return
         selectedAdminKeys.value = keys
     }
 }))
@@ -389,9 +392,11 @@ const fetchAdminLists = async () => {
         selectedAdminKeys.value = selectedAdminKeys.value.filter((key) =>
             adminTableData.value.some((item) => Number(item.id) === Number(key))
         )
+        return true
     } catch {
         setActionFeedback('error', '管理员数据加载失败，请检查登录态或接口权限')
         feedback.msgError('管理员数据加载失败，请检查登录态或接口权限')
+        return false
     }
 }
 
@@ -399,6 +404,7 @@ const fetchAdminLists = async () => {
  * 函数说明：执行查询并回到第一页，保证筛选结果与分页一致。
  */
 const queryAdmins = () => {
+    if (isBatchDeleting.value) return
     clearActionFeedback()
     resetPage()
 }
@@ -407,7 +413,8 @@ const queryAdmins = () => {
  * 函数说明：刷新管理员列表并反馈刷新状态。
  */
 const refreshLists = async () => {
-    await fetchAdminLists()
+    if (isBatchDeleting.value) return
+    if (!await fetchAdminLists()) return
     setActionFeedback('success', '管理员列表已刷新')
     feedback.msgSuccess('管理员列表已刷新')
 }
@@ -416,6 +423,7 @@ const refreshLists = async () => {
  * 函数说明：重置筛选条件并刷新列表。
  */
 const resetFilters = async () => {
+    if (isBatchDeleting.value) return
     selectedAdminKeys.value = []
     await resetParams()
     setActionFeedback('info', '筛选条件已重置')
@@ -425,6 +433,7 @@ const resetFilters = async () => {
  * 函数说明：清空当前批量选择状态，避免误操作。
  */
 const clearAdminSelection = () => {
+    if (isBatchDeleting.value) return
     if (!selectedAdminKeys.value.length) {
         setActionFeedback('info', '当前没有已选管理员')
         return
@@ -456,6 +465,7 @@ const handleEdit = async (data: Record<string, any>) => {
  * 函数说明：切换单个管理员状态，失败时自动刷新列表回滚界面状态。
  */
 const changeStatus = async (record: Record<string, any>) => {
+    if (isBatchDeleting.value) return
     const currentIsDisable = Number(record.isDisable || 0)
     const actionText = currentIsDisable === 0 ? '停用' : '启用'
     try {
@@ -474,6 +484,7 @@ const changeStatus = async (record: Record<string, any>) => {
  * 函数说明：删除管理员并刷新列表。
  */
 const handleDelete = async (id: number) => {
+    if (isBatchDeleting.value) return
     await feedback.confirm('确定要删除该管理员吗？')
     await adminDelete({ id })
     feedback.msgSuccess('删除成功')
@@ -482,60 +493,40 @@ const handleDelete = async (id: number) => {
 }
 
 /**
- * 函数说明：批量删除已选管理员，输出成功/失败统计，提升运营批处理效率。
+ * 函数说明：锁定并快照批量删除目标，系统管理员仍跳过；失败项保留选中，读取失败不冒充刷新成功。
  */
 const handleBatchDelete = async () => {
-    if (!selectedAdminRows.value.length) {
+    if (isBatchDeleting.value) return
+    const snapshot = selectedAdminRows.value.map(row => ({ id: Number(row.id), key: selectedAdminKeys.value.find(key => Number(key) === Number(row.id)) ?? row.id }))
+    if (!snapshot.length) {
         setActionFeedback('warning', '请先选择要删除的管理员')
-        feedback.msgError('请先选择要删除的管理员')
         return
     }
-    await feedback.confirm(`确定删除已选择的 ${selectedAdminRows.value.length} 位管理员吗？`)
-
-    let successCount = 0
-    let failedCount = 0
-    let skippedCount = 0
-    for (const row of selectedAdminRows.value) {
-        const id = Number(row.id)
-        if (!Number.isFinite(id) || id <= 0) {
-            failedCount++
-            continue
+    isBatchDeleting.value = true
+    try {
+        try { await feedback.confirm(`确定删除已选择的 ${snapshot.length} 项管理员吗？`) }
+        catch { return }
+        const failed: typeof snapshot = []
+        let successCount = 0
+        let skippedCount = 0
+        for (const target of snapshot) {
+            if (target.id === 1) { skippedCount++; continue }
+            if (!Number.isFinite(target.id) || target.id <= 0) { failed.push(target); continue }
+            try { await adminDelete({ id: target.id }); successCount++ }
+            catch { failed.push(target) }
         }
-        if (id === 1) {
-            skippedCount++
-            continue
-        }
-        try {
-            await adminDelete({ id })
-            successCount++
-        } catch {
-            failedCount++
-        }
+        const refreshed = await fetchAdminLists()
+        selectedAdminKeys.value = failed.map(target => target.key)
+        const message = `批量删除完成：成功 ${successCount} 项，失败 ${failed.length} 项${skippedCount ? `，跳过 ${skippedCount} 项` : ''}${failed.length ? '。失败项已保留选中，可重试。' : ''}${refreshed ? '' : '。列表刷新未完成，请重新加载。'}`
+        const type = failed.length === snapshot.length ? 'error' : failed.length || skippedCount || !refreshed ? 'warning' : 'success'
+        setActionFeedback(type, message)
+        if (type === 'success') feedback.msgSuccess(message)
+        else if (type === 'warning') feedback.msgWarning(message)
+        else feedback.msgError(message)
+    } finally {
+        isBatchDeleting.value = false
     }
-
-    if (successCount > 0 && failedCount === 0) {
-        setActionFeedback('success', `批量删除完成：成功 ${successCount} 项`)
-        feedback.msgSuccess(`批量删除完成：成功 ${successCount} 项`)
-    } else if (successCount > 0 || skippedCount > 0) {
-        setActionFeedback(
-            'warning',
-            `批量删除完成：成功 ${successCount} 项，失败 ${failedCount} 项，跳过 ${skippedCount} 项`
-        )
-        feedback.msgSuccess(
-            `批量删除完成：成功 ${successCount} 项，失败 ${failedCount} 项，跳过 ${skippedCount} 项`
-        )
-    } else {
-        setActionFeedback('error', '批量删除失败，请检查权限后重试')
-        feedback.msgError('批量删除失败，请检查权限后重试')
-    }
-
-    if (skippedCount > 0) {
-        feedback.alertWarning('系统管理员不可删除，已自动跳过')
-    }
-    selectedAdminKeys.value = []
-    await fetchAdminLists()
 }
-
 onMounted(() => {
     void fetchAdminLists()
 })

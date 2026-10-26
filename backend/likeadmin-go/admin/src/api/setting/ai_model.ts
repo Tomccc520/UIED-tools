@@ -98,15 +98,26 @@ export function getAiModelDetail() {
     return request.get<AiModelDetail>({ url: '/setting/ai/model/detail' })
 }
 
-/**
- * 函数说明：保存 AI 抠图 API Provider、文本 Provider 与图片 AI 能力配置。
- */
-export function saveAiModel(params: {
+export type AiModelSavePayload = {
+    scope: 'matting'
+    modelId: string
+    mattingProviders: AiMattingProviderConfig[]
+} | {
+    scope: 'provider'
+    providers: AiProviderConfig[]
+} | {
+    scope: 'ability'
+    imageAbilities: AiImageAbilityConfig[]
+} | {
+    scope?: undefined
     modelId: string
     mattingProviders: AiMattingProviderConfig[]
     providers: AiProviderConfig[]
     imageAbilities: AiImageAbilityConfig[]
-}) {
+}
+
+/** 保存当前 AI 模块补丁；省略 scope 时兼容历史综合页的完整配置保存。 */
+export function saveAiModel(params: AiModelSavePayload) {
     return request.post({ url: '/setting/ai/model/save', params })
 }
 

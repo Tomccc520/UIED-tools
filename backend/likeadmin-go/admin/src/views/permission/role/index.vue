@@ -8,29 +8,29 @@
 -->
 <template>
     <div class="role-page">
-        <a-page-header title="角色管理" subtitle="统一管理后台角色、授权范围与成员规模。">
+        <admin-page-header title="角色管理" description="统一管理后台角色、授权范围与成员规模。">
             <template #extra>
                 <a-space>
                     <a-tag color="arcoblue" bordered>已选 {{ selectedRoleRows.length }}</a-tag>
-                    <a-button data-admin-smoke="role-reset" @click="resetFilters">重置筛选</a-button>
-                    <a-button data-admin-smoke="role-refresh" @click="refreshLists">
+                    <a-button data-admin-smoke="role-reset" :disabled="isBatchDeleting" @click="resetFilters">重置筛选</a-button>
+                    <a-button data-admin-smoke="role-refresh" :disabled="isBatchDeleting" @click="refreshLists">
                         <template #icon>
                             <icon-refresh />
                         </template>
                         刷新
                     </a-button>
-                    <a-button :disabled="selectedRoleRows.length === 0" @click="clearRoleSelection"
+                    <a-button :disabled="selectedRoleRows.length === 0 || isBatchDeleting" @click="clearRoleSelection"
                         >清空选择</a-button
                     >
-                    <a-button
+                    <a-button :loading="isBatchDeleting"
                         v-perms="['system:role:del']"
                         status="danger"
-                        :disabled="selectedRoleRows.length === 0"
+                        :disabled="selectedRoleRows.length === 0 || isBatchDeleting"
                         @click="handleBatchDelete"
                     >
                         批量删除
                     </a-button>
-                    <a-button data-admin-smoke="role-add" v-perms="['system:role:add']" type="primary" @click="handleAdd">
+                    <a-button data-admin-smoke="role-add" :disabled="isBatchDeleting" v-perms="['system:role:add']" type="primary" @click="handleAdd">
                         <template #icon>
                             <icon-plus />
                         </template>
@@ -38,7 +38,7 @@
                     </a-button>
                 </a-space>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-grid :cols="{ xs: 1, md: 3 }" :col-gap="12" :row-gap="12" class="role-metrics">
             <a-grid-item>
@@ -62,12 +62,12 @@
         </a-grid>
 
 
-        <a-card class="general-card" title="角色列表" :bordered="false">
+        <a-card :inert="isBatchDeleting ? '' : undefined" class="general-card" title="角色列表" :bordered="false">
             <a-grid :cols="{ xs: 1, md: 12 }" :col-gap="12" :row-gap="12" class="role-filter-grid">
                 <a-grid-item :span="{ xs: 12, md: 5 }">
                     <a-input-search
                         v-model="queryForm.keyword"
-                        data-admin-smoke="role-query"
+                        data-admin-smoke="role-query" :disabled="isBatchDeleting"
                         placeholder="搜索角色名称或说明"
                         allow-clear
                         @search="queryRoles"
@@ -112,8 +112,8 @@
                         </div>
                     </div>
                     <a-space wrap>
-                        <a-button @click="clearRoleSelection">清空选择</a-button>
-                        <a-button
+                        <a-button :disabled="isBatchDeleting" @click="clearRoleSelection">清空选择</a-button>
+                        <a-button :disabled="isBatchDeleting" :loading="isBatchDeleting"
                             v-perms="['system:role:del']"
                             status="danger"
                             @click="handleBatchDelete"
@@ -137,7 +137,7 @@
                 class="mt-4"
                 :data="pager.lists"
                 :columns="roleColumns"
-                :loading="pager.loading"
+                :loading="pager.loading || isBatchDeleting"
                 :pagination="false"
                 :bordered="false"
                 row-key="id"
@@ -208,6 +208,7 @@
 </template>
 
 <script lang="ts" setup name="role">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { IconPlus, IconRefresh } from '@arco-design/web-vue/es/icon'
 import { roleAll, roleDelete, roleLists } from '@/api/perms/role'
@@ -282,6 +283,7 @@ const roleEmptyDescription = computed(() => {
     }
     return '当前没有角色数据，建议先刷新或新增一条角色配置。'
 })
+const isBatchDeleting = ref(false)
 const selectedRoleKeys = ref<Array<string | number>>([])
 const selectedRoleRows = computed<Record<string, any>[]>(() => {
     if (!selectedRoleKeys.value.length) {
@@ -295,6 +297,7 @@ const rowSelection = computed(() => ({
     showCheckedAll: true,
     selectedRowKeys: selectedRoleKeys.value,
     onChange: (keys: Array<string | number>) => {
+        if (isBatchDeleting.value) return
         selectedRoleKeys.value = keys
     }
 }))
@@ -324,7 +327,7 @@ const fetchRoleLists = async () => {
             selectedRoleKeys.value = selectedRoleKeys.value.filter((key) =>
                 roleTableData.value.some((item) => Number(item.id) === Number(key))
             )
-            return
+            return true
         }
         const hasQuery =
             String(queryForm.keyword || '').trim() !== '' ||
@@ -339,9 +342,11 @@ const fetchRoleLists = async () => {
                 )
             }
         }
+        return true
     } catch (error) {
         setActionFeedback('error', '角色数据加载失败，请检查登录态或接口权限')
         feedback.msgError('角色数据加载失败，请检查登录态或接口权限')
+        return false
     }
 }
 
@@ -349,6 +354,7 @@ const fetchRoleLists = async () => {
  * 函数说明：执行角色筛选查询并回到第一页，确保条件变化后重新请求后端分页数据。
  */
 const queryRoles = async () => {
+    if (isBatchDeleting.value) return
     clearActionFeedback()
     selectedRoleKeys.value = []
     pager.page = 1
@@ -359,7 +365,8 @@ const queryRoles = async () => {
  * 函数说明：刷新角色列表并提示用户当前数据已更新。
  */
 const refreshLists = async () => {
-    await fetchRoleLists()
+    if (isBatchDeleting.value) return
+    if (!await fetchRoleLists()) return
     setActionFeedback('success', '角色列表已刷新')
     feedback.msgSuccess('角色列表已刷新')
 }
@@ -368,6 +375,7 @@ const refreshLists = async () => {
  * 函数说明：清空当前角色批量选择状态，避免误操作。
  */
 const clearRoleSelection = () => {
+    if (isBatchDeleting.value) return
     if (selectedRoleKeys.value.length === 0) {
         setActionFeedback('info', '当前没有已选角色')
         return
@@ -380,6 +388,7 @@ const clearRoleSelection = () => {
  * 函数说明：重置角色筛选条件，快速回到全量角色视图。
  */
 const resetFilters = () => {
+    if (isBatchDeleting.value) return
     queryForm.keyword = ''
     queryForm.memberScope = 'all'
     void queryRoles()
@@ -419,6 +428,7 @@ const handleAuth = async (data: any) => {
  * 函数说明：删除角色并刷新列表
  */
 const handleDelete = async (id: number) => {
+    if (isBatchDeleting.value) return
     await feedback.confirm('确定要删除？')
     await roleDelete({ id })
     feedback.msgSuccess('删除成功')
@@ -427,50 +437,39 @@ const handleDelete = async (id: number) => {
 }
 
 /**
- * 函数说明：批量删除角色并输出成功/失败统计，方便运营快速回收无效角色。
+ * 函数说明：锁定并快照角色删除目标，失败项保留选中可重试，确认取消时不发送删除请求。
  */
 const handleBatchDelete = async () => {
-    if (selectedRoleRows.value.length === 0) {
+    if (isBatchDeleting.value) return
+    const snapshot = selectedRoleRows.value.map(row => ({ id: Number(row.id), key: selectedRoleKeys.value.find(key => Number(key) === Number(row.id)) ?? row.id }))
+    if (!snapshot.length) {
         setActionFeedback('warning', '请先选择要删除的角色')
-        feedback.msgError('请先选择要删除的角色')
         return
     }
-    await feedback.confirm(`确定删除已选择的 ${selectedRoleRows.value.length} 项角色吗？`)
-
-    const targetIds = [...selectedRoleKeys.value]
-        .map((item) => Number(item))
-        .filter((id) => Number.isFinite(id))
-
-    let successCount = 0
-    let failedCount = 0
-    for (const id of targetIds) {
-        try {
-            await roleDelete({ id })
-            successCount++
-        } catch {
-            failedCount++
+    isBatchDeleting.value = true
+    try {
+        try { await feedback.confirm(`确定删除已选择的 ${snapshot.length} 项角色吗？`) }
+        catch { return }
+        const failed: typeof snapshot = []
+        let successCount = 0
+        let skippedCount = 0
+        for (const target of snapshot) {
+            if (!Number.isFinite(target.id) || target.id <= 0) { failed.push(target); continue }
+            try { await roleDelete({ id: target.id }); successCount++ }
+            catch { failed.push(target) }
         }
+        const refreshed = await fetchRoleLists()
+        selectedRoleKeys.value = failed.map(target => target.key)
+        const message = `批量删除完成：成功 ${successCount} 项，失败 ${failed.length} 项${skippedCount ? `，跳过 ${skippedCount} 项` : ''}${failed.length ? '。失败项已保留选中，可重试。' : ''}${refreshed ? '' : '。列表刷新未完成，请重新加载。'}`
+        const type = failed.length === snapshot.length ? 'error' : failed.length || skippedCount || !refreshed ? 'warning' : 'success'
+        setActionFeedback(type, message)
+        if (type === 'success') feedback.msgSuccess(message)
+        else if (type === 'warning') feedback.msgWarning(message)
+        else feedback.msgError(message)
+    } finally {
+        isBatchDeleting.value = false
     }
-
-    if (successCount > 0 && failedCount === 0) {
-        const successText = `批量删除完成：成功 ${successCount} 项`
-        setActionFeedback('success', successText)
-        feedback.msgSuccess(successText)
-    } else if (successCount > 0 && failedCount > 0) {
-        const warningText = `批量删除完成：成功 ${successCount} 项，失败 ${failedCount} 项`
-        setActionFeedback('warning', warningText)
-        feedback.msgSuccess(warningText)
-    } else {
-        setActionFeedback('error', '批量删除失败，请检查角色依赖或权限设置')
-        feedback.msgError('批量删除失败，请检查角色依赖或权限设置')
-    }
-    if (failedCount > 0) {
-        feedback.alertWarning('存在删除失败项（可能包含系统角色或仍被管理员绑定），请检查后重试')
-    }
-    selectedRoleKeys.value = []
-    await fetchRoleLists()
 }
-
 onMounted(() => {
     void fetchRoleLists()
 })

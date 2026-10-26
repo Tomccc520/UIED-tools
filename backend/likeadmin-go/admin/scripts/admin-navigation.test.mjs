@@ -117,3 +117,28 @@ test('空权限集合不生成菜单、快捷入口和分组', () => {
     assert.deepEqual(groupAdminNavigation([]), [])
     assert.deepEqual(searchAdminNavigation([], '广告'), [])
 })
+
+test('新版简短名称和历史用途都能查到原已授权入口，不生成额外权限', () => {
+    const records = [
+        ['tools_catalog', '工具主数据', ['工具管理', '工具上架']],
+        ['frontend_layout', '前端布局', ['首页内容', '每日学习']],
+        ['sidebar', '侧栏配置', ['前台菜单', '前台品牌', '侧边栏']],
+        ['header', '顶部配置', ['顶部与搜索', '一言']],
+        ['footer', '底部配置', ['页脚链接', '友情链接']],
+        ['tool_ranking_config', '排行展示配置', ['榜单展示', '周榜']],
+        ['tool_ranking_manage', '排行管理', ['榜单数据', '统计']],
+        ['seo', 'SEO/GEO设置', ['全站SEO', '收录']],
+        ['information', '网站信息', ['后台品牌', '基础资料', 'logo']],
+        ['filing', '网站备案', ['备案版权', 'icp']]
+    ]
+    const items = flattenAdminNavigation([{ ...menu('/official_site', '官网设置', 'M'), children: records.map(([path, title]) => menu(path, title)) }])
+    for (const [path, title, keywords] of records) {
+        for (const keyword of keywords) {
+            const result = searchAdminNavigation(items, keyword)
+            assert.ok(result.some(item => item.path === `/official_site/${path}`), `${keyword} 应找到原入口`)
+        }
+        assert.equal(items.find(item => item.path === `/official_site/${path}`).title, title, '检索别名不能写回服务端菜单标题')
+    }
+    assert.equal(items.length, records.length)
+    assert.deepEqual(searchAdminNavigation(items, 'AI模型'), [])
+})

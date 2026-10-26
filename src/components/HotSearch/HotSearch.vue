@@ -120,6 +120,7 @@ import {
   type HomepageLearningFeedItem,
   type HomepageLearningFeedResult
 } from '@/services/homepageLearning'
+import { needsConfigurationPreviewRefresh } from '@/services/configurationPreview'
 import '@/assets/io-hot.css'
 
 interface Article {
@@ -139,6 +140,7 @@ interface HotSectionConfig {
 interface HotSearchCacheData {
   sections: Record<string, Article[]>
   learningConfig: HomepageLearningFeedConfig
+  freshResponse?: boolean
 }
 
 const loading = ref(false)
@@ -271,14 +273,14 @@ const getCache = (): HotSearchCacheData | null => {
       localStorage.removeItem(CACHE_KEY)
       return null
     }
-    if (!hasVisibleSections(cacheData.sections)) {
+    if (!hasVisibleSections(cacheData.sections) && cacheData.freshResponse !== true) {
       localStorage.removeItem(CACHE_KEY)
       return null
     }
     const safeSections = Object.fromEntries(
       sectionConfigs.map((item) => [item.key, sanitizeHotArticles(cacheData.sections?.[item.key] || [])])
     ) as Record<string, Article[]>
-    if (!hasVisibleSections(safeSections)) {
+    if (!hasVisibleSections(safeSections) && cacheData.freshResponse !== true) {
       localStorage.removeItem(CACHE_KEY)
       return null
     }
@@ -367,7 +369,8 @@ const refreshList = async (forceRefresh = false) => {
   }
 
   const now = Date.now()
-  if (!forceRefresh && now - lastRefreshTime.value < REFRESH_COOLDOWN) {
+  const refreshLatest = forceRefresh || needsConfigurationPreviewRefresh('learning-rss')
+  if (!refreshLatest && now - lastRefreshTime.value < REFRESH_COOLDOWN) {
     return
   }
 
@@ -377,20 +380,21 @@ const refreshList = async (forceRefresh = false) => {
   lastRefreshTime.value = now
 
   try {
-    const cachedData = forceRefresh ? null : getCache()
+    const cachedData = refreshLatest ? null : getCache()
     if (cachedData) {
       learningConfig.value = cachedData.learningConfig
       applySectionArticles(cachedData.sections)
       return
     }
 
-    const nextData = normalizeHomepageSections(await getHomepageLearningFeed())
+    const nextData = normalizeHomepageSections(await getHomepageLearningFeed({ forceRefresh: refreshLatest }))
 
     applySectionArticles(nextData)
-    if (hasVisibleSections(nextData)) {
+    if (hasVisibleSections(nextData) || refreshLatest) {
       setCache({
         sections: nextData,
-        learningConfig: learningConfig.value
+        learningConfig: learningConfig.value,
+        freshResponse: true
       })
     }
   } catch (error) {

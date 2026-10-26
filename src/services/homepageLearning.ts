@@ -7,6 +7,8 @@
  * @createDate 2026-07-17
  */
 
+import { completeConfigurationPreviewRefresh, needsConfigurationPreviewRefresh } from './configurationPreview'
+
 export type HomepageLearningFilterType = 'all' | 'category_slug' | 'categories'
 
 export interface HomepageLearningFeedItem {
@@ -187,12 +189,15 @@ const parseHomepageLearningResponse = (payload: unknown): HomepageLearningFeedRe
 /**
  * 函数说明：请求本站后端代理的每日学习 RSS，统一处理超时和错误提示。
  */
-export const getHomepageLearningFeed = async (): Promise<HomepageLearningFeedResult> => {
+export const getHomepageLearningFeed = async (options: { forceRefresh?: boolean } = {}): Promise<HomepageLearningFeedResult> => {
   const controller = new AbortController()
   const timeoutId = window.setTimeout(() => controller.abort(), HOMEPAGE_LEARNING_TIMEOUT_MS)
+  const forceRefresh = options.forceRefresh || needsConfigurationPreviewRefresh('learning-rss')
+  const endpoint = forceRefresh ? `${HOMEPAGE_LEARNING_ENDPOINT}?_uied_learning_ts=${Date.now()}` : HOMEPAGE_LEARNING_ENDPOINT
   try {
-    const response = await fetch(HOMEPAGE_LEARNING_ENDPOINT, {
+    const response = await fetch(endpoint, {
       method: 'GET',
+      ...(forceRefresh ? { cache: 'no-store' as RequestCache } : {}),
       headers: {
         Accept: 'application/json'
       },
@@ -201,7 +206,9 @@ export const getHomepageLearningFeed = async (): Promise<HomepageLearningFeedRes
     if (!response.ok) {
       throw new Error(`获取每日学习内容失败（HTTP ${response.status}）`)
     }
-    return parseHomepageLearningResponse(await response.json())
+    const result = parseHomepageLearningResponse(await response.json())
+    completeConfigurationPreviewRefresh('learning-rss')
+    return result
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw new Error('每日学习内容请求超时，请稍后重试')

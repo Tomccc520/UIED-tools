@@ -54,7 +54,7 @@ func (cu configUtil) GetMap(db *gorm.DB, cnfType string, name string) (data map[
 	return data, err
 }
 
-// Set 设置配置的值
+// Set 函数说明：更新同键配置；同值更新没有影响行时先确认存在，避免误插入重复记录。
 func (cu configUtil) Set(db *gorm.DB, cnfType string, name string, val string) (err error) {
 	/**
 	 * 函数说明：先更新同键所有配置行（兼容历史重复脏数据），若不存在再插入新记录。
@@ -66,6 +66,14 @@ func (cu configUtil) Set(db *gorm.DB, cnfType string, name string, val string) (
 		return updateResult.Error
 	}
 	if updateResult.RowsAffected > 0 {
+		return nil
+	}
+	// MySQL 默认只统计实际变化行；同值和同秒更新时间可能返回零，不能据此判断配置不存在。
+	var matched int64
+	if err = db.Model(&system.SystemConfig{}).Where("type = ? AND name = ?", cnfType, name).Count(&matched).Error; err != nil {
+		return err
+	}
+	if matched > 0 {
 		return nil
 	}
 

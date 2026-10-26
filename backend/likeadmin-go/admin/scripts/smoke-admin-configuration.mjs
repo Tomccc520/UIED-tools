@@ -38,7 +38,7 @@ await context.route('**/api/setting/website/detail', async route => {
 const openPage = async route => {
     await page.goto(baseUrl + route, { waitUntil: 'networkidle' })
     await page.locator('.config-edit-frame__save').waitFor()
-    if (!failLoad) await page.getByRole('button', { name: '保存配置', exact: true }).waitFor()
+    if (!failLoad) await page.locator('.config-edit-frame__actions button').waitFor()
 }
 
 /** 等待断点同步及侧栏过渡完成，再检查内容位置和截图，避免记录窗口缩放中的中间帧。 */
@@ -140,12 +140,17 @@ try {
             await page.screenshot({ path: path.join(outputDir, `${route}-${width}.png`), fullPage: false })
         }
     }
+    // 首页内容使用独立保存文案，仍要求读取失败禁存、重试恢复且不补发默认值。
+    const savesBeforeContentRetry = saveRequests
     failLoad = true
     await page.goto(baseUrl + '/official_site/frontend_layout', { waitUntil: 'networkidle' })
     assert.equal(await page.locator('[data-admin-smoke="frontend-layout-save-top"]').isEnabled(), false)
     failLoad = false
     await page.locator('[data-admin-smoke="frontend-layout-reload"]').click()
     await page.waitForFunction(() => !document.querySelector('[data-admin-smoke="frontend-layout-save-top"]')?.disabled)
+    assert.equal(saveRequests, savesBeforeContentRetry)
+    assert.equal(await page.locator('.layout-tabs > .arco-tabs-nav .arco-tabs-tab').count(), 2)
+    assert.equal(await page.locator('[data-admin-smoke="config-task-navigation"]').count(), 0)
     await openPage('/official_site/tools_catalog')
     for (const width of [320, 375, 768, 1440]) {
         await page.setViewportSize({ width, height: 1000 })

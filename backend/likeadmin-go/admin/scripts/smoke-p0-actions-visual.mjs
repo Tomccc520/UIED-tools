@@ -252,10 +252,11 @@ const prepareFrontendLayoutUnsaved = async (page) => {
     timeout: actionTimeout
   })
   await waitForArcoIdle(page)
+  await page.locator('.layout-tabs .arco-tabs-tab').filter({ hasText: /^每日学习$/ }).click({ timeout: actionTimeout })
   await page.waitForFunction(
     () => {
       const bodyText = document.body?.innerText || ''
-      return bodyText.includes('每日学习') && bodyText.includes('首页每日学习 RSS')
+      return bodyText.includes('首页内容') && bodyText.includes('文章栏目') && bodyText.includes('文章来源')
     },
     undefined,
     { timeout: actionTimeout }

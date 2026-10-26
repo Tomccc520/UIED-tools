@@ -12,8 +12,8 @@
             <template #extra>
                 <a-space>
                     <a-tag color="arcoblue" bordered>{{ visitTypeLabel }}</a-tag>
-                    <a-button data-admin-smoke="journal-query" @click="resetPage">查询</a-button>
-                    <a-button data-admin-smoke="journal-reset" @click="resetParams">重置筛选</a-button>
+                    <a-button data-admin-smoke="journal-query" @click="handleSearch">查询</a-button>
+                    <a-button data-admin-smoke="journal-reset" @click="handleResetFilters">重置筛选</a-button>
                 </a-space>
             </template>
         </a-page-header>
@@ -53,8 +53,8 @@
                         v-model="formData.username"
                         placeholder="管理员账号"
                         allow-clear
-                        @press-enter="resetPage"
-                        @clear="resetPage"
+                        @press-enter="handleSearch"
+                        @clear="handleSearch"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">
@@ -72,8 +72,8 @@
                         v-model="formData.ip"
                         placeholder="来源 IP"
                         allow-clear
-                        @press-enter="resetPage"
-                        @clear="resetPage"
+                        @press-enter="handleSearch"
+                        @clear="handleSearch"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 3 }">
@@ -81,8 +81,8 @@
                         v-model="formData.url"
                         placeholder="访问链接"
                         allow-clear
-                        @press-enter="resetPage"
-                        @clear="resetPage"
+                        @press-enter="handleSearch"
+                        @clear="handleSearch"
                     />
                 </a-grid-item>
                 <a-grid-item :span="{ xs: 12, md: 6 }">
@@ -97,6 +97,7 @@
             </a-grid>
 
 
+            <list-load-feedback v-if="pager.error && pager.lists.length" :error="pager.error" :loading="pager.loading" has-data @retry="loadLogs" />
             <a-table
                 class="mt-4"
                 :data="pager.lists"
@@ -107,20 +108,11 @@
                 row-key="id"
                 :scroll="{ x: 1420 }"
             >
-                <template #empty>
-                    <a-empty :description="journalEmptyDescription">
-                        <template #extra>
-                            <a-space>
-                                <a-button @click="resetParams">重置筛选</a-button>
-                                <a-button @click="resetPage">重新加载</a-button>
-                            </a-space>
-                        </template>
-                    </a-empty>
-                </template>
+                <template #empty><list-load-feedback :error="pager.error" :loading="pager.loading" :loaded="pager.loaded" :empty-text="journalEmptyDescription" @retry="loadLogs" /></template>
             </a-table>
 
             <div class="flex mt-4 justify-end">
-                <pagination v-model="pager" @change="getLists" />
+                <pagination v-model="pager" @change="loadLogs" />
             </div>
         </a-card>
     </div>
@@ -130,6 +122,7 @@
 import type { TableColumnData } from '@arco-design/web-vue'
 import { systemLogLists } from '@/api/setting/system'
 import { usePaging } from '@/hooks/usePaging'
+import ListLoadFeedback from '@/components/list-load-feedback/index.vue'
 
 const formData = reactive({
     username: '',
@@ -215,7 +208,15 @@ const journalEmptyDescription = computed(() => {
         : '没有匹配的系统日志，请检查筛选条件。'
 })
 
-getLists()
+/** 页面事件接住查询失败，由错误区提供重试，避免日志失败被解释成无记录。 */
+const runLogQuery = async (query: () => Promise<unknown>) => { try { await query(); return true } catch { return false } }
+/** 保持当前页重试读取日志。 */
+const loadLogs = () => runLogQuery(getLists)
+/** 按新筛选从第一页查询日志。 */
+const handleSearch = () => runLogQuery(resetPage)
+/** 恢复初始筛选并从第一页重新查询。 */
+const handleResetFilters = () => runLogQuery(resetParams)
+void loadLogs()
 </script>
 
 <style lang="scss" scoped>

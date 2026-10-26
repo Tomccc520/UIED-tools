@@ -33,8 +33,8 @@
                             class="w-[280px]"
                             placeholder="用户编号/昵称/手机号码"
                             allow-clear
-                            @press-enter="resetPage"
-                            @clear="resetPage"
+                            @press-enter="handleSearch"
+                            @clear="handleSearch"
                         />
                     </a-form-item>
 
@@ -75,6 +75,7 @@
             </a-card>
 
             <a-card class="!border-none pro-card" :bordered="false">
+                <list-load-feedback v-if="pager.error && pager.lists.length" :error="pager.error" :loading="pager.loading" has-data @retry="loadUserList" />
                 <a-table
                     :data="pager.lists"
                     :loading="pager.loading"
@@ -100,14 +101,11 @@
                             >详情</a-button
                         >
                     </template>
+                    <template #empty><list-load-feedback :error="pager.error" :loading="pager.loading" :loaded="pager.loaded" empty-text="暂无匹配的用户数据" @retry="loadUserList" /></template>
                 </a-table>
-                <a-empty
-                    v-if="!pager.loading && pager.lists.length === 0"
-                    description="暂无用户数据"
-                />
 
                 <div class="flex justify-end mt-4">
-                    <pagination v-model="pager" @change="getLists" />
+                    <pagination v-model="pager" @change="loadUserList" />
                 </div>
             </a-card>
         </a-space>
@@ -120,6 +118,7 @@ import type { TableColumnData } from '@arco-design/web-vue'
 import { getUserList } from '@/api/consumer'
 import { ClientMap } from '@/enums/appEnums'
 import { usePaging } from '@/hooks/usePaging'
+import ListLoadFeedback from '@/components/list-load-feedback/index.vue'
 import feedback from '@/utils/feedback'
 import defaultAvatar from '@/views/decoration/component/widgets/user-info/images/default_avatar.png'
 import DetailPopup from './detail-popup.vue'
@@ -212,29 +211,19 @@ const { pager, getLists, resetPage, resetParams } = usePaging({
     params: queryParams
 })
 
-/**
- * 函数说明：执行用户列表查询并反馈当前筛选结果。
- */
-const handleSearch = async () => {
-    await resetPage()
-    feedback.msgSuccess('查询条件已生效')
+/** 接住页面事件中的查询拒绝，失败由列表错误区反馈，不把失败当空数据或成功。 */
+const runUserQuery = async (query: () => Promise<unknown>, successText = '') => {
+    try { await query(); if (successText && !pager.error) feedback.msgSuccess(successText); return true }
+    catch { return false }
 }
-
-/**
- * 函数说明：重置用户筛选条件并刷新列表。
- */
-const handleResetFilters = async () => {
-    await resetParams()
-    feedback.msgSuccess('筛选条件已重置')
-}
-
-/**
- * 函数说明：刷新用户列表，保持现有筛选条件不变。
- */
-const handleRefresh = async () => {
-    await getLists()
-    feedback.msgSuccess('用户列表已刷新')
-}
+/** 静默刷新当前列表，供首次加载、分页和错误重试复用。 */
+const loadUserList = () => runUserQuery(getLists)
+/** 从第一页查询用户筛选结果。 */
+const handleSearch = () => runUserQuery(resetPage, '查询条件已生效')
+/** 重置筛选并回到第一页。 */
+const handleResetFilters = () => runUserQuery(resetParams, '筛选条件已重置')
+/** 保持筛选刷新列表，仅在接口成功后提示。 */
+const handleRefresh = () => runUserQuery(getLists, '用户列表已刷新')
 
 /**
  * 函数说明：打开用户详情弹窗并同步当前路由查询参数，便于刷新后保持详情态。
@@ -290,7 +279,7 @@ const syncDetailPopupByRoute = async () => {
 }
 
 onActivated(() => {
-    getLists()
+    void loadUserList()
     syncDetailPopupByRoute()
 })
 
@@ -302,7 +291,7 @@ watch(
     { immediate: true }
 )
 
-getLists()
+void loadUserList()
 </script>
 
 <style lang="scss" scoped>

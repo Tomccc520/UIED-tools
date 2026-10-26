@@ -16,6 +16,7 @@ import {
 } from '@/utils/safeAdvertisingHtml'
 import { getImageCompressToolDescription } from '@/constants/imageCompress'
 import toolSeoOverrides from '@/config/tool-seo-overrides.json'
+import { completeConfigurationPreviewRefresh, needsConfigurationPreviewRefresh } from './configurationPreview'
 
 /**
  * 函数说明：清理后台 SEO 标题中重复拼接的固定短语，兼容历史配置数据。
@@ -1415,7 +1416,8 @@ export const getSitePublicConfig = async (options: SiteConfigOptions = {}): Prom
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS
   const now = Date.now()
 
-  if (!options.forceRefresh && siteConfigCacheState && siteConfigCacheState.expiresAt > now) {
+  const previewRefresh = needsConfigurationPreviewRefresh('site-config')
+  if (!options.forceRefresh && !previewRefresh && siteConfigCacheState && siteConfigCacheState.expiresAt > now) {
     return siteConfigCacheState.data
   }
 
@@ -1430,6 +1432,7 @@ export const getSitePublicConfig = async (options: SiteConfigOptions = {}): Prom
         data,
         expiresAt: Date.now() + CACHE_TTL_MS
       }
+      completeConfigurationPreviewRefresh('site-config')
       return data
     } catch {
       siteConfigCacheState = {

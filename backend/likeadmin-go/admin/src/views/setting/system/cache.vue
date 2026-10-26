@@ -8,20 +8,22 @@
 -->
 <template>
     <div class="cache-page">
-        <a-page-header title="缓存监控" subtitle="查看 Redis 运行状态、命令分布与内存消耗，快速判断缓存压力。">
+        <admin-page-header title="缓存监控" description="查看 Redis 状态、命令分布与真实内存用量。">
             <template #extra>
                 <a-space>
                     <a-tag color="arcoblue" bordered>{{ redisModeLabel }}</a-tag>
-                    <a-button data-admin-smoke="cache-refresh" @click="getSystemCache">刷新监控</a-button>
+                    <a-button data-admin-smoke="cache-refresh" :loading="loading" @click="getSystemCache">刷新监控</a-button>
                 </a-space>
             </template>
-        </a-page-header>
+        </admin-page-header>
+
+        <a-alert v-if="cacheLoadError" type="error" :closable="false" show-icon>{{ cacheLoadError }}</a-alert>
 
         <a-grid :cols="{ xs: 1, md: 2, lg: 4 }" :col-gap="12" :row-gap="12" class="cache-metrics">
             <a-grid-item>
                 <a-card :bordered="false" class="metric-card">
                     <div class="metric-label">Key 总数</div>
-                    <div class="metric-value">{{ baseInfo.dbSize || 0 }}</div>
+                    <div class="metric-value">{{ hasLoadedCache ? baseInfo.dbSize ?? 0 : '—' }}</div>
                 </a-card>
             </a-grid-item>
             <a-grid-item>
@@ -33,22 +35,20 @@
             <a-grid-item>
                 <a-card :bordered="false" class="metric-card">
                     <div class="metric-label">连接数</div>
-                    <div class="metric-value">{{ baseInfo.connected_clients || '-' }}</div>
+                    <div class="metric-value">{{ baseInfo.connected_clients ?? '—' }}</div>
                 </a-card>
             </a-grid-item>
             <a-grid-item>
                 <a-card :bordered="false" class="metric-card">
                     <div class="metric-label">运行天数</div>
-                    <div class="metric-value">{{ baseInfo.uptime_in_days || '-' }}</div>
+                    <div class="metric-value">{{ baseInfo.uptime_in_days ?? '—' }}</div>
                 </a-card>
             </a-grid-item>
         </a-grid>
 
 
         <a-spin :loading="loading" class="w-full">
-            <a-card class="general-card" title="缓存基础信息" :bordered="false">
-                <div class="section-title">基础信息</div>
-                <div class="section-desc">集中查看 Redis 版本、模式、CPU、内存和网络入口/出口等基础指标。</div>
+            <a-card class="general-card" title="基础信息" :bordered="false">
                 <a-table class="mt-4" :data="baseInfoRows" :pagination="false" :bordered="false" row-key="id" :scroll="{ x: 1120 }">
                     <a-table-column title="指标" data-index="k1" :width="140" />
                     <a-table-column title="值" data-index="v1" :min-width="140" />
@@ -84,9 +84,12 @@
 
 <script setup lang="ts" name="cache">
 import { systemCache } from '@/api/setting/system'
+import AdminPageHeader from '@/components/page-header/index.vue'
 import vCharts from 'vue-echarts'
 
 const loading = ref(false)
+const cacheLoadError = ref('')
+const hasLoadedCache = ref(false)
 const baseInfo = ref<Record<string, any>>({})
 
 const chartOptions = reactive({
@@ -156,19 +159,21 @@ const chartOptions = reactive({
     },
     memoryChartOption: {
         tooltip: {
-            formatter: '{a} <br/>{b} : {c}%'
+            formatter: '{a}<br/>{b}：{c} MB'
         },
         series: [
             {
-                name: 'Pressure',
+                name: '已用内存',
                 type: 'gauge',
+                min: 0,
+                max: 100,
                 radius: '100%',
                 detail: {
-                    formatter: '{value}'
+                    formatter: '{value} MB'
                 },
                 data: [
                     {
-                        value: '',
+                        value: 0,
                         name: '内存消耗'
                     }
                 ]
@@ -195,6 +200,7 @@ const formatRedisMode = (mode: string): string => {
  */
 const baseInfoRows = computed(() => {
     const info = baseInfo.value
+    if (!hasLoadedCache.value) return []
     return [
         {
             id: 1,
@@ -203,18 +209,18 @@ const baseInfoRows = computed(() => {
             k2: '运行模式',
             v2: formatRedisMode(info.redis_mode),
             k3: '端口',
-            v3: info.tcp_port || '-',
+            v3: info.tcp_port ?? '-',
             k4: '客户端数',
-            v4: info.connected_clients || '-'
+            v4: info.connected_clients ?? '-'
         },
         {
             id: 2,
             k1: '运行时间(天)',
-            v1: info.uptime_in_days || '-',
+            v1: info.uptime_in_days ?? '-',
             k2: '使用内存',
             v2: info.used_memory_human || '-',
             k3: '使用CPU',
-            v3: info.used_cpu_user_children || '-',
+            v3: info.used_cpu_user_children ?? '-',
             k4: '内存配置',
             v4: info.maxmemory_human || '-'
         },
@@ -225,7 +231,7 @@ const baseInfoRows = computed(() => {
             k2: 'RDB是否成功',
             v2: info.rdb_last_bgsave_status === 'ok' ? '成功' : info.rdb_last_bgsave_status || '-',
             k3: 'Key数量',
-            v3: info.dbSize || '-',
+            v3: info.dbSize ?? '-',
             k4: '网络入口/出口(kbps)',
             v4: `${info.instantaneous_input_kbps || 0} / ${info.instantaneous_output_kbps || 0}`
         }
@@ -233,22 +239,32 @@ const baseInfoRows = computed(() => {
 })
 
 /**
- * 函数说明：获取缓存监控信息并更新图表数据。
+ * 函数说明：将 Redis 字节数换算为 MB，并按配置容量或当前用量确定表盘上限，避免把 MB 当百分比。
+ * 参数：usedBytes 为已用字节数，maxBytes 为服务端配置容量；返回有限的 MB 数值和正上限。
  */
+const resolveMemoryGauge = (usedBytes: unknown, maxBytes: unknown): { value: number; max: number } => {
+    const rawUsed = Number(usedBytes)
+    const rawMax = Number(maxBytes)
+    const value = Number((Number.isFinite(rawUsed) && rawUsed > 0 ? rawUsed / 1024 / 1024 : 0).toFixed(2))
+    const configured = Number.isFinite(rawMax) && rawMax > 0 ? rawMax / 1024 / 1024 : 0
+    return { value, max: Math.max(1, Math.ceil(configured > 0 ? Math.max(configured, value) : value * 1.25)) }
+}
+
+/** 函数说明：读取缓存监控，失败保留上次数据并显示明确错误；并发刷新不会提前结束加载状态。 */
 const getSystemCache = async () => {
+    if (loading.value) return
     loading.value = true
+    cacheLoadError.value = ''
     try {
         const data = await systemCache()
-        baseInfo.value = {
-            ...(data.info || {}),
-            dbSize: data.dbSize || 0
-        }
-
+        baseInfo.value = { ...(data.info || {}), dbSize: data.dbSize ?? 0 }
         chartOptions.commandChartOption.series[0].data = data.commandStats || []
-
-        const memoryValue = Number(data.info?.used_memory || 0) / 1024 / 1024
-        chartOptions.memoryChartOption.series[0].data[0].value = memoryValue.toFixed(2)
-        chartOptions.memoryChartOption.series[0].detail.formatter = '{value}M'
+        const memory = resolveMemoryGauge(data.info?.used_memory, data.info?.maxmemory)
+        chartOptions.memoryChartOption.series[0].data[0].value = memory.value
+        chartOptions.memoryChartOption.series[0].max = memory.max
+        hasLoadedCache.value = true
+    } catch {
+        cacheLoadError.value = hasLoadedCache.value ? '缓存监控刷新失败，仍显示上次数据，请重试。' : '缓存监控加载失败，请重试。'
     } finally {
         loading.value = false
     }

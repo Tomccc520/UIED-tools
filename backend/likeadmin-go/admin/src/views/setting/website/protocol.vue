@@ -7,599 +7,136 @@
  */
 -->
 <template>
-    <div class="website-protocol-page pro-page-shell">
-        <admin-page-header class="layout-page-header" title="服务协议与隐私政策">
-            <template #subtitle>
-                统一维护服务协议与隐私协议，支持富文本编辑并在保存后实时生效。
-            </template>
-            <template #extra>
-                <div class="layout-page-actions">
-                    <div class="layout-status-tags">
-                        <a-tag color="arcoblue" bordered>运营配置</a-tag>
-                        <a-tag color="green" bordered>实时生效</a-tag>
-                        <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
-                            {{ hasUnsavedChanges ? '待发布' : '已同步' }}
-                        </a-tag>
-                    </div>
-                    <a-button size="small" @click="getProtocolDetail">刷新配置</a-button>
-                    <a-button size="small" @click="openToolsPreview">前端预览</a-button>
-                    <a-button size="small" @click="runHealthCheck">一键体检</a-button>
-                </div>
-            </template>
+    <div class="website-protocol-page pro-page-shell basic-config-page">
+        <admin-page-header title="服务协议与隐私政策" description="正文默认只读，点击编辑正文后修改；两份协议统一保存。">
+            <template #extra><a-button :disabled="isSubmitting" :loading="isLoadingData" @click="reloadData">重新加载</a-button></template>
         </admin-page-header>
-
-        <a-card class="page-card pro-panel-card" :bordered="false">
-
-
-            <operate-collapse
-                v-model="operationCollapseKeys"
-                :validation-tips="protocolValidationTips"
-                :guide-items="guideItems"
-                :last-saved-at="lastSavedAt"
-                :show-quick-actions="false"
-            />
-
-            <div class="mode-toolbar mt-4">
-                <div class="mode-toolbar__left">
-                    <a-switch v-model="simpleMode" type="round" />
-                    <span class="mode-toolbar__label">{{
-                        simpleMode ? '运营简版（推荐）' : '高级模式'
-                    }}</span>
-                </div>
-                <span class="mode-toolbar__tip">
-                    {{
-                        simpleMode
-                            ? '简版聚焦协议正文维护；统计卡片已收进高级模式。'
-                            : '高级模式会展示统计卡片，便于内容运营做发布前检查。'
-                    }}
-                </span>
-            </div>
-
-            <div v-if="!simpleMode" class="stats-grid mt-4">
-                <div class="stat-card">
-                    <div class="stat-label">服务协议状态</div>
-                    <div class="stat-value">{{ serviceReady ? '已配置' : '待完善' }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">隐私协议状态</div>
-                    <div class="stat-value">{{ privacyReady ? '已配置' : '待完善' }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">发布状态</div>
-                    <div class="stat-value" :class="{ 'is-warning': hasUnsavedChanges }">
-                        {{ hasUnsavedChanges ? '待发布' : '已同步' }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="protocol-grid mt-5">
-                <div class="layout-group">
-                    <div class="group-head">
-                        <span>服务协议</span>
-                        <a-tag color="arcoblue" bordered>{{ serviceContentLength }} 字</a-tag>
-                    </div>
-                    <a-form :model="formData" layout="vertical">
-                        <a-form-item label="协议名称">
-                            <a-input
-                                v-model="formData.service.name"
-                                placeholder="请输入服务协议标题"
-                            />
-                        </a-form-item>
-                    </a-form>
-                    <editor v-model="formData.service.content" height="420" />
-                </div>
-
-                <div class="layout-group">
-                    <div class="group-head">
-                        <span>隐私协议</span>
-                        <a-tag color="arcoblue" bordered>{{ privacyContentLength }} 字</a-tag>
-                    </div>
-                    <a-form :model="formData" layout="vertical">
-                        <a-form-item label="协议名称">
-                            <a-input
-                                v-model="formData.privacy.name"
-                                placeholder="请输入隐私协议标题"
-                            />
-                        </a-form-item>
-                    </a-form>
-                    <editor v-model="formData.privacy.content" height="420" />
-                </div>
-            </div>
-        </a-card>
-
-        <footer-btns :fixed="false" v-perms="['setting:protocol:save']">
-            <a-button type="primary" :loading="isSubmitting" @click="handleSave">保存</a-button>
-        </footer-btns>
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadData">
+            <fieldset :disabled="!canEdit" :inert="!canEdit ? '' : undefined" class="basic-config-page__fields">
+                <a-card :bordered="false" class="pro-panel-card basic-config-page__card">
+                    <a-tabs v-model:active-key="activeProtocol">
+                        <a-tab-pane v-for="item in protocolTypes" :key="item.key" :title="item.title" :destroy-on-hide="false">
+                            <div v-if="hasLoadedData" class="protocol-editor">
+                                <a-form :model="formData[item.key]" layout="vertical"><a-form-item label="协议名称" required><a-input v-model="formData[item.key].name" :input-attrs="{ 'aria-label': `${item.title}名称` }" :placeholder="`请输入${item.title}标题`" /></a-form-item></a-form>
+                                <div class="protocol-editor__label"><div><strong>协议正文</strong><span>{{ getPlainTextLength(formData[item.key].content) }} 字</span></div><a-button v-if="!editingBodies[item.key]" v-perms="['setting:protocol:save']" size="small" :aria-label="`编辑${item.title}正文`" @click="startBodyEditing(item.key)">编辑正文</a-button><a-tag v-else size="small">正在编辑正文</a-tag></div>
+                                <editor :model-value="formData[item.key].content" :readonly="!editingBodies[item.key] || !canEdit || isLoadingData || isSubmitting || Boolean(loadErrorMessage)" height="480" @update:model-value="updateProtocolBody(item.key, $event)" />
+                            </div>
+                        </a-tab-pane>
+                    </a-tabs>
+                </a-card>
+            </fieldset>
+            <template #actions><a-button v-perms="['setting:protocol:save']" type="primary" :loading="isSubmitting" :disabled="!canEdit || !hasUnsavedChanges" data-admin-smoke="website-protocol-save" @click="handleSave">保存配置</a-button></template>
+        </config-edit-frame>
     </div>
 </template>
-
 <script setup lang="ts" name="webProtocol">
-import AdminPageHeader from '@/components/page-header/index.vue'
-import { getProtocol, setProtocol } from '@/api/setting/website'
-import useAppStore from '@/stores/modules/app'
-import feedback from '@/utils/feedback'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
-import OperateCollapse from './components/operate-collapse.vue'
-import { resolveToolsPreviewUrl } from './composables/use-preview-url'
+import AdminPageHeader from '@/components/page-header/index.vue'
+import useUserStore from '@/stores/modules/user'
+import feedback from '@/utils/feedback'
+import ConfigEditFrame from './components/config-edit-frame.vue'
+import { useConfigLoad } from './composables/use-config-load'
 import { useOperateSubmit } from './composables/use-operate-submit'
+import { getProtocol, setProtocol } from '@/api/setting/website'
 
-interface ProtocolDetail {
-    name: string
-    content: string
-}
-
-interface ProtocolFormData {
-    service: ProtocolDetail
-    privacy: ProtocolDetail
-}
-
-interface FocusItem {
-    label: string
-    value: string
-    desc: string
-    className: 'is-ok' | 'is-warning' | 'is-danger'
-}
-
-const { isSubmitting, lastSavedAt, runSubmit } = useOperateSubmit('协议配置已保存')
-const appStore = useAppStore()
-/**
- * 函数说明：控制协议页运营模式。简版聚焦正文编辑，高级模式展示发布统计卡片。
- */
-const simpleMode = ref(true)
-const operationCollapseKeys = ref<(string | number)[]>([
-    'quick_actions',
-    'validation_tips',
-    'operation_guide'
-])
+interface ProtocolDetail { name: string; content: string }
+interface ProtocolFormData { service: ProtocolDetail; privacy: ProtocolDetail }
+const formData = ref<ProtocolFormData>({ service: { name: '', content: '' }, privacy: { name: '', content: '' } })
+const activeProtocol = ref<'service' | 'privacy'>('service')
+const editingBodies = reactive<Record<keyof ProtocolFormData, boolean>>({ service: false, privacy: false })
+const protocolTypes: { key: keyof ProtocolFormData; title: string }[] = [{ key: 'service', title: '服务协议' }, { key: 'privacy', title: '隐私政策' }]
+const userStore = useUserStore()
+/** 根据当前权限控制编辑与保存，脚本调用同样遵守按钮权限。 */
+const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:protocol:save'))
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('协议配置已保存')
 const baselineSnapshot = ref('')
-const guideItems = [
-    '先填写服务协议、隐私协议标题，再补齐正文内容。',
-    '正文建议包含生效时间、责任边界、联系方式等关键信息。',
-    '保存后到前端协议页检查排版和跳转链接。'
-]
+/** 按完整编辑值比较草稿，不忽略有意义的正文和空白改动。 */
+const hasUnsavedChanges = computed(() => Boolean(baselineSnapshot.value) && buildSnapshot() !== baselineSnapshot.value)
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+/** 统一检查加载、权限与并发状态，读取失败后不能发布默认表单。 */
+const canOperate = () => canEdit.value && hasLoadedData.value && !isLoadingData.value && !isSubmitting.value && !loadErrorMessage.value
 
-const formData = ref<ProtocolFormData>({
-    privacy: {
-        content: '',
-        name: ''
-    },
-    service: {
-        content: '',
-        name: ''
-    }
-})
+/** 只有用户明确开启正文编辑后才接受编辑器输出，初始化归一化不得改写法务原文。 */
+const updateProtocolBody = (key: keyof ProtocolFormData, value: string) => {
+    if (!canOperate() || !editingBodies[key] || typeof value !== 'string') return
+    formData.value[key].content = value
+}
+/** 开启指定正文的编辑权限，不主动格式化或替换现有 HTML。 */
+const startBodyEditing = (key: keyof ProtocolFormData) => {
+    if (!canOperate()) return
+    editingBodies[key] = true
+}
 
-/**
- * 函数说明：移除富文本标签并统计纯文本长度，用于协议内容字数展示。
- */
-const getPlainTextLength = (html: string): number =>
-    String(html || '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim().length
-
-/**
- * 函数说明：构建协议表单快照，供未保存变更判断和离开提醒使用。
- */
-const buildSnapshot = (): string =>
-    JSON.stringify({
-        serviceName: String(formData.value.service.name || '').trim(),
-        serviceContent: String(formData.value.service.content || '').trim(),
-        privacyName: String(formData.value.privacy.name || '').trim(),
-        privacyContent: String(formData.value.privacy.content || '').trim()
+/** 统计展示用纯文本字数，不改写存储或提交的协议 HTML。 */
+const getPlainTextLength = (html: string) => String(html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length
+/** 克隆两份完整协议，标题、正文和空白均按用户输入原样保留。 */
+const buildPayload = (): ProtocolFormData => ({ service: { name: formData.value.service.name, content: formData.value.service.content }, privacy: { name: formData.value.privacy.name, content: formData.value.privacy.content } })
+/** 使用原始协议内容生成快照，不把正文前后空白变更误判为已保存。 */
+const buildSnapshot = () => JSON.stringify(buildPayload())
+/** 只接受完整协议响应；加载失败时禁止默认空正文覆盖服务端内容。 */
+const getData = async () => {
+    if (isSubmitting.value) return false
+    return loadConfiguration(async () => {
+        const data = await getProtocol()
+        if (!data || protocolTypes.some(item => typeof data[item.key]?.name !== 'string' || typeof data[item.key]?.content !== 'string')) throw new Error('协议配置响应不完整')
+        editingBodies.service = false
+        editingBodies.privacy = false
+        formData.value = { service: { name: data.service.name, content: data.service.content }, privacy: { name: data.privacy.name, content: data.privacy.content } }
+        baselineSnapshot.value = buildSnapshot()
+        submitError.value = ''
     })
-
-/**
- * 函数说明：更新当前页面基线快照，作为后续“是否已修改”的对照值。
- */
-const updateBaselineSnapshot = () => {
-    baselineSnapshot.value = buildSnapshot()
 }
-
-/**
- * 函数说明：返回协议页未保存状态，供顶部状态和离开拦截复用。
- */
-const hasUnsavedChanges = computed(() => {
-    if (!baselineSnapshot.value) {
-        return false
-    }
-    return buildSnapshot() !== baselineSnapshot.value
-})
-
-const serviceContentLength = computed(() => getPlainTextLength(formData.value.service.content))
-const privacyContentLength = computed(() => getPlainTextLength(formData.value.privacy.content))
-const serviceReady = computed(
-    () =>
-        Boolean(String(formData.value.service.name || '').trim()) && serviceContentLength.value > 0
-)
-const privacyReady = computed(
-    () =>
-        Boolean(String(formData.value.privacy.name || '').trim()) && privacyContentLength.value > 0
-)/**
- * 函数说明：收集协议配置校验提示，统一供工作区和保存流程复用。
- */
-const protocolValidationTips = computed(() => {
-    const tips: string[] = []
-    if (!String(formData.value.service.name || '').trim()) {
-        tips.push('请填写服务协议名称。')
-    }
-    if (serviceContentLength.value === 0) {
-        tips.push('请填写服务协议正文内容。')
-    }
-    if (!String(formData.value.privacy.name || '').trim()) {
-        tips.push('请填写隐私协议名称。')
-    }
-    if (privacyContentLength.value === 0) {
-        tips.push('请填写隐私协议正文内容。')
-    }
-    return tips
-})
-
-/**
- * 函数说明：读取服务协议与隐私协议详情并回填编辑器。
- */
-const getProtocolDetail = async () => {
-    const data = await getProtocol()
-    formData.value = {
-        privacy: {
-            name: String(data?.privacy?.name || ''),
-            content: String(data?.privacy?.content || '')
-        },
-        service: {
-            name: String(data?.service?.name || ''),
-            content: String(data?.service?.content || '')
-        }
-    }
-    updateBaselineSnapshot()
-}
-
-/**
- * 函数说明：执行协议配置体检并输出统一反馈。
- */
-const runHealthCheck = () => {
-    if (protocolValidationTips.value.length > 0) {
-        feedback.alertWarning(`配置体检未通过：${protocolValidationTips.value[0]}`)
-        return
-    }
-    feedback.msgSuccess('配置体检通过：服务协议与隐私协议结构完整')
-}
-
-/**
- * 函数说明：打开前端首页预览，便于运营保存后快速回归协议入口。
- */
-const openToolsPreview = () => {
-    window.open(resolveToolsPreviewUrl(appStore.config), '_blank')
-}
-
-/**
- * 函数说明：保存当前协议配置并刷新页面数据。
- */
+/** 保存两份协议的独立快照；不生成、修订或格式化法务正文，也不重复读回。 */
 const handleSave = async () => {
-    if (protocolValidationTips.value.length > 0) {
-        feedback.msgError(protocolValidationTips.value[0])
-        return
-    }
-    const success = await runSubmit(async () => {
-        await setProtocol(formData.value)
-        await getProtocolDetail()
-    })
-    if (!success) {
-        return
-    }
-    updateBaselineSnapshot()
+    if (!canOperate() || !hasUnsavedChanges.value) return false
+    const payload = buildPayload()
+    const invalid = protocolTypes.find(item => !payload[item.key].name.trim() || getPlainTextLength(payload[item.key].content) === 0)
+    if (invalid) { feedback.msgError(`请填写${invalid.title}名称和正文`); return false }
+    const snapshot = JSON.stringify(payload)
+    return runSubmit(async () => { await setProtocol(payload); baselineSnapshot.value = snapshot })
 }
-
-/**
- * 函数说明：浏览器刷新或关闭前提示未保存变更，减少误操作导致的数据丢失。
- */
+/** 重新加载前确认放弃草稿；保存中不允许重读覆盖表单。 */
+const reloadData = async () => {
+    if (isSubmitting.value) return false
+    return reloadConfiguration(getData)
+}
+/** 刷新或关闭浏览器时保护尚未保存的编辑。 */
 const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (!hasUnsavedChanges.value) {
-        return
-    }
-    event.preventDefault()
-    event.returnValue = ''
+    if (hasUnsavedChanges.value || isSubmitting.value) { event.preventDefault(); event.returnValue = '' }
 }
-
-/**
- * 函数说明：路由切换前提醒运营确认离开，防止未保存内容被意外丢弃。
- */
-onBeforeRouteLeave(async () => {
-    if (!hasUnsavedChanges.value) {
-        return true
-    }
-    try {
-        await feedback.confirm('当前页面存在未保存变更，确定离开吗？')
-        return true
-    } catch {
-        return false
-    }
-})
-
-onMounted(() => {
-    void getProtocolDetail()
-    window.addEventListener('beforeunload', handleBeforeUnload)
-})
-
-onBeforeUnmount(() => {
-    window.removeEventListener('beforeunload', handleBeforeUnload)
-})
+/** 路由离开时确认草稿；提交未结束时阻止跳转，避免误判保存结果。 */
+const confirmLeave = async () => {
+    if (isSubmitting.value) return false
+    if (!hasUnsavedChanges.value) return true
+    try { await feedback.confirm('当前页面存在未保存更改，确定离开吗？'); return true } catch { return false }
+}
+onBeforeRouteLeave(confirmLeave)
+onMounted(() => { void getData(); window.addEventListener('beforeunload', handleBeforeUnload) })
+onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 </script>
-
 <style scoped lang="scss">
-.layout-page-actions,
-.layout-status-tags,
-.page-entry-card__actions,
-.ops-workspace__actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
+.basic-config-page { min-width: 0; }
+.basic-config-page__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.basic-config-page__fields { min-width: 0; padding: 0; margin: 0; border: 0; }
+.basic-config-page__card + .basic-config-page__card { margin-top: 16px; }
+.basic-config-page__heading { margin-bottom: 20px; }
+.basic-config-page__heading h2 { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; color: var(--color-text-1); }
+.basic-config-page__heading p, .basic-config-page__hint { margin: 6px 0 0; color: var(--color-text-3); font-size: 12px; line-height: 1.7; }
+.basic-config-page__notice { margin-bottom: 16px; }
+.basic-config-page__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.basic-config-page__form { max-width: 920px; }
+.basic-config-page__form :deep(.arco-input-wrapper) { min-width: 0; }
+@media (max-width: 600px) {
+    .basic-config-page__grid { grid-template-columns: 1fr; }
+    .basic-config-page__card :deep(.arco-card-body) { padding: 16px; }
+    .basic-config-page__actions button { min-height: 44px; }
 }
-
-.page-entry-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.page-entry-card {
-    padding: 18px 20px;
-    border: 1px solid var(--color-border-2);
-    border-radius: 14px;
-    background: linear-gradient(180deg, #fff, var(--color-fill-1));
-}
-
-.page-entry-card__title {
-    margin-bottom: 10px;
-    font-size: 15px;
-    font-weight: 600;
-    color: var(--color-text-1);
-}
-
-.page-entry-card__desc {
-    margin-bottom: 14px;
-    font-size: 13px;
-    line-height: 1.75;
-    color: var(--color-text-3);
-}
-
-.page-entry-list {
-    margin: 0;
-    padding-left: 18px;
-    font-size: 13px;
-    line-height: 1.9;
-    color: var(--color-text-2);
-}
-
-.stat-card {
-    padding: 16px 18px;
-    border-radius: 14px;
-    border: 1px solid var(--color-border-2);
-    background: #fff;
-}
-
-.stat-label {
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.stat-value {
-    margin-top: 10px;
-    font-size: 22px;
-    line-height: 1.2;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.stat-value.is-warning {
-    color: rgb(var(--orange-6));
-}
-
-.ops-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.9fr);
-    gap: 12px;
-}
-
-.ops-workspace__main,
-.ops-workspace__aside {
-    border: 1px solid var(--color-border-2);
-    border-radius: 14px;
-    background: #fff;
-    padding: 16px;
-}
-
-.ops-workspace__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    height: 24px;
-    padding: 0 9px;
-    border-radius: 999px;
-    border: 1px solid #d8d2ff;
-    background: #f3efff;
-    color: #5b47d6;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.ops-workspace__title {
-    margin-top: 10px;
-    font-size: 20px;
-    line-height: 1.35;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.ops-workspace__desc {
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.65;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__meta {
-    margin-top: 12px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.ops-workspace__meta-item {
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.ops-workspace__meta-item span {
-    display: block;
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__meta-item strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--color-text-1);
-}
-
-.ops-workspace__aside-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.ops-workspace__checklist {
-    margin-top: 10px;
-    display: grid;
-    gap: 8px;
-}
-
-.ops-workspace__checklist-item {
-    border: 1px solid var(--color-border-2);
-    border-radius: 10px;
-    background: var(--color-fill-1, #f7f8fa);
-    padding: 10px 12px;
-}
-
-.ops-workspace__checklist-item.is-ok {
-    border-color: #d7ebde;
-    background: #f7fcf8;
-}
-
-.ops-workspace__checklist-item.is-warning {
-    border-color: #f0dfb0;
-    background: #fffaf0;
-}
-
-.ops-workspace__checklist-item.is-danger {
-    border-color: #f0c8c8;
-    background: #fff7f7;
-}
-
-.ops-workspace__checklist-label {
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__checklist-value {
-    margin-top: 4px;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.ops-workspace__checklist-desc {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.55;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__actions {
-    margin-top: 14px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.mode-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    padding: 10px 12px;
-    border: 1px dashed var(--color-border-2, #e5e6eb);
-    border-radius: 10px;
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.mode-toolbar__left {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.mode-toolbar__label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-1, #1d2129);
-}
-
-.mode-toolbar__tip {
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--color-text-3, #86909c);
-}
-
-.mode-alert {
-    margin-bottom: 0;
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.protocol-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-}
-
-.layout-group {
-    border: 1px solid var(--color-border-2);
-    border-radius: 14px;
-    padding: 16px;
-    background: #fff;
-}
-
-.group-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-1);
-}
-
-@media (max-width: 1200px) {
-    .protocol-grid {
-        grid-template-columns: 1fr;
-    }
-}
-
-@media (max-width: 920px) {
-    .page-entry-grid,
-    .stats-grid,
-    .ops-workspace,
-    .ops-workspace__meta {
-        grid-template-columns: 1fr;
-    }
-}
+.protocol-editor { min-width: 0; padding-top: 12px; }
+.protocol-editor__label { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin: 0 0 10px; color: var(--color-text-2); font-size: 13px; }
+.protocol-editor__label > div { display: flex; align-items: center; gap: 12px; }
+.protocol-editor__label span { color: var(--color-text-3); }
+@media (max-width: 600px) { .protocol-editor__label button { min-height: 44px; } }
+.protocol-editor :deep(.w-e-bar) { flex-wrap: wrap; }
+.protocol-editor :deep(.w-e-bar-item) { padding: 4px; }
 </style>

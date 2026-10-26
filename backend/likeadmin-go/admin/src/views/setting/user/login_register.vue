@@ -8,7 +8,7 @@
 -->
 <template>
     <div class="login-register pro-page-shell">
-        <a-page-header class="layout-page-header" title="用户登录与商业化">
+        <admin-page-header class="layout-page-header" title="用户登录与商业化">
             <template #subtitle>
                 统一管理前台登录、工具积分、会员权益和支付渠道。
             </template>
@@ -25,14 +25,16 @@
                     <a-button
                         size="small"
                         data-admin-smoke="login-register-reload"
+                        :disabled="isSubmitting || isLoadingData"
                         @click="reloadLoginConfig"
                     >
                         重新加载
                     </a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadLoginConfig">
         <a-card class="login-section-nav page-card pro-panel-card" :bordered="false">
             <a-tabs v-model:active-key="activeSection" type="rounded">
                 <a-tab-pane key="access" title="访问与登录" />
@@ -1036,9 +1038,10 @@
             </a-card>
         </a-form>
 
-        <footer-btns v-perms="['setting:login:save']">
-            <a-button data-admin-smoke="login-register-save" type="primary" @click="handleSubmit">保存</a-button>
-        </footer-btns>
+        <template #actions>
+            <a-button v-perms="['setting:login:save']" data-admin-smoke="login-register-save" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
+        </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -1046,6 +1049,11 @@
 import type { LoginSetup } from '@/api/setting/user'
 import { getLogin, setLogin, syncWechatPlatformCert } from '@/api/setting/user'
 import feedback from '@/utils/feedback'
+import { onBeforeRouteLeave } from 'vue-router'
+import AdminPageHeader from '@/components/page-header/index.vue'
+import ConfigEditFrame from '../website/components/config-edit-frame.vue'
+import { useConfigLoad } from '../website/composables/use-config-load'
+import { useOperateSubmit } from '../website/composables/use-operate-submit'
 
 interface MemberPlanFormItem {
     code: string
@@ -1454,6 +1462,12 @@ const formData = reactive<LoginSetup>({
     adminLoginFailWindow: 900
 })
 
+const baselineSnapshot = ref('')
+/** 比较已确认读取或保存的完整表单快照，保留账号、会员和凭据的原始编辑值。 */
+const hasUnsavedChanges = computed(() => Boolean(baselineSnapshot.value) && JSON.stringify(formData) !== baselineSnapshot.value)
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('登录与商业化配置已保存')
+
 const toolConsumeRuleKeyword = ref('')
 const toolConsumeRulePresetKey = ref('')
 const syncWechatCertLoading = ref(false)
@@ -1643,8 +1657,7 @@ const wechatCertStatusColor = computed<string>(() => {
 /**
  * 函数说明：获取登录注册配置并回填页面表单
  */
-const getData = async () => {
-    try {
+const getData = async () => loadConfiguration(async () => {
         const data = await getLogin()
         formData.frontendLoginEnabled = Number(data.frontendLoginEnabled ?? 0) === 1 ? 1 : 0
         formData.loginWay = normalizeMultiValue(data.loginWay)
@@ -1733,16 +1746,14 @@ const getData = async () => {
                 formData.autoLoginAuth.push(2)
             }
         }
-    } catch (error) {
-        console.log('获取=>', error)
-    }
-}
+        baselineSnapshot.value = JSON.stringify(formData)
+})
 
 /**
  * 函数说明：重新读取登录与商业化配置，用于多人编辑后快速同步最新值。
  */
 const reloadLoginConfig = async () => {
-    await getData()
+    if (isSubmitting.value || !await reloadConfiguration(getData)) return
     feedback.msgSuccess('已重新加载登录与商业化配置')
 }
 
@@ -1874,6 +1885,7 @@ const handleSyncWechatPlatformCert = async () => {
  * 函数说明：保存登录注册配置，提交前做必要字段校验
  */
 const handleSubmit = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     if (
         formData.frontendLoginEnabled === 1 &&
         (!Array.isArray(formData.loginWay) || formData.loginWay.length === 0)
@@ -2026,9 +2038,10 @@ const handleSubmit = async () => {
         return
     }
 
-    try {
+    await runSubmit(async () => {
         formData.openWechatAuth = isWechatAuthEnabled.value ? 1 : 0
         formData.openQqAuth = isQqAuthEnabled.value ? 1 : 0
+        const submittedSnapshot = JSON.stringify(formData)
         await setLogin({
             ...formData,
             loginWay: serializeMultiValue(formData.loginWay),
@@ -2060,14 +2073,25 @@ const handleSubmit = async () => {
                 Math.max(3, Number(formData.paymentRequestTimeout || 12))
             )
         })
-        feedback.msgSuccess('操作成功')
-        getData()
-    } catch (error) {
-        console.log('保存=>', error)
-    }
+        baselineSnapshot.value = submittedSnapshot
+    })
 }
 
-getData()
+/** 页面离开前保护未保存的商业化配置，取消时保留当前编辑。 */
+onBeforeRouteLeave(async () => {
+    if (isSubmitting.value) return false
+    if (!hasUnsavedChanges.value) return true
+    try { await feedback.confirm('当前配置尚未保存，确定离开吗？'); return true } catch { return false }
+})
+/** 浏览器关闭或刷新前提示未保存的账号、会员和支付设置。 */
+const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    if (!hasUnsavedChanges.value && !isSubmitting.value) return
+    event.preventDefault()
+    event.returnValue = ''
+}
+window.addEventListener('beforeunload', handleBeforeUnload)
+onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+void getData()
 </script>
 
 <style lang="scss" scoped>

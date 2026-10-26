@@ -314,11 +314,10 @@ export const ADMIN_P0_ACTION_PAGES = [
         prepare: 'frontendLayoutUnsaved',
         markers: [
             'frontend-layout-preview',
-            'frontend-layout-health-check',
             'frontend-layout-save-top',
             'frontend-layout-reload',
         ],
-        safeClickMarkers: ['frontend-layout-health-check'],
+        safeClickMarkers: [],
     },
     {
         name: '广告管理',

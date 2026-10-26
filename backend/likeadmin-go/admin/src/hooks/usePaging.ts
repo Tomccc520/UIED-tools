@@ -1,6 +1,11 @@
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-26
+ */
 import { reactive, toRaw } from 'vue'
 
-// 分页钩子函数
 interface Options {
     page?: number
     size?: number
@@ -9,24 +14,22 @@ interface Options {
     firstLoading?: boolean
 }
 
+/** 提供共用分页状态；保留请求参数和拒绝契约，避免过期响应覆盖当前查询。 */
 export function usePaging(options: Options) {
     const { page = 1, size = 15, fetchFun, params = {}, firstLoading = false } = options
-    // 记录分页初始参数
     const paramsInit: Record<any, any> = Object.assign({}, toRaw(params))
-    // 分页数据
     const pager = reactive({
         page,
         size,
         loading: firstLoading,
+        loaded: false,
+        error: '',
         count: 0,
         lists: [] as any[]
     })
-    // 请求序号用于丢弃较早返回的搜索结果，避免快速连续查询时旧数据覆盖新数据。
     let requestSerial = 0
 
-    /**
-     * 函数说明：清理列表查询参数中的首尾空格，统一后台各列表搜索行为。
-     */
+    /** 清理查询字符串首尾空格，保持其它筛选值和参数名不变。 */
     const normalizeRequestParams = () =>
         Object.keys(params).reduce<Record<string, any>>((result, key) => {
             const value = params[key]
@@ -34,75 +37,69 @@ export function usePaging(options: Options) {
             return result
         }, {})
 
-    /**
-     * 函数说明：兼容后端不同分页字段命名，统一提取列表数据数组。
-     */
+    /** 兼容既有分页数据字段和字典式列表，不改变调用方的数据格式。 */
     const normalizeListData = (res: any): any[] => {
         const listValue = res?.lists ?? res?.list ?? res?.rows ?? res?.items ?? []
-        if (Array.isArray(listValue)) {
-            return listValue
-        }
-        if (listValue && typeof listValue === 'object') {
-            return Object.values(listValue)
-        }
+        if (Array.isArray(listValue)) return listValue
+        if (listValue && typeof listValue === 'object') return Object.values(listValue)
         return []
     }
 
-    /**
-     * 函数说明：兼容后端 count/total/totalCount 字段差异，统一提取总数。
-     */
+    /** 兼容总数字段，并把无效或负数总数收口为零。 */
     const normalizeCount = (res: any): number => {
-        const rawCount = res?.count ?? res?.total ?? res?.totalCount ?? 0
-        const count = Number(rawCount)
-        return Number.isFinite(count) ? count : 0
+        const count = Number(res?.count ?? res?.total ?? res?.totalCount ?? 0)
+        return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0
     }
 
-    // 请求分页接口
-    const getLists = () => {
+    /** 读取一个查询快照；空的超出页最多补查一次，失败时保留最后成功的数据。 */
+    const getLists = async (): Promise<any> => {
         const currentRequestSerial = ++requestSerial
+        const requestParams = { pageNo: pager.page, pageSize: pager.size, ...normalizeRequestParams() }
         pager.loading = true
-        return fetchFun({
-            pageNo: pager.page,
-            pageSize: pager.size,
-            ...normalizeRequestParams()
-        })
-            .then((res: any) => {
-                if (currentRequestSerial !== requestSerial) {
-                    return res
+        pager.error = ''
+        try {
+            let res = await fetchFun(requestParams)
+            if (currentRequestSerial !== requestSerial) return res
+            let count = normalizeCount(res)
+            let lists = normalizeListData(res)
+            let correctedPage: number | undefined
+            const pageSize = Math.max(1, Number(requestParams.pageSize) || 15)
+            const maxPage = Math.max(1, Math.ceil(count / pageSize))
+            if (lists.length === 0 && Number(requestParams.pageNo) > maxPage) {
+                correctedPage = maxPage
+                if (count > 0) {
+                    res = await fetchFun({ ...requestParams, pageNo: correctedPage })
+                    if (currentRequestSerial !== requestSerial) return res
+                    count = normalizeCount(res)
+                    lists = normalizeListData(res)
+                    correctedPage = Math.min(correctedPage, Math.max(1, Math.ceil(count / pageSize)))
                 }
-                pager.count = normalizeCount(res)
-                pager.lists = normalizeListData(res)
-                return Promise.resolve(res)
-            })
-            .catch((err: any) => {
-                // 已被更新请求取代的失败结果不再向页面冒泡，避免快速搜索时出现误报。
-                if (currentRequestSerial !== requestSerial) {
-                    return undefined
-                }
-                return Promise.reject(err)
-            })
-            .finally(() => {
-                if (currentRequestSerial === requestSerial) {
-                    pager.loading = false
-                }
-            })
+            }
+            pager.count = count
+            pager.lists = lists
+            if (correctedPage !== undefined) pager.page = correctedPage
+            pager.loaded = true
+            return res
+        } catch (error) {
+            // 被新查询替代的失败不再冒泡；活跃失败继续拒绝供原有调用方处理。
+            if (currentRequestSerial !== requestSerial) return undefined
+            pager.error = '列表加载失败，请重试'
+            throw error
+        } finally {
+            if (currentRequestSerial === requestSerial) pager.loading = false
+        }
     }
-    // 重置为第一页
+
+    /** 查询条件变化时回第一页，再按当前条件重新读取。 */
     const resetPage = () => {
         pager.page = 1
         return getLists()
     }
-    // 重置参数
+
+    /** 恢复初始筛选并回第一页，避免重置后仍停留在不存在的高页码。 */
     const resetParams = () => {
-        Object.keys(paramsInit).forEach((item) => {
-            params[item] = paramsInit[item]
-        })
-        return getLists()
+        Object.keys(paramsInit).forEach(key => { params[key] = paramsInit[key] })
+        return resetPage()
     }
-    return {
-        pager,
-        getLists,
-        resetParams,
-        resetPage
-    }
+    return { pager, getLists, resetParams, resetPage }
 }

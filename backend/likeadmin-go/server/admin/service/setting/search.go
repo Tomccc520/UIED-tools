@@ -81,7 +81,7 @@ func (sSrv settingSearchService) Detail() (res map[string]interface{}, e error) 
 	}, nil
 }
 
-// Save 保存搜索设置
+// Save 函数说明：在同一事务内保存热门搜索状态与词条，任一写入失败则整体回滚。
 func (sSrv settingSearchService) Save(searchReq req.SettingSearchReq) (e error) {
 	isHotSearch := 0
 	if searchReq.IsHotSearch == 1 {
@@ -94,11 +94,10 @@ func (sSrv settingSearchService) Save(searchReq req.SettingSearchReq) (e error) 
 		return
 	}
 
-	if err = util.ConfigUtil.Set(sSrv.db, searchConfigType, searchConfigIsHotSearchKey, strconv.Itoa(isHotSearch)); err != nil {
-		return response.CheckErr(err, "Save Set isHotSearch err")
-	}
-	if err = util.ConfigUtil.Set(sSrv.db, searchConfigType, searchConfigListKey, listJSON); err != nil {
-		return response.CheckErr(err, "Save Set list err")
-	}
-	return nil
+	return sSrv.db.Transaction(func(tx *gorm.DB) error {
+		if err := util.ConfigUtil.Set(tx, searchConfigType, searchConfigIsHotSearchKey, strconv.Itoa(isHotSearch)); err != nil {
+			return response.CheckErr(err, "Save Set isHotSearch err")
+		}
+		return response.CheckErr(util.ConfigUtil.Set(tx, searchConfigType, searchConfigListKey, listJSON), "Save Set list err")
+	})
 }

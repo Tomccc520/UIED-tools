@@ -196,21 +196,24 @@ func (albSrv albumService) AlbumCompressConfig() (res map[string]interface{}, e 
 	return
 }
 
-// AlbumCompressConfigSave 保存素材图片压缩配置
+// AlbumCompressConfigSave 函数说明：在同一事务内保存完整压缩策略，保留合法零值，失败时回滚全部字段。
 func (albSrv albumService) AlbumCompressConfigSave(saveReq req.CommonAlbumCompressConfigSaveReq) (e error) {
-	if err := util.ConfigUtil.Set(albSrv.db, "material", materialCompressEnabledConfigName, fmt.Sprintf("%d", saveReq.Enabled)); err != nil {
-		return response.CheckErr(err, "AlbumCompressConfigSave Set enabled err")
+	if saveReq.Enabled == nil || saveReq.MinSizeKB == nil {
+		return response.AssertArgumentError.Make("请提交完整的压缩设置")
 	}
-	if err := util.ConfigUtil.Set(albSrv.db, "material", materialCompressMinSizeKBConfigName, fmt.Sprintf("%d", saveReq.MinSizeKB)); err != nil {
-		return response.CheckErr(err, "AlbumCompressConfigSave Set minSizeKB err")
-	}
-	if err := util.ConfigUtil.Set(albSrv.db, "material", materialCompressJpegQualityConfigName, fmt.Sprintf("%d", saveReq.JpegQuality)); err != nil {
-		return response.CheckErr(err, "AlbumCompressConfigSave Set jpegQuality err")
-	}
-	if err := util.ConfigUtil.Set(albSrv.db, "material", materialCompressPngLevelConfigName, parseMaterialCompressPngLevel(saveReq.PngCompressionLevel)); err != nil {
-		return response.CheckErr(err, "AlbumCompressConfigSave Set pngCompressionLevel err")
-	}
-	return nil
+	return albSrv.db.Transaction(func(tx *gorm.DB) error {
+		for _, item := range []struct{ name, value string }{
+			{materialCompressEnabledConfigName, strconv.Itoa(*saveReq.Enabled)},
+			{materialCompressMinSizeKBConfigName, strconv.Itoa(*saveReq.MinSizeKB)},
+			{materialCompressJpegQualityConfigName, strconv.Itoa(saveReq.JpegQuality)},
+			{materialCompressPngLevelConfigName, parseMaterialCompressPngLevel(saveReq.PngCompressionLevel)},
+		} {
+			if err := util.ConfigUtil.Set(tx, "material", item.name, item.value); err != nil {
+				return response.CheckErr(err, "AlbumCompressConfigSave Set configuration err")
+			}
+		}
+		return nil
+	})
 }
 
 // AlbumMove 相册文件移动

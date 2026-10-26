@@ -224,6 +224,13 @@ test('安全预览保留路径参数，只允许 HTTP(S) 链接', () => {
     for (const url of ['javascript:alert(1)', 'data:text/html,x', 'file:///etc/passwd', '']) assert.equal(resolveCatalogPreviewHref(url, 'https://uiedtool.com/'), '')
 })
 
+test('工具链接继承主站最新配置预览标记，业务参数和锚点不丢，外链不附带内部标记', () => {
+    const base = 'http://localhost:5179/?_uied_preview=1'
+    assert.equal(resolveCatalogPreviewHref('/tools/ai/work-summary?type=annual#result', base), 'http://localhost:5179/tools/ai/work-summary?type=annual&_uied_preview=1#result')
+    assert.equal(resolveCatalogPreviewHref('http://localhost:5179/tools/qrcode?text=hello#code', base), 'http://localhost:5179/tools/qrcode?text=hello&_uied_preview=1#code')
+    assert.equal(resolveCatalogPreviewHref('https://example.com/tool?x=1#result', base), 'https://example.com/tool?x=1#result')
+})
+
 /** 等待当前微任务与响应式保存链推进，不依赖真实计时或网络。 */
 const flushTasks = () => new Promise((resolve) => setImmediate(resolve))
 

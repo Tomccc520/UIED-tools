@@ -1,7 +1,6 @@
 <template>
     <main class="layout-main-wrap">
         <div class="layout-main-inner" :class="{ 'layout-main-inner--configuration': currentRoute.path.startsWith('/official_site/') }">
-            <config-settings-nav v-if="currentRoute.path.startsWith('/official_site/')" />
             <router-view v-slot="{ Component, route }">
                 <template v-if="isRouteShow">
                     <keep-alive :include="includeList" :max="20">
@@ -28,7 +27,6 @@ import useAppStore from '@/stores/modules/app'
 import useTabsStore from '@/stores/modules/multipleTabs'
 import useSettingStore from '@/stores/modules/setting'
 import { RouterView } from 'vue-router'
-import ConfigSettingsNav from '@/views/setting/website/components/config-settings-nav.vue'
 const currentRoute = useRoute()
 const appStore = useAppStore()
 const tabsStore = useTabsStore()

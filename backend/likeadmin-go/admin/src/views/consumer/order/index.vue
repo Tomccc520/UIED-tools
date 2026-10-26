@@ -170,8 +170,8 @@
                             class="w-[300px]"
                             placeholder="订单号/商品名称/用户昵称/手机"
                             allow-clear
-                            @press-enter="resetPage"
-                            @clear="resetPage"
+                            @press-enter="handleSearch"
+                            @clear="handleSearch"
                         />
                     </a-form-item>
 
@@ -236,8 +236,8 @@
                             class="w-[220px]"
                             placeholder="筛选订单绑定域名"
                             allow-clear
-                            @press-enter="resetPage"
-                            @clear="resetPage"
+                            @press-enter="handleSearch"
+                            @clear="handleSearch"
                         />
                     </a-form-item>
 
@@ -267,6 +267,7 @@
             </a-card>
 
             <a-card class="!border-none pro-card" :bordered="false">
+                <list-load-feedback v-if="pager.error && pager.lists.length" :error="pager.error" :loading="pager.loading" has-data @retry="handleRefresh" />
                 <a-table
                     :data="pager.lists"
                     :loading="pager.loading"
@@ -431,14 +432,11 @@
                             </a-button>
                         </a-space>
                     </template>
+                    <template #empty><list-load-feedback :error="pager.error" :loading="pager.loading" :loaded="pager.loaded" empty-text="暂无匹配的订单数据" @retry="handleRefresh" /></template>
                 </a-table>
-                <a-empty
-                    v-if="!pager.loading && pager.lists.length === 0"
-                    description="暂无订单数据"
-                />
 
                 <div class="flex justify-end mt-4">
-                    <pagination v-model="pager" @change="getLists" />
+                    <pagination v-model="pager" @change="loadOrderList" />
                 </div>
             </a-card>
         </a-space>
@@ -650,6 +648,7 @@ import {
     saveOrderDelivery
 } from '@/api/consumer'
 import { usePaging } from '@/hooks/usePaging'
+import ListLoadFeedback from '@/components/list-load-feedback/index.vue'
 import { getRoutePath } from '@/router'
 import feedback from '@/utils/feedback'
 
@@ -1114,6 +1113,11 @@ const loadLinkageSummary = async () => {
 const refreshOrderPage = async () => {
     await Promise.all([getLists(), loadLinkageSummary()])
 }
+/** 接住列表交互中的失败，保留 hook 对其它调用方的拒绝语义。 */
+const runOrderQuery = async (query: () => Promise<unknown>) => { try { await query(); return true } catch { return false } }
+/** 分页时仅刷新当前订单列表，异常交由列表错误区显示。 */
+const loadOrderList = () => runOrderQuery(getLists)
+
 
 /**
  * 函数说明：把路由里的联动筛选参数回填到订单页筛选表单，支持从授权页反向跳转。
@@ -1149,8 +1153,7 @@ const clearRouteFilters = async () => {
  * 函数说明：执行订单筛选查询。
  */
 const handleSearch = async () => {
-    await Promise.all([resetPage(), loadLinkageSummary()])
-    feedback.msgSuccess('订单筛选条件已生效')
+    if (await runOrderQuery(() => Promise.all([resetPage(), loadLinkageSummary()]))) feedback.msgSuccess('订单筛选条件已生效')
 }
 
 /**
@@ -1158,16 +1161,14 @@ const handleSearch = async () => {
  */
 const handleResetFilters = async () => {
     await clearRouteFilters()
-    await Promise.all([resetParams(), loadLinkageSummary()])
-    feedback.msgSuccess('订单筛选条件已重置')
+    if (await runOrderQuery(() => Promise.all([resetParams(), loadLinkageSummary()]))) feedback.msgSuccess('订单筛选条件已重置')
 }
 
 /**
  * 函数说明：刷新当前订单列表。
  */
 const handleRefresh = async () => {
-    await refreshOrderPage()
-    feedback.msgSuccess('订单列表已刷新')
+    if (await runOrderQuery(refreshOrderPage)) feedback.msgSuccess('订单列表已刷新')
 }
 
 /**
@@ -1175,7 +1176,7 @@ const handleRefresh = async () => {
  */
 const handleQuickFilterDelivery = async (status: string) => {
     queryParams.deliveryCheckStatus = String(status || '').trim()
-    await Promise.all([resetPage(), loadLinkageSummary()])
+    await runOrderQuery(() => Promise.all([resetPage(), loadLinkageSummary()]))
 }
 
 /**
@@ -1183,8 +1184,7 @@ const handleQuickFilterDelivery = async (status: string) => {
  */
 const handleClearRepairContext = async () => {
     await clearRouteFilters()
-    await Promise.all([resetParams(), loadLinkageSummary()])
-    feedback.msgSuccess('已退出授权联动修复上下文')
+    if (await runOrderQuery(() => Promise.all([resetParams(), loadLinkageSummary()]))) feedback.msgSuccess('已退出授权联动修复上下文')
 }
 
 /**
@@ -1443,14 +1443,15 @@ const handleExport = async () => {
 }
 
 onActivated(() => {
-    refreshOrderPage()
+    void runOrderQuery(refreshOrderPage)
 })
 
 watch(
     () => route.fullPath,
     async () => {
         syncFiltersFromRoute()
-        await refreshOrderPage()
+        pager.page = 1
+        await runOrderQuery(refreshOrderPage)
     },
     { immediate: true }
 )

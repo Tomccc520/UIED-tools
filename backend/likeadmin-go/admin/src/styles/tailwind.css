@@ -1,3 +1,6 @@
-@tailwind base;
+/* 基础重置放在低优先级层，避免热更新或懒加载顺序让按钮重置覆盖 Arco 开关等组件。 */
+@layer uied-reset {
+    @tailwind base;
+}
 @tailwind components;
 @tailwind utilities;

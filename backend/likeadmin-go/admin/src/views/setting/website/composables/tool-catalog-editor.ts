@@ -17,6 +17,10 @@ export const resolveCatalogPreviewHref = (value: unknown, baseUrl: string): stri
     if (!input || (!input.startsWith('/') && !/^https?:\/\//i.test(input))) return ''
     try {
         const parsed = new URL(input, baseUrl || undefined)
+        if (baseUrl) {
+            const base = new URL(baseUrl)
+            if (parsed.origin === base.origin && base.searchParams.get('_uied_preview') === '1') parsed.searchParams.set('_uied_preview', '1')
+        }
         return /^https?:$/.test(parsed.protocol) ? parsed.href : ''
     } catch { return '' }
 }

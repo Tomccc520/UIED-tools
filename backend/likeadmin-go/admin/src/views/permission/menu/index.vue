@@ -8,37 +8,37 @@
 -->
 <template>
     <div class="menu-page">
-        <a-page-header
+        <admin-page-header
             title="菜单管理"
-            subtitle="按模块维护目录/菜单/按钮权限，支持树形筛选与快速编辑。"
+            description="按模块维护目录/菜单/按钮权限，支持树形筛选与快速编辑。"
         >
             <template #extra>
                 <a-space>
                     <a-tag color="purple" bordered>{{ menuDataSourceLabel }}</a-tag>
                     <a-tag color="arcoblue" bordered>已选 {{ selectedMenuRows.length }}</a-tag>
-                    <a-button data-admin-smoke="menu-reset" @click="resetFilters">重置筛选</a-button>
-                    <a-button data-admin-smoke="menu-query" @click="showAllRows">查看全部</a-button>
-                    <a-button data-admin-smoke="menu-refresh" @click="refreshLists">
+                    <a-button data-admin-smoke="menu-reset" :disabled="isBatchDeleting" @click="resetFilters">重置筛选</a-button>
+                    <a-button data-admin-smoke="menu-query" :disabled="isBatchDeleting" @click="showAllRows">查看全部</a-button>
+                    <a-button data-admin-smoke="menu-refresh" :disabled="isBatchDeleting" @click="refreshLists">
                         <template #icon>
                             <icon-refresh />
                         </template>
                         刷新
                     </a-button>
-                    <a-button :disabled="selectedMenuRows.length === 0" @click="clearMenuSelection"
+                    <a-button :disabled="selectedMenuRows.length === 0 || isBatchDeleting" @click="clearMenuSelection"
                         >清空选择</a-button
                     >
-                    <a-button
+                    <a-button :loading="isBatchDeleting"
                         v-perms="['system:menu:del']"
                         status="danger"
-                        :disabled="selectedMenuRows.length === 0"
+                        :disabled="selectedMenuRows.length === 0 || isBatchDeleting"
                         @click="handleBatchDelete"
                     >
                         批量删除
                     </a-button>
-                    <a-button data-admin-smoke="menu-expand" @click="handleExpand">{{
+                    <a-button data-admin-smoke="menu-expand" :disabled="isBatchDeleting" @click="handleExpand">{{
                         isExpand ? '全部折叠' : '全部展开'
                     }}</a-button>
-                    <a-button data-admin-smoke="menu-add" v-perms="['system:menu:add']" type="primary" @click="handleAdd()">
+                    <a-button data-admin-smoke="menu-add" :disabled="isBatchDeleting" v-perms="['system:menu:add']" type="primary" @click="handleAdd()">
                         <template #icon>
                             <icon-plus />
                         </template>
@@ -46,7 +46,7 @@
                     </a-button>
                 </a-space>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
         <a-grid :cols="{ xs: 1, md: 2, lg: 4 }" :col-gap="12" :row-gap="12" class="menu-metrics">
             <a-grid-item>
@@ -76,7 +76,7 @@
         </a-grid>
 
 
-        <a-card class="general-card" title="菜单权限列表" :bordered="false">
+        <a-card :inert="isBatchDeleting ? '' : undefined" class="general-card" title="菜单权限列表" :bordered="false">
             <a-grid :cols="{ xs: 1, md: 12 }" :col-gap="12" :row-gap="12" class="menu-filter-grid">
                 <a-grid-item :span="{ xs: 12, md: 5 }">
                     <a-input-search
@@ -123,8 +123,8 @@
                         </div>
                     </div>
                     <a-space wrap>
-                        <a-button @click="clearMenuSelection">清空选择</a-button>
-                        <a-button
+                        <a-button :disabled="isBatchDeleting" @click="clearMenuSelection">清空选择</a-button>
+                        <a-button :disabled="isBatchDeleting" :loading="isBatchDeleting"
                             v-perms="['system:menu:del']"
                             status="danger"
                             @click="handleBatchDelete"
@@ -148,7 +148,7 @@
                 class="mt-4"
                 :data="tableRows"
                 :columns="menuColumns"
-                :loading="loading"
+                :loading="loading || isBatchDeleting"
                 row-key="_rowKey"
                 :children-column-name="'children'"
                 :default-expand-all-rows="true"
@@ -225,6 +225,7 @@
     </div>
 </template>
 <script lang="ts" setup name="permissionMenu">
+import AdminPageHeader from '@/components/page-header/index.vue'
 import type { TableColumnData } from '@arco-design/web-vue'
 import { menuDelete, menuLists } from '@/api/perms/menu'
 import { getMenu } from '@/api/user'
@@ -301,6 +302,7 @@ const showEdit = ref(false)
 const lists = ref<MenuRow[]>([])
 const expandedKeys = ref<string[]>([])
 const isExpand = ref(true)
+const isBatchDeleting = ref(false)
 const selectedMenuKeys = ref<string[]>([])
 const menuDataSourceMode = ref<MenuDataSourceMode>('route')
 const menuDataSourceLabel = computed(() =>
@@ -620,6 +622,7 @@ const rowSelection = computed(() => ({
     showCheckedAll: true,
     selectedRowKeys: selectedMenuKeys.value,
     onChange: (keys: Array<string | number>) => {
+        if (isBatchDeleting.value) return
         selectedMenuKeys.value = keys.map((item) => String(item))
     }
 }))
@@ -656,14 +659,17 @@ const getMenuTypeLabel = (menuType: string) => menuTypeLabelMap[menuType] || '�
  */
 const getLists = async () => {
     loading.value = true
+    let loadedRequestedSource = false
     try {
         lists.value = await loadMenuRowsByDataSource()
+        loadedRequestedSource = lists.value.length > 0
         if (lists.value.length === 0) {
             if (menuDataSourceMode.value === 'all') {
                 const routeFallbackRows = await loadMenuRowsFromRouteFallback()
                 if (routeFallbackRows.length > 0) {
                     lists.value = routeFallbackRows
                     menuDataSourceMode.value = 'route'
+                    loadedRequestedSource = false
                     setActionFeedback('warning', '全量菜单为空，已自动回退到侧边栏路由视图')
                 } else {
                     setActionFeedback('warning', '菜单接口返回为空，请检查菜单数据或当前账号权限')
@@ -679,6 +685,7 @@ const getLists = async () => {
             allRows.value.some((item) => item._rowKey === key)
         )
     } catch {
+        loadedRequestedSource = false
         if (menuDataSourceMode.value === 'all') {
             const routeFallbackRows = await loadMenuRowsFromRouteFallback()
             if (routeFallbackRows.length > 0) {
@@ -689,7 +696,7 @@ const getLists = async () => {
                     allRows.value.some((item) => item._rowKey === key)
                 )
                 setActionFeedback('warning', '全量菜单接口不可用，已自动回退到侧边栏路由数据')
-                return
+                return false
             }
         }
         const routeFallbackRows = await loadMenuRowsFromRouteFallback()
@@ -707,7 +714,7 @@ const getLists = async () => {
             if (!getToken()) {
                 setActionFeedback('warning', '登录状态已失效，请重新登录后再查看菜单')
                 feedback.msgError('登录状态已失效，请重新登录')
-                return
+                return false
             }
             setActionFeedback('error', '菜单数据加载失败，请检查接口权限或服务状态')
             feedback.msgError('菜单数据加载失败，请检查接口权限或服务状态')
@@ -715,13 +722,15 @@ const getLists = async () => {
     } finally {
         loading.value = false
     }
+    return loadedRequestedSource
 }
 
 /**
  * 函数说明：刷新菜单数据，并保持当前筛选条件不变。
  */
 const refreshLists = async () => {
-    await getLists()
+    if (isBatchDeleting.value) return
+    if (!await getLists()) return
     setActionFeedback(
         'success',
         `${menuDataSourceMode.value === 'route' ? '路由菜单' : '全量菜单'}数据已刷新`
@@ -733,6 +742,7 @@ const refreshLists = async () => {
  * 函数说明：重置筛选并切回 route 数据源，保证页面默认语义与左侧菜单一致。
  */
 const resetFilters = async () => {
+    if (isBatchDeleting.value) return
     filters.keyword = ''
     filters.menuType = DEFAULT_MENU_TYPE_FILTER
     filters.status = DEFAULT_STATUS_FILTER
@@ -761,6 +771,7 @@ const showAllRows = async () => {
  * 函数说明：清空当前批量选择状态，避免误操作。
  */
 const clearMenuSelection = () => {
+    if (isBatchDeleting.value) return
     if (selectedMenuKeys.value.length === 0) {
         setActionFeedback('info', '当前没有已选菜单')
         return
@@ -797,6 +808,7 @@ const handleEdit = async (data: MenuRow) => {
  * 函数说明：删除菜单并刷新列表。
  */
 const handleDelete = async (id: number) => {
+    if (isBatchDeleting.value) return
     await feedback.confirm('确定要删除？')
     await menuDelete({ id })
     feedback.msgSuccess('删除成功')
@@ -822,52 +834,41 @@ const buildMenuDepthMap = (
 }
 
 /**
- * 函数说明：批量删除菜单，输出成功/失败数量反馈并自动刷新列表。
+ * 函数说明：锁定菜单删除快照并先处理叶子节点，失败项保留选中，不改变原有删除权限。
  */
 const handleBatchDelete = async () => {
-    if (selectedMenuRows.value.length === 0) {
+    if (isBatchDeleting.value) return
+    const snapshot = selectedMenuRows.value.map(row => ({ id: Number(row.id), key: row._rowKey }))
+    if (!snapshot.length) {
         setActionFeedback('warning', '请先选择要删除的菜单')
-        feedback.msgError('请先选择要删除的菜单')
         return
     }
-    await feedback.confirm(`确定删除已选择的 ${selectedMenuRows.value.length} 项菜单吗？`)
-
-    const depthMap = buildMenuDepthMap(lists.value)
-    const targetIds = selectedMenuRows.value
-        .map((item) => Number(item.id))
-        .filter((id) => Number.isFinite(id))
-        .sort((left, right) => (depthMap[right] || 0) - (depthMap[left] || 0))
-
-    let successCount = 0
-    let failedCount = 0
-    for (const id of targetIds) {
-        try {
-            await menuDelete({ id })
-            successCount++
-        } catch {
-            failedCount++
+    const depths = buildMenuDepthMap(lists.value)
+    snapshot.sort((left, right) => (depths[right.id] || 0) - (depths[left.id] || 0))
+    isBatchDeleting.value = true
+    try {
+        try { await feedback.confirm(`确定删除已选择的 ${snapshot.length} 项菜单吗？`) }
+        catch { return }
+        const failed: typeof snapshot = []
+        let successCount = 0
+        let skippedCount = 0
+        for (const target of snapshot) {
+            if (!Number.isFinite(target.id) || target.id <= 0) { failed.push(target); continue }
+            try { await menuDelete({ id: target.id }); successCount++ }
+            catch { failed.push(target) }
         }
+        const refreshed = await getLists()
+        selectedMenuKeys.value = failed.map(target => target.key)
+        const message = `批量删除完成：成功 ${successCount} 项，失败 ${failed.length} 项${skippedCount ? `，跳过 ${skippedCount} 项` : ''}${failed.length ? '。失败项已保留选中，可重试。' : ''}${refreshed ? '' : '。列表刷新未完成，请重新加载。'}`
+        const type = failed.length === snapshot.length ? 'error' : failed.length || skippedCount || !refreshed ? 'warning' : 'success'
+        setActionFeedback(type, message)
+        if (type === 'success') feedback.msgSuccess(message)
+        else if (type === 'warning') feedback.msgWarning(message)
+        else feedback.msgError(message)
+    } finally {
+        isBatchDeleting.value = false
     }
-
-    if (successCount > 0 && failedCount === 0) {
-        const successText = `批量删除完成：成功 ${successCount} 项`
-        setActionFeedback('success', successText)
-        feedback.msgSuccess(successText)
-    } else if (successCount > 0 && failedCount > 0) {
-        const warningText = `批量删除完成：成功 ${successCount} 项，失败 ${failedCount} 项`
-        setActionFeedback('warning', warningText)
-        feedback.msgSuccess(warningText)
-    } else {
-        setActionFeedback('error', '批量删除失败，请先删除子菜单或检查权限')
-        feedback.msgError('批量删除失败，请先删除子菜单或检查权限')
-    }
-    if (failedCount > 0) {
-        feedback.alertWarning('存在删除失败项（可能包含父菜单或权限不足），请检查后重试')
-    }
-    selectedMenuKeys.value = []
-    await getLists()
 }
-
 /**
  * 函数说明：切换菜单树展开/折叠状态。
  */

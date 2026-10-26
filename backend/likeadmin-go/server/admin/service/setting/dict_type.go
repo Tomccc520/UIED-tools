@@ -92,24 +92,43 @@ func (dtSrv settingDictTypeService) Detail(id uint) (res resp.SettingDictTypeRes
 	return
 }
 
-// Add 字典类型新增
+// readDictTypeStatus 校验并读取显式提交的字典状态，合法零值不会被当作缺失。
+func readDictTypeStatus(value *int8) (uint8, error) {
+	if value == nil || (*value != 0 && *value != 1) {
+		return 0, response.AssertArgumentError.Make("字典状态必须为 0 或 1")
+	}
+	return uint8(*value), nil
+}
+
+// Add 新增字典类型，显式列值确保停用状态不会被 GORM 的默认值 1 替换。
 func (dtSrv settingDictTypeService) Add(addReq req.SettingDictTypeAddReq) (e error) {
+	status, err := readDictTypeStatus(addReq.DictStatus)
+	if err != nil {
+		return err
+	}
 	if r := dtSrv.db.Where("dict_name = ? AND is_delete = ?", addReq.DictName, 0).Limit(1).First(&setting.DictType{}); r.RowsAffected > 0 {
 		return response.AssertArgumentError.Make("字典名称已存在！")
 	}
 	if r := dtSrv.db.Where("dict_type = ? AND is_delete = ?", addReq.DictType, 0).Limit(1).First(&setting.DictType{}); r.RowsAffected > 0 {
 		return response.AssertArgumentError.Make("字典类型已存在！")
 	}
-	var dt setting.DictType
-	response.Copy(&dt, addReq)
-	err := dtSrv.db.Create(&dt).Error
+	now := time.Now().Unix()
+	values := map[string]interface{}{
+		"dict_name": addReq.DictName, "dict_type": addReq.DictType, "dict_remark": addReq.DictRemark,
+		"dict_status": status, "create_time": now, "update_time": now,
+	}
+	err = dtSrv.db.Model(&setting.DictType{}).Create(values).Error
 	e = response.CheckErr(err, "Add Create err")
 	return
 }
 
-// Edit 字典类型编辑
+// Edit 编辑字典类型，状态经过显式校验和解引用后按原有保存流程写入。
 func (dtSrv settingDictTypeService) Edit(editReq req.SettingDictTypeEditReq) (e error) {
-	err := dtSrv.db.Where("id = ? AND is_delete = ?", editReq.ID, 0).Limit(1).First(&setting.DictType{}).Error
+	status, err := readDictTypeStatus(editReq.DictStatus)
+	if err != nil {
+		return err
+	}
+	err = dtSrv.db.Where("id = ? AND is_delete = ?", editReq.ID, 0).Limit(1).First(&setting.DictType{}).Error
 	if e = response.CheckErrDBNotRecord(err, "字典类型不存在！"); e != nil {
 		return
 	}
@@ -122,8 +141,7 @@ func (dtSrv settingDictTypeService) Edit(editReq req.SettingDictTypeEditReq) (e 
 	if r := dtSrv.db.Where("id != ? AND dict_type = ? AND is_delete = ?", editReq.ID, editReq.DictType, 0).Limit(1).First(&setting.DictType{}); r.RowsAffected > 0 {
 		return response.AssertArgumentError.Make("字典类型已存在！")
 	}
-	var dt setting.DictType
-	response.Copy(&dt, editReq)
+	dt := setting.DictType{ID: editReq.ID, DictName: editReq.DictName, DictType: editReq.DictType, DictRemark: editReq.DictRemark, DictStatus: status}
 	err = dtSrv.db.Save(&dt).Error
 	e = response.CheckErr(err, "Edit Save err")
 	return

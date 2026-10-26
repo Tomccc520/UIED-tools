@@ -7,9 +7,11 @@
  */
 import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
+import { rmSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
 import { chromium } from 'playwright'
 
 const adminDir = fileURLToPath(new URL('../', import.meta.url))
@@ -17,6 +19,8 @@ const projectDir = path.resolve(adminDir, '../../..')
 const outputDir = path.join(projectDir, 'output/playwright/admin-redesign')
 const baseUrl = process.env.ADMIN_DESIGN_BASE_URL || 'http://localhost:5180'
 const captureToolsOnly = process.argv.includes('--capture-tools-only')
+const serveOnly = process.argv.includes('--serve-only')
+const fixturePort = Number(process.env.ADMIN_DESIGN_FIXTURE_PORT || 5182)
 const reportName = captureToolsOnly ? 'result-tools-screenshot.json' : 'result.json'
 const entryName = `__admin-design-${randomUUID()}`
 const temporaryFiles = ['html', 'mjs', 'vue'].map(extension => path.join(adminDir, `${entryName}.${extension}`))
@@ -39,7 +43,13 @@ let fixture = {
     toolsSidebarBottomLinks: JSON.stringify([{ name: '更新记录', link: '/changelog' }]), toolsSidebarMenuBlocks: '[]', toolsAiToolboxSidebarMenus: '[]',
     toolsCategoryTree: JSON.stringify(toolTree), toolsHomepageLearningEnabled: '1', toolsHomepageLearningTitle: '每日学习',
     toolsHomepageLearningRssUrl: 'https://www.uied.cn/api/open/v1/rss.xml', toolsHomepageLearningFilterType: 'all',
-    toolsHomepageLearningCategorySlug: '', toolsHomepageLearningCategoryIds: '', toolsHomepageLearningLimit: '8'
+    toolsHomepageLearningCategorySlug: '', toolsHomepageLearningCategoryIds: '', toolsHomepageLearningLimit: '8',
+    toolsChangelogTimeline: JSON.stringify([
+        { id: 'fixture-latest', version: '3.0.6', date: '2026-10-26', title: '样例：新版内容配置', extension: { preserve: true }, features: [{ title: '功能更新', points: ['样例：原始更新内容'], extension: '保留分组扩展字段' }] },
+        { id: 'fixture-previous', version: '3.0.5', date: '2026-10-25', title: '样例：历史版本', features: [{ title: '问题修复', points: ['样例：历史记录保持不变'] }] }
+    ]),
+    toolsChangelogIntroText: '样例：更新记录介绍', toolsChangelogStatsText: '样例：版本摘要',
+    toolsChangelogHeaderLinks: '[]', toolsChangelogMetaLinks: '[]'
 }
 const requests = []
 const saves = []
@@ -53,6 +63,8 @@ let failLoad = false
 let failRefresh = false
 let browser
 let page
+let fixtureServer
+let fixtureCacheDir
 
 /** 创建独立 Vue 入口，保留实际 Layout、菜单、公共导航和业务页面，Pinia 仅注入样例权限与菜单。 */
 const createHarness = async () => {
@@ -93,7 +105,10 @@ useSettingStore().setTheme(false)
 app.use(Arco)
 app.directive('perms', perms)
 app.use(router)
-router.push('/official_site/tools_catalog').then(() => { app.mount('#app'); window.__adminDesign = { navigate: path => router.push(path), route: () => router.currentRoute.value.path, clearMessages: () => Message.clear(), layoutState: () => ({ mobile: state.isMobile, collapsed: state.isCollapsed }), ready: true } })
+const openedPreviews = []
+/** 隔离预览出口，实际按钮仍执行真实地址解析，但不会访问其他服务。 */
+window.open = url => { openedPreviews.push(String(url)); return null }
+router.push('/official_site/tools_catalog').then(() => { app.mount('#app'); window.__adminDesign = { openedPreviews, navigate: path => router.push(path), route: () => router.currentRoute.value.path, clearMessages: () => Message.clear(), layoutState: () => ({ mobile: state.isMobile, collapsed: state.isCollapsed }), ready: true } })
 `)
     await fs.writeFile(temporaryFiles[2], `
 <script setup>
@@ -104,31 +119,83 @@ import zhCn from '@arco-design/web-vue/es/locale/lang/zh-cn'
 `)
 }
 
+/** 在内存中处理样例 API；浏览器回归和本机 CUA 预览共用相同数据与禁止真实写入规则。 */
+const fixtureResponse = async (pathname, method, payload, credentialPresent) => {
+    requests.push({ path: pathname, method, credentialPresent })
+    if (credentialPresent) {
+        credentialViolations.push(pathname)
+        return { code: 500, msg: '隔离验收禁止登录凭证', data: null }
+    }
+    if (pathname.endsWith('/setting/website/detail')) return failLoad ? { code: 500, msg: '样例：配置读取失败', data: null } : { code: 200, data: fixture }
+    if (pathname.endsWith('/setting/website/save')) {
+        saves.push(payload)
+        await new Promise(resolve => setTimeout(resolve, 180))
+        if (failSave) return { code: 500, msg: '样例：保存接口失败', data: null }
+        fixture = { ...fixture, ...payload }
+        return { code: 200, data: fixture }
+    }
+    if (pathname.endsWith('/common/index/config')) return failRefresh ? { code: 500, msg: '样例：预览缓存刷新失败', data: null } : { code: 200, data: fixture }
+    return method === 'GET' ? { code: 200, msg: '样例数据', data: [] } : { code: 500, msg: '样例验收不允许此写入', data: null }
+}
+
 /** 所有 API 均在浏览器请求边界返回样例结果；未知写入也不会转发到开发或线上服务。 */
 const fulfillFixture = async route => {
     const request = route.request()
     const url = new URL(request.url())
-    if (url.pathname.startsWith('/api/')) {
+    if (url.pathname.startsWith('/api')) {
         const credentialPresent = !['', 'null', 'undefined'].includes(request.headers().token || '')
-        requests.push({ path: url.pathname, method: request.method(), credentialPresent })
-        if (credentialPresent) {
-            credentialViolations.push(url.pathname)
-            return route.fulfill({ json: { code: 500, msg: '隔离验收禁止登录凭证', data: null } })
-        }
-        let response = { code: 200, msg: '样例数据', data: [] }
-        if (url.pathname.endsWith('/setting/website/detail')) response = failLoad ? { code: 500, msg: '样例：配置读取失败', data: null } : { code: 200, data: fixture }
-        else if (url.pathname.endsWith('/setting/website/save')) {
-            const payload = request.postDataJSON()
-            saves.push(payload)
-            await new Promise(resolve => setTimeout(resolve, 180))
-            if (failSave) response = { code: 500, msg: '样例：保存接口失败', data: null }
-            else { fixture = { ...fixture, ...payload }; response = { code: 200, data: fixture } }
-        } else if (url.pathname.endsWith('/common/index/config')) response = failRefresh ? { code: 500, msg: '样例：预览缓存刷新失败', data: null } : { code: 200, data: fixture }
-        else if (request.method() !== 'GET') response = { code: 500, msg: '样例验收不允许此写入', data: null }
-        return route.fulfill({ json: response })
+        const payload = request.method() === 'GET' ? undefined : request.postDataJSON()
+        return route.fulfill({ json: await fixtureResponse(url.pathname, request.method(), payload, credentialPresent) })
     }
     if (url.origin === new URL(baseUrl).origin) return route.continue()
     return route.abort()
+}
+
+/** 退出时同步删除本脚本拥有的临时入口和独立缓存，兼容 Vite 的 SIGTERM 退出处理。 */
+const cleanupFixtureFiles = () => {
+    for (const file of temporaryFiles) rmSync(file, { force: true })
+    if (fixtureCacheDir) rmSync(fixtureCacheDir, { recursive: true, force: true })
+}
+
+/** 为人工浏览器验收开启独立本机端口；最前置 API 中间件只读写样例内存，不使用开发服务代理。 */
+const serveFixture = async () => {
+    if (!Number.isInteger(fixturePort) || fixturePort < 1024 || fixturePort > 65535 || [5179, 5180, 8003].includes(fixturePort)) throw new Error('样例服务必须使用独立的有效本机端口')
+    process.once('exit', cleanupFixtureFiles)
+    const { createServer } = await import('vite')
+    fixtureCacheDir = await fs.mkdtemp(path.join(tmpdir(), 'uied-admin-design-vite-'))
+    fixtureServer = await createServer({
+        cacheDir: fixtureCacheDir,
+        root: adminDir, configFile: path.join(adminDir, 'vite.config.ts'), base: '/',
+        server: { host: '127.0.0.1', port: fixturePort, strictPort: true, open: false },
+        plugins: [{
+            name: 'uied-admin-design-fixture',
+            /** 在 Vite 代理前截住全部样例 API，任何失败也不继续转发。 */
+            configureServer(server) {
+                server.middlewares.use(async (request, response, next) => {
+                    const url = new URL(request.url || '/', 'http://127.0.0.1')
+                    if (!url.pathname.startsWith('/api')) return next()
+                    response.setHeader('Content-Type', 'application/json; charset=utf-8')
+                    response.setHeader('Cache-Control', 'no-store')
+                    try {
+                        let body = ''
+                        for await (const chunk of request) {
+                            body += chunk
+                            if (body.length > 2 * 1024 * 1024) throw new Error('样例请求过大')
+                        }
+                        const credentialPresent = !['', 'null', 'undefined'].includes(String(request.headers.token || ''))
+                        const result = await fixtureResponse(url.pathname, request.method || 'GET', body ? JSON.parse(body) : undefined, credentialPresent)
+                        response.end(JSON.stringify(result))
+                    } catch {
+                        response.statusCode = 400
+                        response.end(JSON.stringify({ code: 500, msg: '样例请求无效，未访问真实接口', data: null }))
+                    }
+                })
+            }
+        }]
+    })
+    await fixtureServer.listen()
+    console.log(JSON.stringify({ mode: 'serve-only', url: `http://127.0.0.1:${fixturePort}/${entryName}.html`, pid: process.pid, scope: '独立端口与独立临时缓存、全 API 内存样例；不启动浏览器、不登录、不访问真实配置；SIGINT/SIGTERM 清理临时入口' }))
+    await new Promise(resolve => { process.once('SIGINT', resolve); process.once('SIGTERM', resolve) })
 }
 
 /** 在内存路由中切换实际配置页，既不进入正式路由，也不加载认证守卫。 */
@@ -203,6 +270,9 @@ const waitSaveState = async state => page.waitForFunction(state => document.quer
 
 try {
     await createHarness()
+    if (serveOnly) {
+        await serveFixture()
+    } else {
     browser = await chromium.launch({ channel: 'chrome', headless: true })
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } })
     await context.route('**/*', fulfillFixture)
@@ -211,7 +281,12 @@ try {
     page.on('pageerror', error => pageErrors.push(error.message))
     await page.goto(`${baseUrl}/${entryName}.html`, { waitUntil: 'networkidle', timeout: 60000 })
     await page.waitForFunction(() => window.__adminDesign?.ready, undefined, { timeout: 30000 })
-    await page.locator('[data-admin-smoke="config-task-navigation"]').waitFor()
+    await page.locator('.layout-sider .arco-menu').waitFor()
+    assert.equal(await page.locator('[data-admin-smoke="config-task-navigation"]').count(), 0, '后台不应重复显示顶部任务导航')
+    const taskGroups = page.locator('.layout-sider .arco-menu-group-title')
+    await taskGroups.filter({ hasText: /^内容与工具$/ }).waitFor()
+    await taskGroups.filter({ hasText: /^导航与外观$/ }).waitFor()
+    assert.equal(await taskGroups.filter({ hasText: /^内容与工具$/ }).locator('button,a').count(), 0, '任务分组标题不增加可点击层级')
     assert.equal(await page.locator('h1').count(), 1)
     assert.equal(await page.getByText('组件验收 · 样例数据', { exact: true }).count(), 1)
 
@@ -260,35 +335,57 @@ try {
         assert.equal(await page.locator('.config-edit-frame__actions button').count(), 1)
         const contentTabs = page.locator('.layout-tabs > .arco-tabs-nav .arco-tabs-tab')
         assert.equal(await contentTabs.count(), 2, '首页内容只保留每日学习和更新记录两个模块')
-        await page.locator('input[maxlength="20"]').fill('样例：新的学习栏目')
+        const learningTitle = page.getByRole('textbox', { name: '栏目标题', exact: true })
+        await learningTitle.fill('样例：新的学习栏目')
         await waitSaveState('dirty')
         await contentTabs.filter({ hasText: /^更新记录$/ }).click()
-        await page.getByText('更新页说明', { exact: true }).waitFor({ state: 'visible' })
+        await page.getByRole('textbox', { name: '更新记录页面介绍', exact: true }).waitFor({ state: 'visible' })
+        const originalTimeline = JSON.parse(fixture.toolsChangelogTimeline)
+        await page.getByRole('textbox', { name: '版本标题', exact: true }).fill('样例：可视化编辑后的版本')
+        await page.getByRole('textbox', { name: '第1组更新内容', exact: true }).fill('样例：可视化第一条更新\n样例：可视化第二条更新')
         const learningTab = contentTabs.filter({ hasText: /^每日学习$/ })
         await learningTab.focus()
         await learningTab.press('Enter')
-        await page.locator('input[maxlength="20"]').waitFor({ state: 'visible' })
-        assert.equal(await page.locator('input[maxlength="20"]').inputValue(), '样例：新的学习栏目')
+        await learningTitle.waitFor({ state: 'visible' })
+        assert.equal(await learningTitle.inputValue(), '样例：新的学习栏目')
         await waitSaveState('dirty')
-        checks.push('首页模块：更新记录入口可点击，键盘 Enter 可返回每日学习，切换保留未保存草稿')
+        checks.push('首页模块：可视编辑版本和分组，键盘 Enter 切换模块后保留未保存草稿')
+        const contentReads = requests.filter(item => item.path.endsWith('/setting/website/detail')).length
+        const refreshReads = requests.filter(item => item.path.endsWith('/common/index/config')).length
+        // 首页内容确认保存后不再发起无关刷新；预览按钮通过专用标记读取新配置。
         failRefresh = true
         await page.locator('[data-admin-smoke="frontend-layout-save-top"]').click()
         await waitSaveState('saved')
-        await page.getByText('配置已保存，前台预览刷新未完成，可重试刷新。', { exact: true }).first().waitFor()
-        assert.equal(await page.locator('.config-edit-frame__alert').count(), 0)
-        const homeSaves = saves.length
         failRefresh = false
-        await page.locator('.layout-refresh-warning').getByRole('button', { name: '重试刷新', exact: true }).click()
-        await page.locator('.layout-refresh-warning').waitFor({ state: 'hidden' })
-        assert.equal(saves.length, homeSaves)
+        assert.equal(await page.locator('.config-edit-frame__alert').count(), 0)
+        assert.equal(requests.filter(item => item.path.endsWith('/setting/website/detail')).length, contentReads)
+        assert.equal(requests.filter(item => item.path.endsWith('/common/index/config')).length, refreshReads)
+        assert.deepEqual(Object.keys(saves.at(-1)).sort(), ['toolsChangelogTimeline', 'toolsHomepageLearningTitle'])
         assert.equal(fixture.toolsHomepageLearningTitle, '样例：新的学习栏目')
-        checks.push('首页内容：唯一保存入口、写入后刷新失败仍为已保存、独立刷新无需重发 PATCH')
+        const editedTimeline = JSON.parse(fixture.toolsChangelogTimeline)
+        assert.equal(editedTimeline[0].title, '样例：可视化编辑后的版本')
+        assert.deepEqual(editedTimeline[0].features[0].points, ['样例：可视化第一条更新', '样例：可视化第二条更新'])
+        assert.deepEqual(editedTimeline[0].extension, originalTimeline[0].extension)
+        assert.equal(editedTimeline[0].features[0].extension, originalTimeline[0].features[0].extension)
+        assert.deepEqual(editedTimeline[1], originalTimeline[1], '编辑当前版本不改写历史版本')
+        await page.locator('[data-admin-smoke="frontend-layout-preview"]').click()
+        let previewUrl = new URL(await page.evaluate(() => window.__adminDesign.openedPreviews.at(-1)))
+        assert.equal(previewUrl.pathname, '/')
+        assert.equal(previewUrl.searchParams.get('_uied_preview'), '1')
+        checks.push('首页内容：唯一保存入口、仅提交修改字段、保留历史与扩展字段、保存后不重读、预览携带配置刷新标记')
         for (const width of [320, 375, 768, 1440]) await captureResponsive('homepage-content', width)
+        await contentTabs.filter({ hasText: /^更新记录$/ }).click()
+        await page.getByRole('button', { name: '预览更新记录', exact: true }).click()
+        previewUrl = new URL(await page.evaluate(() => window.__adminDesign.openedPreviews.at(-1)))
+        assert.equal(previewUrl.pathname, '/changelog')
+        assert.equal(previewUrl.searchParams.get('_uied_preview'), '1')
+        for (const width of [320, 375, 768, 1440]) await captureResponsive('changelog-editor', width)
 
-        // 公共导航只切任务分组；点击目标页才真正导航，当前状态保持清楚。
-        await page.getByRole('button', { name: '导航与外观', exact: true }).click()
-        assert.equal(await page.evaluate(() => window.__adminDesign.route()), '/official_site/frontend_layout')
-        await page.locator('.config-settings-nav__links').getByRole('link', { name: '前台菜单', exact: true }).click()
+        // 任务标题只是侧栏分组；点击已授权菜单即可直接打开页面，不经过第二层导航。
+        const sidebarMenu = page.locator('.layout-sider .arco-menu-item').filter({ hasText: /^前台菜单$/ })
+        assert.equal(await sidebarMenu.count(), 1)
+        await sidebarMenu.click()
+        await page.waitForFunction(() => window.__adminDesign.route() === '/official_site/sidebar')
         await page.getByRole('heading', { name: '前台菜单与品牌', exact: true }).waitFor()
         await waitSaveState('ready')
         const sidebarInput = page.getByPlaceholder('如：免费在线工具集')
@@ -301,7 +398,7 @@ try {
         assert.equal(fixture.toolsSiteSlogan, '样例：菜单草稿')
         assert.equal(Object.hasOwn(saves.at(-1), 'toolsCategoryTree'), false)
         for (const label of ['推荐链接', '一级菜单', '底部入口', '品牌文案']) await page.locator('.sidebar-section-tabs').getByText(label, { exact: true }).click()
-        checks.push('公共导航与菜单：按任务选择、真实页面切换、重载取消保留草稿、唯一保存、菜单分组可切换')
+        checks.push('侧栏任务分组与菜单：直接进入已授权页面、重载取消保留草稿、唯一保存、菜单分组可切换')
         for (const width of [320, 375, 768, 1440]) await captureResponsive('sidebar-settings', width)
 
         failLoad = true
@@ -320,6 +417,7 @@ try {
     await Promise.all(['failure.png', 'failure.txt'].map(file => fs.rm(path.join(outputDir, file), { force: true })))
     await fs.writeFile(path.join(outputDir, reportName), JSON.stringify({ status: 'passed', checks, requests, saveRequests: saves.length, screenshots, layoutSamples, pageErrors, scope: '真实 Layout 与实际 Vue 页面；全部 API 为浏览器内样例 fixture；未登录、未访问真实 API' }, null, 2))
     console.log(JSON.stringify({ status: 'passed', checks, saveRequests: saves.length, screenshots, layoutSamples, pageErrors }, null, 2))
+    }
 } catch (error) {
     if (page) {
         await page.screenshot({ path: path.join(outputDir, 'failure.png') }).catch(() => {})
@@ -328,6 +426,9 @@ try {
     await fs.writeFile(path.join(outputDir, reportName), JSON.stringify({ status: 'failed', error: String(error), checks, requests, screenshots, layoutSamples, pageErrors }, null, 2))
     throw error
 } finally {
-    try { await browser?.close() }
-    finally { await Promise.all(temporaryFiles.map(file => fs.rm(file, { force: true }))) }
+    try { await browser?.close(); await fixtureServer?.close() }
+    finally {
+        await Promise.all(temporaryFiles.map(file => fs.rm(file, { force: true })))
+        if (fixtureCacheDir) await fs.rm(fixtureCacheDir, { recursive: true, force: true })
+    }
 }

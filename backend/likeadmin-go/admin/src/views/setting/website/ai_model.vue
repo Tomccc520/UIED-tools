@@ -14,18 +14,11 @@
             </template>
             <template #extra>
                 <div class="layout-page-actions">
-                    <div class="layout-status-tags">
-                        <a-tag color="arcoblue" bordered>运营配置</a-tag>
-                        <a-tag color="green" bordered>后端代理</a-tag>
-                        <a-tag color="purple" bordered>{{ currentPageMeta.tag }}</a-tag>
-                        <a-tag :color="hasUnsavedChanges ? 'orange' : 'green'" bordered>
-                            {{ hasUnsavedChanges ? '待发布' : '已同步' }}
-                        </a-tag>
-                    </div>
                     <a-button
                         size="small"
                         data-admin-smoke="ai-matting-reload"
-                        @click="getData"
+                        :disabled="isSubmitting || isLoadingData || Boolean(fetchingProviderKey)"
+                        @click="reloadAiModel"
                     >
                         重新加载
                     </a-button>
@@ -33,46 +26,14 @@
             </template>
         </admin-page-header>
 
+        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadAiModel">
         <a-card class="page-card pro-panel-card" :bordered="false">
-
-
-            <operate-collapse
-                v-if="pageMode !== 'matting'"
-                v-model="operationCollapseKeys"
-                :validation-tips="validationTips"
-                :guide-items="guideItems"
-                :last-saved-at="lastSavedAt"
-                :show-quick-actions="false"
-            />
-
-            <div v-if="pageMode !== 'matting'" class="mode-toolbar mt-4">
-                <div class="mode-toolbar__left">
-                    <a-switch v-model="simpleMode" type="round" />
-                    <span class="mode-toolbar__label">{{
-                        simpleMode ? '运营简版（推荐）' : '高级模式'
-                    }}</span>
-                </div>
-                <span class="mode-toolbar__tip">
-                    {{
-                        simpleMode
-                            ? '简版聚焦当前 AI 模块的核心配置；全局统计已收进高级模式。'
-                            : '高级模式会展示全局 AI 统计，便于发布前统一回归。'
-                    }}
-                </span>
-            </div>
-
-            <div v-if="pageMode !== 'matting' && !simpleMode" class="stats-grid mt-4">
-                <div v-for="item in aiModelStats" :key="item.label" class="stat-card">
-                    <div class="stat-label">{{ item.label }}</div>
-                    <div class="stat-value" :class="item.className">{{ item.value }}</div>
-                </div>
-            </div>
 
             <div v-if="showMattingSection" class="section-block">
                 <div class="section-header">
                     <div>
-                        <h3>AI 抠图 API</h3>
-                        <p>选择服务商并填写密钥。保存后，8091 抠图代理会自动读取当前配置。</p>
+                        <h3>服务商与密钥</h3>
+                        <p>保存后，抠图工具使用这里的默认服务商。</p>
                     </div>
                     <a-tag
                         :color="
@@ -192,10 +153,9 @@
             <div v-if="showProviderSection" class="section-block">
                 <div class="section-header">
                     <div>
-                        <h3>AI Provider 管理</h3>
+                        <h3>服务商连接</h3>
                         <p>
-                            这里配置豆包、Kimi、DeepSeek、OpenAI 等文本能力
-                            Provider，前端聊天/写作/搜索统一走后端代理，不再在浏览器暴露 Key。
+                            选择服务商，设置连接地址、默认模型与启用状态。
                         </p>
                     </div>
                 </div>
@@ -496,16 +456,19 @@
             </div>
         </a-card>
 
-        <footer-btns :fixed="false" v-perms="['setting:ai:model:save']">
+        <template #actions>
             <a-button
+                v-perms="['setting:ai:model:save']"
                 type="primary"
                 data-admin-smoke="ai-matting-save"
                 :loading="isSubmitting"
+                :disabled="Boolean(fetchingProviderKey)"
                 @click="handleSave"
             >
-                保存
+                保存当前配置
             </a-button>
-        </footer-btns>
+        </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -519,30 +482,19 @@ import {
     type AiMattingProviderConfig,
     type AiImageAbilityConfig,
     type AiProviderConfig,
-    type AiProviderCurrent
+    type AiProviderCurrent,
+    type AiModelSavePayload
 } from '@/api/setting/ai_model'
 import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave } from 'vue-router'
-import OperateCollapse from './components/operate-collapse.vue'
+import ConfigEditFrame from './components/config-edit-frame.vue'
 import { useOperateSubmit } from './composables/use-operate-submit'
-import { useRoute, useRouter } from 'vue-router'
+import { useConfigLoad } from './composables/use-config-load'
+import { useRoute } from 'vue-router'
 
 type AiModelPageMode = 'matting' | 'provider' | 'ability' | 'all'
-type AiModelNavItem = {
-    key: Exclude<AiModelPageMode, 'all'>
-    label: string
-    path: string
-}
-
-type AiModelFocusItem = {
-    label: string
-    value: string
-    desc: string
-    className: 'is-ok' | 'is-warning' | 'is-danger'
-}
 
 const route = useRoute()
-const router = useRouter()
 
 const formData = reactive<{
     modelId: string
@@ -565,35 +517,11 @@ const formData = reactive<{
 /**
  * 函数说明：控制 AI 模型页运营模式。简版聚焦当前模块配置，高级模式展示全局统计视图。
  */
-const simpleMode = ref(true)
-const operationCollapseKeys = ref<(string | number)[]>([
-    'quick_actions',
-    'validation_tips',
-    'operation_guide'
-])
 const baselineSnapshot = ref('')
 const selectedProviderKey = ref('')
 const selectedAbilityKey = ref('')
 const fetchingProviderKey = ref('')
-const { isSubmitting, lastSavedAt, runSubmit } = useOperateSubmit('AI 模型配置已保存')
-
-const sectionNavItems: AiModelNavItem[] = [
-    {
-        key: 'matting',
-        label: 'AI抠图 API',
-        path: '/ai_model_manage/ai_model'
-    },
-    {
-        key: 'provider',
-        label: 'AI Provider 管理',
-        path: '/ai_model_manage/ai_provider'
-    },
-    {
-        key: 'ability',
-        label: 'AI工具能力',
-        path: '/ai_model_manage/ai_ability'
-    }
-]
+const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('当前 AI 配置已保存')
 
 const pageMetaMap: Record<
     AiModelPageMode,
@@ -666,78 +594,10 @@ const showProviderSection = computed(() => ['provider', 'all'].includes(pageMode
 const showAbilitySection = computed(() => ['ability', 'all'].includes(pageMode.value))
 
 /**
- * 函数说明：根据当前菜单生成顶部引导步骤，减少运营误入错误配置区的概率。
- */
-const guideItems = computed(() => {
-    if (pageMode.value === 'matting') {
-        return [
-            '先选择当前生效的抠图 API Provider。',
-            '在当前页面填写对应 API 地址与密钥并保存。',
-            '保存后去前端证件照换底色、AI 抠图页验证主体边缘效果。',
-            '如需维护文本模型或图片 AI 工具，请切到上方对应菜单。'
-        ]
-    }
-    if (pageMode.value === 'provider') {
-        return [
-            '至少启用一个文本 AI Provider，并设置默认项。',
-            '确保 Base URL、API Key、默认模型都已填写完整。',
-            '保存后去 AI 对话、写作、搜索等工具页验证调用是否正常。'
-        ]
-    }
-    if (pageMode.value === 'ability') {
-        return [
-            '按能力逐项维护上游地址、请求方法与超时配置。',
-            '如上游需要鉴权，请补充 API Key 请求头与密钥。',
-            '保存后去 PromptReverse、OCR、图像增强等页面逐项验证。'
-        ]
-    }
-    return [
-        '先确认抠图 API Provider 是否选择正确。',
-        '至少启用一个可用的文本 AI Provider，并设置默认项。',
-        '保存后去前端 AI 对话/写作页验证实际效果。'
-    ]
-})
-
-/**
- * 函数说明：输出当前抠图 API Provider 摘要，帮助运营快速确认调用链路。
- */
-const currentModelText = computed(() => {
-    if (!formData.currentModelName && !formData.modelId) {
-        return '未配置'
-    }
-    return `${formData.currentModelName || '未命名模型'} (${formData.modelId})`
-})
-
-/**
- * 函数说明：输出当前文本 Provider 摘要，帮助运营确认前端 AI 能力走向哪一个供应商。
- */
-const currentProviderText = computed(() => {
-    if (!formData.providerCurrent?.provider) {
-        return '未配置'
-    }
-    const provider = formData.providerCurrent
-    return `${provider.label || provider.provider} / ${provider.defaultModel || '未设置默认模型'}`
-})
-
-/**
  * 函数说明：统计启用的 Provider 数量，便于快速判断是否已经接入多个候选供应商。
  */
 const enabledProviderCount = computed(() => {
     return formData.providers.filter((item) => item.enabled).length
-})
-
-/**
- * 函数说明：统计配置完整且可立即被代理调用的 Provider 数量，帮助排查只开关未填 Key 的情况。
- */
-const readyProviderCount = computed(() => {
-    return formData.providers.filter((item) => isProviderReady(item)).length
-})
-
-/**
- * 函数说明：统计启用中的图片 AI 能力数量，帮助运营确认图片类工具链路是否已经放开。
- */
-const enabledImageAbilityCount = computed(() => {
-    return formData.imageAbilities.filter((item) => item.enabled).length
 })
 
 /**
@@ -781,34 +641,6 @@ const currentAbilityForm = computed(() => {
 })
 
 /**
- * 函数说明：生成 AI 模型页高级模式统计卡，便于运营在一个页面里查看全局 AI 配置状态。
- */
-const aiModelStats = computed(() => {
-    return [
-        {
-            label: '抠图 API',
-            value: formData.modelId ? '已选择' : '未配置',
-            className: formData.modelId ? '' : 'is-warning'
-        },
-        {
-            label: '启用 Provider',
-            value: `${enabledProviderCount.value}`,
-            className: enabledProviderCount.value > 0 ? '' : 'is-warning'
-        },
-        {
-            label: '可调用 Provider',
-            value: `${readyProviderCount.value}`,
-            className: readyProviderCount.value > 0 ? '' : 'is-danger'
-        },
-        {
-            label: '启用工具能力',
-            value: `${enabledImageAbilityCount.value}`,
-            className: enabledImageAbilityCount.value > 0 ? '' : 'is-warning'
-        }
-    ]
-})
-
-/**
  * 函数说明：判断当前 Provider 是否具备可调用条件，保持前后端的判断口径一致。
  */
 const isProviderReady = (provider: AiProviderConfig) => {
@@ -845,47 +677,28 @@ const isImageAbilityReady = (ability: AiImageAbilityConfig) => {
     )
 }
 
-/**
- * 函数说明：序列化当前表单快照，用于检测未保存变更。
- */
-const buildSnapshot = () => {
-    return JSON.stringify({
+/** 按当前菜单构造补丁载荷，隐藏模块的旧快照不会随当前页一起写回。 */
+const buildSavePayload = (): AiModelSavePayload => {
+    if (pageMode.value === 'matting') return {
+        scope: 'matting', modelId: formData.modelId,
+        mattingProviders: formData.mattingProviders.map(item => ({ ...item }))
+    }
+    if (pageMode.value === 'provider') return {
+        scope: 'provider', providers: formData.providers.map(item => ({ ...item, models: item.models.map(model => ({ ...model })) }))
+    }
+    if (pageMode.value === 'ability') return {
+        scope: 'ability', imageAbilities: formData.imageAbilities.map(item => ({ ...item }))
+    }
+    return {
         modelId: formData.modelId,
-        mattingProviders: formData.mattingProviders.map((item) => ({
-            provider: item.provider,
-            label: item.label,
-            description: item.description,
-            apiUrl: item.apiUrl,
-            apiKey: item.apiKey,
-            accessKeyId: item.accessKeyId,
-            accessKeySecret: item.accessKeySecret,
-            endpoint: item.endpoint,
-            timeoutSeconds: item.timeoutSeconds
-        })),
-        providers: formData.providers.map((item) => ({
-            provider: item.provider,
-            label: item.label,
-            description: item.description,
-            enabled: item.enabled,
-            isDefault: item.isDefault,
-            baseUrl: item.baseUrl,
-            apiKey: item.apiKey,
-            defaultModel: item.defaultModel,
-            models: item.models
-        })),
-        imageAbilities: formData.imageAbilities.map((item) => ({
-            ability: item.ability,
-            label: item.label,
-            description: item.description,
-            enabled: item.enabled,
-            method: item.method,
-            upstreamUrl: item.upstreamUrl,
-            apiKeyHeader: item.apiKeyHeader,
-            apiKey: item.apiKey,
-            timeoutSeconds: item.timeoutSeconds
-        }))
-    })
+        mattingProviders: formData.mattingProviders.map(item => ({ ...item })),
+        providers: formData.providers.map(item => ({ ...item, models: item.models.map(model => ({ ...model })) })),
+        imageAbilities: formData.imageAbilities.map(item => ({ ...item }))
+    }
 }
+
+/** 仅序列化当前菜单负责的配置，以独立基线标识未保存草稿。 */
+const buildSnapshot = () => JSON.stringify(buildSavePayload())
 
 /**
  * 函数说明：判断页面是否存在未保存变更，避免切页丢失后台填写的 Key。
@@ -1022,6 +835,7 @@ const setCurrentProviderAsDefault = () => {
  * 函数说明：通过后端代理请求当前 Provider 模型接口，并将真实模型列表写入待保存配置。
  */
 const handleFetchProviderModels = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value || fetchingProviderKey.value) return
     const provider = currentProviderForm.value
     if (!provider) {
         feedback.msgError('请先选择 Provider')
@@ -1036,13 +850,19 @@ const handleFetchProviderModels = async () => {
         return
     }
 
+    const requestBaseUrl = provider.baseUrl.trim()
+    const requestApiKey = provider.apiKey.trim()
     fetchingProviderKey.value = provider.provider
     try {
         const data = await fetchAiProviderModels({
             provider: provider.provider,
-            baseUrl: provider.baseUrl.trim(),
-            apiKey: provider.apiKey.trim()
+            baseUrl: requestBaseUrl,
+            apiKey: requestApiKey
         })
+        if (!formData.providers.includes(provider) || provider.baseUrl.trim() !== requestBaseUrl || provider.apiKey.trim() !== requestApiKey) {
+            feedback.msgWarning('服务商连接配置已变化，请重新获取模型。')
+            return
+        }
         provider.models = Array.isArray(data.models) ? data.models : []
         if (!provider.defaultModel?.trim() && provider.models.length > 0) {
             provider.defaultModel = provider.models[0].value
@@ -1056,75 +876,40 @@ const handleFetchProviderModels = async () => {
 /**
  * 函数说明：读取后端 AI 模型详情并回填表单。
  */
-const getData = async () => {
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+/** 读取完整详情供当前模块编辑，接口失败时保留原草稿与基线。 */
+const getData = async () => loadConfiguration(async () => {
     const data = await getAiModelDetail()
     formData.modelId = data.currentModelId || ''
     formData.supported = data.supported || []
     formData.currentModelName = data.current?.modelName || ''
-    formData.mattingProviders = (data.mattingProviders || []).map((item) => ({
-        ...item
-    }))
-    formData.providers = (data.providers || []).map((item) => ({
-        ...item,
-        models: item.models || []
-    }))
-    formData.imageAbilities = (data.imageAbilities || []).map((item) => ({
-        ...item
-    }))
+    formData.mattingProviders = (data.mattingProviders || []).map(item => ({ ...item }))
+    formData.providers = (data.providers || []).map(item => ({ ...item, models: item.models || [] }))
+    formData.imageAbilities = (data.imageAbilities || []).map(item => ({ ...item }))
     formData.providerCurrent = data.providerCurrent || null
     selectedProviderKey.value = formData.providers[0]?.provider || ''
     selectedAbilityKey.value = formData.imageAbilities[0]?.ability || ''
     baselineSnapshot.value = buildSnapshot()
+})
+
+/** 重新加载前保护当前模块草稿，保存或获取模型过程中不覆盖编辑内容。 */
+const reloadAiModel = async () => {
+    if (isSubmitting.value || fetchingProviderKey.value) return false
+    return reloadConfiguration(getData)
 }
 
-/**
- * 函数说明：保存抠图 API 与文本 Provider 配置，并在保存后刷新基线快照。
- */
+/** 保存当前模块的明确补丁，持久化成功即更新基线，不依赖二次读取确认。 */
 const handleSave = async () => {
+    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value || fetchingProviderKey.value) return
     if (validationTips.value.length > 0) {
         feedback.msgError(validationTips.value[0])
         return
     }
-
+    const payload = buildSavePayload()
+    const submittedSnapshot = JSON.stringify(payload)
     await runSubmit(async () => {
-        await saveAiModel({
-            modelId: formData.modelId,
-            mattingProviders: formData.mattingProviders.map((item) => ({
-                provider: item.provider,
-                label: item.label,
-                description: item.description,
-                apiUrl: item.apiUrl,
-                apiKey: item.apiKey,
-                accessKeyId: item.accessKeyId,
-                accessKeySecret: item.accessKeySecret,
-                endpoint: item.endpoint,
-                timeoutSeconds: item.timeoutSeconds,
-                available: isMattingProviderReady(item)
-            })),
-            providers: formData.providers.map((item) => ({
-                provider: item.provider,
-                label: item.label,
-                description: item.description,
-                enabled: item.enabled,
-                isDefault: item.isDefault,
-                baseUrl: item.baseUrl,
-                apiKey: item.apiKey,
-                defaultModel: item.defaultModel,
-                models: item.models
-            })),
-            imageAbilities: formData.imageAbilities.map((item) => ({
-                ability: item.ability,
-                label: item.label,
-                description: item.description,
-                enabled: item.enabled,
-                method: item.method,
-                upstreamUrl: item.upstreamUrl,
-                apiKeyHeader: item.apiKeyHeader,
-                apiKey: item.apiKey,
-                timeoutSeconds: item.timeoutSeconds
-            }))
-        })
-        await getData()
+        await saveAiModel(payload)
+        baselineSnapshot.value = submittedSnapshot
     })
 }
 
@@ -1143,6 +928,7 @@ const handleBeforeUnload = (event: BeforeUnloadEvent) => {
  * 函数说明：路由切换前提醒未保存变更，避免运营编辑的 Provider Key 丢失。
  */
 onBeforeRouteLeave(async () => {
+    if (isSubmitting.value || fetchingProviderKey.value) return false
     if (!hasUnsavedChanges.value) {
         return true
     }
@@ -1166,167 +952,11 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .setting-ai-model {
-    .layout-page-actions,
-    .layout-status-tags,
-    .page-entry-card__actions,
-    .ops-workspace__actions {
+    .layout-page-actions {
         display: inline-flex;
         align-items: center;
         gap: 6px;
         flex-wrap: wrap;
-    }
-
-    .page-entry-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .page-entry-card {
-        padding: 18px 20px;
-        border: 1px solid var(--color-border-2);
-        border-radius: 14px;
-        background: linear-gradient(180deg, #fff, var(--color-fill-1));
-    }
-
-    .page-entry-card__title {
-        margin-bottom: 14px;
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--color-text-1);
-    }
-
-    .page-entry-card__desc {
-        margin-bottom: 14px;
-        font-size: 13px;
-        line-height: 1.75;
-        color: var(--color-text-3);
-    }
-
-    .page-entry-list {
-        margin: 0;
-        padding-left: 18px;
-        color: var(--color-text-2);
-        font-size: 13px;
-        line-height: 1.9;
-    }
-
-    .ops-workspace {
-        display: grid;
-        grid-template-columns: minmax(0, 1.7fr) minmax(300px, 0.9fr);
-        gap: 12px;
-    }
-
-    .ops-workspace__main,
-    .ops-workspace__aside {
-        padding: 20px;
-        border-radius: 14px;
-        border: 1px solid var(--color-border-2);
-        background: linear-gradient(180deg, #fff 0%, var(--color-fill-1) 100%);
-    }
-
-    .ops-workspace__eyebrow {
-        margin-bottom: 10px;
-        font-size: 12px;
-        font-weight: 600;
-        letter-spacing: 0.06em;
-        color: rgb(var(--arcoblue-6));
-    }
-
-    .ops-workspace__title {
-        margin-bottom: 8px;
-        font-size: 20px;
-        font-weight: 700;
-        line-height: 1.35;
-        color: var(--color-text-1);
-    }
-
-    .ops-workspace__desc {
-        margin-bottom: 16px;
-        font-size: 13px;
-        line-height: 1.65;
-        color: var(--color-text-3);
-    }
-
-    .ops-workspace__meta {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .ops-workspace__meta-item {
-        padding: 14px 16px;
-        border-radius: 14px;
-        background: rgba(var(--arcoblue-1), 0.65);
-        border: 1px solid rgba(var(--arcoblue-3), 0.2);
-    }
-
-    .ops-workspace__meta-item span {
-        display: block;
-        margin-bottom: 8px;
-        font-size: 12px;
-        color: var(--color-text-3);
-    }
-
-    .ops-workspace__meta-item strong {
-        display: block;
-        font-size: 15px;
-        line-height: 1.6;
-        color: var(--color-text-1);
-        word-break: break-word;
-    }
-
-    .ops-workspace__aside-title {
-        margin-bottom: 12px;
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--color-text-1);
-    }
-
-    .ops-workspace__checklist {
-        display: grid;
-        gap: 12px;
-    }
-
-    .ops-workspace__checklist-item {
-        padding: 14px 16px;
-        border-radius: 14px;
-        border: 1px solid var(--color-border-2);
-        background: var(--color-fill-1);
-    }
-
-    .ops-workspace__checklist-item.is-ok {
-        border-color: rgba(var(--green-4), 0.38);
-        background: rgba(var(--green-1), 0.8);
-    }
-
-    .ops-workspace__checklist-item.is-warning {
-        border-color: rgba(var(--orange-4), 0.38);
-        background: rgba(var(--orange-1), 0.75);
-    }
-
-    .ops-workspace__checklist-item.is-danger {
-        border-color: rgba(var(--red-4), 0.38);
-        background: rgba(var(--red-1), 0.72);
-    }
-
-    .ops-workspace__checklist-label {
-        margin-bottom: 6px;
-        font-size: 12px;
-        color: var(--color-text-3);
-    }
-
-    .ops-workspace__checklist-value {
-        margin-bottom: 6px;
-        font-size: 15px;
-        font-weight: 700;
-        color: var(--color-text-1);
-    }
-
-    .ops-workspace__checklist-desc {
-        font-size: 12px;
-        line-height: 1.75;
-        color: var(--color-text-2);
     }
 
     .section-switcher {
@@ -1360,74 +990,6 @@ onBeforeUnmount(() => {
         flex-wrap: wrap;
     }
 
-    .mode-toolbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 16px 18px;
-        border-radius: 16px;
-        background: var(--color-fill-1);
-        border: 1px solid var(--color-border-2);
-        flex-wrap: wrap;
-    }
-
-    .mode-toolbar__left {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .mode-toolbar__label {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--color-text-2);
-    }
-
-    .mode-toolbar__tip {
-        font-size: 12px;
-        line-height: 1.55;
-        color: var(--color-text-3);
-    }
-
-    .mode-alert {
-        margin-bottom: 0;
-    }
-
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-    }
-
-    .stat-card {
-        padding: 16px 18px;
-        border-radius: 14px;
-        border: 1px solid var(--color-border-2);
-        background: #fff;
-    }
-
-    .stat-label {
-        font-size: 12px;
-        color: var(--color-text-3);
-    }
-
-    .stat-value {
-        margin-top: 4px;
-        font-size: 20px;
-        line-height: 1.2;
-        font-weight: 700;
-        color: var(--color-text-1);
-    }
-
-    .stat-value.is-warning {
-        color: rgb(var(--orange-6));
-    }
-
-    .stat-value.is-danger {
-        color: rgb(var(--red-6));
-    }
-
     .section-block {
         margin-top: 16px;
         padding: 14px;
@@ -1457,21 +1019,6 @@ onBeforeUnmount(() => {
         color: var(--color-text-3);
     }
 
-    .matting-item {
-        padding: 10px 12px;
-        border: 1px solid var(--color-border-2);
-        border-radius: 10px;
-        margin-bottom: 10px;
-        background: var(--color-fill-1);
-    }
-
-    .matting-desc {
-        margin: 6px 0 0 24px;
-        font-size: 12px;
-        color: var(--color-text-3);
-        line-height: 1.7;
-    }
-
     .matting-provider-desc {
         max-width: 520px;
         font-size: 12px;
@@ -1483,19 +1030,7 @@ onBeforeUnmount(() => {
         margin-top: 16px;
     }
 
-    .provider-list {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 16px;
-    }
-
     .single-config-card {
-        border: 1px solid var(--color-border-2);
-        border-radius: 14px;
-        background: linear-gradient(180deg, #fff, var(--color-fill-1));
-    }
-
-    .provider-card {
         border: 1px solid var(--color-border-2);
         border-radius: 14px;
         background: linear-gradient(180deg, #fff, var(--color-fill-1));
@@ -1580,29 +1115,9 @@ onBeforeUnmount(() => {
     }
 }
 
-@media (max-width: 1080px) {
-    .setting-ai-model {
-        .page-entry-grid,
-        .ops-workspace,
-        .ops-workspace__meta,
-        .provider-list,
-        .stats-grid {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
-    }
-}
-
 @media (max-width: 768px) {
     .setting-ai-model {
-        .page-entry-grid,
-        .ops-workspace,
-        .ops-workspace__meta,
-        .provider-list,
-        .stats-grid {
-            grid-template-columns: 1fr;
-        }
 
-        .mode-toolbar,
         .section-switcher,
         .provider-card__title {
             flex-direction: column;

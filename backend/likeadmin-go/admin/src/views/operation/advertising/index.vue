@@ -8,55 +8,33 @@
 -->
 <template>
     <div class="advertising-page pro-page-shell">
-        <a-page-header class="advertising-header" title="运营管理 · 广告管理">
-            <template #subtitle>
-                统一维护顶部图片/HTML 广告与热门工具原生广告。保存后前台公共配置实时生效。
-            </template>
+        <admin-page-header title="广告与推荐">
+            <template #subtitle>维护顶部广告和首页热门工具，保存后在前台预览效果。</template>
             <template #extra>
                 <div class="header-actions">
-                    <a-tag color="arcoblue" bordered>独立运营模块</a-tag>
-                    <a-tag :color="validationTips.length ? 'orange' : 'green'" bordered>
-                        {{ validationTips.length ? `${validationTips.length} 项待处理` : '配置健康' }}
-                    </a-tag>
-                    <a-button size="small" @click="restoreActiveDefaults">恢复当前默认</a-button>
-                    <a-button data-admin-smoke="advertising-preview" size="small" @click="openFrontendPreview">前端预览</a-button>
-                    <a-button data-admin-smoke="advertising-health-check" size="small" @click="runHealthCheck">一键体检</a-button>
+                    <a-button data-admin-smoke="advertising-reload" :loading="isLoading" :disabled="isSubmitting" @click="retryLoadAdvertising">重新加载</a-button>
+                    <a-button :disabled="isLoading || isSubmitting || !hasLoadedData || Boolean(loadError)" @click="restoreActiveDefaults">恢复当前默认</a-button>
+                    <a-button data-admin-smoke="advertising-preview" @click="openFrontendPreview">前端预览</a-button>
+                    <a-button data-admin-smoke="advertising-health-check" :disabled="isLoading || isSubmitting || !hasLoadedData || Boolean(loadError)" @click="runHealthCheck">一键体检</a-button>
                 </div>
             </template>
-        </a-page-header>
+        </admin-page-header>
 
-        <a-spin :loading="isLoading" class="advertising-loading">
-            <section class="campaign-overview">
-                <div class="campaign-overview__copy">
-                    <span class="campaign-overview__eyebrow">CAMPAIGN CONTROL</span>
-                    <h2>首页广告投放台</h2>
-                    <p>顶部广告负责强曝光，热门工具以原生卡片融入首页推荐区，两类广告在同一处统一发布。</p>
-                </div>
-                <div class="campaign-metrics">
-                    <div>
-                        <span>顶部广告</span>
-                        <strong>{{ advertisingItems.length }}</strong>
-                    </div>
-                    <div>
-                        <span>原生广告</span>
-                        <strong>{{ hotTools.length }}</strong>
-                    </div>
-                    <div>
-                        <span>外链落地页</span>
-                        <strong>{{ externalLinkCount }}</strong>
-                    </div>
-                    <div>
-                        <span>待处理</span>
-                        <strong :class="{ 'is-warning': validationTips.length > 0 }">{{ validationTips.length }}</strong>
-                    </div>
-                </div>
-            </section>
-
-            <a-alert v-if="loadError" class="mt-4" type="error" :closable="false" show-icon>
-                {{ loadError }}
-                <template #action><a-button size="mini" @click="loadAdvertising">重新加载</a-button></template>
-            </a-alert>
-
+        <a-alert v-if="previewRefreshWarning" class="advertising-refresh-warning" type="warning" :closable="false" show-icon>
+            {{ previewRefreshWarning }}
+            <template #action><a-button size="small" :loading="isRefreshingPreview" :disabled="isSubmitting" @click="refreshSavedPreview">重试刷新</a-button></template>
+        </a-alert>
+        <config-edit-frame
+            :loading="isLoading"
+            :ready="hasLoadedData"
+            :error="loadError"
+            :save-error="submitError"
+            :dirty="hasUnsavedChanges"
+            :saving="isSubmitting"
+            :saved-at="lastSavedAt"
+            @retry="retryLoadAdvertising"
+        >
+            <template v-if="hasLoadedData">
             <div class="placement-switch mt-4" role="tablist" aria-label="广告位类型">
                 <button
                     type="button"
@@ -79,10 +57,6 @@
                     <small>融合工具卡片 · {{ hotTools.length }} 条</small>
                 </button>
             </div>
-
-            <a-alert v-if="activePlacement === 'hot-tools'" class="mt-4" type="info" :closable="false" show-icon>
-                热门工具是首页推荐区中的原生广告位，外观与工具卡片融合，但标题、简介和落地链接均由此处运营配置。
-            </a-alert>
 
             <a-card v-if="activePlacement === 'top-banner'" class="preview-card mt-4" :bordered="false">
                 <template #title>当前首屏预览</template>
@@ -285,12 +259,20 @@
                     </article>
                 </div>
             </a-card>
+            </template>
 
-            <footer-btns data-admin-smoke="advertising-save" :fixed="false" v-perms="['operation:advertising:save']">
-                <span v-if="lastSavedAt" class="saved-at">最近保存：{{ lastSavedAt }}</span>
-                <a-button type="primary" :loading="isSubmitting" @click="handleSubmit">保存并发布</a-button>
-            </footer-btns>
-        </a-spin>
+            <template #actions>
+                <a-button
+                    v-perms="['operation:advertising:save']"
+                    data-admin-smoke="advertising-save"
+                    type="primary"
+                    :loading="isSubmitting"
+                    :disabled="isLoading || isRefreshingPreview || !hasLoadedData || Boolean(loadError)"
+                    @click="handleSubmit"
+                    >保存并发布</a-button
+                >
+            </template>
+        </config-edit-frame>
     </div>
 </template>
 
@@ -301,9 +283,11 @@ import {
     type AdvertisingHotToolItem,
     type AdvertisingItem
 } from '@/api/operation/advertising'
+import AdminPageHeader from '@/components/page-header/index.vue'
+import ConfigEditFrame from '../../setting/website/components/config-edit-frame.vue'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import { resolveToolsPreviewUrl } from '../../setting/website/composables/use-preview-url'
 
@@ -372,6 +356,10 @@ const previewIndex = ref(0)
 const isLoading = ref(false)
 const isSubmitting = ref(false)
 const loadError = ref('')
+const hasLoadedData = ref(false)
+const submitError = ref('')
+const previewRefreshWarning = ref('')
+const isRefreshingPreview = ref(false)
 const lastSavedAt = ref('')
 const baselineSnapshot = ref('')
 
@@ -475,11 +463,6 @@ const collectHotToolValidationTips = (items: AdvertisingHotToolItem[]): string[]
 const bannerValidationTips = computed(() => collectValidationTips(advertisingItems.value))
 const hotToolValidationTips = computed(() => collectHotToolValidationTips(hotTools.value))
 const validationTips = computed(() => [...bannerValidationTips.value, ...hotToolValidationTips.value].slice(0, 8))
-const externalLinkCount = computed(
-    () =>
-        advertisingItems.value.filter((item) => item.renderMode === 'image' && /^https?:\/\//i.test(item.link.trim())).length +
-        hotTools.value.filter((item) => /^https?:\/\//i.test(item.link.trim())).length
-)
 const previewItem = computed(() => advertisingItems.value[previewIndex.value] || advertisingItems.value[0] || null)
 const currentSnapshot = computed(() => JSON.stringify({ items: advertisingItems.value, hotTools: hotTools.value }))
 const hasUnsavedChanges = computed(() => Boolean(baselineSnapshot.value) && baselineSnapshot.value !== currentSnapshot.value)
@@ -574,26 +557,42 @@ const updateBaseline = (): void => {
 }
 
 /**
- * 函数说明：读取运营广告配置并兼容现有首页 Banner 数据。
+ * 函数说明：读取广告配置，仅在接口结构完整时回填并确认基线；失败保留原草稿，不生成默认广告。
  */
 const loadAdvertising = async (): Promise<void> => {
+    if (isLoading.value || isSubmitting.value) return
     isLoading.value = true
     loadError.value = ''
     try {
         const data = await getAdvertisingDetail()
-        advertisingItems.value = cloneAdvertisingItems(Array.isArray(data.items) ? data.items : defaultAdvertisingItems)
-        hotTools.value = cloneHotTools(Array.isArray(data.hotTools) && data.hotTools.length ? data.hotTools : defaultHotTools)
+        if (!Array.isArray(data?.items) || !Array.isArray(data?.hotTools)) {
+            throw new Error('广告配置结构不完整')
+        }
+        advertisingItems.value = cloneAdvertisingItems(data.items)
+        hotTools.value = cloneHotTools(data.hotTools)
         previewIndex.value = 0
         expandedKeys.value = advertisingItems.value.length ? ['0'] : []
         updateBaseline()
-    } catch {
-        loadError.value = '广告配置加载失败，请检查接口或登录状态。'
-        advertisingItems.value = cloneAdvertisingItems(defaultAdvertisingItems)
-        hotTools.value = cloneHotTools(defaultHotTools)
-        updateBaseline()
+        hasLoadedData.value = true
+        submitError.value = ''
+    } catch (error) {
+        loadError.value = '广告配置加载失败，当前内容已保留，请重新加载后再发布。'
+        if (!(error as { notified?: boolean })?.notified) feedback.msgError(loadError.value)
     } finally {
         isLoading.value = false
     }
+}
+
+/**
+ * 函数说明：重新加载前确认是否放弃草稿，取消时不发请求，读取失败仍保留当前编辑内容。
+ */
+const retryLoadAdvertising = async (): Promise<void> => {
+    if (isLoading.value || isSubmitting.value) return
+    if (hasUnsavedChanges.value) {
+        try { await feedback.confirm('重新加载会放弃当前未保存广告，确定继续吗？') }
+        catch { return }
+    }
+    await loadAdvertising()
 }
 
 /**
@@ -731,41 +730,81 @@ const notifyFrontendSiteConfigRefresh = (): void => {
 }
 
 /**
- * 函数说明：校验并发布广告列表，成功后更新本地基线。
+ * 函数说明：创建提交时的广告内容快照，保留广告类型、目标窗口和高度，只规范化现有文本字段。
+ * 返回值：广告位与热门工具原生广告的独立数组。
+ */
+const buildAdvertisingPayload = (): { items: AdvertisingItem[]; hotTools: AdvertisingHotToolItem[] } => ({
+    items: advertisingItems.value.map((item) => ({
+        renderMode: item.renderMode,
+        text: item.text.trim(),
+        image: item.image.trim(),
+        htmlCode: item.htmlCode.trim(),
+        link: item.link.trim(),
+        target: item.target,
+        height: Math.round(item.height)
+    })),
+    hotTools: hotTools.value.map((item) => ({ title: item.title.trim(), desc: item.desc.trim(), link: item.link.trim() }))
+})
+
+/**
+ * 函数说明：独立刷新已发布内容的全局配置；失败只提示刷新警告，不重复发布或改写保存基线。
+ * 返回值：本次刷新完成返回 true，失败或已有刷新请求返回 false。
+ */
+const refreshSavedPreview = async (): Promise<boolean> => {
+    if (isRefreshingPreview.value) return false
+    isRefreshingPreview.value = true
+    try {
+        await appStore.getConfig()
+        previewRefreshWarning.value = ''
+        return true
+    } catch {
+        previewRefreshWarning.value = '广告已保存，前台配置刷新未完成，可重试刷新。'
+        feedback.msgWarning(previewRefreshWarning.value)
+        return false
+    } finally {
+        isRefreshingPreview.value = false
+    }
+}
+
+/**
+ * 函数说明：校验并发布广告快照，写入确认后立即更新基线；失败留稿，前台缓存刷新单独重试。
  */
 const handleSubmit = async (): Promise<void> => {
-    if (isSubmitting.value) return
+    if (isSubmitting.value || isLoading.value || isRefreshingPreview.value || !hasLoadedData.value || loadError.value) return
     if (validationTips.value.length) {
         feedback.msgError(validationTips.value[0])
         return
     }
+    const payload = buildAdvertisingPayload()
+    const draftSnapshot = currentSnapshot.value
     isSubmitting.value = true
+    submitError.value = ''
     try {
-        const normalized = advertisingItems.value.map((item) => ({
-            renderMode: item.renderMode,
-            text: item.text.trim(),
-            image: item.image.trim(),
-            htmlCode: item.htmlCode.trim(),
-            link: item.link.trim(),
-            target: item.target,
-            height: Math.round(item.height)
-        }))
-        const normalizedHotTools = hotTools.value.map((item) => ({
-            title: item.title.trim(),
-            desc: item.desc.trim(),
-            link: item.link.trim()
-        }))
-        const data = await saveAdvertising(normalized, normalizedHotTools)
-        advertisingItems.value = cloneAdvertisingItems(data.items)
-        hotTools.value = cloneHotTools(data.hotTools)
-        await appStore.getConfig()
-        notifyFrontendSiteConfigRefresh()
+        try {
+            await saveAdvertising(payload.items, payload.hotTools)
+        } catch (error) {
+            submitError.value = '广告保存失败，您的修改已保留，请重试。'
+            if (!(error as { notified?: boolean })?.notified) feedback.msgError(submitError.value)
+            return
+        }
+        if (currentSnapshot.value === draftSnapshot) {
+            advertisingItems.value = cloneAdvertisingItems(payload.items)
+            hotTools.value = cloneHotTools(payload.hotTools)
+        }
+        baselineSnapshot.value = JSON.stringify(payload)
         lastSavedAt.value = formatSavedAt()
-        updateBaseline()
-        feedback.msgSuccess('广告内容已保存并发布，切回前台即可看到最新效果')
+        notifyFrontendSiteConfigRefresh()
+        if (await refreshSavedPreview()) feedback.msgSuccess('广告内容已保存并发布')
     } finally {
         isSubmitting.value = false
     }
+}
+
+/** 函数说明：刷新或关闭浏览器前提醒尚未发布的广告草稿，已确认的保存不会再次提示。 */
+const handleBeforeUnload = (event: BeforeUnloadEvent): void => {
+    if (!hasUnsavedChanges.value) return
+    event.preventDefault()
+    event.returnValue = ''
 }
 
 onBeforeRouteLeave(async () => {
@@ -780,20 +819,20 @@ onBeforeRouteLeave(async () => {
 
 onMounted(() => {
     void loadAdvertising()
+    window.addEventListener('beforeunload', handleBeforeUnload)
 })
+onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
 </script>
 
 <style scoped lang="scss">
 .advertising-page {
-    --campaign-ink: #14213d;
-    --campaign-blue: #1769e0;
-    --campaign-line: #dfe5ec;
+    --campaign-ink: var(--uied-admin-ink);
+    --campaign-blue: var(--uied-admin-accent);
+    --campaign-line: var(--uied-admin-border);
     min-width: 0;
 }
 
-.advertising-header {
-    padding: 4px 0 18px;
-}
+.advertising-refresh-warning { margin-bottom: 16px; }
 
 .header-actions,
 .editor-title,
@@ -807,54 +846,6 @@ onMounted(() => {
     flex-wrap: wrap;
     justify-content: flex-end;
     gap: 8px;
-}
-
-.advertising-loading {
-    display: block;
-    min-height: 360px;
-}
-
-.campaign-overview {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: 32px;
-    padding: 24px;
-    border: 1px solid #cad8e8;
-    border-radius: 8px;
-    background:
-        linear-gradient(115deg, rgba(23, 105, 224, 0.08), transparent 48%),
-        repeating-linear-gradient(90deg, transparent 0, transparent 31px, rgba(20, 33, 61, 0.035) 32px),
-        #f8fbff;
-}
-
-.campaign-overview__eyebrow {
-    color: var(--campaign-blue);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-}
-
-.campaign-overview h2 {
-    margin: 8px 0 6px;
-    color: var(--campaign-ink);
-    font-size: 24px;
-}
-
-.campaign-overview p {
-    max-width: 680px;
-    margin: 0;
-    color: #607086;
-    line-height: 1.7;
-}
-
-.campaign-metrics {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(82px, 1fr));
-    gap: 1px;
-    overflow: hidden;
-    border: 1px solid #d8e1ec;
-    border-radius: 8px;
-    background: #d8e1ec;
 }
 
 .placement-switch {
@@ -890,35 +881,9 @@ onMounted(() => {
 }
 
 .placement-switch button.is-active {
-    border-color: #b8d1f2;
+    border-color: var(--uied-admin-accent-border);
     color: var(--campaign-blue);
-    background: #fff;
-}
-
-.campaign-metrics > div {
-    min-width: 96px;
-    padding: 14px;
-    background: rgba(255, 255, 255, 0.92);
-}
-
-.campaign-metrics span,
-.campaign-metrics strong {
-    display: block;
-}
-
-.campaign-metrics span {
-    color: #718096;
-    font-size: 12px;
-}
-
-.campaign-metrics strong {
-    margin-top: 5px;
-    color: var(--campaign-ink);
-    font-size: 22px;
-}
-
-.campaign-metrics strong.is-warning {
-    color: #d46b08;
+    background: var(--uied-admin-accent-soft);
 }
 
 .preview-card,
@@ -1126,7 +1091,7 @@ onMounted(() => {
     width: 72px;
     height: 72px;
     border-radius: 50%;
-    background: rgba(23, 105, 224, 0.07);
+    background: var(--uied-admin-accent-soft);
     content: '';
 }
 
@@ -1180,17 +1145,7 @@ onMounted(() => {
     white-space: nowrap;
 }
 
-.saved-at {
-    margin-right: 12px;
-    color: #7a8798;
-    font-size: 12px;
-}
-
 @media (max-width: 900px) {
-    .campaign-overview {
-        grid-template-columns: 1fr;
-    }
-
     .advertising-editor-grid {
         grid-template-columns: 1fr;
     }
@@ -1212,14 +1167,6 @@ onMounted(() => {
 @media (max-width: 640px) {
     .header-actions {
         justify-content: flex-start;
-    }
-
-    .campaign-overview {
-        padding: 18px;
-    }
-
-    .campaign-metrics {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .placement-switch,

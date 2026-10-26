@@ -172,66 +172,22 @@ const sliceSourceBetween = (sourceText, startMarker, endMarker) => {
 }
 
 /**
- * 函数说明：守护前端布局页只保存自身负责模块，并确保简洁模式不会校验隐藏高级字段。
+ * 函数说明：守护精简后的内容页字段边界，校验和PATCH行为由真实函数回归覆盖。
  */
 const collectFrontendLayoutScopeErrors = () => {
     const relativePath = 'src/views/setting/website/frontend_layout.vue'
     const sourceText = readSourceFile(relativePath)
-    if (!sourceText) {
-        return [`${relativePath}: 文件不存在或不可读`]
-    }
-
-    const syncBlock = sliceSourceBetween(
-        sourceText,
-        'const syncLayoutFormToJson = (): boolean => {',
-        'const moveSection = '
-    )
-    const exportBlock = sliceSourceBetween(
-        sourceText,
-        'const buildLayoutExportPayload = () => {',
-        'const exportLayoutJson = '
-    )
-    const snapshotBlock = sliceSourceBetween(
-        sourceText,
-        'const buildLayoutSnapshot = (): string => {',
-        'const updateBaselineLayoutSnapshot = '
-    )
-    const payloadBlock = sliceSourceBetween(
-        sourceText,
-        'const buildFrontendLayoutPayload = (): Record<string, string> => {',
-        'const handleSubmit = '
-    )
+    const helperPath = 'src/views/setting/website/composables/frontend-content.ts'
+    const helperText = readSourceFile(helperPath)
+    if (!sourceText || !helperText) return [relativePath + ': 内容页或字段契约不存在']
+    const keyBlock = sliceSourceBetween(helperText, 'export const frontendContentKeys = [', '] as const')
+    const keys = [...keyBlock.matchAll(/'(tools[^']+)'/g)].map(match => match[1])
     const errors = []
-
-    if (!syncBlock.includes('if (!simpleMode.value || hasAdvancedLayoutChanges.value)')) {
-        errors.push(`${relativePath}: 简洁模式仅跳过未改动的高级字段，已编辑高级草稿必须继续校验`)
+    if (!keys.length || keys.some(key => !key.startsWith('toolsHomepageLearning') && !key.startsWith('toolsChangelog'))) {
+        errors.push(helperPath + ': 内容页白名单只能包含文章栏目与更新记录字段')
     }
-    if (!payloadBlock.includes('if (!simpleMode.value || hasAdvancedLayoutChanges.value)')) {
-        errors.push(`${relativePath}: 简洁模式仅排除未改动的高级字段，已编辑高级草稿必须保留`)
-    }
-
-    const forbiddenFields = [
-        'toolsHeaderLinks',
-        'toolsSidebarRecommend',
-        'toolsCategoryTree',
-        'toolsSeoPages',
-        'toolsFooterQuickSections'
-    ]
-    forbiddenFields.forEach((fieldName) => {
-        if (syncBlock.includes(`formData.${fieldName} =`)) {
-            errors.push(`${relativePath}: 保存逻辑不应覆盖独立配置字段 ${fieldName}`)
-        }
-        if (exportBlock.includes(`${fieldName}:`)) {
-            errors.push(`${relativePath}: 导出内容不应重复包含独立配置字段 ${fieldName}`)
-        }
-        if (snapshotBlock.includes(`${fieldName}:`)) {
-            errors.push(`${relativePath}: 未保存状态不应受独立配置字段 ${fieldName} 影响`)
-        }
-    })
-
-    if (!sourceText.includes('applyImportedFrontendLayoutData(source)')) {
-        errors.push(`${relativePath}: 导入逻辑必须使用前端布局专用字段白名单`)
-    }
+    if (!sourceText.includes('buildFrontendContentPatch(formData,')) errors.push(relativePath + ': 保存必须与已加载基线比较并生成字段补丁')
+    if (!sourceText.includes('frontendContentKeys.filter(')) errors.push(relativePath + ': 导入必须限制在本页字段白名单')
     return errors
 }
 

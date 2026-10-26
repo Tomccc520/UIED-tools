@@ -175,21 +175,18 @@
 
 /* 函数说明：移动端固定表单标签列宽，避免中文标签逐字换行挤压输入控件。 */
 @media (max-width: 920px) {
-    .website-frontend-layout .compact-form .arco-form-item-label-col,
     .website-tools-catalog .compact-form .arco-form-item-label-col {
         flex: 0 0 88px;
         width: 88px;
         max-width: 88px;
     }
 
-    .website-frontend-layout .compact-form .arco-form-item-label,
     .website-tools-catalog .compact-form .arco-form-item-label {
         flex: 0 0 88px;
         width: 88px;
         padding-right: 12px;
     }
 
-    .website-frontend-layout .compact-form .arco-form-item-wrapper,
     .website-tools-catalog .compact-form .arco-form-item-wrapper {
         min-width: 0;
         flex: 1;

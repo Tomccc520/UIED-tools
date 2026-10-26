@@ -554,56 +554,139 @@ func (aSrv settingAiModelService) BuildImageAbilityProxyPayload(ability string) 
 	}, nil
 }
 
-// Save 函数说明：保存当前启用的抠图 API Provider、文本 AI Provider 与图片 AI 能力配置。
+// Save 函数说明：按显式范围只保存当前 AI 模块；旧客户端不传 scope 时保留全量语义。
 func (aSrv settingAiModelService) Save(saveReq req.SettingAiModelSaveReq) (e error) {
-	modelId := strings.TrimSpace(saveReq.ModelId)
-	if modelId == "" {
-		return response.AssertArgumentError.Make("抠图 Provider 不能为空")
-	}
-	if !aSrv.isSupportedModelId(modelId) {
-		return response.AssertArgumentError.Make("抠图 Provider 不受支持")
-	}
-
-	var err error
-	var mattingProviders []aiMattingProviderConfig
-	if saveReq.MattingProviders == nil {
-		mattingProviders, err = aSrv.getMattingProviderConfigs()
+	var currentMatting []aiMattingProviderConfig
+	if strings.TrimSpace(saveReq.Scope) == "" && saveReq.MattingProviders == nil {
+		if !aSrv.isSupportedModelId(strings.TrimSpace(saveReq.ModelId)) {
+			return response.AssertArgumentError.Make("请选择受支持的抠图 Provider")
+		}
+		var err error
+		currentMatting, err = aSrv.getMattingProviderConfigs()
 		if err != nil {
 			return err
 		}
-	} else {
-		mattingProviders = aSrv.normalizeMattingProviderReqs(saveReq.MattingProviders)
 	}
-	mattingProvidersJSON, err := json.Marshal(mattingProviders)
+	values, err := aSrv.buildAiModelSaveValues(saveReq, currentMatting)
 	if err != nil {
-		return response.CheckErr(err, "Save json.Marshal matting providers err")
+		return err
 	}
+	return aSrv.db.Transaction(func(tx *gorm.DB) error {
+		return writeAiModelSaveValues(values, func(name, value string) error {
+			return util.ConfigUtil.Set(tx, aiModelConfigType, name, value)
+		})
+	})
+}
 
-	providers := aSrv.normalizeProviderReqs(saveReq.Providers)
-	providersJSON, err := json.Marshal(providers)
-	if err != nil {
-		return response.CheckErr(err, "Save json.Marshal providers err")
-	}
-
-	if err = util.ConfigUtil.Set(aSrv.db, aiModelConfigType, aiMattingModelConfigName, modelId); err != nil {
-		return response.CheckErr(err, "Save Set matting model err")
-	}
-	if err = util.ConfigUtil.Set(aSrv.db, aiModelConfigType, aiMattingProviderConfigName, string(mattingProvidersJSON)); err != nil {
-		return response.CheckErr(err, "Save Set matting provider configs err")
-	}
-	if err = util.ConfigUtil.Set(aSrv.db, aiModelConfigType, aiProviderConfigName, string(providersJSON)); err != nil {
-		return response.CheckErr(err, "Save Set provider configs err")
-	}
-
-	imageAbilities := aSrv.normalizeImageAbilityReqs(saveReq.ImageAbilities)
-	imageAbilitiesJSON, err := json.Marshal(imageAbilities)
-	if err != nil {
-		return response.CheckErr(err, "Save json.Marshal image abilities err")
-	}
-	if err = util.ConfigUtil.Set(aSrv.db, aiModelConfigType, aiImageAbilityConfigName, string(imageAbilitiesJSON)); err != nil {
-		return response.CheckErr(err, "Save Set image abilities err")
+// writeAiModelSaveValues 函数说明：只写入已验证的计划键，任何失败立即交给外层事务回滚。
+func writeAiModelSaveValues(values map[string]string, write func(name, value string) error) error {
+	for _, name := range []string{aiMattingModelConfigName, aiMattingProviderConfigName, aiProviderConfigName, aiImageAbilityConfigName} {
+		if value, exists := values[name]; exists {
+			if err := write(name, value); err != nil {
+				return response.CheckErr(err, "Save AI configuration err")
+			}
+		}
 	}
 	return nil
+}
+
+// buildAiModelSaveValues 函数说明：先校验并组装当前范围的配置键，未提交模块不读取、不归一化也不写入。
+func (aSrv settingAiModelService) buildAiModelSaveValues(saveReq req.SettingAiModelSaveReq, currentMatting []aiMattingProviderConfig) (map[string]string, error) {
+	scope := strings.TrimSpace(saveReq.Scope)
+	if scope != "" && scope != "matting" && scope != "provider" && scope != "ability" {
+		return nil, response.AssertArgumentError.Make("AI 配置范围无效")
+	}
+	values := map[string]string{}
+	if scope == "" || scope == "matting" {
+		modelID := strings.TrimSpace(saveReq.ModelId)
+		if modelID == "" || !aSrv.isSupportedModelId(modelID) {
+			return nil, response.AssertArgumentError.Make("请选择受支持的抠图 Provider")
+		}
+		if scope == "matting" && len(saveReq.MattingProviders) == 0 {
+			return nil, response.AssertArgumentError.Make("当前抠图模块配置不能为空，请重新加载")
+		}
+		if scope == "matting" {
+			seen := map[string]bool{}
+			selectedReady := false
+			for _, item := range saveReq.MattingProviders {
+				key := strings.TrimSpace(item.Provider)
+				if !aSrv.isSupportedModelId(key) || strings.TrimSpace(item.Label) == "" || seen[key] {
+					return nil, response.AssertArgumentError.Make("抠图 Provider 标识和名称必填，标识不能重复")
+				}
+				seen[key] = true
+				if key == modelID {
+					selectedReady = aSrv.isMattingProviderReady(aiMattingProviderConfig{Provider: key, ApiURL: item.ApiURL, ApiKey: item.ApiKey, AccessKeyID: item.AccessKeyID, AccessKeySecret: item.AccessKeySecret, Endpoint: item.Endpoint})
+				}
+			}
+			if !selectedReady {
+				return nil, response.AssertArgumentError.Make("当前抠图 Provider 配置不完整")
+			}
+		}
+		providers := currentMatting
+		if saveReq.MattingProviders != nil {
+			providers = aSrv.normalizeMattingProviderReqs(saveReq.MattingProviders)
+		}
+		if scope == "matting" {
+			selected := aSrv.findMattingProvider(providers, modelID)
+			if selected == nil || !aSrv.isMattingProviderReady(*selected) {
+				return nil, response.AssertArgumentError.Make("当前抠图 Provider 配置不完整")
+			}
+		}
+		encoded, err := json.Marshal(providers)
+		if err != nil {
+			return nil, response.CheckErr(err, "Save json.Marshal matting providers err")
+		}
+		values[aiMattingModelConfigName] = modelID
+		values[aiMattingProviderConfigName] = string(encoded)
+	}
+	if scope == "" || scope == "provider" {
+		if scope == "provider" {
+			if len(saveReq.Providers) == 0 {
+				return nil, response.AssertArgumentError.Make("当前文本 Provider 配置不能为空，请重新加载")
+			}
+			seen := map[string]bool{}
+			for _, item := range saveReq.Providers {
+				key := strings.TrimSpace(item.Provider)
+				if key == "" || strings.TrimSpace(item.Label) == "" || seen[key] {
+					return nil, response.AssertArgumentError.Make("文本 Provider 标识和名称必填，标识不能重复")
+				}
+				seen[key] = true
+				if item.Enabled && (strings.TrimSpace(item.BaseURL) == "" || strings.TrimSpace(item.ApiKey) == "" || strings.TrimSpace(item.DefaultModel) == "") {
+					return nil, response.AssertArgumentError.Make("已启用文本 Provider 的地址、密钥和默认模型必须完整")
+				}
+			}
+		}
+		encoded, err := json.Marshal(aSrv.normalizeProviderReqs(saveReq.Providers))
+		if err != nil {
+			return nil, response.CheckErr(err, "Save json.Marshal providers err")
+		}
+		values[aiProviderConfigName] = string(encoded)
+	}
+	if scope == "" || scope == "ability" {
+		if scope == "ability" {
+			if len(saveReq.ImageAbilities) == 0 {
+				return nil, response.AssertArgumentError.Make("当前工具能力配置不能为空，请重新加载")
+			}
+			seen := map[string]bool{}
+			for _, item := range saveReq.ImageAbilities {
+				key := strings.TrimSpace(item.Ability)
+				if key == "" || strings.TrimSpace(item.Label) == "" || seen[key] {
+					return nil, response.AssertArgumentError.Make("工具能力标识和名称必填，标识不能重复")
+				}
+				seen[key] = true
+				method := strings.ToUpper(strings.TrimSpace(item.Method))
+				if item.Enabled && (strings.TrimSpace(item.UpstreamURL) == "" || (method != "GET" && method != "POST")) {
+					return nil, response.AssertArgumentError.Make("已启用工具能力的上游地址和请求方法必须完整")
+				}
+			}
+		}
+		encoded, err := json.Marshal(aSrv.normalizeImageAbilityReqs(saveReq.ImageAbilities))
+		if err != nil {
+			return nil, response.CheckErr(err, "Save json.Marshal image abilities err")
+		}
+		values[aiImageAbilityConfigName] = string(encoded)
+	}
+	return values, nil
 }
 
 // getCurrentModelId 函数说明：读取当前抠图 Provider，旧模型值会自动回退到默认 API Provider。

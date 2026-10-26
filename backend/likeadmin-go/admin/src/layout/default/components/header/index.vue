@@ -155,7 +155,7 @@
                             size="mini"
                             @click="handleSearchJump(item)"
                         >
-                            {{ item.title }}
+                            {{ configurationTitle(item.path, item.title) }}
                         </a-button>
                     </a-space>
                 </div>
@@ -186,7 +186,7 @@
                             @click="handleSearchJump(item)"
                         >
                             <div class="search-item__head">
-                                <div class="search-item__title">{{ item.title }}</div>
+                                <div class="search-item__title">{{ configurationTitle(item.path, item.title) }}</div>
                                 <a-tag v-if="item.external" size="small" color="orange" bordered
                                     >外链</a-tag
                                 >
@@ -268,6 +268,7 @@ import {
     type AdminNavigationItem
 } from '@/utils/admin-navigation'
 import { isExternal } from '@/utils/validate'
+import { configurationTitle } from '@/utils/site-configuration'
 import Breadcrumb from './breadcrumb.vue'
 import UserDropDown from './user-drop-down.vue'
 import MultipleTabs from './multiple-tabs.vue'

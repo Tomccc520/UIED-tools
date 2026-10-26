@@ -12,17 +12,17 @@ type ISettingProtocolService interface {
 	Save(pReq req.SettingProtocolReq) (e error)
 }
 
-//NewSettingProtocolService 初始化
+// NewSettingProtocolService 初始化
 func NewSettingProtocolService(db *gorm.DB) ISettingProtocolService {
 	return &settingProtocolService{db: db}
 }
 
-//settingProtocolService 政策协议服务实现类
+// settingProtocolService 政策协议服务实现类
 type settingProtocolService struct {
 	db *gorm.DB
 }
 
-//Detail 获取政策协议信息
+// Detail 获取政策协议信息
 func (cSrv settingProtocolService) Detail() (res map[string]interface{}, e error) {
 	defaultVal := `{"name":"","content":""}`
 	json, err := util.ConfigUtil.GetVal(cSrv.db, "protocol", "service", defaultVal)
@@ -47,7 +47,7 @@ func (cSrv settingProtocolService) Detail() (res map[string]interface{}, e error
 	}, nil
 }
 
-//Save 保存政策协议信息
+// Save 函数说明：在同一事务内保存两项协议，任何写入失败均回滚，保留原始正文与空白。
 func (cSrv settingProtocolService) Save(pReq req.SettingProtocolReq) (e error) {
 	serviceJson, err := util.ToolsUtil.ObjToJson(pReq.Service)
 	if e = response.CheckErr(err, "Save ObjToJson service err"); e != nil {
@@ -57,11 +57,10 @@ func (cSrv settingProtocolService) Save(pReq req.SettingProtocolReq) (e error) {
 	if e = response.CheckErr(err, "Save ObjToJson privacy err"); e != nil {
 		return
 	}
-	err = util.ConfigUtil.Set(cSrv.db, "protocol", "service", serviceJson)
-	if e = response.CheckErr(err, "Save Set service err"); e != nil {
-		return
-	}
-	err = util.ConfigUtil.Set(cSrv.db, "protocol", "privacy", privacyJson)
-	e = response.CheckErr(err, "Save Set privacy err")
-	return
+	return cSrv.db.Transaction(func(tx *gorm.DB) error {
+		if err := util.ConfigUtil.Set(tx, "protocol", "service", serviceJson); err != nil {
+			return response.CheckErr(err, "Save Set service err")
+		}
+		return response.CheckErr(util.ConfigUtil.Set(tx, "protocol", "privacy", privacyJson), "Save Set privacy err")
+	})
 }

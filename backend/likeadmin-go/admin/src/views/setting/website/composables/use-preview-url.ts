@@ -43,8 +43,9 @@ export const resolveToolsPreviewUrl = (
     if (!configuredUrl && import.meta.env.DEV && ['localhost', '127.0.0.1', '[::1]'].includes(baseUrl.hostname) && baseUrl.port === '5180') {
         baseUrl.port = '5179'
     }
-    if (!targetPath) return baseUrl.toString()
     const directoryBase = new URL(baseUrl.toString())
     if (!directoryBase.pathname.endsWith('/')) directoryBase.pathname += '/'
-    return (parsePreviewHttpUrl(targetPath, directoryBase.toString()) || baseUrl).toString()
+    const targetUrl = targetPath ? parsePreviewHttpUrl(targetPath, directoryBase.toString()) || baseUrl : baseUrl
+    if (targetUrl.origin === baseUrl.origin) targetUrl.searchParams.set('_uied_preview', '1')
+    return targetUrl.toString()
 }

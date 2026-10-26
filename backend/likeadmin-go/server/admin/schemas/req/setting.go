@@ -199,10 +199,11 @@ type SettingProtocolReq struct {
 
 // SettingAiModelSaveReq 保存 AI 抠图 Provider 配置参数，保留 modelId 字段兼容既有接口。
 type SettingAiModelSaveReq struct {
-	ModelId          string                              `form:"modelId" json:"modelId" binding:"required"` // 抠图 Provider ID
-	MattingProviders []SettingAiMattingProviderConfigReq `form:"mattingProviders" json:"mattingProviders"`  // 抠图 Provider 配置
-	Providers        []SettingAiProviderConfigReq        `form:"providers" json:"providers"`                // 文本 AI Provider 配置
-	ImageAbilities   []SettingAiImageAbilityConfigReq    `form:"imageAbilities" json:"imageAbilities"`      // 图片 AI 能力配置
+	Scope            string                              `form:"scope" json:"scope" binding:"omitempty,oneof=matting provider ability"` // 当前模块；省略兼容旧全量保存
+	ModelId          string                              `form:"modelId" json:"modelId"`                                                // 抠图 Provider ID，抠图及旧全量模式由服务层校验
+	MattingProviders []SettingAiMattingProviderConfigReq `form:"mattingProviders" json:"mattingProviders"`                              // 抠图 Provider 配置
+	Providers        []SettingAiProviderConfigReq        `form:"providers" json:"providers"`                                            // 文本 AI Provider 配置
+	ImageAbilities   []SettingAiImageAbilityConfigReq    `form:"imageAbilities" json:"imageAbilities"`                                  // 图片 AI 能力配置
 }
 
 // SettingAiMattingProviderConfigReq 抠图 API Provider 配置参数。
@@ -326,19 +327,19 @@ type SettingDictTypeDetailReq struct {
 
 // SettingDictTypeAddReq 字典类型新增参数
 type SettingDictTypeAddReq struct {
-	DictName   string `form:"dictName" binding:"required,max=200"`     // 字典名称
-	DictType   string `form:"dictType" binding:"required,max=200"`     // 字典类型
-	DictRemark string `form:"dictRemark" binding:"max=200"`            // 字典备注
-	DictStatus int8   `form:"dictStatus" binding:"required,oneof=0 1"` // 字典状态: 0/1
+	DictName   string `form:"dictName" binding:"required,max=200"`                       // 字典名称
+	DictType   string `form:"dictType" binding:"required,max=200"`                       // 字典类型
+	DictRemark string `form:"dictRemark" binding:"max=200"`                              // 字典备注
+	DictStatus *int8  `form:"dictStatus" json:"dictStatus" binding:"required,oneof=0 1"` // 必须显式提供状态，允许 0=停用
 }
 
 // SettingDictTypeEditReq 字典类型编辑参数
 type SettingDictTypeEditReq struct {
-	ID         uint   `form:"id" binding:"required,gt=0"`              // 主键
-	DictName   string `form:"dictName" binding:"required,max=200"`     // 字典名称
-	DictType   string `form:"dictType" binding:"required,max=200"`     // 字典类型
-	DictRemark string `form:"dictRemark" binding:"max=200"`            // 字典备注
-	DictStatus int8   `form:"dictStatus" binding:"required,oneof=0 1"` // 字典状态: 0/1
+	ID         uint   `form:"id" binding:"required,gt=0"`                                // 主键
+	DictName   string `form:"dictName" binding:"required,max=200"`                       // 字典名称
+	DictType   string `form:"dictType" binding:"required,max=200"`                       // 字典类型
+	DictRemark string `form:"dictRemark" binding:"max=200"`                              // 字典备注
+	DictStatus *int8  `form:"dictStatus" json:"dictStatus" binding:"required,oneof=0 1"` // 必须显式提供状态，允许 0=停用
 }
 
 // SettingDictTypeDelReq 字典类型删除参数

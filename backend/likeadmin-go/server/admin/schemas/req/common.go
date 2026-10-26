@@ -66,8 +66,8 @@ type CommonAlbumMetaSaveReq struct {
 
 // CommonAlbumCompressConfigSaveReq 素材图片压缩配置保存参数
 type CommonAlbumCompressConfigSaveReq struct {
-	Enabled             int    `form:"enabled" json:"enabled" binding:"required,oneof=0 1"`                                        // 是否启用自动压缩
-	MinSizeKB           int    `form:"minSizeKB" json:"minSizeKB" binding:"required,gte=0,lte=102400"`                             // 触发压缩最小文件大小（KB）
+	Enabled             *int   `form:"enabled" json:"enabled" binding:"required,oneof=0 1"`                                        // 指针区分未提交与合法的关闭状态 0
+	MinSizeKB           *int   `form:"minSizeKB" json:"minSizeKB" binding:"required,gte=0,lte=102400"`                             // 指针保留合法的零阈值
 	JpegQuality         int    `form:"jpegQuality" json:"jpegQuality" binding:"required,gte=40,lte=100"`                           // JPEG 压缩质量
 	PngCompressionLevel string `form:"pngCompressionLevel" json:"pngCompressionLevel" binding:"required,oneof=speed default best"` // PNG 压缩级别
 }

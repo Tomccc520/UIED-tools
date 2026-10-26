@@ -19,7 +19,7 @@
                         @close="handleDelete(item.fullPath)"
                         @click="handleChange(item.fullPath)"
                     >
-                        {{ item.title }}
+                        {{ configurationTitle(item.fullPath, item.title) }}
                     </a-tag>
                 </div>
             </div>
@@ -45,6 +45,7 @@
 <script setup lang="ts">
 import { IconDown } from '@arco-design/web-vue/es/icon'
 import useMultipleTabs from '@/hooks/useMultipleTabs'
+import { configurationTitle } from '@/utils/site-configuration'
 import { useWatchRoute } from '@/hooks/useWatchRoute'
 import useTabsStore, { getRouteParams } from '@/stores/modules/multipleTabs'
 

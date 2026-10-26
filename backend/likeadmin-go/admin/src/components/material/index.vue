@@ -7,8 +7,12 @@
  */
 -->
 <template>
-    <a-spin class="material-loading-wrap" :loading="pager.loading">
-        <div class="material">
+    <a-spin class="material-loading-wrap" :loading="pager.loading || isProcessingFiles">
+        <a-alert v-if="cateLoadError || fileLoadError || fileActionError" class="material-request-error" type="error" :closable="false" show-icon>
+            {{ fileActionError || fileLoadError || cateLoadError }}
+            <template #action><a-button :disabled="isProcessingFiles" @click="getData">重新加载</a-button></template>
+        </a-alert>
+        <fieldset class="material" :disabled="isProcessingFiles" :inert="isProcessingFiles ? '' : undefined">
             <div class="material__left">
                 <div class="flex-1 min-h-0">
                     <a-scrollbar>
@@ -161,6 +165,16 @@
                         </div>
                         <div class="material-toolbar__section material-toolbar__section--filters">
                             <div class="material-toolbar__section-label">素材筛选</div>
+                            <a-input-search
+                                class="material-toolbar__filter-search"
+                                placeholder="搜索素材名称"
+                                v-model="fileParams.name"
+                                allow-clear
+                                @search="refresh"
+                                @clear="refresh"
+                            />
+                            <details v-if="mode == 'page'" class="material-toolbar__advanced">
+                                <summary>按关联内容筛选</summary>
                             <div class="material-toolbar__filters">
                                 <a-select
                                     v-if="mode == 'page'"
@@ -181,23 +195,16 @@
                                     placeholder="绑定ID"
                                     @change="refresh"
                                 />
-                                <a-input-search
-                                    class="material-toolbar__filter-search"
-                                    placeholder="请输入名称"
-                                    v-model="fileParams.name"
-                                    allow-clear
-                                    @search="refresh"
-                                    @clear="refresh"
-                                />
                                 <a-button v-if="mode == 'page'" @click="clearBindFilters">
                                     重置绑定筛选
                                 </a-button>
                             </div>
+                            </details>
                         </div>
                     </div>
                     <div class="material-toolbar__view">
                         <a-tooltip content="列表视图">
-                            <div
+                            <button type="button" aria-label="列表视图" :aria-pressed="listShowType == 'table'"
                                 class="list-icon"
                                 :class="{
                                     select: listShowType == 'table'
@@ -205,10 +212,10 @@
                                 @click="listShowType = 'table'"
                             >
                                 <icon name="local-icon-list-2" :size="18" />
-                            </div>
+                            </button>
                         </a-tooltip>
                         <a-tooltip content="平铺视图">
-                            <div
+                            <button type="button" aria-label="平铺视图" :aria-pressed="listShowType == 'normal'"
                                 class="list-icon"
                                 :class="{
                                     select: listShowType == 'normal'
@@ -216,37 +223,15 @@
                                 @click="listShowType = 'normal'"
                             >
                                 <IconApps :size="18" />
-                            </div>
+                            </button>
                         </a-tooltip>
                     </div>
                 </div>
                 <div v-if="mode == 'page'" class="material-toolbar__summary">
-                    <div class="material-toolbar__summary-item">
-                        <span>当前分组</span>
-                        <strong>{{ activeCateLabel }}</strong>
-                    </div>
-                    <div class="material-toolbar__summary-item">
-                        <span>当前筛选</span>
-                        <strong>{{ materialFilterSummary }}</strong>
-                    </div>
-                    <div class="material-toolbar__summary-item">
-                        <span>当前结果</span>
-                        <strong>{{ pager.count }} 项</strong>
-                    </div>
-                    <div class="material-toolbar__summary-item">
-                        <span>当前选中</span>
-                        <strong>{{ select.length }} 项</strong>
-                    </div>
-                </div>
-                <div class="mt-3" v-if="mode == 'page'">
-                    <a-checkbox
-                        :disabled="!pager.lists.length"
-                        v-model="isCheckAll"
-                        @change="selectAll"
-                        :indeterminate="isIndeterminate"
-                    >
-                        当页全选
-                    </a-checkbox>
+                    <strong>{{ activeCateLabel }}</strong>
+                    <span>{{ pager.count }} 项素材</span>
+                    <span v-if="select.length">已选 {{ select.length }} 项</span>
+                    <span v-if="materialFilterSummary !== '未设置筛选'" class="material-toolbar__filter-summary">{{ materialFilterSummary }}</span>
                 </div>
                 <div class="material-center__content flex flex-col flex-1 mb-1 min-h-0">
                     <a-scrollbar v-if="pager.lists.length" v-show="listShowType == 'normal'">
@@ -298,7 +283,7 @@
 
                     <a-table
                         class="mt-4"
-                        v-show="listShowType == 'table'"
+                        v-show="listShowType == 'table' && pager.lists.length > 0"
                         :data="pager.lists"
                         row-key="id"
                         :pagination="false"
@@ -376,7 +361,7 @@
 
                     <div
                         class="flex flex-1 justify-center items-center"
-                        v-if="!pager.loading && !pager.lists.length"
+                        v-if="!pager.loading && !pager.lists.length && !fileLoadError"
                     >
                         <a-empty :description="materialEmptyDescription">
                             <template #extra>
@@ -396,7 +381,7 @@
                 </div>
                 <div class="material-center__footer flex justify-between items-center mt-2">
                     <div class="flex">
-                        <template v-if="mode == 'page'">
+                        <template v-if="mode == 'page' && pager.lists.length">
                             <span class="mr-3">
                                 <a-checkbox
                                     :disabled="!pager.lists.length"
@@ -444,7 +429,7 @@
                     />
                 </div>
             </div>
-            <div class="material__right material__right--detail" v-if="mode == 'page'">
+            <div class="material__right material__right--detail" v-if="mode == 'page' && activeMaterial">
                 <div class="material-detail__header">附件详情</div>
                 <div v-if="activeMaterial" class="material-detail__content">
                     <div class="material-detail__preview">
@@ -628,15 +613,19 @@
                 </div>
             </div>
             <preview v-model="showPreview" :url="previewUrl" :type="type" />
-        </div>
+        </fieldset>
         <a-modal
             v-model:visible="compressConfigVisible"
             title="图片自动压缩设置"
             :mask-closable="false"
-            :confirm-loading="compressConfigSaving"
-            @ok="saveCompressConfig"
+            :on-before-cancel="canCloseCompressConfig"
         >
-            <a-form layout="vertical" :model="compressConfigForm">
+            <a-alert v-if="compressConfigError || compressConfigSaveError" type="error" :closable="false" show-icon>
+                {{ compressConfigError || compressConfigSaveError }}
+                <template v-if="compressConfigError" #action><a-button :disabled="compressConfigLoading || compressConfigSaving" @click="retryCompressConfig">重新读取</a-button></template>
+            </a-alert>
+            <a-spin :loading="compressConfigLoading" style="display: block">
+            <a-form layout="vertical" :model="compressConfigForm" :disabled="compressConfigLoading || compressConfigSaving || !compressConfigLoaded || Boolean(compressConfigError)">
                 <a-form-item label="启用自动压缩">
                     <a-switch
                         v-model="compressConfigForm.enabled"
@@ -673,6 +662,12 @@
                     仅对新上传 JPG/PNG 自动压缩；SVG/GIF 与已上传历史文件不会自动重写。
                 </a-alert>
             </a-form>
+            </a-spin>
+            <template #footer>
+                <a-button :disabled="compressConfigSaving" @click="compressConfigVisible = false">取消</a-button>
+                <a-button :disabled="compressConfigLoading || compressConfigSaving" @click="retryCompressConfig">重新读取</a-button>
+                <a-button type="primary" :loading="compressConfigSaving" :disabled="compressConfigLoading || !compressConfigLoaded || Boolean(compressConfigError)" @click="saveCompressConfig">保存设置</a-button>
+            </template>
         </a-modal>
     </a-spin>
 </template>
@@ -684,6 +679,7 @@ import FileItem from './file.vue'
 import Preview from './preview.vue'
 import { IconApps, IconCheck } from '@arco-design/web-vue/es/icon'
 import { Message } from '@arco-design/web-vue'
+import feedback from '@/utils/feedback'
 import type { Ref } from 'vue'
 const props = defineProps({
     fileSize: {
@@ -746,6 +742,7 @@ const {
     treeRef,
     cateId,
     cateLists,
+    cateLoadError,
     handleAddCate,
     handleEditCate,
     handleDeleteCate,
@@ -755,6 +752,9 @@ const {
 
 const {
     listShowType,
+    fileLoadError,
+    fileActionError,
+    isProcessingFiles,
     moveId,
     pager,
     fileParams,
@@ -861,6 +861,10 @@ const materialBindTypeFilterOptions = [
 const compressConfigVisible = ref(false)
 const compressConfigSaving = ref(false)
 const compressConfigLoaded = ref(false)
+const compressConfigLoading = ref(false)
+const compressConfigError = ref('')
+const compressConfigSaveError = ref('')
+const compressConfigBaseline = ref('')
 const compressConfigForm = reactive({
     enabled: true,
     minSizeKB: 300,
@@ -1109,101 +1113,112 @@ const copyMaterialUrl = async (url: string) => {
     }
 }
 
-/**
- * 函数说明：保存附件元信息到后台，便于素材中心按 WP 媒体库方式统一管理图片参数。
- */
+/** 保存当前附件与表单快照；返回时仅更新同一素材，切换后的输入不会被旧响应覆盖。 */
 const saveMaterialMeta = async () => {
+    if (materialMetaSaving.value || isProcessingFiles.value) return false
     if (!activeMaterial.value) {
         Message.warning('请先选择素材')
-        return
+        return false
     }
+    const submittedForm = JSON.stringify(materialMetaForm)
+    const payload = { ...materialMetaForm, id: activeMaterial.value.id, bindId: Number(materialMetaForm.bindId || 0) }
     materialMetaSaving.value = true
     try {
-        const res = await fileMetaSave({
-            id: activeMaterial.value.id,
-            title: materialMetaForm.title,
-            altText: materialMetaForm.altText,
-            caption: materialMetaForm.caption,
-            description: materialMetaForm.description,
-            uri: materialMetaForm.uri,
-            bindType: materialMetaForm.bindType,
-            bindId: Number(materialMetaForm.bindId || 0),
-            bindTitle: materialMetaForm.bindTitle,
-            bindUrl: materialMetaForm.bindUrl
-        })
-        const targetIndex = pager.lists.findIndex(
-            (item: MaterialItem) => item.id === activeMaterial.value?.id
-        )
+        const res = await fileMetaSave(payload)
+        const targetIndex = pager.lists.findIndex((item: MaterialItem) => item.id === payload.id)
         if (targetIndex >= 0) {
-            pager.lists[targetIndex] = {
-                ...pager.lists[targetIndex],
-                ...(res || {})
-            }
+            pager.lists[targetIndex] = { ...pager.lists[targetIndex], ...(res || {}), id: payload.id }
         }
-        syncMetaFormByActive()
+        if (activeMaterial.value?.id === payload.id && JSON.stringify(materialMetaForm) === submittedForm) syncMetaFormByActive()
         Message.success('附件信息已保存')
+        return true
+    } catch {
+        Message.error('附件信息保存失败，原有输入已保留，请重试。')
+        return false
     } finally {
         materialMetaSaving.value = false
     }
 }
 
-/**
- * 函数说明：读取素材图片自动压缩配置，供素材中心“压缩设置”弹窗展示和编辑。
- */
+/** 校验完整压缩策略后再回填，保留合法零阈值，不把无效响应降级成默认值。 */
+const normalizeCompressConfig = (source: any) => {
+    if (!source || typeof source !== 'object' || Array.isArray(source)) throw new Error('压缩设置响应无效')
+    const enabled = Number(source.enabled)
+    const minSizeKB = Number(source.minSizeKB)
+    const jpegQuality = Number(source.jpegQuality)
+    const pngCompressionLevel = String(source.pngCompressionLevel || '') as 'speed' | 'default' | 'best'
+    if (['enabled', 'minSizeKB', 'jpegQuality'].some(key => source[key] == null || (typeof source[key] === 'string' && !source[key].trim())) ||
+        ![0, 1].includes(enabled) || !Number.isInteger(minSizeKB) || minSizeKB < 0 || minSizeKB > 102400 ||
+        !Number.isInteger(jpegQuality) || jpegQuality < 40 || jpegQuality > 100 || !['speed', 'default', 'best'].includes(pngCompressionLevel)) {
+        throw new Error('压缩设置字段不完整或超出范围')
+    }
+    return { enabled: enabled === 1, minSizeKB, jpegQuality, pngCompressionLevel }
+}
+/** 读取压缩策略；失败保留原草稿，并关闭保存入口直到成功重试。 */
 const loadCompressConfig = async () => {
-    if (props.type !== 'image') {
-        return
-    }
+    if (props.type !== 'image' || compressConfigLoading.value || compressConfigSaving.value) return false
+    compressConfigLoading.value = true
+    compressConfigLoaded.value = false
+    compressConfigError.value = ''
     try {
-        const res = await fileCompressConfigDetail()
-        compressConfigForm.enabled = Number(res?.enabled ?? 1) === 1
-        compressConfigForm.minSizeKB = Number(res?.minSizeKB ?? 300) || 300
-        compressConfigForm.jpegQuality = Number(res?.jpegQuality ?? 82) || 82
-        const level = String(res?.pngCompressionLevel || 'default') as 'speed' | 'default' | 'best'
-        compressConfigForm.pngCompressionLevel = ['speed', 'default', 'best'].includes(level)
-            ? level
-            : 'default'
+        const next = normalizeCompressConfig(await fileCompressConfigDetail())
+        Object.assign(compressConfigForm, next)
+        compressConfigBaseline.value = JSON.stringify(next)
         compressConfigLoaded.value = true
-    } catch (error) {
-        compressConfigLoaded.value = false
+        compressConfigSaveError.value = ''
+        return true
+    } catch {
+        compressConfigError.value = '压缩设置读取失败，原有输入已保留，请重新读取后再保存。'
+        return false
+    } finally {
+        compressConfigLoading.value = false
     }
 }
-
-/**
- * 函数说明：打开压缩设置弹窗，首次打开时自动拉取后台配置。
- */
+/** 重新读取前确认草稿，避免失败后的重试无声覆盖用户仍在编辑的策略。 */
+const retryCompressConfig = async () => {
+    if (compressConfigLoading.value || compressConfigSaving.value) return false
+    if (compressConfigBaseline.value && JSON.stringify(compressConfigForm) !== compressConfigBaseline.value) {
+        try { await feedback.confirm('重新读取会放弃未保存的压缩设置，确定继续吗？') } catch { return false }
+    }
+    return loadCompressConfig()
+}
+/** 先显示可重试的设置窗口，首次读取失败时不允许保存展示用默认值。 */
 const openCompressConfigModal = async () => {
-    if (!compressConfigLoaded.value) {
-        await loadCompressConfig()
-    }
+    if (compressConfigSaving.value) return
     compressConfigVisible.value = true
+    if (!compressConfigLoaded.value) await loadCompressConfig()
 }
-
-/**
- * 函数说明：保存图片自动压缩策略，后台上传链路会按该配置处理新上传图片。
- */
+/** 保存进行中阻止通过关闭图标或 Esc 退出，确保写入结果有明确反馈。 */
+const canCloseCompressConfig = () => !compressConfigSaving.value
+/** 保存经过校验的提交快照；失败保留输入，后续编辑不被保存回调覆盖。 */
 const saveCompressConfig = async () => {
+    if (compressConfigSaving.value || compressConfigLoading.value || !compressConfigLoaded.value || compressConfigError.value) return false
+    let submitted: typeof compressConfigForm
+    try { submitted = normalizeCompressConfig({ ...compressConfigForm, enabled: compressConfigForm.enabled ? 1 : 0 }) }
+    catch { compressConfigSaveError.value = '请检查压缩阈值、JPEG 质量和 PNG 等级后重试。'; return false }
+    const snapshot = JSON.stringify(submitted)
     compressConfigSaving.value = true
+    compressConfigSaveError.value = ''
     try {
-        await fileCompressConfigSave({
-            enabled: compressConfigForm.enabled ? 1 : 0,
-            minSizeKB: Number(compressConfigForm.minSizeKB || 0),
-            jpegQuality: Number(compressConfigForm.jpegQuality || 82),
-            pngCompressionLevel: compressConfigForm.pngCompressionLevel
-        })
-        compressConfigVisible.value = false
+        await fileCompressConfigSave({ ...submitted, enabled: submitted.enabled ? 1 : 0 })
+        compressConfigBaseline.value = snapshot
+        if (JSON.stringify(compressConfigForm) === snapshot) compressConfigVisible.value = false
         Message.success('压缩设置已保存')
-    } catch (error) {
-        // 请求层会统一提示错误，这里吞掉异常避免控制台重复报错。
+        return true
+    } catch {
+        compressConfigSaveError.value = '压缩设置保存失败，输入已保留，请重试。'
+        return false
     } finally {
         compressConfigSaving.value = false
     }
 }
 
+/** 函数说明：重新读取分组与文件，保留失败动作的选择，不自动重试删除或移动。 */
 const getData = async () => {
+    fileActionError.value = ''
     await getCateLists()
     treeRef.value?.selectNode?.(cateId.value, true)
-    getFileList()
+    await getFileList()
 }
 
 const handlePreview = (url: string) => {
@@ -1290,6 +1305,8 @@ defineExpose({
 </script>
 
 <style scoped lang="scss">
+.material-request-error { margin-bottom: 12px; }
+
 .material-loading-wrap {
     @apply h-full w-full flex-1;
     display: block;
@@ -1312,6 +1329,10 @@ defineExpose({
 
 .material {
     @apply h-full min-h-0 flex flex-1;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
     &__left {
         @apply border-r border-br flex flex-col w-[208px];
         background: linear-gradient(180deg, #ffffff 0%, #fafbff 100%);
@@ -1380,8 +1401,8 @@ defineExpose({
         gap: 12px;
         padding: 10px;
         border: 1px solid var(--color-border-2, #e5e6eb);
-        border-radius: 12px;
-        background: linear-gradient(180deg, #ffffff 0%, #f8faff 100%);
+        border-radius: var(--uied-admin-radius);
+        background: var(--color-bg-2);
     }
     .material-toolbar__main {
         flex: 1;
@@ -1393,12 +1414,10 @@ defineExpose({
     .material-toolbar__section {
         min-width: 0;
         padding: 12px;
-        border-radius: 12px;
-        background: var(--color-fill-1, #f7f8fa);
-        border: 1px solid rgba(229, 230, 235, 0.9);
+        background: var(--color-bg-2);
     }
     .material-toolbar__section--filters {
-        background: linear-gradient(180deg, #ffffff 0%, #f7f9ff 100%);
+        background: var(--color-bg-2);
     }
     .material-toolbar__section-label {
         margin-bottom: 10px;
@@ -1423,9 +1442,12 @@ defineExpose({
         width: 138px;
     }
     .material-toolbar__filter-search {
-        min-width: 220px;
+        min-width: 0;
         flex: 1;
     }
+    .material-toolbar__advanced { margin-top: 8px; }
+    .material-toolbar__advanced summary { cursor: pointer; padding: 6px 0; font-size: 12px; color: var(--color-text-3); }
+    .material-toolbar__advanced[open] summary { margin-bottom: 4px; }
     .material-toolbar__view {
         width: 88px;
         display: flex;
@@ -1438,29 +1460,15 @@ defineExpose({
     }
     .material-toolbar__summary {
         margin-top: 12px;
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
-    }
-    .material-toolbar__summary-item {
-        padding: 9px 11px;
-        border-radius: 10px;
-        border: 1px solid var(--color-border-2, #e5e6eb);
-        background: var(--color-fill-1, #f7f8fa);
-    }
-    .material-toolbar__summary-item span {
-        display: block;
-        font-size: 12px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 16px;
+        font-size: 13px;
         color: var(--color-text-3, #86909c);
     }
-    .material-toolbar__summary-item strong {
-        display: block;
-        margin-top: 4px;
-        font-size: 14px;
-        line-height: 1.55;
-        color: var(--color-text-1, #1d2129);
-        word-break: break-all;
-    }
+    .material-toolbar__summary strong { color: var(--color-text-1); }
+    .material-toolbar__filter-summary { overflow-wrap: anywhere; }
     .material-tree-actions {
         min-width: 120px;
         display: flex;
@@ -1554,9 +1562,6 @@ defineExpose({
         .material-toolbar__main {
             grid-template-columns: 1fr;
         }
-        .material-toolbar__summary {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-        }
     }
 }
 
@@ -1588,9 +1593,17 @@ defineExpose({
 
 @media (max-width: 768px) {
     .material {
-        .material-toolbar__summary {
-            grid-template-columns: 1fr;
-        }
+        height: auto;
+        .material__left { min-height: 0; max-height: 220px; overflow: auto; }
+        .material__center { padding: 12px; }
+        .material-toolbar__filter-search { min-width: 0; }
+        .material-center__footer { flex-wrap: wrap; gap: 12px; }
+        .material-center__footer :deep(.pagination) { max-width: 100%; overflow-x: auto; }
+        .material-center__footer :deep(.arco-pagination-jumper) { display: none; }
+        .material-toolbar__section-actions :deep(.arco-btn) { min-height: 44px; }
+        .material__right--detail { padding: 12px; }
+        .file-list { gap: 12px; }
+        .file-list .file-item-wrap { margin-right: 0; max-width: 100%; }
         .material-toolbar__filters {
             flex-direction: column;
         }

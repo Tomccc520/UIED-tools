@@ -28,9 +28,9 @@ const loadResolver = async ({ origin = 'http://localhost:5180', development = tr
 
 test('开发后台默认预览切到 5179，并保留工具路径、查询与锚点', async () => {
     const resolve = await loadResolver()
-    assert.equal(resolve({}), 'http://localhost:5179/')
-    assert.equal(resolve('/tools/ai/deepseek?mode=chat#input'), 'http://localhost:5179/tools/ai/deepseek?mode=chat#input')
-    assert.equal(resolve({}, '/tools/ai/deepseek?mode=chat#input'), 'http://localhost:5179/tools/ai/deepseek?mode=chat#input')
+    assert.equal(resolve({}), 'http://localhost:5179/?_uied_preview=1')
+    assert.equal(resolve('/tools/ai/deepseek?mode=chat#input'), 'http://localhost:5179/tools/ai/deepseek?mode=chat&_uied_preview=1#input')
+    assert.equal(resolve({}, '/tools/ai/deepseek?mode=chat#input'), 'http://localhost:5179/tools/ai/deepseek?mode=chat&_uied_preview=1#input')
 })
 
 test('开发端口回退只匹配本机 5180，不影响其他端口、远端或生产', async () => {
@@ -45,40 +45,46 @@ test('开发端口回退只匹配本机 5180，不影响其他端口、远端或
         { origin: 'http://localhost:5180', development: false }
     ]) {
         const resolve = await loadResolver(options)
-        assert.equal(resolve('/tools/qrcode'), `${options.origin}/tools/qrcode`)
+        assert.equal(resolve('/tools/qrcode'), `${options.origin}/tools/qrcode?_uied_preview=1`)
     }
 })
 
 test('生产后台部署在 admin 子路径时，预览仍从同域主站根路径进入', async () => {
     const resolve = await loadResolver({ origin: 'https://uiedtool.com', development: false })
-    assert.equal(resolve({}), 'https://uiedtool.com/')
-    assert.equal(resolve({}, '/tools/qrcode?text=hello#preview'), 'https://uiedtool.com/tools/qrcode?text=hello#preview')
+    assert.equal(resolve({}), 'https://uiedtool.com/?_uied_preview=1')
+    assert.equal(resolve({}, '/tools/qrcode?text=hello#preview'), 'https://uiedtool.com/tools/qrcode?text=hello&_uied_preview=1#preview')
 })
 
 test('有效环境预览地址优先于后台地址，后台别名和相对部署路径继续可用', async () => {
     const resolve = await loadResolver({ previewUrl: 'https://preview.example.com/app/' })
-    assert.equal(resolve({ webUrl: 'https://configured.example.com/' }, 'tools/qrcode?text=hello'), 'https://preview.example.com/app/tools/qrcode?text=hello')
+    assert.equal(resolve({ webUrl: 'https://configured.example.com/' }, 'tools/qrcode?text=hello'), 'https://preview.example.com/app/tools/qrcode?text=hello&_uied_preview=1')
     const configured = await loadResolver()
     for (const key of ['webUrl', 'web_url', 'web']) {
-        assert.equal(configured({ [key]: 'https://tools.example.com/' }, '/tools/qrcode'), 'https://tools.example.com/tools/qrcode')
+        assert.equal(configured({ [key]: 'https://tools.example.com/' }, '/tools/qrcode'), 'https://tools.example.com/tools/qrcode?_uied_preview=1')
     }
-    assert.equal(configured({ webUrl: '/frontend/' }, 'tools/qrcode'), 'http://localhost:5180/frontend/tools/qrcode')
+    assert.equal(configured({ webUrl: '/frontend/' }, 'tools/qrcode'), 'http://localhost:5180/frontend/tools/qrcode?_uied_preview=1')
 })
 
 test('无效预览配置不能执行危险协议，且仍尝试有效后台配置', async () => {
     const configured = await loadResolver({ previewUrl: 'javascript:alert(1)' })
-    assert.equal(configured({ webUrl: 'https://tools.example.com' }, '/tools/qrcode'), 'https://tools.example.com/tools/qrcode')
+    assert.equal(configured({ webUrl: 'https://tools.example.com' }, '/tools/qrcode'), 'https://tools.example.com/tools/qrcode?_uied_preview=1')
     const resolve = await loadResolver()
     for (const webUrl of ['javascript:alert(1)', 'data:text/html,x', 'file:///tmp/page', 'https://', 'https://user:pass@tools.example.com/']) {
-        assert.equal(resolve({ webUrl }, '/tools/qrcode'), 'http://localhost:5179/tools/qrcode')
+        assert.equal(resolve({ webUrl }, '/tools/qrcode'), 'http://localhost:5179/tools/qrcode?_uied_preview=1')
     }
-    assert.equal(resolve({ webUrl: 'javascript:alert(1)', web_url: 'https://tools.example.com' }), 'https://tools.example.com/')
+    assert.equal(resolve({ webUrl: 'javascript:alert(1)', web_url: 'https://tools.example.com' }), 'https://tools.example.com/?_uied_preview=1')
 })
 
 test('预览目标只允许 HTTP 页面，非法目标回到安全主站且保留合法外链', async () => {
     const resolve = await loadResolver()
     for (const path of ['javascript:alert(1)', 'data:text/html,x', 'file:///tmp/page', 'https://']) {
-        assert.equal(resolve(path), 'http://localhost:5179/')
+        assert.equal(resolve(path), 'http://localhost:5179/?_uied_preview=1')
     }
     assert.equal(resolve('https://external.example.com/tool?q=one#result'), 'https://external.example.com/tool?q=one#result')
+})
+
+test('站点预览保留配置地址已有参数与锚点，只添加一个内部预览标记', async () => {
+    const resolve = await loadResolver({ previewUrl: 'https://tools.example.com/?layout=wide#home' })
+    assert.equal(resolve({}), 'https://tools.example.com/?layout=wide&_uied_preview=1#home')
+    assert.equal(resolve({}, '/tools/qrcode?text=hello&_uied_preview=1#result'), 'https://tools.example.com/tools/qrcode?text=hello&_uied_preview=1#result')
 })

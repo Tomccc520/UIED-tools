@@ -13,7 +13,7 @@ const source = fs.readFileSync(new URL('../src/utils/site-configuration.ts', imp
 const compiled = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext }
 }).outputText
-const { buildConfigurationGroups, configurationPath, findConfigurationEntry } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
+const { buildConfigurationGroups, configurationPath, findConfigurationEntry, configurationTitle } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
 
 /** 创建已授权的导航条目，用于验证任务分组不增加权限入口。 */
 const entry = (path, title = path, external = false) => ({ path, title, external, keywords: title })
@@ -62,4 +62,18 @@ test('相同路径的参数入口只选择一个当前项，参数顺序变化�
     assert.equal(findConfigurationEntry(groups, '/official_site/tools_catalog?mode=edit&scope=images#panel'), groups[0].items[1])
     assert.equal(findConfigurationEntry(groups, '/official_site/tools_catalog?unknown=value'), groups[0].items[0])
     assert.equal(findConfigurationEntry(groups, '/official_site/no-access'), undefined)
+})
+
+test('侧栏、面包屑、页签和搜索共享任务名称，不改变带参数和扩展入口', () => {
+    assert.equal(configurationTitle('/official_site', '官网设置', true), '网站管理')
+    assert.equal(configurationTitle('/official_site/frontend_layout', '前端布局'), '首页内容')
+    assert.equal(configurationTitle('/official_site/tools_catalog/', '工具主数据'), '工具管理')
+    assert.equal(configurationTitle('/official_site/information', '网站信息'), '后台品牌')
+    assert.equal(configurationTitle('/official_site/frontend_layout?scope=extra', '自定义首页'), '自定义首页')
+    assert.equal(configurationTitle('/official_site/seo#geo', 'GEO规则'), 'GEO规则')
+    assert.equal(configurationTitle('/official_site/tools_catalog', '工具自定义目录', true), '工具自定义目录')
+    assert.equal(configurationTitle('/official_site/custom', '自定义名称'), '自定义名称')
+    assert.equal(configurationTitle('https://example.com/official_site/seo', '帮助文档'), '帮助文档')
+    assert.equal(configurationTitle('//example.com/official_site/seo', '帮助文档'), '帮助文档')
+    assert.equal(configurationTitle('/permission/role', '角色权限'), '角色权限')
 })
