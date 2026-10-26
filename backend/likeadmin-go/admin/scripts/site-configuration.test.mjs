@@ -13,7 +13,11 @@ const source = fs.readFileSync(new URL('../src/utils/site-configuration.ts', imp
 const compiled = ts.transpileModule(source, {
     compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext }
 }).outputText
-const { buildConfigurationGroups, configurationPath, findConfigurationEntry, configurationTitle } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`)
+const navigationSource = fs.readFileSync(new URL('../src/utils/admin-navigation.ts', import.meta.url), 'utf8')
+const navigationCode = ts.transpileModule(navigationSource, { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.ESNext } }).outputText
+const navigationUrl = `data:text/javascript;base64,${Buffer.from(navigationCode).toString('base64')}`
+const withDependencies = compiled.replace(/from ['"]\.\/admin-navigation['"]/g, `from '${navigationUrl}'`)
+const { buildConfigurationGroups, configurationPath, findConfigurationEntry, configurationTitle } = await import(`data:text/javascript;base64,${Buffer.from(withDependencies).toString('base64')}`)
 
 /** 创建已授权的导航条目，用于验证任务分组不增加权限入口。 */
 const entry = (path, title = path, external = false) => ({ path, title, external, keywords: title })
@@ -66,7 +70,7 @@ test('相同路径的参数入口只选择一个当前项，参数顺序变化�
 
 test('侧栏、面包屑、页签和搜索共享任务名称，不改变带参数和扩展入口', () => {
     assert.equal(configurationTitle('/official_site', '官网设置', true), '网站管理')
-    assert.equal(configurationTitle('/official_site/frontend_layout', '前端布局'), '首页内容')
+    assert.equal(configurationTitle('/official_site/frontend_layout', '前端布局'), '学习与更新')
     assert.equal(configurationTitle('/official_site/tools_catalog/', '工具主数据'), '工具管理')
     assert.equal(configurationTitle('/official_site/information', '网站信息'), '后台品牌')
     assert.equal(configurationTitle('/official_site/frontend_layout?scope=extra', '自定义首页'), '自定义首页')

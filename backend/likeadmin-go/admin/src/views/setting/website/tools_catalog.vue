@@ -9,220 +9,83 @@
 <template>
   <div class="website-tools-catalog pro-page-shell">
     <admin-page-header class="layout-page-header" title="工具管理">
-      <template #subtitle>
-        搜索工具并直接保存；分类调整与批量维护使用统一保存。
-      </template>
+      <template #subtitle>编辑工具资料、上下架状态与搜索展示。</template>
       <template #extra>
-        <div class="layout-page-actions">
-          <a-button
-            size="small"
-            data-admin-smoke="tools-catalog-reload"
-            @click="reloadCatalogData"
-            >重新加载</a-button
-          >
-          <a-button
-            size="small"
-            data-admin-smoke="tools-catalog-health-check-quick"
-            @click="runCatalogHealthCheck"
-          >
-            一键体检
-          </a-button>
-        </div>
+        <a-button data-admin-smoke="tools-catalog-reload" :disabled="isSubmitting || isLoadingData" @click="reloadCatalogData">重新加载</a-button>
+        <a-button data-admin-smoke="tools-catalog-mode-switch" :disabled="isSubmitting" @click="simpleMode = !simpleMode">{{ simpleMode ? '批量与高级维护' : '返回工具列表' }}</a-button>
       </template>
     </admin-page-header>
 
     <config-edit-frame
-      :loading="isLoadingData"
-      :ready="hasLoadedData"
-      :error="loadErrorMessage"
-      :save-error="submitError"
-      :dirty="hasUnsavedChanges"
-      :saving="isSubmitting"
-      :saved-at="lastSavedAt"
-      @retry="reloadCatalogData"
+      :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage"
+      :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting"
+      :saved-at="lastSavedAt" :show-save-bar="!simpleMode" @retry="reloadCatalogData"
     >
-      <a-alert
-        v-if="catalogRefreshWarning"
-        type="warning"
-        :closable="false"
-        class="catalog-refresh-warning"
-      >
+      <a-alert v-if="catalogRefreshWarning" type="warning" :closable="false" class="catalog-alert">
         {{ catalogRefreshWarning }}
-        <template #action
-          ><a-button
-            size="small"
-            :loading="isRefreshingCatalogConfig"
-            @click="refreshCatalogConfig"
-            >重试刷新</a-button
-          ></template
-        >
+        <template #action><a-button :loading="isRefreshingCatalogConfig" @click="refreshCatalogConfig">重试刷新</a-button></template>
       </a-alert>
-      <a-card class="page-card pro-panel-card general-card" :bordered="false">
-        <section class="catalog-command-bar">
-          <div class="catalog-command-bar__status">
-            <a-tag bordered>一级分类 {{ toolsCategoryCount }}</a-tag>
-            <a-tag bordered>二级分类 {{ toolsSubCategoryCount }}</a-tag>
-            <a-tag bordered>工具 {{ toolsTotalCount }}</a-tag>
-            <a-tag
-              :color="toolKeyConflictCount > 0 ? 'orangered' : 'green'"
-              bordered
-            >
-              toolKey 冲突 {{ toolKeyConflictCount }}
-            </a-tag>
-          </div>
-          <div class="catalog-command-bar__actions">
-            <a-radio-group v-model="simpleMode" class="catalog-command-bar__modes" type="button" size="small">
-              <a-radio :value="true">工具列表</a-radio>
-              <a-radio
-                :value="false"
-                data-admin-smoke="tools-catalog-mode-switch"
-                >高级编辑</a-radio
-              >
-            </a-radio-group>
-            <a-checkbox
-              v-if="!simpleMode"
-              v-model="syncToolConsumeRulesOnSeed"
-              data-admin-smoke="tools-catalog-policy-switch"
-            >
-              种子同步计费策略
-            </a-checkbox>
-            <a-button @click="goMenuSettings">菜单设置</a-button>
-          </div>
-        </section>
+      <a-alert v-if="catalogValidationTips.length" type="warning" :closable="false" class="catalog-alert">
+        {{ catalogValidationTips[0] }}<span v-if="catalogValidationTips.length > 1">，另有 {{ catalogValidationTips.length - 1 }} 项待处理。</span>
+        <template #action><a-button @click="openCatalogChecks">查看检查</a-button></template>
+      </a-alert>
 
-        <catalog-health-summary
-          v-model:active-keys="catalogHealthCollapseKeys"
-          :summary="memberCoreHealthSummary"
-          :metrics="memberCoreHealthMetrics"
-          :warnings="memberCoreHealthWarnings"
-        />
-
-        <a-alert
-          v-if="catalogValidationTips.length > 0"
-          class="catalog-alert mt-4"
-          type="warning"
-          :closable="false"
-          show-icon
-        >
-          {{ catalogValidationTips[0] }}
-          <span v-if="catalogValidationTips.length > 1">
-            ，另有 {{ catalogValidationTips.length - 1 }} 项待处理。
-          </span>
-        </a-alert>
-
+      <a-card v-if="simpleMode" class="catalog-workspace pro-panel-card" :bordered="false">
         <catalog-tool-editor
-          v-if="simpleMode"
           v-model="toolsCategoryTreeEditor"
-          :disabled="
-            isSubmitting ||
-            isLoadingData ||
-            !hasLoadedData ||
-            Boolean(loadErrorMessage)
-          "
-          :can-edit="canSaveCatalog"
-          :pending-changes="hasUnsavedChanges"
-          :preview-base="resolveToolsPreviewUrl(appStore.config)"
-          :persist-changes="persistToolChanges"
-        />
-        <details v-if="simpleMode" class="catalog-batch-actions mt-4">
-          <summary>批量维护与同步</summary>
-          <p class="form-tips">
-            补齐内容会先加入待保存更改；同步计费策略和同步高频工具会单独保存，请先保存正在编辑的目录。
-          </p>
-          <div class="catalog-simple-workspace__actions">
-            <a-button
-              type="outline"
-              data-admin-smoke="tools-catalog-seed-sync-quick"
-              @click="syncFrontendToolCatalogSeed"
-            >
-              同步高频工具
-            </a-button>
-            <a-button
-              type="outline"
-              data-admin-smoke="tools-catalog-seo-fill-quick"
-              @click="fillMissingToolSeo"
-            >
-              补齐工具 SEO
-            </a-button>
-            <a-button
-              type="outline"
-              data-admin-smoke="tools-catalog-geo-fill-quick"
-              @click="fillMissingToolGeo"
-            >
-              补齐工具 GEO
-            </a-button>
-            <a-button
-              data-admin-smoke="tools-catalog-policy-sync"
-              @click="syncToolPoliciesToLoginConfig"
-            >
-              同步计费策略
-            </a-button>
-            <a-button
-              data-admin-smoke="tools-catalog-preview-quick"
-              @click="openToolsPreview"
-            >
-              查看前端效果
-            </a-button>
-          </div>
-        </details>
-
-        <div v-if="!simpleMode" class="stats-grid mt-4">
-          <div class="stat-card">
-            <div class="stat-label">预览分类卡片</div>
-            <div class="stat-value">{{ toolsCatalogPreviewCards.length }}</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">解析状态</div>
-            <div
-              class="stat-value"
-              :class="{ 'is-danger': Boolean(toolsCategoryTreeParseError) }"
-            >
-              {{ toolsCategoryTreeParseError ? "异常" : "正常" }}
-            </div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">回退模式</div>
-            <div class="stat-value">
-              {{ toolsCategoryCount === 0 ? "已启用" : "未启用" }}
-            </div>
-          </div>
-        </div>
-
-        <catalog-policy-preview
-          v-if="!simpleMode"
-          v-model:mode="toolPolicySyncMode"
-          :rules="toolPolicySeedRules"
-          :override-count="toolPolicyOverrideCount"
-          :conflicts="toolKeyConflictRows"
-          @sync="syncToolPoliciesToLoginConfig"
-          @open-settings="goToolPolicySettings"
-        />
-
-        <catalog-json-editor
-          v-if="!simpleMode"
-          v-model="toolsCategoryTreeEditor"
-          :preview-cards="toolsCatalogPreviewCards"
-          :counts="{
-            categories: toolsCategoryCount,
-            groups: toolsSubCategoryCount,
-            tools: toolsTotalCount,
-          }"
-          :error="toolsCategoryTreeParseError"
-          @format="formatToolsCategoryTreeEditor"
-          @clear="resetToolsCategoryTreeEditor"
+          :disabled="isSubmitting || isLoadingData || !hasLoadedData || Boolean(loadErrorMessage)"
+          :can-edit="canSaveCatalog" :pending-changes="hasUnsavedChanges"
+          :preview-base="resolveToolsPreviewUrl(appStore.config)" :persist-changes="persistToolChanges"
         />
       </a-card>
 
-      <template #actions
-        ><a-button
-          v-perms="['setting:website:catalog:save']"
-          data-admin-smoke="tools-catalog-save"
-          type="primary"
-          :loading="isSubmitting"
-          @click="handleSubmit"
-          >保存配置</a-button
-        ></template
-      >
+      <section v-else class="catalog-maintenance" aria-label="批量与高级维护">
+        <header class="catalog-maintenance__heading">
+          <h2>批量与高级维护</h2>
+          <p>单个工具请返回列表编辑。这里的目录更改检查后统一保存。</p>
+        </header>
+        <a-tabs v-model:active-key="maintenanceSection" class="catalog-maintenance__tabs">
+          <a-tab-pane key="batch" title="批量处理" />
+          <a-tab-pane key="source" title="分类数据" />
+          <a-tab-pane key="policy" title="计费同步" />
+          <a-tab-pane key="checks" title="配置检查" />
+        </a-tabs>
+
+        <template v-if="maintenanceSection === 'batch'">
+          <settings-section title="补全工具介绍" description="仅填写缺失内容，保留已写好的标题、描述与问答。补全后先检查，再保存批量更改。">
+            <div class="catalog-maintenance__actions">
+              <a-button data-admin-smoke="tools-catalog-seo-fill-quick" @click="fillMissingToolSeo">补齐搜索信息（SEO）</a-button>
+              <a-button data-admin-smoke="tools-catalog-geo-fill-quick" @click="fillMissingToolGeo">补齐问答信息（GEO）</a-button>
+              <a-button data-admin-smoke="tools-catalog-preview-quick" @click="openToolsPreview">预览主站</a-button>
+            </div>
+          </settings-section>
+          <settings-section title="同步内置工具" description="从项目内置目录同步工具。此操作会直接保存，执行前将再次确认。">
+            <div class="catalog-maintenance__actions">
+              <a-checkbox v-model="syncToolConsumeRulesOnSeed" data-admin-smoke="tools-catalog-policy-switch">同时同步计费规则</a-checkbox>
+              <a-button data-admin-smoke="tools-catalog-seed-sync-quick" @click="syncFrontendToolCatalogSeed">同步内置工具</a-button>
+            </div>
+          </settings-section>
+        </template>
+
+        <catalog-json-editor v-if="maintenanceSection === 'source'" v-model="toolsCategoryTreeEditor"
+          :preview-cards="toolsCatalogPreviewCards"
+          :counts="{ categories: toolsCategoryCount, groups: toolsSubCategoryCount, tools: toolsTotalCount }"
+          :error="toolsCategoryTreeParseError" @format="formatToolsCategoryTreeEditor" @clear="resetToolsCategoryTreeEditor"
+        />
+        <catalog-policy-preview v-if="maintenanceSection === 'policy'" v-model:mode="toolPolicySyncMode"
+          :rules="toolPolicySeedRules" :override-count="toolPolicyOverrideCount" :conflicts="toolKeyConflictRows"
+          @sync="syncToolPoliciesToLoginConfig" @open-settings="goToolPolicySettings"
+        />
+        <template v-if="maintenanceSection === 'checks'">
+          <settings-section title="检查目录配置" description="检查链接、工具标识与会员工具资料，不修改目录。">
+            <template #actions><a-button data-admin-smoke="tools-catalog-health-check-quick" @click="runCatalogHealthCheck">运行检查</a-button></template>
+            <dl class="catalog-maintenance__summary"><div><dt>分类</dt><dd>{{ toolsCategoryCount }}</dd></div><div><dt>分组</dt><dd>{{ toolsSubCategoryCount }}</dd></div><div><dt>工具</dt><dd>{{ toolsTotalCount }}</dd></div><div><dt>标识冲突</dt><dd>{{ toolKeyConflictCount }}</dd></div></dl>
+          </settings-section>
+          <catalog-health-summary v-model:active-keys="catalogHealthCollapseKeys" :summary="memberCoreHealthSummary" :metrics="memberCoreHealthMetrics" :warnings="memberCoreHealthWarnings" />
+        </template>
+      </section>
+
+      <template #actions><a-button v-perms="['setting:website:catalog:save']" data-admin-smoke="tools-catalog-save" type="primary" :loading="isSubmitting" :disabled="!hasUnsavedChanges" @click="handleSubmit">保存批量更改</a-button></template>
     </config-edit-frame>
   </div>
 </template>
@@ -275,6 +138,7 @@ import { onBeforeRouteLeave, useRouter } from "vue-router";
 import { resolveToolsPreviewUrl } from "./composables/use-preview-url";
 import { useOperateSubmit } from '@/composables/use-operate-submit';
 import { useConfigLoad } from '@/composables/use-config-load';
+import SettingsSection from "@/components/settings-section/index.vue";
 import ConfigEditFrame from '@/components/config-edit-frame/index.vue';
 import CatalogToolEditor from "./components/catalog-tool-editor.vue";
 import CatalogHealthSummary from "./components/catalog-health-summary.vue";
@@ -305,6 +169,13 @@ const { isSubmitting, lastSavedAt, submitError, runSubmit } =
  * 函数说明：控制工具主数据页运营模式。默认提供工具搜索列表，高级模式保留分类 JSON、策略与冲突排查。
  */
 const simpleMode = ref(true);
+const maintenanceSection = ref<"batch" | "source" | "policy" | "checks">("batch");
+/** 打开实际异常检查区；只改变展示位置，不修改正在编辑的目录。 */
+const openCatalogChecks = () => {
+  simpleMode.value = false;
+  maintenanceSection.value = "checks";
+  catalogHealthCollapseKeys.value = ["member-core-health"];
+};
 const toolPolicySyncMode = ref<"append" | "overwrite">("append");
 const syncToolConsumeRulesOnSeed = ref(true);
 const baselineSnapshot = ref("");
@@ -317,17 +188,10 @@ const formData = reactive<Record<string, string>>({
 const toolsCategoryTreeEditor = ref(defaultToolsCategoryTreeJson);
 
 /**
- * 函数说明：跳转菜单设置页面，便于继续维护左侧一级菜单与固定入口。
- */
-const goMenuSettings = () => {
-  router.push("/official_site/sidebar");
-};
-
-/**
  * 函数说明：跳转到“登录与积分策略”页面，便于继续调整会员、风控和支付配置。
  */
 const goToolPolicySettings = () => {
-  router.push("/consumer/login_commerce");
+  router.push("/consumer/login_commerce?section=billing");
 };
 
 /**
@@ -1313,147 +1177,23 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" scoped>
-.pro-page-shell {
-  padding-bottom: 24px;
-}
-.catalog-refresh-warning {
-  margin-bottom: 16px;
-}
-
-.layout-page-header {
-  margin-bottom: 16px;
-  padding: 0 4px;
-}
-
-.layout-page-actions {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-
-.layout-page-actions {
-  justify-content: flex-end;
-  gap: 10px;
-}
-
-.page-card {
-  border-radius: 8px;
-}
-
-.catalog-command-bar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px;
-  border: 1px solid var(--color-border-2, #e5e6eb);
-  border-radius: 8px;
-  background: var(--color-fill-1, #f7f8fa);
-}
-
-.catalog-command-bar__status,
-.catalog-command-bar__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.catalog-command-bar__actions {
-  justify-content: flex-end;
-  min-width: 0;
-}
-
-.catalog-command-bar__actions :deep(.arco-radio-button-content),
-.catalog-command-bar__actions > button {
-  white-space: nowrap;
-}
-
-.catalog-simple-workspace__actions {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.catalog-json-editor {
-  margin-top: 12px;
-}
-
-.stat-card {
-  padding: 16px 18px;
-  border-radius: 14px;
-  border: 1px solid var(--color-border-2);
-  background: #fff;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--color-text-3);
-}
-
-.stat-value {
-  margin-top: 10px;
-  font-size: 28px;
-  line-height: 1;
-  font-weight: 700;
-  color: var(--color-text-1);
-}
-
-.stat-value.is-warning {
-  color: rgb(var(--orange-6));
-}
-
-.stat-value.is-danger {
-  color: rgb(var(--red-6));
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.form-tips {
-  padding: 10px 12px;
-  border: 1px dashed var(--color-border-2, #e5e6eb);
-  border-radius: 10px;
-  background: var(--color-fill-1, #f7f8fa);
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--color-text-3);
-}
-
-.catalog-alert {
-  margin-bottom: 16px;
-}
-
+.website-tools-catalog { min-width: 0; }
+.catalog-alert { margin-bottom: 16px; }
+.catalog-workspace :deep(.arco-card-body) { padding: 20px; }
+.catalog-maintenance { min-width: 0; }
+.catalog-maintenance__heading { margin-bottom: 12px; }
+.catalog-maintenance__heading h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--color-text-1); }
+.catalog-maintenance__heading p { margin: 6px 0 0; font-size: 13px; line-height: 1.7; color: var(--color-text-3); }
+.catalog-maintenance__tabs { margin-bottom: 20px; }
+.catalog-maintenance :deep(.settings-section + .settings-section) { margin-top: 16px; }
+.catalog-maintenance__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.catalog-maintenance__summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin: 0; }
+.catalog-maintenance__summary dt { color: var(--color-text-3); font-size: 13px; }
+.catalog-maintenance__summary dd { margin: 8px 0 0; font-size: 20px; font-weight: 600; color: var(--color-text-1); }
 @media (max-width: 600px) {
-  .catalog-command-bar {
-    align-items: stretch;
-  }
-  .catalog-command-bar__status,
-  .catalog-command-bar__actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
-  .catalog-command-bar__actions :deep(.catalog-command-bar__modes) {
-    flex: 1 1 100%;
-    display: flex;
-  }
-  .catalog-command-bar__actions :deep(.arco-radio-button) {
-    flex: 1;
-    min-height: 44px;
-    justify-content: center;
-  }
-}
-
-@media (max-width: 920px) {
-  .stats-grid {
-    grid-template-columns: 1fr;
-  }
+  .catalog-workspace :deep(.arco-card-body) { padding: 16px; }
+  .catalog-maintenance__summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .catalog-maintenance__actions { align-items: stretch; }
+  .catalog-maintenance__actions :deep(button) { min-height: 44px; }
 }
 </style>

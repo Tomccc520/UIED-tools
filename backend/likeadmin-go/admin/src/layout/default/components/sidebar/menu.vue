@@ -26,24 +26,25 @@
                 :collapsed="isCollapsed"
                 mode="vertical"
                 :selected-keys="selectedKeys"
+                :open-keys="openGroupKeys"
+                @update:open-keys="updateOpenGroups"
                 :accordion="uniqueOpened"
                 :theme="menuTheme"
                 :auto-open="false"
-                auto-open-selected
+                :auto-open-selected="false"
                 :level-indent="24"
                 @menu-item-click="$emit('select')"
             >
                 <template v-for="group in navigationGroups" :key="group.key">
-                    <div v-if="!isCollapsed" class="menu-group-title" aria-hidden="true">
-                        {{ group.title }}
-                    </div>
-                    <menu-item
-                        v-for="route in group.routes"
-                        :key="route.path"
-                        :route="route"
-                        :route-path="route.path"
-                        :popper-class="themeClass"
-                    />
+                    <template v-if="group.key === 'daily'">
+                        <div v-if="!isCollapsed" class="menu-group-title" aria-hidden="true">{{ group.title }}</div>
+                        <menu-item v-for="item in group.items" :key="item.path" :item="item" />
+                    </template>
+                    <a-sub-menu v-else :key="`admin-group:${group.key}`">
+                        <template #icon><icon :name="group.icon" :size="16" /></template>
+                        <template #title>{{ group.title }}</template>
+                        <menu-item v-for="item in group.items" :key="item.path" :item="item" />
+                    </a-sub-menu>
                 </template>
             </a-menu>
         </a-scrollbar>
@@ -55,7 +56,7 @@ import type { PropType } from 'vue'
 import MenuItem from './menu-item.vue'
 import type { RouteRecordRaw } from 'vue-router'
 import { IconSearch } from '@arco-design/web-vue/es/icon'
-import { groupAdminNavigation } from '@/utils/admin-navigation'
+import { groupAdminNavigation, findActiveAdminNavigation, adminNavigationKey } from '@/utils/admin-navigation'
 
 const props = defineProps({
     routes: {
@@ -89,11 +90,27 @@ const route = useRoute()
 /**
  * 函数说明：当前选中菜单，Arco Menu 需要数组格式。
  */
-const selectedKeys = computed<string[]>(() => [String(route.meta?.activeMenu || route.path)])
+const activeItem = computed(() => findActiveAdminNavigation(navigationGroups.value.flatMap(group => group.items), route.fullPath, String(route.meta?.activeMenu || '')))
+const selectedKeys = computed<string[]>(() => activeItem.value ? [adminNavigationKey(activeItem.value.path)] : [])
 
 const themeClass = computed(() => `theme-${props.theme}`)
 const menuTheme = computed<'dark' | 'light'>(() => (props.theme === 'dark' ? 'dark' : 'light'))
 const navigationGroups = computed(() => groupAdminNavigation(props.routes))
+const openGroupKeys = ref<string[]>([])
+const activeGroupKey = computed(() => navigationGroups.value.find(group => group.items.includes(activeItem.value!))?.key)
+
+/** 当前页面所在分组随导航展开；普通浏览不打开其他低频设置，保留用户的手动展开。 */
+watch([activeGroupKey, () => props.isCollapsed, () => route.fullPath], ([key, collapsed]) => {
+    if (!key || key === 'daily' || collapsed) return
+    const groupKey = `admin-group:${key}`
+    openGroupKeys.value = props.uniqueOpened ? [groupKey] : [...new Set([...openGroupKeys.value, groupKey])]
+}, { immediate: true })
+
+/** 接受 Arco 的展开操作，关闭或打开分组不会改变页面和用户持久偏好。 */
+const updateOpenGroups = (keys: string[]) => {
+    openGroupKeys.value = keys
+}
+
 const searchHotkey = /mac/i.test(navigator.platform) ? '⌘ K' : 'Ctrl K'
 
 /** 复用顶栏功能搜索，手机抽屉和折叠侧栏使用同一个入口与权限范围。 */
@@ -191,7 +208,7 @@ const openNavigationSearch = () => {
     min-height: 40px;
     line-height: 40px;
     border-radius: 8px;
-    transition: all 0.2s ease;
+    transition: color 160ms ease, background-color 160ms ease;
 }
 
 :deep(.arco-menu-item .arco-menu-icon),

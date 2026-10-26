@@ -1,5 +1,8 @@
 /**
- * 权限控制
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-26
  */
 
 import NProgress from 'nprogress'
@@ -12,6 +15,7 @@ import { PageEnum } from './enums/pageEnum'
 import useTabsStore from './stores/modules/multipleTabs'
 import { clearAuthInfo } from './utils/auth'
 import config from './config'
+import { configurationTitle } from './utils/site-configuration'
 
 // NProgress配置
 NProgress.configure({ showSpinner: false })
@@ -23,7 +27,6 @@ const whiteList: string[] = [PageEnum.LOGIN, PageEnum.ERROR_403]
 router.beforeEach(async (to, from, next) => {
     // 开始 Progress Bar
     NProgress.start()
-    document.title = to.meta.title ?? config.title
     const userStore = useUserStore()
     const tabsStore = useTabsStore()
     if (whiteList.includes(to.path)) {
@@ -79,6 +82,8 @@ router.beforeEach(async (to, from, next) => {
     }
 })
 
-router.afterEach(() => {
+/** 成功切页后才更新共享任务标题；取消导航保留原页标题，参数入口仍使用管理员原名。 */
+router.afterEach((to, _from, failure) => {
     NProgress.done()
+    if (!failure) document.title = configurationTitle(to.fullPath, to.meta.title ?? config.title)
 })

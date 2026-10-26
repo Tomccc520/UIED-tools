@@ -93,6 +93,7 @@ import BillingSettingsPanel from './components/commercial/billing-settings-panel
 import PaymentSettingsPanel from './components/commercial/payment-settings-panel.vue'
 import {
     createCommercialDraft,
+    resolveCommercialSection,
     sanitizeMemberPlans,
     sanitizePointsPacks,
     sanitizeToolConsumeRules,
@@ -102,7 +103,7 @@ import {
 } from './components/commercial/commercial-config'
 import { getLogin, setLogin, syncWechatPlatformCert } from '@/api/setting/user'
 import feedback from '@/utils/feedback'
-import { onBeforeRouteLeave } from 'vue-router'
+import { onBeforeRouteLeave, useRoute } from 'vue-router'
 import AdminPageHeader from '@/components/page-header/index.vue'
 import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
 import { useConfigLoad } from '@/composables/use-config-load'
@@ -122,7 +123,8 @@ const { isSubmitting, lastSavedAt, submitError, runSubmit } =
 
 const syncWechatCertLoading = ref(false)
 const certSyncError = ref('')
-const activeSection = ref<'access' | 'billing' | 'payment'>('access')
+/** 只读取本实例初次进入的分区，缓存页不跟随其他标签的路由参数切换。 */
+const activeSection = ref(resolveCommercialSection(useRoute().query.section))
 
 /**
  * 函数说明：根据当前页签给出简短操作提示，避免把所有说明长期展开。

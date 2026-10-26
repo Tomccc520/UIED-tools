@@ -201,8 +201,15 @@ const serveFixture = async () => {
 /** 在内存路由中切换实际配置页，既不进入正式路由，也不加载认证守卫。 */
 const navigate = async key => {
     await page.evaluate(key => window.__adminDesign.navigate('/official_site/' + key), key)
-    await page.locator('.config-edit-frame__save').waitFor()
+    await page.locator('.config-edit-frame').waitFor()
     await page.waitForFunction(() => !document.querySelector('.config-edit-frame')?.getAttribute('aria-busy')?.includes('true'))
+}
+
+/** 主动展开批量编辑入口后应用草稿，保留日常直接保存与批量发布两条真实流程。 */
+const applyToolDraft = async () => {
+    const batch = page.locator('.catalog-editor__batch')
+    if (await batch.getAttribute('open') === null) await batch.locator('summary').click()
+    await batch.locator('[data-admin-smoke="tools-catalog-tool-apply"]').click()
 }
 
 /** 检查页面和实际内容容器的横向溢出，并保存带样例标记的当前视口截图。 */
@@ -213,16 +220,18 @@ const captureResponsive = async (name, width) => {
         if (!layout || document.querySelector('.layout')?.classList.contains('mobile') !== (innerWidth <= 900)) return false
         const expected = Number.parseFloat(layout.style.paddingLeft)
         const sider = document.querySelector('.layout-sider')
-        return Math.abs(Number.parseFloat(getComputedStyle(layout).paddingLeft) - expected) < 0.5
-            && Math.abs(sider.getBoundingClientRect().width - Number.parseFloat(sider.style.width)) < 0.5
+        const paddingStable = Math.abs(Number.parseFloat(getComputedStyle(layout).paddingLeft) - expected) < 0.5
+        return innerWidth <= 900
+            ? paddingStable && expected === 0 && !sider
+            : paddingStable && Boolean(sider) && Math.abs(sider.getBoundingClientRect().width - Number.parseFloat(sider.style.width)) < 0.5
     })
     await page.evaluate(() => { window.__adminDesign.clearMessages(); document.querySelector('.layout-content > .arco-layout-content')?.scrollTo(0, 0) })
     await page.locator('.arco-message').first().waitFor({ state: 'hidden' })
     await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
     const layoutSample = await page.evaluate(({ name, width }) => ({
         name, width, ...window.__adminDesign.layoutState(),
-        siderWidth: document.querySelector('.layout-sider').getBoundingClientRect().width,
-        siderStyleWidth: document.querySelector('.layout-sider').style.width,
+        siderWidth: document.querySelector('.layout-sider')?.getBoundingClientRect().width ?? 0,
+        siderStyleWidth: document.querySelector('.layout-sider')?.style.width ?? '',
         menuCollapsed: Boolean(document.querySelector('.menu-search--collapsed')),
         visibleGroupTitles: [...document.querySelectorAll('.menu-group-title')].filter(element => element.getBoundingClientRect().width > 0).length,
         formLabels: [...document.querySelectorAll('.compact-form .arco-form-item-label-col')]
@@ -257,16 +266,23 @@ const captureResponsive = async (name, width) => {
         checks.push(`工具目录 ${width}px：三位工具数、多页分页和前后页按钮均未越界`)
     }
     const saveButton = page.locator('.config-edit-frame__actions .arco-btn-primary')
-    assert.equal(await saveButton.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(108, 84, 255)', `${name} 保存按钮须采用品牌紫`)
-    if (width <= 600) assert.ok(await saveButton.evaluate(element => element.getBoundingClientRect().height) >= 44, '手机保存操作至少44px高')
+    const frameState = await page.locator('.config-edit-frame').getAttribute('data-state')
+    const isCleanCatalogList = name.startsWith('tools-catalog') && await page.locator('.catalog-editor').count() > 0 && ['ready', 'saved'].includes(frameState)
+    if (isCleanCatalogList) {
+        assert.equal(await page.locator('.config-edit-frame__save').count(), 0, '工具列表无草稿时不应显示全局保存区')
+        checks.push(`工具目录 ${width}px：无草稿时不出现全局保存条`)
+    } else {
+        assert.equal(await saveButton.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(108, 84, 255)', `${name} 保存按钮须采用品牌紫`)
+        if (width <= 600) assert.ok(await saveButton.evaluate(element => element.getBoundingClientRect().height) >= 44, '手机保存操作至少44px高')
+    }
     const file = path.join(outputDir, `${name}-${width}.png`)
     await page.screenshot({ path: file })
     screenshots.push(file)
-    checks.push(`${name} ${width}px 无横向溢出、品牌紫正确${width <= 600 ? '、44px保存操作与左对齐标签' : ''}`)
+    checks.push(`${name} ${width}px 无横向溢出${isCleanCatalogList ? '、空闲保存区已收起' : `、品牌紫正确${width <= 600 ? '、44px保存操作与左对齐标签' : ''}`}`)
 }
 
-/** 等待保存状态条进入指定状态，避免把请求发送视为保存完成。 */
-const waitSaveState = async state => page.waitForFunction(state => document.querySelector('.config-edit-frame__save')?.getAttribute('data-state') === state, state)
+/** 等待配置根节点进入指定状态；空闲列表可收起保存条，请求发送不等于保存完成。 */
+const waitSaveState = async state => page.waitForFunction(state => document.querySelector('.config-edit-frame')?.getAttribute('data-state') === state, state)
 
 try {
     await createHarness()
@@ -283,10 +299,11 @@ try {
     await page.waitForFunction(() => window.__adminDesign?.ready, undefined, { timeout: 30000 })
     await page.locator('.layout-sider .arco-menu').waitFor()
     assert.equal(await page.locator('[data-admin-smoke="config-task-navigation"]').count(), 0, '后台不应重复显示顶部任务导航')
-    const taskGroups = page.locator('.layout-sider .arco-menu-group-title')
-    await taskGroups.filter({ hasText: /^内容与工具$/ }).waitFor()
-    await taskGroups.filter({ hasText: /^导航与外观$/ }).waitFor()
-    assert.equal(await taskGroups.filter({ hasText: /^内容与工具$/ }).locator('button,a').count(), 0, '任务分组标题不增加可点击层级')
+    const dailyHeading = page.locator('.layout-sider .menu-group-title').filter({ hasText: /^日常运营$/ })
+    await dailyHeading.waitFor()
+    assert.equal(await dailyHeading.locator('button,a').count(), 0, '日常运营标题不增加可点击层级')
+    for (const label of ['工具管理', '学习与更新']) await page.locator('.layout-sider .arco-menu-item').filter({ hasText: new RegExp('^' + label + '$') }).waitFor()
+    await page.locator('.layout-sider .arco-menu-inline-header').filter({ hasText: /^网站设置$/ }).waitFor()
     assert.equal(await page.locator('h1').count(), 1)
     assert.equal(await page.getByText('组件验收 · 样例数据', { exact: true }).count(), 1)
 
@@ -300,7 +317,7 @@ try {
         const description = page.getByRole('textbox', { name: '工具简介', exact: true })
         await description.fill('样例：失败后应保留的工具草稿')
         failSave = true
-        await page.getByRole('button', { name: '保存工具并生效', exact: true }).click()
+        await page.locator('[data-admin-smoke="tools-catalog-tool-save"]').click()
         await page.getByText('工具未保存，您的修改已保留。请检查页面提示后重试。', { exact: true }).waitFor()
         assert.equal(await description.inputValue(), '样例：失败后应保留的工具草稿')
         await page.evaluate(() => window.__adminDesign.clearMessages())
@@ -309,7 +326,7 @@ try {
         screenshots.push(path.join(outputDir, 'tool-drawer-save-failed.png'))
         failSave = false
         failRefresh = true
-        await page.getByRole('button', { name: '保存工具并生效', exact: true }).click()
+        await page.locator('[data-admin-smoke="tools-catalog-tool-save"]').click()
         await page.locator('.arco-drawer:visible').waitFor({ state: 'hidden' })
         await waitSaveState('saved')
         await page.locator('.catalog-refresh-warning').waitFor()
@@ -383,6 +400,7 @@ try {
 
         // 任务标题只是侧栏分组；点击已授权菜单即可直接打开页面，不经过第二层导航。
         const sidebarMenu = page.locator('.layout-sider .arco-menu-item').filter({ hasText: /^前台菜单$/ })
+        if (!await sidebarMenu.isVisible()) await page.locator('.layout-sider .arco-menu-inline-header').filter({ hasText: /^网站设置$/ }).click()
         assert.equal(await sidebarMenu.count(), 1)
         await sidebarMenu.click()
         await page.waitForFunction(() => window.__adminDesign.route() === '/official_site/sidebar')

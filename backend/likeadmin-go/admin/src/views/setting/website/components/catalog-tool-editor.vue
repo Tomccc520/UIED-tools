@@ -21,8 +21,7 @@
                 <a-table-column title="工具" :width="260">
                     <template #cell="{ record }">
                         <strong>{{ record.tool.title || '未命名工具' }}</strong>
-                        <div class="catalog-editor__desc">{{ record.tool.desc || record.tool.url }}</div>
-                        <code class="catalog-editor__route">{{ record.tool.url }}</code>
+                        <div class="catalog-editor__desc" :title="record.tool.desc || record.tool.url">{{ record.tool.desc || record.tool.url }}</div>
                     </template>
                 </a-table-column>
                 <a-table-column title="分类" :width="160"><template #cell="{ record }">{{ record.category }}<div class="catalog-editor__desc">{{ record.group }}</div></template></a-table-column>
@@ -37,7 +36,7 @@
         <a-drawer :visible="Boolean(selected)" :width="'min(640px, 100vw)'" :title="selected ? `编辑工具 · ${selected.tool.title}` : '编辑工具'" :mask-closable="false" :esc-to-close="false" :on-before-cancel="beforeDrawerCancel">
             <a-alert v-if="editError" type="error" role="alert" class="catalog-editor__notice">{{ editError }}</a-alert>
             <div class="catalog-editor__identity"><div><p class="catalog-editor__location">{{ selected?.category }} / {{ selected?.group }}</p><code>{{ selected?.tool.url }}</code></div><a v-if="previewHref" :href="previewHref" target="_blank" rel="noopener noreferrer">打开工具预览 ↗</a></div>
-            <a-alert v-if="pendingChanges" type="warning" class="catalog-editor__notice" :closable="false">列表还有未保存更改。请先统一保存，或将本次修改应用到列表后一起保存。</a-alert>
+            <a-alert v-if="pendingChanges" type="warning" class="catalog-editor__notice" :closable="false">当前还有批量更改未保存。本工具可加入批量更改，再统一保存。</a-alert>
             <fieldset :disabled="disabled || isPersisting || !canEdit" :inert="disabled || isPersisting || !canEdit ? '' : undefined" class="catalog-editor__fields">
             <a-tabs v-model:active-key="activeTab">
                 <a-tab-pane key="basic" title="基本信息">
@@ -46,10 +45,10 @@
                         <a-form-item label="工具状态"><a-select v-model="draft.status" aria-label="工具状态" allow-clear placeholder="默认启用"><a-option :value="1">已启用</a-option><a-option :value="0">已停用</a-option></a-select></a-form-item>
                         <a-form-item label="工具简介"><a-textarea v-model="draft.desc" :textarea-attrs="{ 'aria-label': '工具简介' }" :auto-size="{ minRows: 3, maxRows: 8 }" /></a-form-item>
                         <a-form-item label="标签"><a-input v-model="tagText" :input-attrs="{ 'aria-label': '工具标签' }" placeholder="用中文或英文逗号分隔" /></a-form-item>
-                        <a-form-item label="工具链接"><a-input :model-value="String(selected?.tool.url || '')" readonly /><template #extra>工具链接决定路由和计费匹配，如需调整请使用高级编辑。</template></a-form-item>
+                        <a-form-item label="工具链接"><a-input :model-value="String(selected?.tool.url || '')" readonly /><template #extra>工具链接决定路由和计费匹配，如需调整，请使用“批量与高级维护”中的“分类数据”。</template></a-form-item>
                     </a-form>
                 </a-tab-pane>
-                <a-tab-pane key="seo" title="SEO">
+                <a-tab-pane key="seo" title="搜索展示">
                     <a-form :model="draft" layout="vertical">
                         <a-form-item label="搜索标题"><a-input v-model="draft.seoTitle" :input-attrs="{ 'aria-label': '工具搜索标题' }" :max-length="100" /></a-form-item>
                         <a-form-item label="关键词"><a-input v-model="draft.seoKeywords" :input-attrs="{ 'aria-label': '工具关键词' }" /></a-form-item>
@@ -57,14 +56,14 @@
                         <a-form-item label="分享图链接"><a-input v-model="draft.seoImage" :input-attrs="{ 'aria-label': '工具分享图链接' }" /></a-form-item>
                     </a-form>
                 </a-tab-pane>
-                <a-tab-pane key="geo" title="GEO">
+                <a-tab-pane key="geo" title="AI 问答">
                     <a-form :model="draft" layout="vertical">
                         <a-form-item label="工具介绍摘要"><a-textarea v-model="draft.geoSummary" :textarea-attrs="{ 'aria-label': '工具介绍摘要' }" :auto-size="{ minRows: 4, maxRows: 8 }" /></a-form-item>
                         <a-form-item label="常见问题"><a-textarea v-model="draft.geoQuestions" :textarea-attrs="{ 'aria-label': '工具常见问题' }" :auto-size="{ minRows: 6, maxRows: 12 }" /><template #extra>供工具介绍与问答内容使用，保留现有问题格式。</template></a-form-item>
                     </a-form>
                 </a-tab-pane>
-                <a-tab-pane key="policy" title="计费种子">
-                    <a-alert class="catalog-editor__notice">这里保存的是目录中的计费种子，不会直接改变实际扣费。保存工具后，还需到“批量维护与同步”执行“同步计费策略”。</a-alert>
+                <a-tab-pane key="policy" title="计费草稿">
+                    <a-alert class="catalog-editor__notice">这里先保存计费草稿。检查后进入“批量与高级维护”的“计费同步”发布规则，才会影响实际扣费。</a-alert>
                     <a-form :model="draft" layout="vertical">
                         <a-form-item label="每次使用积分"><a-input-number v-model="draft.consumePoints" aria-label="每次使用积分" :min="0" :precision="0" placeholder="留空继承默认策略" /></a-form-item>
                         <a-form-item label="会员免扣积分"><a-select v-model="memberFreeMode" aria-label="会员免扣积分"><a-option value="inherit">继承默认策略</a-option><a-option value="yes">免扣积分</a-option><a-option value="no">按积分扣费</a-option></a-select></a-form-item>
@@ -74,11 +73,15 @@
             </fieldset>
             <template #footer>
                 <div class="catalog-editor__footer">
-                    <p>{{ pendingChanges ? '应用到列表后，使用页面保存条统一生效。' : '保存成功后立即生效，无需再点页面保存。' }}</p>
+                    <p>{{ pendingChanges ? '加入批量更改后，在页面底部统一保存。' : '保存后即可生效。' }}</p>
                     <div class="catalog-editor__footer-actions">
+                        <details class="catalog-editor__batch" :open="pendingChanges || !persistChanges">
+                            <summary>批量编辑</summary>
+                            <p>暂存本次修改，可继续编辑其他工具，最后统一保存。</p>
+                            <a-button v-perms="['setting:website:catalog:save']" :type="pendingChanges || !persistChanges ? 'primary' : 'outline'" :disabled="disabled || isPersisting || !canEdit || !draftChanged" data-admin-smoke="tools-catalog-tool-apply" @click="applyChanges">加入批量更改</a-button>
+                        </details>
                         <a-button :disabled="isPersisting" @click="requestClose">取消</a-button>
-                        <a-button v-perms="['setting:website:catalog:save']" :disabled="disabled || isPersisting || !canEdit || !draftChanged" data-admin-smoke="tools-catalog-tool-apply" @click="applyChanges">应用到列表</a-button>
-                        <a-button v-if="persistChanges" v-perms="['setting:website:catalog:save']" type="primary" :loading="isPersisting" :disabled="disabled || isPersisting || !canEdit || pendingChanges || !draftChanged" data-admin-smoke="tools-catalog-tool-save" @click="saveChanges">保存工具并生效</a-button>
+                        <a-button v-if="persistChanges && !pendingChanges" v-perms="['setting:website:catalog:save']" type="primary" :loading="isPersisting" :disabled="disabled || isPersisting || !canEdit || !draftChanged" data-admin-smoke="tools-catalog-tool-save" @click="saveChanges">保存工具</a-button>
                     </div>
                 </div>
             </template>
@@ -212,10 +215,9 @@ onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunloa
 .catalog-editor__search { flex: 1 1 260px; min-width: 0; max-width: 100%; }
 .catalog-editor__search :deep(.arco-input) { min-width: 0; }
 .catalog-editor__category { flex: 0 0 180px; min-width: 0; }
-.catalog-editor__desc { margin-top: 4px; color: var(--color-text-3); font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
+.catalog-editor__desc { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; margin-top: 4px; line-height: 1.6; color: var(--color-text-3); font-size: 12px; white-space: normal; overflow-wrap: anywhere; }
 .catalog-editor__notice { margin-bottom: 16px; }
 .catalog-editor__location { color: var(--color-text-3); margin: 0 0 6px; }
-.catalog-editor__route { display: block; margin-top: 6px; color: var(--color-text-3); font-size: 11px; overflow-wrap: anywhere; }
 .catalog-editor__row-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .catalog-editor__row-actions a, .catalog-editor__identity a { color: rgb(var(--primary-6)); text-decoration: none; font-size: 13px; }
 .catalog-editor__row-actions a:hover, .catalog-editor__identity a:hover { text-decoration: underline; }
@@ -227,7 +229,11 @@ onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunloa
 .catalog-editor__fields { border: 0; min-width: 0; padding: 0; margin: 0; }
 .catalog-editor__footer { display: flex; flex-direction: column; gap: 12px; }
 .catalog-editor__footer p { margin: 0; color: var(--color-text-3); font-size: 12px; text-align: left; line-height: 1.6; }
-.catalog-editor__footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.catalog-editor__footer-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; }
+.catalog-editor__batch { margin-right: auto; text-align: left; }
+.catalog-editor__batch summary { padding: 8px 0; color: var(--color-text-3); font-size: 13px; cursor: pointer; }
+.catalog-editor__batch p { max-width: 300px; margin: 4px 0 12px; }
+.catalog-editor__batch summary:focus-visible { outline: 2px solid rgb(var(--primary-6)); outline-offset: 2px; }
 .catalog-editor__count { white-space: nowrap; }
 @media (max-width: 600px) { .catalog-editor__identity { flex-direction: column; } .catalog-editor__footer-actions > :last-child { flex: 1 1 100%; } }
 @media (max-width: 600px) { .catalog-editor__search { flex-basis: 100%; width: 100%; } .catalog-editor__category { flex: 1; } }

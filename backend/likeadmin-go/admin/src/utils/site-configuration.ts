@@ -4,7 +4,7 @@
  * @author UIED技术团队
  * @createDate 2026-10-25
  */
-import type { AdminNavigationItem } from './admin-navigation'
+import { adminNavigationTitle, getAdminTaskDefinition, type AdminNavigationItem } from './admin-navigation'
 import type { RouteRecordRaw } from 'vue-router'
 
 export interface ConfigurationEntry extends AdminNavigationItem { label: string; description: string }
@@ -13,7 +13,7 @@ export interface ConfigurationGroup { key: string; title: string; items: Configu
 const configurationTasks = [
     { key: 'content', title: '内容与工具', items: [
         { path: '/official_site/tools_catalog', label: '工具管理', description: '修改单个工具的信息、SEO、GEO 和计费种子。' },
-        { path: '/official_site/frontend_layout', label: '首页内容', description: '维护每日学习与更新记录；广告和推荐在广告管理中维护。' },
+        { path: '/official_site/frontend_layout', label: '学习与更新', description: '维护每日学习与更新记录；广告和推荐在广告管理中维护。' },
         { path: '/operation/advertising', label: '广告与推荐', description: '维护首页横幅、热门推荐与运营广告位。' },
         { path: '/official_site/tool_ranking_config', label: '榜单展示', description: '设置榜单开关、展示周期和侧栏入口。' },
         { path: '/official_site/tool_ranking_manage', label: '榜单数据', description: '查看真实访问与使用排行，处理榜单数据。' }
@@ -41,7 +41,7 @@ export const configurationTitle = (target: string, fallback: unknown, hasChildre
     const path = configurationPath(target)
     if (path === '/official_site') return '网站管理'
     if (hasChildren) return original
-    return configurationTasks.flatMap(group => group.items).find(item => item.path === path)?.label || original
+    return adminNavigationTitle(target, original, hasChildren)
 }
 
 /** 对已授权入口增加任务说明，保留真实查询参数和扩展菜单，不补造权限入口。 */
@@ -51,7 +51,7 @@ export const buildConfigurationGroups = (entries: AdminNavigationItem[]): Config
         key: group.key, title: group.title,
         items: group.items.flatMap(task => entries.filter(entry => !entry.external && configurationPath(entry.path) === task.path)
             .filter(entry => { if (used.has(entry.path)) return false; used.add(entry.path); return true })
-            .map(entry => ({ ...entry, label: /[?#]/.test(entry.path) ? entry.title : task.label, description: task.description })))
+            .map(entry => ({ ...entry, label: adminNavigationTitle(entry.path, entry.title), description: getAdminTaskDefinition(task.path)?.description || task.description })))
     })).filter(group => group.items.length)
     const extra = entries.filter(entry => !entry.external && entry.path.startsWith('/official_site/') && !used.has(entry.path))
         .map(entry => ({ ...entry, label: entry.title, description: '站点扩展配置，按页面说明编辑和保存。' }))
@@ -89,7 +89,7 @@ export const buildConfigurationMenuGroups = <T extends RouteRecordRaw>(entries: 
         const task = groupIndex >= 0 ? configurationTasks[groupIndex].items.find(item => item.path === path) : undefined
         const hasChildren = entry.route.children?.some(child => !child.meta?.hidden && child.meta?.type !== 'A')
         // 带参数、自定义目录和外链保留原名；基础工具叶子才使用简短规范名称。
-        const label = task && !hasChildren && !/[?#]/.test(entry.target) ? task.label : String(entry.route.meta?.title || '')
+        const label = task ? adminNavigationTitle(entry.target, entry.route.meta?.title, Boolean(hasChildren)) : String(entry.route.meta?.title || '')
         const targetGroup = groupIndex >= 0 ? groups[groupIndex] : other
         targetGroup.items.push({ ...entry, label })
     }

@@ -93,7 +93,7 @@ import { Message } from '@arco-design/web-vue'
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { getWorkbench } from '@/api/app'
 import useUserStore from '@/stores/modules/user'
-import { flattenAdminNavigation } from '@/utils/admin-navigation'
+import { flattenAdminNavigation, getAdminQuickNavigation, adminNavigationTitle, getAdminTaskDefinition } from '@/utils/admin-navigation'
 import qqGroup from './image/qq_group.png'
 import customerService from './image/customer_service.png'
 import DataPanel from './components/data-panel.vue'
@@ -122,33 +122,6 @@ const workbenchData = reactive({
 let requestSequence = 0
 let requestTimer: ReturnType<typeof setTimeout> | undefined
 
-const quickTaskGroups = [
-    {
-        key: 'content',
-        title: '内容维护',
-        tasks: [
-            { path: '/official_site/tools_catalog', name: '工具管理', desc: '工具信息、分类与工具 SEO / GEO' },
-            { path: '/official_site/frontend_layout', name: '首页内容', desc: '每日学习与更新记录' },
-            { path: '/operation/advertising', name: '广告与推荐', desc: '首页横幅、热门推荐与运营位' }
-        ]
-    },
-    {
-        key: 'website',
-        title: '网站配置',
-        tasks: [
-            { path: '/official_site/sidebar', name: '前台品牌与导航', desc: '品牌文案、分类与菜单顺序' },
-            { path: '/official_site/seo', name: '全站搜索优化', desc: '默认元数据与固定页面 SEO' }
-        ]
-    },
-    {
-        key: 'operations',
-        title: '运营数据',
-        tasks: [
-            { path: '/official_site/tool_ranking_manage', name: '工具访问排行', desc: '访问、使用与下载记录' },
-            { path: '/consumer/order', name: '订单管理', desc: '查看订单与支付状态' }
-        ]
-    }
-]
 const maintenancePaths = [
     '/permission/admin',
     '/permission/role',
@@ -188,25 +161,12 @@ const adminName = computed(() =>
 const versionText = computed(() => String(workbenchData.version.version || '').trim())
 const lastUpdated = computed(() => String(workbenchData.today.time || '').trim())
 
-/**
- * 函数说明：查找当前用户已授权且可见的目标页面，保留菜单自带查询参数，不生成无权入口。
- * @param path 运营任务对应的菜单路径。
- * @returns 当前用户可访问的菜单；未授权时返回 undefined。
- */
-const findAccessibleEntry = (path: string) =>
-    navigationItems.value.find((item) => !item.external && item.path.split('?')[0] === path)
-
-/** 按运营任务组织已授权入口，保留菜单查询参数；没有可访问项目的分组不显示。 */
-const quickMenuGroups = computed(() =>
-    quickTaskGroups.map((group) => ({
-        key: group.key,
-        title: group.title,
-        items: group.tasks.flatMap((item) => {
-            const entry = findAccessibleEntry(item.path)
-            return entry ? [{ name: item.name, desc: item.desc, url: entry.path }] : []
-        })
-    })).filter((group) => group.items.length > 0)
-)
+/** 常用任务与侧栏、搜索共用授权来源和规范名称，不再维护另一份入口表。 */
+const quickMenuGroups = computed(() => {
+    const items = getAdminQuickNavigation(navigationItems.value).filter(item => item.path.split(/[?#]/)[0] !== '/workbench')
+        .map(item => ({ name: adminNavigationTitle(item.path, item.title), desc: getAdminTaskDefinition(item.path)?.description || item.breadcrumb, url: item.path }))
+    return items.length ? [{ key: 'daily', title: '日常运营', items }] : []
+})
 const maintenanceLinks = computed(() =>
     navigationItems.value
         .filter((item) => !item.external && maintenancePaths.includes(item.path.split('?')[0]))

@@ -7,7 +7,7 @@
  */
 -->
 <template>
-    <div class="config-edit-frame" :aria-busy="loading || saving">
+    <div class="config-edit-frame" :data-state="saveState" :aria-busy="loading || saving">
         <a-alert v-if="error" type="error" role="alert" class="config-edit-frame__alert" :closable="false">
             {{ error }}
             <template #action><a-button size="small" :loading="loading" :disabled="saving" @click="$emit('retry')">重新加载</a-button></template>
@@ -18,7 +18,7 @@
                 <slot />
             </fieldset>
         </a-spin>
-        <footer class="config-edit-frame__save" :data-state="saveState">
+        <footer v-if="saveBarVisible" class="config-edit-frame__save" :data-state="saveState">
             <div class="config-edit-frame__status" role="status" aria-live="polite">
                 <span class="config-edit-frame__indicator" aria-hidden="true"></span>
                 <div><strong>{{ statusText }}</strong><span>{{ saving ? '保存过程中请稍候' : savedAt ? `最近保存：${savedAt}` : '修改后点击保存，生效状态会显示在这里' }}</span></div>
@@ -29,8 +29,10 @@
 </template>
 <script setup lang="ts">
 import { computed } from 'vue'
-const props = withDefaults(defineProps<{ loading: boolean; ready: boolean; dirty: boolean; saving: boolean; error?: string; saveError?: string; savedAt?: string }>(), { error: '', saveError: '', savedAt: '' })
+const props = withDefaults(defineProps<{ loading: boolean; ready: boolean; dirty: boolean; saving: boolean; error?: string; saveError?: string; savedAt?: string; showSaveBar?: boolean }>(), { showSaveBar: true, error: '', saveError: '', savedAt: '' })
 defineEmits<{ (event: 'retry'): void }>()
+/** 允许列表收起空闲保存区；真实草稿、提交和保存失败始终可见，避免隐藏需要处理的更改。 */
+const saveBarVisible = computed(() => props.showSaveBar || props.dirty || props.saving || Boolean(props.saveError))
 /** 保存状态与加载状态分开表达，初次读取不冒充保存成功，失败后仍可重试保存。 */
 const saveState = computed(() => props.saving ? 'saving' : props.loading ? 'loading' : props.error || props.saveError ? 'error' : !props.ready ? 'pending' : props.dirty ? 'dirty' : props.savedAt ? 'saved' : 'ready')
 /** 仅对可确认的状态给出结果文案；保存失败保留草稿，避免出现“失败但已保存”的歧义。 */

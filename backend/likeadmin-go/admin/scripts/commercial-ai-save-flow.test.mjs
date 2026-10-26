@@ -23,7 +23,7 @@ const execute = (source, bindings, exposure) => {
 /** 读取页面生产实现，避免测试另写保存逻辑。 */
 const script = file => fs.readFileSync(new URL(file, views), 'utf8').match(/<script\b[^>]*>([\s\S]*?)<\/script>/)[1]
 /** 载入商业化共享模型的真实实现，拆分后仍由相同函数生成默认草稿和规范化请求。 */
-const commercialModel = () => execute(fs.readFileSync(new URL('user/components/commercial/commercial-config.ts', views), 'utf8'), {}, 'createCommercialDraft,sanitizeMemberPlans,sanitizePointsPacks,sanitizeToolConsumeRules,sanitizeConsumeRiskRules,detectDuplicatedToolKeys')
+const commercialModel = () => execute(fs.readFileSync(new URL('user/components/commercial/commercial-config.ts', views), 'utf8'), {}, 'createCommercialDraft,resolveCommercialSection,sanitizeMemberPlans,sanitizePointsPacks,sanitizeToolConsumeRules,sanitizeConsumeRiskRules,detectDuplicatedToolKeys')
 /** 创建失败、延迟、重复操作均可控制的网络边界。 */
 const contextFor = () => {
     const calls = { reads: 0, saves: [], certificates: 0, successes: [], errors: [], confirms: 0 }
@@ -35,7 +35,7 @@ const contextFor = () => {
         window: { addEventListener() {}, removeEventListener() {} },
         useConfigLoad: composable('use-config-load.ts', 'useConfigLoad'),
         useOperateSubmit: composable('use-operate-submit.ts', 'useOperateSubmit'),
-        useRouter: () => ({ push() {} }),
+        useRouter: () => ({ push() {} }), useRoute: () => ({ query: {} }),
         read: async () => { calls.reads++; return io.read() },
         save: async payload => { calls.saves.push(JSON.parse(JSON.stringify(payload))); return io.save(payload) },
         sync: async () => { calls.certificates++; return io.sync() }

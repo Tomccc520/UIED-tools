@@ -1,16 +1,24 @@
+<!--
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-26
+ */
+-->
 <template>
-    <aside class="sidebar h-full">
-        <a-drawer
-            v-model:visible="showMenuDrawer"
-            placement="left"
-            :size="drawderSize"
-            :title="''"
-            :footer="false"
-        >
-            <side />
-        </a-drawer>
-        <side v-show="!isMobile" />
-    </aside>
+    <a-drawer
+        v-if="isMobile"
+        v-model:visible="showMenuDrawer"
+        placement="left"
+        :size="drawderSize"
+        :title="''"
+        :footer="false"
+        :body-style="{ padding: 0 }"
+    >
+        <side />
+    </a-drawer>
+    <aside v-else class="sidebar h-full"><side /></aside>
 </template>
 
 <script setup lang="ts">
@@ -34,11 +42,3 @@ const drawderSize = computed(() => {
     return `${settingStore.sideWidth + 1}px`
 })
 </script>
-
-<style lang="scss" scoped>
-.sidebar {
-    :deep(.arco-drawer-body) {
-        padding: 0;
-    }
-}
-</style>

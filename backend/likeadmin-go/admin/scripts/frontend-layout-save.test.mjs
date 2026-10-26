@@ -44,7 +44,7 @@ const createPage = () => {
         onMounted() {}, onBeforeUnmount() {}, onBeforeRouteLeave() {}
     }, ['formData', 'getData', 'retryLoadData', 'handleSubmit', 'hasUnsavedChanges', 'submitError',
         'lastSavedAt', 'loadErrorMessage', 'validationMessage', 'baselineLayoutSnapshot', 'activeTab',
-        'importSource', 'importError', 'applyImport'])
+        'importSource', 'importError', 'applyImport', 'learningSourceExpanded', 'pageOptionsExpanded'])
     return { page, calls, io, initial }
 }
 
@@ -183,4 +183,21 @@ test('RSS与链接校验只允许预期协议/主机，合法分类与原始链�
     assert.equal(helpers.validateFrontendContent(form, { toolsHomepageLearningTitle: 'x' }), '')
     form.toolsChangelogHeaderLinks = JSON.stringify([{ name: '网站', link: 'javascript:alert(1)' }])
     assert.notEqual(helpers.validateFrontendContent(form, { toolsChangelogHeaderLinks: form.toolsChangelogHeaderLinks }), '')
+})
+
+test('校验失败展开隐藏设置，便于修正 RSS 和链接且不提前保存', async () => {
+    const { page, calls } = createPage()
+    await page.getData()
+    page.formData.toolsHomepageLearningRssUrl = 'https://invalid.example/rss'
+    await page.handleSubmit()
+    assert.equal(page.activeTab.value, 'homepageLearning')
+    assert.equal(page.learningSourceExpanded.value, true)
+    assert.equal(calls.saves.length, 0)
+    page.formData.toolsHomepageLearningRssUrl = helpers.createFrontendContent().toolsHomepageLearningRssUrl
+    page.formData.toolsChangelogTimeline = JSON.stringify([{ version: '3.0.6', title: '有效版本', date: '2026-10-26', features: [{ title: '修复', points: ['有效更新'] }] }])
+    page.formData.toolsChangelogHeaderLinks = JSON.stringify([{ name: '网站', link: 'javascript:alert(1)' }])
+    await page.handleSubmit()
+    assert.equal(page.activeTab.value, 'pageOps')
+    assert.equal(page.pageOptionsExpanded.value, true)
+    assert.equal(calls.saves.length, 0)
 })

@@ -7,7 +7,7 @@
  */
 -->
 <template>
-  <settings-section title="工具分类树 JSON" class="mt-5">
+  <settings-section title="分类与工具数据" description="批量调整分类、分组和工具字段。修改保留在草稿，检查后统一保存。">
     <template #actions>
       <a-tag v-if="previewCards.length > 3" bordered>
         预览前 3 / {{ previewCards.length }} 个分类
@@ -26,6 +26,7 @@
         >清空为 []</a-button
       >
     </template>
+    <details class="catalog-json-help"><summary>数据结构说明</summary>
     <div class="form-tips mb-2">
       最小结构要求：一级分类 <code>title/list</code>、二级分类
       <code>title/list</code>、工具条目 <code>title/url</code>。 工具条目还支持
@@ -34,6 +35,8 @@
       <code>toolKey</code
       >、<code>consumePoints</code>、<code>memberFree</code>、<code>status</code>、<code>sort</code>、<code>remark</code>。
     </div>
+    </details>
+    <details v-if="previewCards.length" class="catalog-json-help"><summary>目录预览</summary>
     <div class="catalog-overview-grid" v-if="previewCards.length > 0">
       <div
         v-for="(item, index) in previewCards.slice(0, 3)"
@@ -53,19 +56,19 @@
       </div>
     </div>
 
+    </details>
+
     <a-textarea
       class="catalog-json-editor"
       :model-value="modelValue"
       @update:model-value="$emit('update:modelValue', $event)"
       :textarea-attrs="{ 'aria-label': '工具分类树 JSON' }"
-      :auto-size="{ minRows: 18, maxRows: 28 }"
+      :auto-size="{ minRows: 14, maxRows: 24 }"
       placeholder='请输入 JSON 数组，如：[{"title":"AI工具箱","list":[{"title":"AI对话","list":[{"title":"DeepSeek R1","url":"/tools/ai/deepseek-r1","toolKey":"ai-deepseek-r1","consumePoints":2,"memberFree":true,"status":1,"desc":"...","seoTitle":"DeepSeek R1 免费对话","seoKeywords":"DeepSeek R1,AI对话","seoDescription":"...","geoSummary":"DeepSeek R1 适合进行长文本对话与推理。","geoQuestions":"DeepSeek R1是什么？；DeepSeek R1怎么用？"}]}]}]'
     />
 
     <div class="catalog-stat-row">
-      <a-tag color="arcoblue" bordered>一级分类 {{ counts.categories }}</a-tag>
-      <a-tag color="arcoblue" bordered>二级分类 {{ counts.groups }}</a-tag>
-      <a-tag color="green" bordered>工具总数 {{ counts.tools }}</a-tag>
+      <span>{{ counts.categories }} 个分类 · {{ counts.groups }} 个分组 · {{ counts.tools }} 个工具</span>
     </div>
 
     <div v-if="error" class="catalog-error">
@@ -89,6 +92,9 @@ defineEmits<{
 }>();
 </script>
 <style scoped lang="scss">
+.catalog-json-help { margin-bottom: 16px; font-size: 13px; color: var(--color-text-3); line-height: 1.7; }
+.catalog-json-help summary { cursor: pointer; width: fit-content; padding: 4px 0; }
+.catalog-json-help summary:focus-visible { outline: 2px solid rgb(var(--primary-6)); outline-offset: 2px; }
 .catalog-overview-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

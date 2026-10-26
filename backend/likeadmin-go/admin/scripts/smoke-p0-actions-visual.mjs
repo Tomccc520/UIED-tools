@@ -270,24 +270,14 @@ const prepareFrontendLayoutUnsaved = async (page) => {
   )
 }
 
-/**
- * 函数说明：切换工具主数据页高级模式，用于检查默认折叠的策略同步条件入口。
- */
-const prepareToolsCatalogAdvanced = async (page) => {
-  const policySyncAdvanced = page
-    .locator('[data-admin-smoke="tools-catalog-policy-sync-advanced"]')
-    .first()
-  if (await policySyncAdvanced.isVisible({ timeout: 1000 }).catch(() => false)) {
-    return
+/** 按实际维护任务打开对应页签，所有动作仅导航，不保存、清空或同步配置。 */
+const prepareToolsCatalogSection = async (page, label) => {
+  const maintenance = page.locator('.catalog-maintenance')
+  if (!await maintenance.isVisible().catch(() => false)) {
+    await page.locator('[data-admin-smoke="tools-catalog-mode-switch"]').click({ timeout: actionTimeout })
   }
-  await page
-    .locator('[data-admin-smoke="tools-catalog-mode-switch"]')
-    .first()
-    .click({ timeout: actionTimeout })
-  await page.waitForSelector('[data-admin-smoke="tools-catalog-policy-sync-advanced"]', {
-    state: 'visible',
-    timeout: actionTimeout
-  })
+  await maintenance.waitFor({ state: 'visible', timeout: actionTimeout })
+  await maintenance.locator('.arco-tabs-tab').filter({ hasText: label }).click({ timeout: actionTimeout })
 }
 
 /**
@@ -327,17 +317,12 @@ const preparePageForCheck = async (page, prepare) => {
       if (await details.count() && !await details.getAttribute('open').then(value => value !== null)) await details.locator('summary').click()
     }
   }
-  if (prepare === 'toolsCatalogMaintenance') {
-    const details = page.locator('details.catalog-batch-actions')
-    if (!await details.getAttribute('open').then(value => value !== null)) await details.locator('summary').click()
-  }
 
   if (prepare === 'frontendLayoutUnsaved') {
     await prepareFrontendLayoutUnsaved(page)
   }
-  if (prepare === 'toolsCatalogAdvanced') {
-    await prepareToolsCatalogAdvanced(page)
-  }
+  const catalogSections = { toolsCatalogBatch: '批量处理', toolsCatalogSource: '分类数据', toolsCatalogPolicy: '计费同步', toolsCatalogChecks: '配置检查' }
+  if (catalogSections[prepare]) await prepareToolsCatalogSection(page, catalogSections[prepare])
   if (prepare === 'sidebarAdvanced') {
     await prepareSidebarAdvanced(page)
   }

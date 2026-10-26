@@ -71,6 +71,7 @@ const createRenderer = () => {
 const mountCommercial = async (options = {}) => {
     const calls = { reads: 0, saves: [], certificates: 0, errors: [], successes: [] }
     const controls = []
+    const route = options.route ?? Vue.reactive({ query: {} })
     const messages = {
         msgSuccess: (value) => calls.successes.push(value),
         msgError: (value) => calls.errors.push(value),
@@ -104,7 +105,7 @@ const mountCommercial = async (options = {}) => {
     /** 在固定源码边界内解析模块；接口与消息统一替换，禁止加载实际请求客户端。 */
     const resolve = (specifier, from) => {
         if (specifier === 'vue') return Vue
-        if (specifier === 'vue-router') return { onBeforeRouteLeave() {} }
+        if (specifier === 'vue-router') return { onBeforeRouteLeave() {}, useRoute: () => route }
         if (specifier === '@/api/setting/user') return api
         if (specifier === '@/utils/feedback') return { default: messages }
         if (specifier.endsWith('/page-header/index.vue'))
@@ -283,6 +284,7 @@ const mountCommercial = async (options = {}) => {
         section,
         io,
         createDraft: load(path.join(commercialRoot, 'commercial-config.ts')).createCommercialDraft,
+        resolveSection: load(path.join(commercialRoot, 'commercial-config.ts')).resolveCommercialSection,
         unmount: () => app.unmount()
     }
 }
@@ -399,4 +401,43 @@ test('同一商业化模型创建的不同草稿不共享套餐、积分包或�
     assert.notEqual(second.pointsPacks[0].points, first.pointsPacks[0].points)
     assert.equal(second.consumeRiskRules.perMinute, 30)
     fixture.unmount()
+})
+
+test('初始分区仅接受白名单单值，非法或重复参数安全回到访问设置', async () => {
+    const fixture = await mountCommercial()
+    for (const value of ['access', 'billing', 'payment']) assert.equal(fixture.resolveSection(value), value)
+    for (const value of [undefined, null, '', 'Billing', ' billing ', 'constructor', ['billing'], ['billing', 'payment'], {}, 0])
+        assert.equal(fixture.resolveSection(value), 'access')
+    assert.equal(fixture.state.activeSection, 'access')
+    assert.equal(fixture.calls.saves.length, 0)
+    fixture.unmount()
+})
+
+test('计费设置链接首次直达会员页，其他标签路由变化不切走当前面板或草稿', async () => {
+    const route = Vue.reactive({ query: { section: 'billing' } })
+    const fixture = await mountCommercial({ route })
+    assert.equal(fixture.state.activeSection, 'billing')
+    assert.ok(fixture.field('每日赠送积分'))
+    assert.equal(fixture.field('请输入入口文案，如：用户中心 / 会员中心'), undefined)
+    await fixture.edit('每日赠送积分', 17)
+    route.query.section = 'payment'
+    await Vue.nextTick()
+    assert.equal(fixture.state.activeSection, 'billing')
+    assert.equal(fixture.state.formData.dailyGiftPoints, 17)
+    assert.equal(fixture.state.hasUnsavedChanges, true)
+    assert.equal(fixture.calls.reads, 1)
+    assert.equal(fixture.calls.saves.length, 0)
+    fixture.unmount()
+})
+
+test('支付分区可直达，重复section参数仍只挂载访问设置', async () => {
+    const payment = await mountCommercial({ route: { query: { section: 'payment' } } })
+    assert.equal(payment.state.activeSection, 'payment')
+    assert.ok(payment.field('可选：后端调用支付网关下单时用于签名'))
+    payment.unmount()
+    const duplicated = await mountCommercial({ route: { query: { section: ['billing', 'payment'] } } })
+    assert.equal(duplicated.state.activeSection, 'access')
+    assert.ok(duplicated.field('请输入入口文案，如：用户中心 / 会员中心'))
+    assert.equal(duplicated.calls.saves.length, 0)
+    duplicated.unmount()
 })

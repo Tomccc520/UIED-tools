@@ -6,6 +6,12 @@
  */
 import type { LoginSetup } from '@/api/setting/user'
 
+export type CommercialSection = 'access' | 'billing' | 'payment'
+
+/** 解析首次进入的配置分区，只接受明确单值；未知值或重复参数返回访问设置。 */
+export const resolveCommercialSection = (value: unknown): CommercialSection =>
+    value === 'billing' || value === 'payment' || value === 'access' ? value : 'access'
+
 export interface MemberPlanFormItem {
     code: string
     name: string

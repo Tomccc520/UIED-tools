@@ -14,6 +14,7 @@
 
         <a-layout>
             <a-layout-sider
+                v-if="!appStore.isMobile"
                 class="layout-sider"
                 :collapsed="isCollapsed"
                 :width="sideWidth"
@@ -25,6 +26,7 @@
                     <layout-sidebar />
                 </div>
             </a-layout-sider>
+            <layout-sidebar v-if="appStore.isMobile" />
 
             <a-layout class="layout-content" :style="layoutContentStyle">
                 <a-layout-content>

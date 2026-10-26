@@ -7,7 +7,7 @@
  */
 -->
 <template>
-  <settings-section title="工具执行策略同步" class="mt-5">
+  <settings-section title="发布计费规则" description="将目录中的计费草稿发布为实际规则。请先保存目录更改，再执行同步。">
     <template #actions>
       <a-radio-group
         :model-value="mode"
@@ -20,22 +20,16 @@
       </a-radio-group>
       <a-button
         type="primary"
-        data-admin-smoke="tools-catalog-policy-sync-advanced"
+        data-admin-smoke="tools-catalog-policy-sync"
         @click="$emit('sync')"
-        >同步到登录策略</a-button
+        >同步计费规则</a-button
       >
       <a-button
         data-admin-smoke="tools-catalog-policy-settings-advanced"
         @click="$emit('open-settings')"
-        >前往登录与积分策略</a-button
+        >查看计费设置</a-button
       >
     </template>
-    <div class="form-tips mb-2">
-      本区会基于“工具分类树”自动生成
-      <code>toolKey</code> 规则（优先读取工具项中的
-      <code>toolKey</code> 字段），并合并写入“登录与积分策略”的
-      <code>toolConsumeRules</code>。用于统一“工具主数据中心 + 执行策略中心”。
-    </div>
     <a-alert class="catalog-alert" type="info" :closable="false" show-icon>
       当前同步模式：<strong>{{
         mode === "append" ? "仅新增不覆盖" : "全量覆盖"
@@ -43,26 +37,27 @@
       >。
       {{
         mode === "append"
-          ? "仅补充新 toolKey，已有策略保持不变。"
-          : "按当前工具主数据重建规则，未包含的旧 toolKey 将被移除。"
+          ? "只新增规则，已有计费设置保持不变。"
+          : "按当前目录重建规则，未包含的旧规则将被移除。"
       }}
     </a-alert>
     <div class="catalog-stat-row">
-      <a-tag color="arcoblue" bordered>策略种子 {{ rules.length }} 条</a-tag>
-      <a-tag color="green" bordered>工具覆盖字段 {{ overrideCount }} 条</a-tag>
+      <a-tag color="arcoblue" bordered>规则 {{ rules.length }} 条</a-tag>
+      <a-tag color="green" bordered>自定义计费 {{ overrideCount }} 项</a-tag>
       <a-tag :color="conflicts.length > 0 ? 'orangered' : 'green'" bordered
-        >toolKey 冲突 {{ conflicts.length }} 项</a-tag
+        >标识冲突 {{ conflicts.length }} 项</a-tag
       >
     </div>
     <a-table
       class="mt-3"
       :data="rules.slice(0, 12)"
       :pagination="false"
+      :scroll="{ x: 800 }"
       size="small"
       row-key="toolKey"
     >
       <template #columns>
-        <a-table-column title="toolKey" data-index="toolKey" />
+        <a-table-column title="工具标识" data-index="toolKey" />
         <a-table-column title="规则名称" data-index="name" />
         <a-table-column title="扣分" data-index="consumePoints" />
         <a-table-column title="会员免扣" data-index="memberFree">
@@ -97,18 +92,19 @@
       :closable="false"
       show-icon
     >
-      当前存在 toolKey 冲突，同步前请先修正，避免策略覆盖异常。
+      工具标识存在冲突，请先修正再同步。
     </a-alert>
     <a-table
       v-if="conflicts.length > 0"
       class="mt-3"
       :data="conflicts"
       :pagination="false"
+      :scroll="{ x: 800 }"
       size="small"
       row-key="toolKey"
     >
       <template #columns>
-        <a-table-column title="冲突 toolKey" data-index="toolKey" />
+        <a-table-column title="冲突标识" data-index="toolKey" />
         <a-table-column title="出现次数" data-index="count" width="110" />
         <a-table-column title="冲突位置">
           <template #cell="{ record }">

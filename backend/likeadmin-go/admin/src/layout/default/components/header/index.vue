@@ -265,6 +265,7 @@ import useUserStore from '@/stores/modules/user'
 import {
     flattenAdminNavigation,
     searchAdminNavigation,
+    getAdminQuickNavigation,
     type AdminNavigationItem
 } from '@/utils/admin-navigation'
 import { isExternal } from '@/utils/validate'
@@ -406,35 +407,7 @@ const visibleSearchItems = computed<SearchMenuItem[]>(() => {
 /**
  * 函数说明：抽取后台高频配置入口作为搜索快捷访问按钮，降低运营人员点击层级。
  */
-const searchQuickActions = computed<SearchMenuItem[]>(() => {
-    const preferredPaths = [
-        '/workbench',
-        '/official_site/tools_catalog',
-        '/official_site/frontend_layout',
-        '/official_site/sidebar',
-        '/official_site/seo',
-        '/ai_model_manage/ai_model'
-    ]
-    const pickedItems: SearchMenuItem[] = []
-    preferredPaths.forEach((path) => {
-        const matchedItem = searchMenuItems.value.find((item) => item.path.split('?')[0] === path)
-        if (matchedItem && !pickedItems.some((item) => item.path === matchedItem.path)) {
-            pickedItems.push(matchedItem)
-        }
-    })
-    if (pickedItems.length >= 6) {
-        return pickedItems.slice(0, 6)
-    }
-    for (const item of searchMenuItems.value) {
-        if (!pickedItems.some((existsItem) => existsItem.path === item.path)) {
-            pickedItems.push(item)
-        }
-        if (pickedItems.length >= 6) {
-            break
-        }
-    }
-    return pickedItems
-})
+const searchQuickActions = computed<SearchMenuItem[]>(() => getAdminQuickNavigation(searchMenuItems.value))
 
 /**
  * 函数说明：输出全局搜索统计文案，便于快速判断筛选结果规模。

@@ -9,9 +9,9 @@
 <template>
     <section v-if="groups.length" class="task-panel" aria-labelledby="workbench-tasks-title">
         <h2 id="workbench-tasks-title">常用任务</h2>
-        <div class="task-groups">
+        <div class="task-groups" :class="{ 'task-groups--single': groups.length === 1 }">
             <section v-for="group in groups" :key="group.key" class="task-group" :aria-labelledby="`workbench-task-${group.key}`">
-                <h3 :id="`workbench-task-${group.key}`">{{ group.title }}</h3>
+                <h3 :id="`workbench-task-${group.key}`" :class="{ 'sr-only': groups.length === 1 }">{{ group.title }}</h3>
                 <router-link
                     v-for="item in group.items"
                     :key="item.url"
@@ -113,6 +113,29 @@ h3 {
     outline: 2px solid var(--uied-admin-accent);
     outline-offset: 2px;
 }
+.task-groups--single {
+    grid-template-columns: 1fr;
+}
+.task-groups--single .task-group {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px 20px;
+}
+.task-groups--single .task-link {
+    border: 1px solid var(--uied-admin-border);
+    padding: 14px 16px;
+}
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+@media (max-width: 900px) {
+    .task-groups--single .task-group { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 @media (max-width: 640px) {
     .task-panel {
         padding: 16px;
@@ -126,6 +149,7 @@ h3 {
         border-top: 1px solid var(--uied-admin-border);
         padding: 16px 0 0;
     }
+    .task-groups--single .task-group { grid-template-columns: 1fr; }
     .task-link {
         min-height: 60px;
     }

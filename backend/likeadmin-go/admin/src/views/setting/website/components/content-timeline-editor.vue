@@ -9,7 +9,7 @@
 <template>
     <div class="timeline-editor">
         <div class="timeline-editor__toolbar">
-            <p>选择版本后编辑，保存后更新前台记录。</p>
+            <p>共 {{ parsed.items.length }} 个版本</p>
             <a-button :disabled="Boolean(parsed.error)" @click="addVersion">新增版本</a-button>
         </div>
         <a-alert v-if="parsed.error" type="error" :closable="false">{{ parsed.error }}，原内容已保留。</a-alert>
@@ -63,8 +63,8 @@
             <template #extra><a-button @click="loadDefaults">载入默认记录后编辑</a-button></template>
         </a-empty>
         <details class="timeline-editor__optional">
-            <summary>导入或检查原始 JSON</summary>
-            <p>可粘贴已有版本数组。无效内容会保留，并在保存前提示修正。</p>
+            <summary>高级维护：原始 JSON</summary>
+            <p>用于批量导入或修正异常记录，编辑后统一保存。</p>
             <a-textarea :model-value="modelValue" :auto-size="{ minRows: 6, maxRows: 18 }" :textarea-attrs="{ 'aria-label': '更新记录原始 JSON' }" @update:model-value="$emit('update:modelValue', String($event))" />
         </details>
     </div>
