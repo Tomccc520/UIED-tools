@@ -33,18 +33,19 @@ const createPage = (type, perms = ['*']) => {
     const calls = { reads: 0, writes: [], refreshes: 0, confirms: 0, successes: [], errors: [] }
     const io = { read: async () => clone(fixtures[type]), save: async () => {}, refresh: async () => {} }
     const feedback = { msgSuccess: message => calls.successes.push(message), msgError: message => calls.errors.push(message), confirm: async () => { calls.confirms++ } }
-    const composable = (file, name) => execute(fs.readFileSync(new URL('composables/' + file, viewUrl), 'utf8'), { feedback }, [name])[name]
+    const composable = (file, name) => execute(fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback }, [name])[name]
     const hooks = { leave: null }
     const bindings = {
         feedback, useUserStore: () => ({ perms }), useRouter: () => ({ push() {} }),
         useAppStore: () => ({ config: {}, getConfig: async () => { calls.refreshes++; await io.refresh() } }),
         useOperateSubmit: composable('use-operate-submit.ts', 'useOperateSubmit'), useConfigLoad: composable('use-config-load.ts', 'useConfigLoad'),
-        onMounted() {}, onBeforeUnmount() {}, onBeforeRouteLeave: callback => { hooks.leave = callback },
+        onMounted() {}, onBeforeUnmount() {}, onActivated() {}, onDeactivated() {}, onBeforeRouteLeave: callback => { hooks.leave = callback },
         window: { addEventListener() {}, removeEventListener() {} },
         resolveToolsPreviewUrl: () => 'https://example.invalid/'
     }
     for (const name of ['getWebsite', 'getCopyright', 'getProtocol']) bindings[name] = async () => { calls.reads++; return io.read() }
     for (const name of ['setWebsite', 'setCopyright', 'setProtocol']) bindings[name] = async payload => { calls.writes.push(clone(payload)); await io.save(payload) }
+    bindings.useConfigEditor = execute(fs.readFileSync(new URL('../src/composables/use-config-editor.ts', import.meta.url), 'utf8'), bindings, ['useConfigEditor']).useConfigEditor
     const script = fs.readFileSync(new URL(type + '.vue', viewUrl), 'utf8').match(/<script\b[^>]*>([\s\S]*?)<\/script>/)[1]
     const page = execute(script, bindings, ['getData', 'reloadData', type === 'protocol' ? 'handleSave' : 'handleSubmit', 'formData', 'hasUnsavedChanges', 'hasLoadedData', 'loadErrorMessage', 'submitError', 'isSubmitting', 'canEdit', ...(type === 'information' ? ['refreshConfig', 'refreshWarning'] : []), ...(type === 'filing' ? ['addItem', 'moveItem', 'handleDelete'] : []), ...(type === 'protocol' ? ['editingBodies', 'startBodyEditing', 'updateProtocolBody'] : [])])
     page.save = type === 'protocol' ? page.handleSave : page.handleSubmit

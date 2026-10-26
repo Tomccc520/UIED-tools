@@ -28,15 +28,17 @@ const createPage = (perms = ['*']) => {
     const calls = { reads: 0, writes: [], successes: [], errors: [], confirms: 0 }
     const io = { read: async () => fixture(), save: async () => {} }
     const feedback = { msgSuccess: message => calls.successes.push(message), msgError: message => calls.errors.push(message), confirm: async () => { calls.confirms++ } }
-    const composable = (file, name) => execute(fs.readFileSync(new URL('../src/views/setting/website/composables/' + file, import.meta.url), 'utf8'), { feedback }, [name])[name]
+    const composable = (file, name) => execute(fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback }, [name])[name]
     const hooks = { leave: null }
     const script = fs.readFileSync(new URL('../src/views/setting/search/index.vue', import.meta.url), 'utf8').match(/<script\b[^>]*>([\s\S]*?)<\/script>/)[1]
-    const page = execute(script, {
+    const bindings = {
         feedback, useUserStore: () => ({ perms }),
         useConfigLoad: composable('use-config-load.ts', 'useConfigLoad'), useOperateSubmit: composable('use-operate-submit.ts', 'useOperateSubmit'),
         getSearch: async () => { calls.reads++; return io.read() }, setSearch: async payload => { calls.writes.push(clone(payload)); await io.save(payload) },
-        onMounted() {}, onBeforeUnmount() {}, onBeforeRouteLeave: callback => { hooks.leave = callback }, window: { addEventListener() {}, removeEventListener() {} }
-    }, ['getData', 'reloadData', 'handleSave', 'handleAdd', 'handleDel', 'formData', 'previewList', 'hasUnsavedChanges', 'hasLoadedData', 'loadErrorMessage', 'submitError', 'isSubmitting', 'canEdit'])
+        onMounted() {}, onBeforeUnmount() {}, onActivated() {}, onDeactivated() {}, onBeforeRouteLeave: callback => { hooks.leave = callback }, window: { addEventListener() {}, removeEventListener() {} }
+    }
+    bindings.useConfigEditor = execute(fs.readFileSync(new URL('../src/composables/use-config-editor.ts', import.meta.url), 'utf8'), bindings, ['useConfigEditor']).useConfigEditor
+    const page = execute(script, bindings, ['getData', 'reloadData', 'handleSave', 'handleAdd', 'handleDel', 'formData', 'previewList', 'hasUnsavedChanges', 'hasLoadedData', 'loadErrorMessage', 'submitError', 'isSubmitting', 'canEdit'])
     return { page, calls, io, feedback, hooks }
 }
 /** 手动完成保存，测试并发、快照和禁止重读。 */

@@ -8,11 +8,25 @@
 -->
 <template>
     <a-spin class="material-loading-wrap" :loading="pager.loading || isProcessingFiles">
-        <a-alert v-if="cateLoadError || fileLoadError || fileActionError" class="material-request-error" type="error" :closable="false" show-icon>
+        <a-alert
+            v-if="cateLoadError || fileLoadError || fileActionError"
+            class="material-request-error"
+            type="error"
+            :closable="false"
+            show-icon
+        >
             {{ fileActionError || fileLoadError || cateLoadError }}
-            <template #action><a-button :disabled="isProcessingFiles" @click="getData">重新加载</a-button></template>
+            <template #action
+                ><a-button :disabled="isProcessingFiles" @click="getData"
+                    >重新加载</a-button
+                ></template
+            >
         </a-alert>
-        <fieldset class="material" :disabled="isProcessingFiles" :inert="isProcessingFiles ? '' : undefined">
+        <fieldset
+            class="material"
+            :disabled="isProcessingFiles"
+            :inert="isProcessingFiles ? '' : undefined"
+        >
             <div class="material__left">
                 <div class="flex-1 min-h-0">
                     <a-scrollbar>
@@ -175,36 +189,39 @@
                             />
                             <details v-if="mode == 'page'" class="material-toolbar__advanced">
                                 <summary>按关联内容筛选</summary>
-                            <div class="material-toolbar__filters">
-                                <a-select
-                                    v-if="mode == 'page'"
-                                    v-model="fileParams.bindType"
-                                    class="material-toolbar__filter-select"
-                                    placeholder="绑定类型"
-                                    :options="materialBindTypeFilterOptions"
-                                    allow-clear
-                                    @change="refresh"
-                                />
-                                <a-input-number
-                                    v-if="mode == 'page'"
-                                    v-model="fileParams.bindId"
-                                    class="material-toolbar__filter-id"
-                                    :min="0"
-                                    :max="999999999999"
-                                    hide-button
-                                    placeholder="绑定ID"
-                                    @change="refresh"
-                                />
-                                <a-button v-if="mode == 'page'" @click="clearBindFilters">
-                                    重置绑定筛选
-                                </a-button>
-                            </div>
+                                <div class="material-toolbar__filters">
+                                    <a-select
+                                        v-if="mode == 'page'"
+                                        v-model="fileParams.bindType"
+                                        class="material-toolbar__filter-select"
+                                        placeholder="绑定类型"
+                                        :options="materialBindTypeFilterOptions"
+                                        allow-clear
+                                        @change="refresh"
+                                    />
+                                    <a-input-number
+                                        v-if="mode == 'page'"
+                                        v-model="fileParams.bindId"
+                                        class="material-toolbar__filter-id"
+                                        :min="0"
+                                        :max="999999999999"
+                                        hide-button
+                                        placeholder="绑定ID"
+                                        @change="refresh"
+                                    />
+                                    <a-button v-if="mode == 'page'" @click="clearBindFilters">
+                                        重置绑定筛选
+                                    </a-button>
+                                </div>
                             </details>
                         </div>
                     </div>
                     <div class="material-toolbar__view">
                         <a-tooltip content="列表视图">
-                            <button type="button" aria-label="列表视图" :aria-pressed="listShowType == 'table'"
+                            <button
+                                type="button"
+                                aria-label="列表视图"
+                                :aria-pressed="listShowType == 'table'"
                                 class="list-icon"
                                 :class="{
                                     select: listShowType == 'table'
@@ -215,7 +232,10 @@
                             </button>
                         </a-tooltip>
                         <a-tooltip content="平铺视图">
-                            <button type="button" aria-label="平铺视图" :aria-pressed="listShowType == 'normal'"
+                            <button
+                                type="button"
+                                aria-label="平铺视图"
+                                :aria-pressed="listShowType == 'normal'"
                                 class="list-icon"
                                 :class="{
                                     select: listShowType == 'normal'
@@ -231,7 +251,11 @@
                     <strong>{{ activeCateLabel }}</strong>
                     <span>{{ pager.count }} 项素材</span>
                     <span v-if="select.length">已选 {{ select.length }} 项</span>
-                    <span v-if="materialFilterSummary !== '未设置筛选'" class="material-toolbar__filter-summary">{{ materialFilterSummary }}</span>
+                    <span
+                        v-if="materialFilterSummary !== '未设置筛选'"
+                        class="material-toolbar__filter-summary"
+                        >{{ materialFilterSummary }}</span
+                    >
                 </div>
                 <div class="material-center__content flex flex-col flex-1 mb-1 min-h-0">
                     <a-scrollbar v-if="pager.lists.length" v-show="listShowType == 'normal'">
@@ -429,163 +453,29 @@
                     />
                 </div>
             </div>
-            <div class="material__right material__right--detail" v-if="mode == 'page' && activeMaterial">
-                <div class="material-detail__header">附件详情</div>
-                <div v-if="activeMaterial" class="material-detail__content">
-                    <div class="material-detail__preview">
-                        <file-item
-                            :uri="resolveMaterialDisplayUrl(activeMaterial)"
-                            file-size="220px"
-                            :type="type"
-                        />
-                    </div>
-                    <a-scrollbar class="flex-1 min-h-0">
-                        <div class="material-detail__meta">
-                            <div class="detail-meta-row">
-                                <span class="detail-meta-label">上传于：</span>
-                                <span>{{ formatUploadAt(activeMaterial.createTime) }}</span>
-                            </div>
-                            <div class="detail-meta-row">
-                                <span class="detail-meta-label">上传者：</span>
-                                <span>{{ activeMaterial.uploaderName || '系统上传' }}</span>
-                            </div>
-                            <div class="detail-meta-row">
-                                <span class="detail-meta-label">上传至：</span>
-                                <span>{{
-                                    activeMaterial.uploadToName ||
-                                    activeMaterial.cateName ||
-                                    '未分组'
-                                }}</span>
-                            </div>
-                            <div class="detail-meta-row">
-                                <span class="detail-meta-label">文件名：</span>
-                                <span>{{ activeMaterial.fileName || activeMaterial.name }}</span>
-                            </div>
-                            <div class="detail-meta-row">
-                                <span class="detail-meta-label">文件类型：</span>
-                                <span>{{ activeMaterial.mimeType || '-' }}</span>
-                            </div>
-                            <div class="detail-meta-row">
-                                <span class="detail-meta-label">文件大小：</span>
-                                <span>{{ activeMaterial.size || '-' }}</span>
-                            </div>
-                            <div class="detail-meta-row">
-                                <span class="detail-meta-label">分辨率：</span>
-                                <span>{{ formatResolution(activeMaterial) }}</span>
-                            </div>
-                        </div>
-                        <a-divider margin="14px 0" />
-                        <a-form
-                            :model="materialMetaForm"
-                            layout="vertical"
-                            class="material-detail__form"
-                        >
-                            <a-form-item label="替代文本">
-                                <a-textarea
-                                    v-model="materialMetaForm.altText"
-                                    :max-length="255"
-                                    placeholder="描述此图片的用途，如仅装饰可留空"
-                                    :auto-size="{ minRows: 2, maxRows: 4 }"
-                                    allow-clear
-                                />
-                            </a-form-item>
-                            <a-form-item label="标题">
-                                <a-input
-                                    v-model="materialMetaForm.title"
-                                    :max-length="150"
-                                    placeholder="请输入附件标题"
-                                    allow-clear
-                                />
-                            </a-form-item>
-                            <a-form-item label="说明文字">
-                                <a-input
-                                    v-model="materialMetaForm.caption"
-                                    :max-length="255"
-                                    placeholder="请输入说明文字"
-                                    allow-clear
-                                />
-                            </a-form-item>
-                            <a-form-item label="描述">
-                                <a-textarea
-                                    v-model="materialMetaForm.description"
-                                    :max-length="1200"
-                                    placeholder="请输入附件描述"
-                                    :auto-size="{ minRows: 3, maxRows: 6 }"
-                                    allow-clear
-                                />
-                            </a-form-item>
-                            <a-form-item label="图片路径（可编辑）">
-                                <a-input
-                                    v-model="materialMetaForm.uri"
-                                    :max-length="500"
-                                    placeholder="例如：uploads/2026/04/demo.jpg"
-                                    allow-clear
-                                />
-                            </a-form-item>
-                            <a-divider margin="6px 0 12px 0">业务对象绑定</a-divider>
-                            <a-form-item label="业务对象类型">
-                                <a-select
-                                    v-model="materialMetaForm.bindType"
-                                    :options="materialBindTypeOptions"
-                                    placeholder="请选择业务类型"
-                                    allow-create
-                                    allow-search
-                                />
-                            </a-form-item>
-                            <a-form-item label="业务对象 ID">
-                                <a-input-number
-                                    v-model="materialMetaForm.bindId"
-                                    :min="0"
-                                    :max="999999999999"
-                                    mode="button"
-                                    hide-button
-                                    class="w-full"
-                                    placeholder="例如：文章ID"
-                                />
-                            </a-form-item>
-                            <a-form-item label="业务对象标题">
-                                <a-input
-                                    v-model="materialMetaForm.bindTitle"
-                                    :max-length="255"
-                                    placeholder="例如：Happy Horse-1.0 ..."
-                                    allow-clear
-                                />
-                            </a-form-item>
-                            <a-form-item label="业务对象链接">
-                                <a-input
-                                    v-model="materialMetaForm.bindUrl"
-                                    :max-length="500"
-                                    placeholder="例如：https://uiedtool.com/..."
-                                    allow-clear
-                                />
-                            </a-form-item>
-                            <a-form-item label="文件 URL">
-                                <div class="material-detail__url">
-                                    <a-input :model-value="activeMaterial.uri" readonly />
-                                    <a-button
-                                        type="outline"
-                                        @click="copyMaterialUrl(String(activeMaterial?.uri || ''))"
-                                    >
-                                        复制网址至剪贴板
-                                    </a-button>
-                                </div>
-                            </a-form-item>
-                            <a-button
-                                type="primary"
-                                long
-                                v-perms="['common:album:albumRename']"
-                                :loading="materialMetaSaving"
-                                @click="saveMaterialMeta"
-                            >
-                                保存附件信息
-                            </a-button>
-                        </a-form>
-                    </a-scrollbar>
-                </div>
-                <div v-else class="material-detail__empty">
-                    <a-empty description="先从左侧列表点选 1 个素材，这里会显示附件参数和业务绑定信息。" />
-                </div>
-            </div>
+            <material-metadata-panel
+                v-if="mode == 'page' && activeMaterial"
+                :material="activeMaterial"
+                :model-value="materialMetaForm"
+                :display-url="resolveMaterialDisplayUrl(activeMaterial)"
+                :type="type"
+                :disabled="isProcessingFiles"
+                :bind-type-options="materialBindTypeOptions"
+                @patch="patchMaterialMeta"
+                @copy="copyMaterialUrl"
+            >
+                <template #actions>
+                    <a-button
+                        type="primary"
+                        long
+                        v-perms="['common:album:albumRename']"
+                        :loading="materialMetaSaving"
+                        :disabled="isProcessingFiles"
+                        @click="saveMaterialMeta"
+                        >保存附件信息</a-button
+                    >
+                </template>
+            </material-metadata-panel>
             <div class="material__right" v-else-if="mode == 'picker'">
                 <div class="flex justify-between p-2 flex-wrap">
                     <div class="sm flex items-center">
@@ -614,61 +504,19 @@
             </div>
             <preview v-model="showPreview" :url="previewUrl" :type="type" />
         </fieldset>
-        <a-modal
-            v-model:visible="compressConfigVisible"
-            title="图片自动压缩设置"
-            :mask-closable="false"
-            :on-before-cancel="canCloseCompressConfig"
-        >
-            <a-alert v-if="compressConfigError || compressConfigSaveError" type="error" :closable="false" show-icon>
-                {{ compressConfigError || compressConfigSaveError }}
-                <template v-if="compressConfigError" #action><a-button :disabled="compressConfigLoading || compressConfigSaving" @click="retryCompressConfig">重新读取</a-button></template>
-            </a-alert>
-            <a-spin :loading="compressConfigLoading" style="display: block">
-            <a-form layout="vertical" :model="compressConfigForm" :disabled="compressConfigLoading || compressConfigSaving || !compressConfigLoaded || Boolean(compressConfigError)">
-                <a-form-item label="启用自动压缩">
-                    <a-switch
-                        v-model="compressConfigForm.enabled"
-                        checked-text="开启"
-                        unchecked-text="关闭"
-                    />
-                </a-form-item>
-                <a-form-item label="触发阈值（KB）">
-                    <a-input-number
-                        v-model="compressConfigForm.minSizeKB"
-                        :min="0"
-                        :max="102400"
-                        mode="button"
-                        class="w-full"
-                    />
-                </a-form-item>
-                <a-form-item label="JPEG 质量（40-100）">
-                    <a-slider
-                        v-model="compressConfigForm.jpegQuality"
-                        :min="40"
-                        :max="100"
-                        :step="1"
-                        show-input
-                    />
-                </a-form-item>
-                <a-form-item label="PNG 压缩等级">
-                    <a-radio-group v-model="compressConfigForm.pngCompressionLevel">
-                        <a-radio value="speed">优先速度</a-radio>
-                        <a-radio value="default">平衡模式</a-radio>
-                        <a-radio value="best">优先体积</a-radio>
-                    </a-radio-group>
-                </a-form-item>
-                <a-alert type="info" show-icon>
-                    仅对新上传 JPG/PNG 自动压缩；SVG/GIF 与已上传历史文件不会自动重写。
-                </a-alert>
-            </a-form>
-            </a-spin>
-            <template #footer>
-                <a-button :disabled="compressConfigSaving" @click="compressConfigVisible = false">取消</a-button>
-                <a-button :disabled="compressConfigLoading || compressConfigSaving" @click="retryCompressConfig">重新读取</a-button>
-                <a-button type="primary" :loading="compressConfigSaving" :disabled="compressConfigLoading || !compressConfigLoaded || Boolean(compressConfigError)" @click="saveCompressConfig">保存设置</a-button>
-            </template>
-        </a-modal>
+        <material-compress-config-dialog
+            v-if="compressConfigVisible"
+            :model-value="compressConfigForm"
+            :loading="compressConfigLoading"
+            :saving="compressConfigSaving"
+            :loaded="compressConfigLoaded"
+            :error="compressConfigError"
+            :save-error="compressConfigSaveError"
+            @patch="patchCompressConfig"
+            @close="closeCompressConfig"
+            @retry="retryCompressConfig"
+            @save="saveCompressConfig"
+        />
     </a-spin>
 </template>
 
@@ -677,6 +525,9 @@ import { useCate, useFile } from './hook'
 import { fileCompressConfigDetail, fileCompressConfigSave, fileMetaSave } from '@/api/file'
 import FileItem from './file.vue'
 import Preview from './preview.vue'
+import MaterialMetadataPanel from './metadata-panel.vue'
+import MaterialCompressConfigDialog from './compress-config-dialog.vue'
+import type { MaterialItem, MaterialMetaForm, MaterialCompressConfig } from './types'
 import { IconApps, IconCheck } from '@arco-design/web-vue/es/icon'
 import { Message } from '@arco-design/web-vue'
 import feedback from '@/utils/feedback'
@@ -774,32 +625,6 @@ const {
     handleFileRename
 } = useFile(cateId, typeValue, limit, props.pageSize)
 
-interface MaterialItem {
-    id: number
-    name: string
-    fileName?: string
-    path?: string
-    uri: string
-    size?: string
-    sizeBytes?: number
-    mimeType?: string
-    width?: number
-    height?: number
-    resolution?: string
-    createTime?: string
-    uploaderName?: string
-    cateName?: string
-    uploadToName?: string
-    title?: string
-    altText?: string
-    caption?: string
-    description?: string
-    bindType?: string
-    bindId?: number
-    bindTitle?: string
-    bindUrl?: string
-}
-
 const activeMaterialId = ref<number>(0)
 const activeMaterial = computed<MaterialItem | null>(() => {
     if (!pager.lists.length) {
@@ -830,7 +655,7 @@ const clearMaterialEmptyFilters = () => {
     fileParams.name = ''
     clearBindFilters()
 }
-const materialMetaForm = reactive({
+const materialMetaForm = reactive<MaterialMetaForm>({
     title: '',
     altText: '',
     caption: '',
@@ -865,7 +690,7 @@ const compressConfigLoading = ref(false)
 const compressConfigError = ref('')
 const compressConfigSaveError = ref('')
 const compressConfigBaseline = ref('')
-const compressConfigForm = reactive({
+const compressConfigForm = reactive<MaterialCompressConfig>({
     enabled: true,
     minSizeKB: 300,
     jpegQuality: 82,
@@ -965,41 +790,6 @@ const handleFileClick = (record: MaterialItem) => {
 const handleSelectFile = (record: MaterialItem) => {
     activeMaterialId.value = record.id
     selectFile(record)
-}
-
-/**
- * 函数说明：将接口返回的上传时间格式化为中文日期，提升素材参数面板可读性。
- */
-const formatUploadAt = (value?: string): string => {
-    const raw = String(value || '').trim()
-    if (!raw) {
-        return '-'
-    }
-    const date = new Date(raw.replace(/-/g, '/'))
-    if (Number.isNaN(date.getTime())) {
-        return raw
-    }
-    const year = date.getFullYear()
-    const month = `${date.getMonth() + 1}`.padStart(2, '0')
-    const day = `${date.getDate()}`.padStart(2, '0')
-    return `${year}年${month}月${day}日`
-}
-
-/**
- * 函数说明：优先显示后端回传分辨率，未命中时退化为宽高拼接。
- */
-const formatResolution = (record: MaterialItem | null): string => {
-    if (!record) {
-        return '-'
-    }
-    const resolution = String(record.resolution || '').trim()
-    if (resolution) {
-        return resolution
-    }
-    if (record.width && record.height) {
-        return `${record.width}×${record.height} 像素`
-    }
-    return '-'
 }
 
 /**
@@ -1113,6 +903,11 @@ const copyMaterialUrl = async (url: string) => {
     }
 }
 
+/** 将附件编辑补丁写入当前草稿，文件处理期间不接受字段变更。 */
+const patchMaterialMeta = (patch: Partial<MaterialMetaForm>) => {
+    if (!isProcessingFiles.value) Object.assign(materialMetaForm, patch)
+}
+
 /** 保存当前附件与表单快照；返回时仅更新同一素材，切换后的输入不会被旧响应覆盖。 */
 const saveMaterialMeta = async () => {
     if (materialMetaSaving.value || isProcessingFiles.value) return false
@@ -1121,15 +916,27 @@ const saveMaterialMeta = async () => {
         return false
     }
     const submittedForm = JSON.stringify(materialMetaForm)
-    const payload = { ...materialMetaForm, id: activeMaterial.value.id, bindId: Number(materialMetaForm.bindId || 0) }
+    const payload = {
+        ...materialMetaForm,
+        id: activeMaterial.value.id,
+        bindId: Number(materialMetaForm.bindId || 0)
+    }
     materialMetaSaving.value = true
     try {
         const res = await fileMetaSave(payload)
         const targetIndex = pager.lists.findIndex((item: MaterialItem) => item.id === payload.id)
         if (targetIndex >= 0) {
-            pager.lists[targetIndex] = { ...pager.lists[targetIndex], ...(res || {}), id: payload.id }
+            pager.lists[targetIndex] = {
+                ...pager.lists[targetIndex],
+                ...(res || {}),
+                id: payload.id
+            }
         }
-        if (activeMaterial.value?.id === payload.id && JSON.stringify(materialMetaForm) === submittedForm) syncMetaFormByActive()
+        if (
+            activeMaterial.value?.id === payload.id &&
+            JSON.stringify(materialMetaForm) === submittedForm
+        )
+            syncMetaFormByActive()
         Message.success('附件信息已保存')
         return true
     } catch {
@@ -1142,21 +949,36 @@ const saveMaterialMeta = async () => {
 
 /** 校验完整压缩策略后再回填，保留合法零阈值，不把无效响应降级成默认值。 */
 const normalizeCompressConfig = (source: any) => {
-    if (!source || typeof source !== 'object' || Array.isArray(source)) throw new Error('压缩设置响应无效')
+    if (!source || typeof source !== 'object' || Array.isArray(source))
+        throw new Error('压缩设置响应无效')
     const enabled = Number(source.enabled)
     const minSizeKB = Number(source.minSizeKB)
     const jpegQuality = Number(source.jpegQuality)
-    const pngCompressionLevel = String(source.pngCompressionLevel || '') as 'speed' | 'default' | 'best'
-    if (['enabled', 'minSizeKB', 'jpegQuality'].some(key => source[key] == null || (typeof source[key] === 'string' && !source[key].trim())) ||
-        ![0, 1].includes(enabled) || !Number.isInteger(minSizeKB) || minSizeKB < 0 || minSizeKB > 102400 ||
-        !Number.isInteger(jpegQuality) || jpegQuality < 40 || jpegQuality > 100 || !['speed', 'default', 'best'].includes(pngCompressionLevel)) {
+    const pngCompressionLevel = String(source.pngCompressionLevel || '') as
+        | 'speed'
+        | 'default'
+        | 'best'
+    if (
+        ['enabled', 'minSizeKB', 'jpegQuality'].some(
+            (key) => source[key] == null || (typeof source[key] === 'string' && !source[key].trim())
+        ) ||
+        ![0, 1].includes(enabled) ||
+        !Number.isInteger(minSizeKB) ||
+        minSizeKB < 0 ||
+        minSizeKB > 102400 ||
+        !Number.isInteger(jpegQuality) ||
+        jpegQuality < 40 ||
+        jpegQuality > 100 ||
+        !['speed', 'default', 'best'].includes(pngCompressionLevel)
+    ) {
         throw new Error('压缩设置字段不完整或超出范围')
     }
     return { enabled: enabled === 1, minSizeKB, jpegQuality, pngCompressionLevel }
 }
 /** 读取压缩策略；失败保留原草稿，并关闭保存入口直到成功重试。 */
 const loadCompressConfig = async () => {
-    if (props.type !== 'image' || compressConfigLoading.value || compressConfigSaving.value) return false
+    if (props.type !== 'image' || compressConfigLoading.value || compressConfigSaving.value)
+        return false
     compressConfigLoading.value = true
     compressConfigLoaded.value = false
     compressConfigError.value = ''
@@ -1177,8 +999,15 @@ const loadCompressConfig = async () => {
 /** 重新读取前确认草稿，避免失败后的重试无声覆盖用户仍在编辑的策略。 */
 const retryCompressConfig = async () => {
     if (compressConfigLoading.value || compressConfigSaving.value) return false
-    if (compressConfigBaseline.value && JSON.stringify(compressConfigForm) !== compressConfigBaseline.value) {
-        try { await feedback.confirm('重新读取会放弃未保存的压缩设置，确定继续吗？') } catch { return false }
+    if (
+        compressConfigBaseline.value &&
+        JSON.stringify(compressConfigForm) !== compressConfigBaseline.value
+    ) {
+        try {
+            await feedback.confirm('重新读取会放弃未保存的压缩设置，确定继续吗？')
+        } catch {
+            return false
+        }
     }
     return loadCompressConfig()
 }
@@ -1190,12 +1019,42 @@ const openCompressConfigModal = async () => {
 }
 /** 保存进行中阻止通过关闭图标或 Esc 退出，确保写入结果有明确反馈。 */
 const canCloseCompressConfig = () => !compressConfigSaving.value
+/** 将压缩编辑补丁写入父级草稿，读取或保存期间不接受字段变更。 */
+const patchCompressConfig = (patch: Partial<MaterialCompressConfig>) => {
+    if (
+        compressConfigLoaded.value &&
+        !compressConfigLoading.value &&
+        !compressConfigSaving.value &&
+        !compressConfigError.value
+    ) {
+        Object.assign(compressConfigForm, patch)
+    }
+}
+/** 统一处理弹窗取消和关闭，保存失败时草稿仍由父级保留。 */
+const closeCompressConfig = () => {
+    if (!canCloseCompressConfig()) return false
+    compressConfigVisible.value = false
+    return true
+}
 /** 保存经过校验的提交快照；失败保留输入，后续编辑不被保存回调覆盖。 */
 const saveCompressConfig = async () => {
-    if (compressConfigSaving.value || compressConfigLoading.value || !compressConfigLoaded.value || compressConfigError.value) return false
+    if (
+        compressConfigSaving.value ||
+        compressConfigLoading.value ||
+        !compressConfigLoaded.value ||
+        compressConfigError.value
+    )
+        return false
     let submitted: typeof compressConfigForm
-    try { submitted = normalizeCompressConfig({ ...compressConfigForm, enabled: compressConfigForm.enabled ? 1 : 0 }) }
-    catch { compressConfigSaveError.value = '请检查压缩阈值、JPEG 质量和 PNG 等级后重试。'; return false }
+    try {
+        submitted = normalizeCompressConfig({
+            ...compressConfigForm,
+            enabled: compressConfigForm.enabled ? 1 : 0
+        })
+    } catch {
+        compressConfigSaveError.value = '请检查压缩阈值、JPEG 质量和 PNG 等级后重试。'
+        return false
+    }
     const snapshot = JSON.stringify(submitted)
     compressConfigSaving.value = true
     compressConfigSaveError.value = ''
@@ -1246,9 +1105,6 @@ if (props.mode === 'page') {
      */
     onMounted(() => {
         getData()
-        if (props.type === 'image') {
-            loadCompressConfig()
-        }
     })
 } else {
     watch(visible, handlePopupVisibleChange, { immediate: true })
@@ -1305,7 +1161,9 @@ defineExpose({
 </script>
 
 <style scoped lang="scss">
-.material-request-error { margin-bottom: 12px; }
+.material-request-error {
+    margin-bottom: 12px;
+}
 
 .material-loading-wrap {
     @apply h-full w-full flex-1;
@@ -1445,9 +1303,18 @@ defineExpose({
         min-width: 0;
         flex: 1;
     }
-    .material-toolbar__advanced { margin-top: 8px; }
-    .material-toolbar__advanced summary { cursor: pointer; padding: 6px 0; font-size: 12px; color: var(--color-text-3); }
-    .material-toolbar__advanced[open] summary { margin-bottom: 4px; }
+    .material-toolbar__advanced {
+        margin-top: 8px;
+    }
+    .material-toolbar__advanced summary {
+        cursor: pointer;
+        padding: 6px 0;
+        font-size: 12px;
+        color: var(--color-text-3);
+    }
+    .material-toolbar__advanced[open] summary {
+        margin-bottom: 4px;
+    }
     .material-toolbar__view {
         width: 88px;
         display: flex;
@@ -1467,8 +1334,12 @@ defineExpose({
         font-size: 13px;
         color: var(--color-text-3, #86909c);
     }
-    .material-toolbar__summary strong { color: var(--color-text-1); }
-    .material-toolbar__filter-summary { overflow-wrap: anywhere; }
+    .material-toolbar__summary strong {
+        color: var(--color-text-1);
+    }
+    .material-toolbar__filter-summary {
+        overflow-wrap: anywhere;
+    }
     .material-tree-actions {
         min-width: 120px;
         display: flex;
@@ -1477,7 +1348,9 @@ defineExpose({
     }
     &__right {
         @apply border-l border-br flex flex-col;
-        width: 130px;
+        &:not(.material__right--detail) {
+            width: 130px;
+        }
         .select-lists {
             padding: 10px;
 
@@ -1485,74 +1358,6 @@ defineExpose({
                 width: 100px;
                 height: 100px;
             }
-        }
-    }
-    .material__right--detail {
-        width: 360px;
-        min-width: 360px;
-        background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-        .material-detail__header {
-            padding: 12px 14px;
-            border-bottom: 1px solid var(--color-border-2);
-            font-weight: 600;
-            color: var(--color-text-1);
-        }
-        .material-detail__content {
-            display: flex;
-            flex: 1;
-            min-height: 0;
-            flex-direction: column;
-        }
-        .material-detail__preview {
-            padding: 12px 14px 0;
-            :deep(.file-item) {
-                width: 100%;
-            }
-        }
-        .material-detail__meta {
-            padding: 12px 14px 0;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            .detail-meta-row {
-                display: flex;
-                align-items: flex-start;
-                gap: 6px;
-                font-size: 12px;
-                line-height: 1.45;
-                color: var(--color-text-2);
-                word-break: break-all;
-                padding: 7px 10px;
-                border-radius: 8px;
-                background: var(--color-fill-1, #f7f8fa);
-            }
-            .detail-meta-label {
-                width: 58px;
-                color: var(--color-text-3);
-                flex-shrink: 0;
-            }
-        }
-        .material-detail__form {
-            padding: 0 14px 14px;
-            :deep(.arco-form-item) {
-                margin-bottom: 8px;
-            }
-        }
-        .material-detail__url {
-            display: flex;
-            gap: 8px;
-            :deep(.arco-input-wrapper) {
-                flex: 1;
-            }
-            .arco-btn {
-                flex-shrink: 0;
-            }
-        }
-        .material-detail__empty {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
     }
 }
@@ -1594,16 +1399,41 @@ defineExpose({
 @media (max-width: 768px) {
     .material {
         height: auto;
-        .material__left { min-height: 0; max-height: 220px; overflow: auto; }
-        .material__center { padding: 12px; }
-        .material-toolbar__filter-search { min-width: 0; }
-        .material-center__footer { flex-wrap: wrap; gap: 12px; }
-        .material-center__footer :deep(.pagination) { max-width: 100%; overflow-x: auto; }
-        .material-center__footer :deep(.arco-pagination-jumper) { display: none; }
-        .material-toolbar__section-actions :deep(.arco-btn) { min-height: 44px; }
-        .material__right--detail { padding: 12px; }
-        .file-list { gap: 12px; }
-        .file-list .file-item-wrap { margin-right: 0; max-width: 100%; }
+        .material__left {
+            min-height: 0;
+            max-height: 220px;
+            overflow: auto;
+        }
+        .material__center {
+            padding: 12px;
+        }
+        .material-toolbar__filter-search {
+            min-width: 0;
+        }
+        .material-center__footer {
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .material-center__footer :deep(.pagination) {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .material-center__footer :deep(.arco-pagination-jumper) {
+            display: none;
+        }
+        .material-toolbar__section-actions :deep(.arco-btn) {
+            min-height: 44px;
+        }
+        .material__right--detail {
+            padding: 12px;
+        }
+        .file-list {
+            gap: 12px;
+        }
+        .file-list .file-item-wrap {
+            margin-right: 0;
+            max-width: 100%;
+        }
         .material-toolbar__filters {
             flex-direction: column;
         }

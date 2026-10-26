@@ -168,9 +168,9 @@ import {
     type ToolRankingPeriod
 } from '@/api/setting/tool_ranking'
 import OperateCollapse from './components/operate-collapse.vue'
-import ConfigEditFrame from './components/config-edit-frame.vue'
-import { useOperateSubmit } from './composables/use-operate-submit'
-import { useConfigLoad } from './composables/use-config-load'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useOperateSubmit } from '@/composables/use-operate-submit'
+import { useConfigLoad } from '@/composables/use-config-load'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 
 interface FocusItem {

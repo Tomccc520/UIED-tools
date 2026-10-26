@@ -352,9 +352,9 @@ import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
-import { useOperateSubmit } from './composables/use-operate-submit'
-import { useConfigLoad } from './composables/use-config-load'
-import ConfigEditFrame from './components/config-edit-frame.vue'
+import { useOperateSubmit } from '@/composables/use-operate-submit'
+import { useConfigLoad } from '@/composables/use-config-load'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
 
 interface ToolsLinkItem {
     name: string

@@ -28,7 +28,7 @@
                 <a-table-column title="分类" :width="160"><template #cell="{ record }">{{ record.category }}<div class="catalog-editor__desc">{{ record.group }}</div></template></a-table-column>
                 <a-table-column title="状态" :width="100"><template #cell="{ record }"><span class="catalog-editor__state" :class="{ 'is-disabled': record.tool.status === 0 }">{{ record.tool.status === 0 ? '已停用' : '已启用' }}</span></template></a-table-column>
                 <a-table-column title="搜索与问答信息" :width="160"><template #cell="{ record }"><span>{{ record.tool.seoTitle && record.tool.seoDescription ? 'SEO 已填写' : 'SEO 待完善' }}</span><div class="catalog-editor__desc">{{ record.tool.geoSummary ? 'GEO 已填写' : 'GEO 待完善' }}</div></template></a-table-column>
-                <a-table-column title="操作" :width="120" fixed="right">
+                <a-table-column :key="appStore.isMobile ? 'mobile-actions' : 'desktop-actions'" title="操作" :width="120" :fixed="appStore.isMobile ? undefined : 'right'">
                     <template #cell="{ record }"><div class="catalog-editor__row-actions"><a-button v-perms="['setting:website:catalog:save']" type="text" :disabled="disabled || !canEdit" :aria-label="`编辑${record.tool.title}`" @click="openEditor(record)">编辑</a-button><a v-if="resolveCatalogPreviewHref(record.tool.url, previewBase)" :href="resolveCatalogPreviewHref(record.tool.url, previewBase)" target="_blank" rel="noopener noreferrer" :aria-label="`预览${record.tool.title}`">预览</a></div></template>
                 </a-table-column>
             </template>
@@ -216,7 +216,7 @@ onBeforeUnmount(() => { disposed = true; window.removeEventListener('beforeunloa
 .catalog-editor__notice { margin-bottom: 16px; }
 .catalog-editor__location { color: var(--color-text-3); margin: 0 0 6px; }
 .catalog-editor__route { display: block; margin-top: 6px; color: var(--color-text-3); font-size: 11px; overflow-wrap: anywhere; }
-.catalog-editor__row-actions { display: flex; align-items: center; gap: 8px; }
+.catalog-editor__row-actions { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .catalog-editor__row-actions a, .catalog-editor__identity a { color: rgb(var(--primary-6)); text-decoration: none; font-size: 13px; }
 .catalog-editor__row-actions a:hover, .catalog-editor__identity a:hover { text-decoration: underline; }
 .catalog-editor__state { color: var(--color-text-2); font-size: 12px; }

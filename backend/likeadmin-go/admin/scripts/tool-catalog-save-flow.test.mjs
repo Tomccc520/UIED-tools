@@ -10,6 +10,7 @@ import vm from 'node:vm'
 import test from 'node:test'
 import ts from 'typescript'
 import { computed, reactive, ref } from 'vue'
+import * as catalogDomain from '../src/views/setting/website/composables/tool-catalog-domain.ts'
 import { flattenCatalogEditorTree, readCatalogEditorTree, updateCatalogEditorTool, resolveCatalogPreviewHref } from '../src/views/setting/website/composables/tool-catalog-editor.ts'
 
 const viewUrl = new URL('../src/views/setting/website/', import.meta.url)
@@ -31,10 +32,10 @@ const createPage = (permissions = ['setting:website:catalog:save']) => {
     const calls = { reads: 0, writes: [], refreshes: 0, errors: [], warnings: [], successes: [] }
     const io = { read: async () => ({ toolsCategoryTree: fixture() }), save: async () => ({}), refresh: async () => {} }
     const feedback = { msgSuccess: (text) => calls.successes.push(text), msgError: (text) => calls.errors.push(text), msgWarning: (text) => calls.warnings.push(text), confirm: async () => {} }
-    const composable = (file, name) => execute(fs.readFileSync(new URL('composables/' + file, viewUrl), 'utf8'), { feedback }, [name])[name]
+    const composable = (file, name) => execute(fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback }, [name])[name]
     const user = reactive({ perms: permissions })
     const page = execute(readScript('tools_catalog.vue'), {
-        feedback, readCatalogEditorTree,
+        feedback, readCatalogEditorTree, ...catalogDomain,
         useRouter: () => ({ push() {} }), useUserStore: () => user,
         useAppStore: () => ({ config: {}, getConfig: async () => { calls.refreshes++; await io.refresh() } }),
         useOperateSubmit: composable('use-operate-submit.ts', 'useOperateSubmit'),

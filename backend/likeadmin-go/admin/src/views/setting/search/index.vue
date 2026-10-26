@@ -39,15 +39,13 @@
     </div>
 </template>
 <script setup lang="ts" name="search">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { IconPlus } from '@arco-design/web-vue/es/icon'
 import { getSearch, setSearch } from '@/api/setting/search'
 import type { List, Search } from '@/api/setting/search'
 import AdminPageHeader from '@/components/page-header/index.vue'
-import ConfigEditFrame from '../website/components/config-edit-frame.vue'
-import { useConfigLoad } from '../website/composables/use-config-load'
-import { useOperateSubmit } from '../website/composables/use-operate-submit'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useConfigEditor } from '@/composables/use-config-editor'
 import useUserStore from '@/stores/modules/user'
 import feedback from '@/utils/feedback'
 
@@ -56,32 +54,22 @@ const formData = reactive<{ isHotSearch: number; list: SearchListItem[] }>({ isH
 const userStore = useUserStore()
 /** 读取后台原有保存权限，界面和脚本入口使用同一门禁。 */
 const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:search:save'))
-const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('热门搜索已保存')
-const baselineSnapshot = ref('')
 /** 排除仅供界面使用的行键，完整比较当前编辑值。 */
 const buildSnapshot = () => JSON.stringify({ isHotSearch: formData.isHotSearch, list: formData.list.map(item => ({ name: item.name, sort: item.sort })) })
-/** 首次读取之前不把默认表单视为可保存的草稿。 */
-const hasUnsavedChanges = computed(() => Boolean(baselineSnapshot.value) && buildSnapshot() !== baselineSnapshot.value)
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
-/** 读取失败、只读和正在提交时，禁止增删或发布配置。 */
-const canOperate = () => canEdit.value && hasLoadedData.value && !isLoadingData.value && !isSubmitting.value && !loadErrorMessage.value
+/** 公共编辑器维护读写状态和草稿保护，页面继续负责字段与接口。 */
+const { isLoadingData, hasLoadedData, loadErrorMessage, isSubmitting, lastSavedAt, submitError, hasUnsavedChanges, canOperate, loadConfiguration, reloadConfiguration, submitConfiguration } = useConfigEditor({ canEdit, snapshot: buildSnapshot, successText: '热门搜索已保存' })
 /** 为已验证的列表建立稳定行键，输入和排序时不会重新创建控件。 */
 const normalizeList = (list: List[]): SearchListItem[] => list.map((item, index) => ({ name: item.name, sort: item.sort, __rowKey: `${Date.now()}-${index}-${Math.random().toString(16).slice(2, 8)}` }))
 /** 按排序值生成独立预览，避免改变正在编辑的原列表顺序。 */
 const previewList = computed(() => formData.list.filter(item => item.name.trim()).slice().sort((left, right) => right.sort - left.sort))
 /** 先验证完整响应再回填；读取失败保留原草稿与保存基线。 */
-const getData = async () => {
-    if (isSubmitting.value) return false
-    return loadConfiguration(async () => {
-        const data = await getSearch() as Search
-        if (!data || ![0, 1].includes(data.isHotSearch) || !Array.isArray(data.list) || data.list.some(item => !item || typeof item.name !== 'string' || !Number.isInteger(item.sort) || item.sort < 0)) throw new Error('热门搜索响应不完整')
-        const nextList = normalizeList(data.list)
-        formData.isHotSearch = data.isHotSearch
-        formData.list = nextList
-        baselineSnapshot.value = buildSnapshot()
-        submitError.value = ''
-    })
-}
+const getData = () => loadConfiguration(async () => {
+    const data = await getSearch() as Search
+    if (!data || ![0, 1].includes(data.isHotSearch) || !Array.isArray(data.list) || data.list.some(item => !item || typeof item.name !== 'string' || !Number.isInteger(item.sort) || item.sort < 0)) throw new Error('热门搜索响应不完整')
+    const nextList = normalizeList(data.list)
+    formData.isHotSearch = data.isHotSearch
+    formData.list = nextList
+})
 /** 在成功加载且具有权限后新增关键词草稿。 */
 const handleAdd = () => {
     if (!canOperate()) return
@@ -98,26 +86,12 @@ const handleSave = async () => {
     const payload: Search = { isHotSearch: formData.isHotSearch, list: formData.list.map(item => ({ name: item.name.trim(), sort: item.sort })) }
     if (![0, 1].includes(payload.isHotSearch) || payload.list.some(item => !item.name || item.name.length > 30 || !Number.isInteger(item.sort) || item.sort < 0 || item.sort > 9999)) { feedback.msgError('请填写 1–30 字的关键词，排序须为 0–9999 的整数。'); return false }
     const snapshot = JSON.stringify(payload)
-    return runSubmit(async () => { await setSearch(payload); baselineSnapshot.value = snapshot })
+    return submitConfiguration(() => setSearch(payload), snapshot)
 }
-/** 重新读取前保护草稿；提交期间不触发读取。 */
-const reloadData = async () => {
-    if (isSubmitting.value) return false
-    return reloadConfiguration(getData)
-}
-/** 刷新或关闭浏览器前提示尚未保存的编辑。 */
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (hasUnsavedChanges.value || isSubmitting.value) { event.preventDefault(); event.returnValue = '' }
-}
-/** 离开页面前确认草稿，提交进行中不允许切走。 */
-const confirmLeave = async () => {
-    if (isSubmitting.value) return false
-    if (!hasUnsavedChanges.value) return true
-    try { await feedback.confirm('当前页面存在未保存更改，确定离开吗？'); return true } catch { return false }
-}
-onBeforeRouteLeave(confirmLeave)
-onMounted(() => { void getData(); window.addEventListener('beforeunload', handleBeforeUnload) })
-onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+/** 重新读取前由公共编辑器确认草稿，提交期间不启动读取。 */
+const reloadData = () => reloadConfiguration(getData)
+/** 页面挂载后读取本页业务数据，公共编辑器自行清理离开守卫。 */
+onMounted(() => { void getData() })
 </script>
 <style scoped lang="scss">
 .hot-search { min-width: 0; }

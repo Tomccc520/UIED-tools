@@ -7,637 +7,92 @@
  */
 -->
 <template>
-    <div class="consumer-order-page pro-page pro-page-shell">
-        <a-page-header
-            class="pro-page-header"
+    <div class="consumer-order-page pro-page-shell">
+        <admin-page-header
             title="订单管理"
-            subtitle="支持按状态和类型筛选订单，并提供导出、补单、关闭等运营操作。"
+            description="查询订单、核对支付与交付状态，按需要处理补单或交付资料。"
         >
-            <template #extra>
-                <a-space>
-                    <a-tag color="arcoblue" bordered>总订单 {{ pager.count }}</a-tag>
-                    <a-tag color="purple" bordered>当前页 {{ pager.lists.length }}</a-tag>
-                    <a-button @click="handleRefresh">刷新</a-button>
-                    <a-button @click="handleResetFilters">重置筛选</a-button>
-                    <a-button type="outline" :loading="exporting" @click="handleExport"
-                        >导出CSV</a-button
-                    >
-                </a-space>
-            </template>
-        </a-page-header>
-
-        <a-space direction="vertical" fill :size="16">
-            <a-card
-                v-if="isLicenseFeatureVisible && licenseRepairContext.isActive"
-                class="!border-none pro-card"
-                :bordered="false"
+            <template #extra
+                ><a-space wrap
+                    ><span class="order-count">共 {{ pager.count }} 条</span
+                    ><a-button @click="handleRefresh">刷新</a-button
+                    ><a-button :loading="exporting" @click="handleExport"
+                        >导出 CSV</a-button
+                    ></a-space
+                ></template
             >
-                <div class="repair-context-block">
-                    <div class="repair-context-block__main">
-                        <div class="repair-context-block__eyebrow">授权联动修复上下文</div>
-                        <div class="repair-context-block__title">
-                            {{
-                                licenseRepairContext.orderSn
-                                    ? `当前正在处理订单 ${licenseRepairContext.orderSn}`
-                                    : '当前正在处理授权联动异常'
-                            }}
-                        </div>
-                        <div class="repair-context-block__desc">
-                            已从授权管理页带回当前修复上下文。订单列表已按订单号和域名自动收窄，便于你直接定位问题订单并继续补资料。
-                        </div>
-                        <div class="repair-context-block__meta">
-                            <div class="repair-context-block__meta-item">
-                                <span>订单号</span>
-                                <strong>{{ licenseRepairContext.orderSn || '-' }}</strong>
-                            </div>
-                            <div class="repair-context-block__meta-item">
-                                <span>订单域名</span>
-                                <strong>{{ licenseRepairContext.domain || '-' }}</strong>
-                            </div>
-                            <div class="repair-context-block__meta-item">
-                                <span>联动状态</span>
-                                <strong>{{
-                                    licenseRepairContext.deliveryCheckText || '未指定'
-                                }}</strong>
-                            </div>
-                            <div class="repair-context-block__meta-item">
-                                <span>系统授权</span>
-                                <strong>{{ licenseRepairContext.licenseStatusText || '-' }}</strong>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="repair-context-block__aside">
-                        <div class="repair-context-block__aside-title">当前建议</div>
-                        <div class="repair-context-block__aside-text">
-                            先核对当前订单的交付资料是否完整，再根据提示跳回授权管理页修复系统授权。
-                        </div>
-                        <a-space direction="vertical" fill>
-                            <a-button
-                                v-if="licenseRepairContext.orderSn"
-                                type="primary"
-                                @click="handleGoBackToLicense"
-                            >
-                                返回授权页继续处理
-                            </a-button>
-                            <a-button @click="handleClearRepairContext">清除上下文</a-button>
-                        </a-space>
-                    </div>
-                </div>
-            </a-card>
-
-            <a-card class="!border-none pro-card" :bordered="false">
-                <div class="linkage-summary-grid">
-                    <button
-                        class="linkage-summary-card"
-                        type="button"
-                        @click="handleQuickFilterDelivery('')"
-                    >
-                        <div class="linkage-summary-card__label">源码交付订单</div>
-                        <div class="linkage-summary-card__value">
-                            {{ linkageSummary.sourceOrderCount }}
-                        </div>
-                        <div class="linkage-summary-card__desc">当前参与源码交付的订单总数</div>
-                    </button>
-                    <button
-                        class="linkage-summary-card linkage-summary-card--danger"
-                        type="button"
-                        @click="handleQuickFilterDelivery('abnormal')"
-                    >
-                        <div class="linkage-summary-card__label">异常待处理</div>
-                        <div class="linkage-summary-card__value">
-                            {{ linkageSummary.abnormalCount }}
-                        </div>
-                        <div class="linkage-summary-card__desc">交付资料、域名或下载链路存在问题</div>
-                    </button>
-                    <button
-                        v-if="isLicenseFeatureVisible"
-                        class="linkage-summary-card"
-                        type="button"
-                        @click="handleQuickFilterDelivery('license_inactive')"
-                    >
-                        <div class="linkage-summary-card__label">授权未激活</div>
-                        <div class="linkage-summary-card__value">
-                            {{ linkageSummary.licenseInactiveCount }}
-                        </div>
-                        <div class="linkage-summary-card__desc">
-                            已交付但系统授权还没进入可用状态
-                        </div>
-                    </button>
-                    <button
-                        v-if="isLicenseFeatureVisible"
-                        class="linkage-summary-card"
-                        type="button"
-                        @click="handleQuickFilterDelivery('domain_mismatch')"
-                    >
-                        <div class="linkage-summary-card__label">域名不匹配</div>
-                        <div class="linkage-summary-card__value">
-                            {{ linkageSummary.domainMismatchCount }}
-                        </div>
-                        <div class="linkage-summary-card__desc">
-                            订单绑定域名和系统授权域名不一致
-                        </div>
-                    </button>
-                    <button
-                        class="linkage-summary-card"
-                        type="button"
-                        @click="handleQuickFilterDelivery('download_invalid')"
-                    >
-                        <div class="linkage-summary-card__label">下载异常</div>
-                        <div class="linkage-summary-card__value">
-                            {{ linkageSummary.downloadInvalidCount }}
-                        </div>
-                        <div class="linkage-summary-card__desc">下载链接无效或最近检测失败</div>
-                    </button>
-                    <button
-                        class="linkage-summary-card"
-                        type="button"
-                        @click="handleQuickFilterDelivery('delivery_incomplete')"
-                    >
-                        <div class="linkage-summary-card__label">资料待补充</div>
-                        <div class="linkage-summary-card__value">
-                            {{ linkageSummary.deliveryIncompleteCount }}
-                        </div>
-                        <div class="linkage-summary-card__desc">域名、交付凭据或下载入口仍缺字段</div>
-                    </button>
-                </div>
-            </a-card>
-
-            <a-card class="!border-none pro-card" :bordered="false">
-                <a-form class="mb-[-16px]" :model="queryParams" layout="inline">
-                    <a-form-item label="关键字">
-                        <a-input
-                            v-model="queryParams.keyword"
-                            class="w-[300px]"
-                            placeholder="订单号/商品名称/用户昵称/手机"
-                            allow-clear
-                            @press-enter="handleSearch"
-                            @clear="handleSearch"
-                        />
-                    </a-form-item>
-
-                    <a-form-item label="订单状态">
-                        <a-select v-model="queryParams.status" class="w-[180px]" allow-clear>
-                            <a-option value="">全部状态</a-option>
-                            <a-option value="0">待支付</a-option>
-                            <a-option value="1">已支付</a-option>
-                            <a-option value="2">已关闭</a-option>
-                        </a-select>
-                    </a-form-item>
-
-                    <a-form-item label="回调状态">
-                        <a-select
-                            v-model="queryParams.callbackStatus"
-                            class="w-[180px]"
-                            allow-clear
-                        >
-                            <a-option value="">全部回调</a-option>
-                            <a-option value="0">未回调</a-option>
-                            <a-option value="3">支付处理中</a-option>
-                            <a-option value="1">回调成功</a-option>
-                            <a-option value="2">回调失败</a-option>
-                        </a-select>
-                    </a-form-item>
-
-                    <a-form-item label="交付状态">
-                        <a-select
-                            v-model="queryParams.deliveryStatus"
-                            class="w-[180px]"
-                            allow-clear
-                        >
-                            <a-option value="">全部交付</a-option>
-                            <a-option value="0">未交付</a-option>
-                            <a-option value="1">已交付</a-option>
-                            <a-option value="2">待补充</a-option>
-                            <a-option value="3">已失效</a-option>
-                        </a-select>
-                    </a-form-item>
-
-                    <a-form-item label="联动状态">
-                        <a-select
-                            v-model="queryParams.deliveryCheckStatus"
-                            class="w-[200px]"
-                            allow-clear
-                        >
-                            <a-option value="">全部联动</a-option>
-                            <a-option value="abnormal">异常待处理</a-option>
-                            <a-option value="pending_delivery">待交付</a-option>
-                            <a-option v-if="isLicenseFeatureVisible" value="license_inactive">授权未激活</a-option>
-                            <a-option v-if="isLicenseFeatureVisible" value="domain_mismatch">域名不匹配</a-option>
-                            <a-option value="download_invalid">下载异常</a-option>
-                            <a-option value="delivery_incomplete">资料不完整</a-option>
-                            <a-option value="expired">已失效</a-option>
-                            <a-option value="ok">资料完整</a-option>
-                        </a-select>
-                    </a-form-item>
-
-                    <a-form-item label="绑定域名">
-                        <a-input
-                            v-model="queryParams.boundDomain"
-                            class="w-[220px]"
-                            placeholder="筛选订单绑定域名"
-                            allow-clear
-                            @press-enter="handleSearch"
-                            @clear="handleSearch"
-                        />
-                    </a-form-item>
-
-                    <a-form-item label="商品类型">
-                        <a-select v-model="queryParams.productType" class="w-[200px]" allow-clear>
-                            <a-option value="">全部类型</a-option>
-                            <a-option value="member_plan">会员套餐</a-option>
-                            <a-option value="points_pack">积分包</a-option>
-                        </a-select>
-                    </a-form-item>
-
-                    <a-form-item label="创建时间">
-                        <daterange-picker
-                            v-model:startTime="queryParams.startTime"
-                            v-model:endTime="queryParams.endTime"
-                        />
-                    </a-form-item>
-
-                    <a-form-item>
-                        <a-button type="primary" @click="handleSearch">查询</a-button>
-                        <a-button class="ml-2" @click="handleResetFilters">重置</a-button>
-                    </a-form-item>
-                </a-form>
-                <div class="filter-result">
-                    筛选条件：{{ activeFilterCount }} 项 | 当前加载 {{ pager.lists.length }} 条
-                </div>
-            </a-card>
-
-            <a-card class="!border-none pro-card" :bordered="false">
-                <list-load-feedback v-if="pager.error && pager.lists.length" :error="pager.error" :loading="pager.loading" has-data @retry="handleRefresh" />
-                <a-table
-                    :data="pager.lists"
-                    :loading="pager.loading"
-                    :pagination="false"
-                    :bordered="false"
-                    :columns="orderColumns"
-                    :scroll="orderTableScroll"
-                    row-key="id"
-                >
-                    <template #status="{ record }">
-                        <a-tag :color="resolveStatusColor(record.status)" bordered>{{
-                            record.statusText
-                        }}</a-tag>
-                    </template>
-
-                    <template #callbackStatus="{ record }">
-                        <a-tag :color="resolveCallbackStatusColor(record.callbackStatus)" bordered>
-                            {{ record.callbackStatusText || '未回调' }}
-                        </a-tag>
-                    </template>
-
-                    <template #amount="{ record }"
-                        >¥{{ Number(record.amount || 0).toFixed(2) }}</template
-                    >
-
-                    <template #callbackError="{ record }">
-                        <a-typography-text
-                            v-if="record.callbackError"
-                            type="danger"
-                            :ellipsis="{ rows: 1, showTooltip: true }"
-                        >
-                            {{ record.callbackError }}
-                        </a-typography-text>
-                        <span v-else>-</span>
-                    </template>
-
-                    <template #deliveryStatus="{ record }">
-                        <a-tag :color="resolveDeliveryStatusColor(record.deliveryStatus)" bordered>
-                            {{ record.deliveryStatusText || '未交付' }}
-                        </a-tag>
-                    </template>
-
-                    <template #deliveryInfo="{ record }">
-                        <div class="delivery-info">
-                            <div>域名：{{ record.licenseBoundDomain || '-' }}</div>
-                            <div v-if="isLicenseFeatureVisible">授权码：{{ record.licenseKeyMasked || '-' }}</div>
-                            <div>
-                                下载：
-                                <a
-                                    v-if="record.downloadUrl"
-                                    :href="record.downloadUrl"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    >打开链接</a
-                                >
-                                <span v-else>-</span>
-                            </div>
-                            <div>下载检测：{{ record.downloadCheckStatusText || '未检测' }}</div>
-                            <div>交付时间：{{ record.deliveredTime || '-' }}</div>
-                        </div>
-                    </template>
-
-                    <template #deliveryCheck="{ record }">
-                        <div
-                            v-if="record.isSourceDeliveryOrder"
-                            class="delivery-check-block"
-                            :class="resolveDeliveryCheckBlockClass(record)"
-                        >
-                            <div class="delivery-check-block__head">
-                                <a-tag :color="resolveDeliveryCheckColor(record)" bordered>
-                                    {{ resolveDeliveryCheckText(record) }}
-                                </a-tag>
-                                <span v-if="isLicenseFeatureVisible" class="delivery-check-block__meta-text"
-                                    >系统授权：{{ record.systemLicenseStatusText || '-' }}</span
-                                >
-                            </div>
-                            <div class="delivery-check-block__meta">
-                                <div>
-                                    <span>系统域名</span>
-                                    <strong>{{ record.systemLicenseBoundDomain || '-' }}</strong>
-                                </div>
-                                <div>
-                                    <span>下载检测</span>
-                                    <strong>{{
-                                        record.downloadCheckStatusText || '未检测'
-                                    }}</strong>
-                                </div>
-                            </div>
-                            <div
-                                v-if="record.downloadCheckTime || record.downloadCheckMessage"
-                                class="delivery-check-block__detail"
-                            >
-                                <div v-if="record.downloadCheckTime">
-                                    最近检测：{{ record.downloadCheckTime }}
-                                </div>
-                                <div v-if="record.downloadCheckMessage">
-                                    检测结果：{{ record.downloadCheckMessage }}
-                                </div>
-                            </div>
-                            <div
-                                v-if="collectDeliveryIssues(record).length > 0"
-                                class="delivery-check-block__issues"
-                            >
-                                <div
-                                    v-for="issue in collectDeliveryIssues(record)"
-                                    :key="issue"
-                                    class="delivery-check-block__issue"
-                                >
-                                    {{ issue }}
-                                </div>
-                            </div>
-                        </div>
-                        <a-tag v-else color="gray" bordered>不参与</a-tag>
-                    </template>
-
-                    <template #action="{ record }">
-                        <a-space size="mini">
-                            <a-button
-                                v-perms="['order:delivery']"
-                                type="text"
-                                status="warning"
-                                @click="handleOpenDelivery(record)"
-                            >
-                                交付
-                            </a-button>
-                            <a-button
-                                v-if="isLicenseFeatureVisible && record.isSourceDeliveryOrder"
-                                v-perms="['setting:license:detail']"
-                                type="text"
-                                @click="handleGoLicense(record)"
-                            >
-                                去授权管理
-                            </a-button>
-                            <a-button
-                                v-if="record.isSourceDeliveryOrder"
-                                v-perms="['order:check_download']"
-                                type="text"
-                                status="primary"
-                                :loading="isRowActionLoading(record.orderSn, 'check_download')"
-                                @click="handleCheckDownload(record)"
-                            >
-                                检测下载
-                            </a-button>
-                            <a-button
-                                v-if="Number(record.status) !== 1"
-                                v-perms="['order:reissue']"
-                                type="text"
-                                status="success"
-                                @click="handleOpenReissue(record.orderSn)"
-                            >
-                                补单
-                            </a-button>
-                            <a-button
-                                v-if="Number(record.status) === 0"
-                                v-perms="['order:close']"
-                                type="text"
-                                status="danger"
-                                :loading="isRowActionLoading(record.orderSn, 'close')"
-                                @click="handleCloseOrder(record.orderSn)"
-                            >
-                                关闭
-                            </a-button>
-                        </a-space>
-                    </template>
-                    <template #empty><list-load-feedback :error="pager.error" :loading="pager.loading" :loaded="pager.loaded" empty-text="暂无匹配的订单数据" @retry="handleRefresh" /></template>
-                </a-table>
-
-                <div class="flex justify-end mt-4">
-                    <pagination v-model="pager" @change="loadOrderList" />
-                </div>
-            </a-card>
-        </a-space>
-
-        <a-modal
-            v-model:visible="reissueModal.visible"
-            title="订单补单"
-            :ok-loading="reissueSubmitting"
-            @ok="handleSubmitReissue"
-        >
-            <a-form :model="reissueModal" layout="vertical">
-                <a-form-item label="订单号">
-                    <a-input :model-value="reissueModal.orderSn" disabled />
-                </a-form-item>
-                <a-form-item label="交易号（可选）">
-                    <a-input
-                        v-model="reissueModal.tradeNo"
-                        placeholder="可选，不填将自动使用 admin_manual_订单号"
-                        allow-clear
-                    />
-                </a-form-item>
-                <a-form-item label="支付渠道">
-                    <a-select v-model="reissueModal.payChannel" placeholder="请选择补单支付渠道">
-                        <a-option value="admin_manual">后台人工（admin_manual）</a-option>
-                        <a-option value="wechat_h5">微信H5（wechat_h5）</a-option>
-                        <a-option value="alipay_h5">支付宝H5（alipay_h5）</a-option>
-                        <a-option value="mock">开发模拟（mock）</a-option>
-                    </a-select>
-                </a-form-item>
-                <a-form-item label="补单备注（可选）">
-                    <a-input
-                        v-model="reissueModal.remark"
-                        placeholder="可选，例如：人工核验到账后补单"
-                        allow-clear
-                    />
-                </a-form-item>
-            </a-form>
-        </a-modal>
-
-        <a-modal
-            v-model:visible="deliveryModal.visible"
-            title="订单交付信息"
-            :width="860"
-            :ok-loading="deliverySubmitting"
-            @ok="handleSubmitDelivery"
-        >
-            <div class="delivery-workspace">
-                <div class="delivery-workspace__main">
-                    <div class="delivery-workspace__eyebrow">源码交付工作台</div>
-                    <div class="delivery-workspace__title">
-                        {{
-                            deliveryModal.orderSn
-                                ? `当前正在维护订单 ${deliveryModal.orderSn}`
-                                : '当前正在维护源码交付信息'
-                        }}
-                    </div>
-                    <div class="delivery-workspace__desc">
-                        {{ isLicenseFeatureVisible
-                            ? '先补齐域名、授权码和下载入口，再根据系统授权状态判断是否需要跳到授权管理页继续修复。'
-                            : '先补齐域名、交付凭据和下载入口，再检查资料与下载链路是否完整。' }}
-                    </div>
-                    <div class="delivery-workspace__meta">
-                        <div class="delivery-workspace__meta-item">
-                            <span>交付状态</span>
-                            <strong>{{ deliveryModal.deliveryStatusText }}</strong>
-                        </div>
-                        <div class="delivery-workspace__meta-item">
-                            <span>交付校验</span>
-                            <strong>{{ deliveryModal.deliveryCheckText }}</strong>
-                        </div>
-                        <div v-if="isLicenseFeatureVisible" class="delivery-workspace__meta-item">
-                            <span>系统授权</span>
-                            <strong>{{ deliveryModal.systemLicenseStatusText || '-' }}</strong>
-                        </div>
-                        <div v-if="isLicenseFeatureVisible" class="delivery-workspace__meta-item">
-                            <span>系统域名</span>
-                            <strong>{{ deliveryModal.systemLicenseBoundDomain || '-' }}</strong>
-                        </div>
-                    </div>
-                </div>
-                <div class="delivery-workspace__aside">
-                    <div class="delivery-workspace__aside-title">当前动作建议</div>
-                    <div class="delivery-workspace__aside-text">
-                        {{ deliveryModalActionSummary }}
-                    </div>
-                    <a-space direction="vertical" fill>
-                        <a-button
-                            v-if="isLicenseFeatureVisible && deliveryModal.id > 0"
-                            type="primary"
-                            @click="handleGoLicenseFromDelivery"
-                        >
-                            去授权管理继续修复
-                        </a-button>
-                        <a-button
-                            v-if="isLicenseFeatureVisible && deliveryModal.systemLicenseBoundDomain"
-                            @click="handleApplySystemDomainToDelivery"
-                        >
-                            使用系统授权域名
-                        </a-button>
-                        <a-button
-                            type="outline"
-                            :loading="isRowActionLoading(deliveryModal.orderSn, 'check_download')"
-                            :disabled="!String(deliveryModal.downloadUrl || '').trim()"
-                            @click="handleCheckDownload(deliveryModal)"
-                        >
-                            检测下载链接
-                        </a-button>
-                    </a-space>
-                </div>
-            </div>
-
-            <div class="delivery-workspace-checklist">
-                <div
-                    v-for="item in deliveryModalChecklist"
-                    :key="item.label"
-                    class="delivery-workspace-checklist__item"
-                    :class="item.className"
-                >
-                    <div class="delivery-workspace-checklist__label">{{ item.label }}</div>
-                    <div class="delivery-workspace-checklist__value">{{ item.value }}</div>
-                    <div class="delivery-workspace-checklist__desc">{{ item.desc }}</div>
-                </div>
-            </div>
-
-            <a-form :model="deliveryModal" layout="vertical">
-                <a-form-item label="订单号">
-                    <a-input :model-value="deliveryModal.orderSn" disabled />
-                </a-form-item>
-                <a-form-item label="交付状态">
-                    <a-select v-model="deliveryModal.deliveryStatus">
-                        <a-option :value="0">未交付</a-option>
-                        <a-option :value="1">已交付</a-option>
-                        <a-option :value="2">待补充</a-option>
-                        <a-option :value="3">已失效</a-option>
-                    </a-select>
-                </a-form-item>
-                <a-form-item label="绑定域名">
-                    <a-input
-                        v-model="deliveryModal.licenseBoundDomain"
-                        allow-clear
-                        placeholder="如：uiedtool.com"
-                    />
-                </a-form-item>
-                <a-form-item v-if="isLicenseFeatureVisible" label="授权码">
-                    <a-input
-                        v-model="deliveryModal.licenseKey"
-                        allow-clear
-                        placeholder="可记录发给客户的授权码"
-                    />
-                </a-form-item>
-                <a-form-item label="下载链接">
-                    <a-input
-                        v-model="deliveryModal.downloadUrl"
-                        allow-clear
-                        placeholder="源码包或交付文档下载地址"
-                    />
-                </a-form-item>
-                <a-form-item label="下载检测">
-                    <div class="delivery-check-inline">
-                        <a-tag
-                            :color="resolveDownloadCheckTagColor(deliveryModal.downloadCheckStatus)"
-                            bordered
-                        >
-                            {{ deliveryModal.downloadCheckStatusText || '未检测' }}
-                        </a-tag>
-                        <span
-                            v-if="deliveryModal.downloadCheckTime"
-                            class="delivery-check-inline__text"
-                        >
-                            最近检测：{{ deliveryModal.downloadCheckTime }}
-                        </span>
-                    </div>
-                    <div
-                        v-if="deliveryModal.downloadCheckMessage"
-                        class="delivery-check-inline__text mt-2"
-                    >
-                        {{ deliveryModal.downloadCheckMessage }}
-                    </div>
-                </a-form-item>
-                <a-form-item label="交付时间（Unix 秒，可选）">
-                    <a-input-number
-                        v-model="deliveryModal.deliveredTime"
-                        :min="0"
-                        :step="3600"
-                        mode="button"
-                        class="w-full"
-                    />
-                </a-form-item>
-                <a-form-item label="交付备注">
-                    <a-textarea
-                        v-model="deliveryModal.deliveryNote"
-                        :auto-size="{ minRows: 2, maxRows: 4 }"
-                    />
-                </a-form-item>
-            </a-form>
-        </a-modal>
+        </admin-page-header>
+        <div class="order-page-sections">
+            <a-card :bordered="false" class="order-panel"
+                ><order-overview
+                    :summary="linkageSummary"
+                    :repair-context="licenseRepairContext"
+                    :license-visible="isLicenseFeatureVisible"
+                    :loading="summaryLoading"
+                    :loaded="summaryLoaded"
+                    :error="summaryError"
+                    @filter="handleQuickFilterDelivery"
+                    @retry="loadLinkageSummary"
+                    @return-license="handleGoBackToLicense"
+                    @clear-context="handleClearRepairContext"
+            /></a-card>
+            <a-card :bordered="false" class="order-panel"
+                ><order-filters-panel
+                    :model-value="queryParams"
+                    :license-visible="isLicenseFeatureVisible"
+                    :active-filter-count="activeFilterCount"
+                    :result-count="pager.lists.length"
+                    @patch="updateOrderFilters"
+                    @search="handleSearch"
+                    @reset="handleResetFilters"
+            /></a-card>
+            <a-card :bordered="false" class="order-panel"
+                ><order-table
+                    :records="pager.lists"
+                    :state="{
+                        loading: pager.loading,
+                        loaded: pager.loaded,
+                        error: pager.error
+                    }"
+                    :license-visible="isLicenseFeatureVisible"
+                    :row-action-loading="rowActionLoadingMap"
+                    @delivery="handleOpenDelivery"
+                    @license="handleGoLicense"
+                    @check-download="handleCheckDownload"
+                    @reissue="handleOpenReissue"
+                    @close="handleCloseOrder"
+                    @retry="handleRefresh" />
+                <div class="order-page-pagination">
+                    <pagination v-model="pager" @change="loadOrderList" /></div
+            ></a-card>
+        </div>
+        <order-reissue-dialog
+            v-if="reissueModal.visible"
+            :model-value="reissueModal"
+            :saving="reissueSubmitting"
+            :error="reissueError"
+            @patch="patchReissueDraft"
+            @submit="handleSubmitReissue"
+            @close="closeReissueDialog"
+        />
+        <order-delivery-dialog
+            v-if="deliveryModal.visible"
+            :model-value="deliveryModal"
+            :saving="deliverySubmitting"
+            :checking="isRowActionLoading(deliveryModal.orderSn, 'check_download')"
+            :error="deliveryError"
+            :license-visible="isLicenseFeatureVisible"
+            @patch="patchDeliveryDraft"
+            @submit="handleSubmitDelivery"
+            @close="closeDeliveryDialog"
+            @license="handleGoLicenseFromDelivery"
+            @apply-system-domain="handleApplySystemDomainToDelivery"
+            @check-download="handleCheckDownload(deliveryModal)"
+        />
     </div>
 </template>
 
 <script setup lang="ts" name="consumerOrderList">
-import type { TableColumnData } from '@arco-design/web-vue'
 import {
     checkOrderDownload,
     closeOrder,
@@ -648,11 +103,18 @@ import {
     saveOrderDelivery
 } from '@/api/consumer'
 import { usePaging } from '@/hooks/usePaging'
-import ListLoadFeedback from '@/components/list-load-feedback/index.vue'
 import { getRoutePath } from '@/router'
 import feedback from '@/utils/feedback'
+import AdminPageHeader from '@/components/page-header/index.vue'
+import OrderOverview from './components/order-overview.vue'
+import OrderFiltersPanel from './components/order-filters.vue'
+import OrderTable from './components/order-table.vue'
+import OrderReissueDialog from './components/order-reissue-dialog.vue'
+import OrderDeliveryDialog from './components/order-delivery-dialog.vue'
+import { normalizeOrderLinkageSummary, resolveDeliveryCheckText } from './order-display'
+import type { OrderFilters, OrderReissueDraft, OrderDeliveryDraft } from './types'
 
-const queryParams = reactive({
+const queryParams = reactive<OrderFilters>({
     keyword: '',
     status: '',
     callbackStatus: '',
@@ -666,8 +128,16 @@ const queryParams = reactive({
 const reissueSubmitting = ref(false)
 const deliverySubmitting = ref(false)
 const exporting = ref(false)
+const reissueError = ref('')
+const deliveryError = ref('')
+const summaryLoading = ref(false)
+const summaryLoaded = ref(false)
+const summaryError = ref('')
+let summaryRequestSerial = 0
 const route = useRoute()
 const router = useRouter()
+const orderRouteIdentity = route.name ?? route.path
+let routeResetPending = false
 const isLicenseFeatureVisible = computed(() => Boolean(getRoutePath('setting:license:detail')))
 const rowActionLoadingMap = reactive<Record<string, boolean>>({})
 const linkageSummary = ref({
@@ -681,14 +151,14 @@ const linkageSummary = ref({
     deliveryIncompleteCount: 0,
     expiredCount: 0
 })
-const reissueModal = reactive({
+const reissueModal = reactive<OrderReissueDraft>({
     visible: false,
     orderSn: '',
     tradeNo: '',
     payChannel: 'admin_manual',
     remark: ''
 })
-const deliveryModal = reactive({
+const deliveryModal = reactive<OrderDeliveryDraft>({
     id: 0,
     visible: false,
     orderSn: '',
@@ -708,6 +178,31 @@ const deliveryModal = reactive({
     deliveryNote: '',
     deliveredTime: 0
 })
+
+/** 合并筛选字段补丁，查询仍由统一搜索或原有清空事件触发。 */
+const updateOrderFilters = (patch: Partial<OrderFilters>) => Object.assign(queryParams, patch)
+/** 补单中保持提交快照稳定，禁止子组件更新订单号或可见状态。 */
+const patchReissueDraft = (patch: Partial<OrderReissueDraft>) => {
+    if (reissueSubmitting.value) return
+    for (const key of ['tradeNo', 'payChannel', 'remark'] as const)
+        if (key in patch) reissueModal[key] = String(patch[key] ?? '')
+}
+/** 交付编辑只合并允许修改的字段，不接受组件更换目标订单标识。 */
+const patchDeliveryDraft = (patch: Partial<OrderDeliveryDraft>) => {
+    if (deliverySubmitting.value) return
+    for (const key of ['licenseBoundDomain', 'licenseKey', 'downloadUrl', 'deliveryNote'] as const)
+        if (key in patch) deliveryModal[key] = String(patch[key] ?? '')
+    for (const key of ['deliveryStatus', 'deliveredTime'] as const)
+        if (key in patch) deliveryModal[key] = Number(patch[key] ?? 0)
+}
+/** 关闭补单表单；请求未完成时保持结果可观察，避免另一个订单替换目标。 */
+const closeReissueDialog = () => {
+    if (!reissueSubmitting.value) reissueModal.visible = false
+}
+/** 关闭交付表单；保存期间不允许关闭或改换目标订单。 */
+const closeDeliveryDialog = () => {
+    if (!deliverySubmitting.value) deliveryModal.visible = false
+}
 
 /**
  * 函数说明：规范化订单号，统一作为行级动作 loading 的定位 key。
@@ -741,97 +236,6 @@ const setRowActionLoading = (orderSn: string, action: string, loading: boolean) 
 const isRowActionLoading = (orderSn: string, action: string) => {
     return Boolean(rowActionLoadingMap[getRowActionKey(orderSn, action)])
 }
-
-/**
- * 函数说明：汇总交付弹窗顶部的动作建议，让运营先知道当前这单优先修什么。
- */
-const deliveryModalActionSummary = computed(() => {
-    if (!isLicenseFeatureVisible.value) {
-        if (deliveryModal.deliveryCheckStatus === 'download_invalid') {
-            return '当前订单的下载链路异常，建议先检测并替换下载链接，再决定是否交付。'
-        }
-        if (deliveryModal.deliveryCheckStatus === 'delivery_incomplete') {
-            return '当前订单资料还不完整，优先补齐域名、交付凭据和下载入口。'
-        }
-        return '请复核交付资料与下载链路，确认完整后再保存。'
-    }
-    if (deliveryModal.deliveryCheckStatus === 'license_inactive') {
-        return '当前订单的主要问题是授权未激活，建议先跳到授权管理页完成校验。'
-    }
-    if (deliveryModal.deliveryCheckStatus === 'domain_mismatch') {
-        return '当前订单的主要问题是域名不匹配，建议优先核对订单域名与系统授权域名。'
-    }
-    if (deliveryModal.deliveryCheckStatus === 'download_invalid') {
-        return '当前订单的下载链路异常，建议先检测并替换下载链接，再决定是否交付。'
-    }
-    if (deliveryModal.deliveryCheckStatus === 'delivery_incomplete') {
-        return '当前订单资料还不完整，优先补齐域名、授权码和下载入口。'
-    }
-    if (deliveryModal.deliveryCheckStatus === 'expired') {
-        return '当前订单已标记为失效，处理前请先确认是否需要重新交付或更换授权。'
-    }
-    return '当前交付资料已基本齐全，可以复核下载链路后完成保存。'
-})
-
-/**
- * 函数说明：生成交付弹窗里的资料清单块，统一展示当前这单缺哪些材料。
- */
-const deliveryModalChecklist = computed(() => {
-    const hasDomain = Boolean(String(deliveryModal.licenseBoundDomain || '').trim())
-    const hasLicenseKey = Boolean(String(deliveryModal.licenseKey || '').trim())
-    const hasDownloadUrl = Boolean(String(deliveryModal.downloadUrl || '').trim())
-    const checklist = [
-        {
-            label: '域名资料',
-            value: hasDomain ? '已填写' : '待补充',
-            desc: hasDomain
-                ? `当前域名：${deliveryModal.licenseBoundDomain}`
-                : '源码交付通常需要绑定客户最终使用域名。',
-            className: hasDomain ? 'is-ok' : 'is-warning'
-        },
-        ...(isLicenseFeatureVisible.value ? [{
-            label: '授权码资料',
-            value: hasLicenseKey ? '已填写' : '待补充',
-            desc: hasLicenseKey
-                ? '订单已记录授权码，可用于客户交付。'
-                : '授权码为空时，客户无法直接完成授权激活。',
-            className: hasLicenseKey ? 'is-ok' : 'is-warning'
-        }] : []),
-        {
-            label: '下载链路',
-            value:
-                deliveryModal.downloadCheckStatus === 1
-                    ? '可下载'
-                    : hasDownloadUrl
-                    ? '待确认'
-                    : '缺下载入口',
-            desc:
-                deliveryModal.downloadCheckMessage ||
-                (hasDownloadUrl
-                    ? '建议交付前手动做一次下载检测。'
-                    : '源码包或交付文档下载链接尚未填写。'),
-            className:
-                deliveryModal.downloadCheckStatus === 1
-                    ? 'is-ok'
-                    : hasDownloadUrl
-                    ? ''
-                    : 'is-danger'
-        },
-        ...(isLicenseFeatureVisible.value ? [{
-            label: '系统授权',
-            value: deliveryModal.systemLicenseStatusText || '未记录',
-            desc: deliveryModal.systemLicenseBoundDomain
-                ? `系统域名：${deliveryModal.systemLicenseBoundDomain}`
-                : '当前没有读取到系统授权绑定域名。',
-            className:
-                deliveryModal.deliveryCheckStatus === 'license_inactive' ||
-                deliveryModal.deliveryCheckStatus === 'domain_mismatch'
-                    ? 'is-danger'
-                    : ''
-        }] : [])
-    ]
-    return checklist
-})
 
 /**
  * 函数说明：解析从授权页返回时带上的修单上下文，便于订单页直接告诉运营当前在修哪一单。
@@ -868,149 +272,6 @@ const activeFilterCount = computed(() => {
         queryParams.endTime
     ].reduce((count, value) => count + (String(value || '').trim() ? 1 : 0), 0)
 })
-
-/**
- * 函数说明：订单列表表格列定义，统一输出运营核心字段。
- */
-const orderColumns: TableColumnData[] = [
-    { title: '订单号', dataIndex: 'orderSn', width: 210 },
-    { title: '用户ID', dataIndex: 'userId', width: 90 },
-    { title: '用户昵称', dataIndex: 'userNickname', width: 130, ellipsis: true, tooltip: true },
-    { title: '手机号', dataIndex: 'userMobile', width: 140 },
-    { title: '商品类型', dataIndex: 'productTypeText', width: 110 },
-    { title: '商品名称', dataIndex: 'productName', width: 150, ellipsis: true, tooltip: true },
-    { title: '金额', dataIndex: 'amount', width: 100, slotName: 'amount' },
-    { title: '状态', dataIndex: 'status', width: 100, slotName: 'status' },
-    { title: '回调状态', dataIndex: 'callbackStatus', width: 110, slotName: 'callbackStatus' },
-    { title: '交易号', dataIndex: 'tradeNo', width: 190, ellipsis: true, tooltip: true },
-    { title: '回调时间', dataIndex: 'callbackTime', width: 170 },
-    { title: '回调错误', dataIndex: 'callbackError', width: 220, slotName: 'callbackError' },
-    { title: '交付状态', dataIndex: 'deliveryStatus', width: 110, slotName: 'deliveryStatus' },
-    { title: '交付校验', dataIndex: 'deliveryCheck', width: 320, slotName: 'deliveryCheck' },
-    { title: '交付信息', dataIndex: 'deliveryInfo', width: 280, slotName: 'deliveryInfo' },
-    { title: '会员天数', dataIndex: 'memberDays', width: 100 },
-    { title: '基础积分', dataIndex: 'points', width: 100 },
-    { title: '赠送积分', dataIndex: 'giftPoints', width: 100 },
-    { title: '支付渠道', dataIndex: 'payChannel', width: 120 },
-    { title: '支付时间', dataIndex: 'paidTime', width: 170 },
-    { title: '创建时间', dataIndex: 'createTime', width: 170 },
-    { title: '操作', dataIndex: 'action', width: 280, fixed: 'right', slotName: 'action' }
-]
-
-/**
- * 函数说明：为订单高密度表格提供横向滚动宽度，避免列被压缩后影响运营识别与点击。
- */
-const orderTableScroll = computed(() => ({
-    x: 4200
-}))
-
-/**
- * 函数说明：订单状态颜色映射，便于运营快速识别处理优先级。
- */
-const resolveStatusColor = (status: number | string) => {
-    const value = Number(status)
-    if (value === 1) {
-        return 'green'
-    }
-    if (value === 2) {
-        return 'gray'
-    }
-    return 'orange'
-}
-
-/**
- * 函数说明：回调状态颜色映射，便于运营快速识别回调异常订单。
- */
-const resolveCallbackStatusColor = (status: number | string) => {
-    const value = Number(status)
-    if (value === 1) {
-        return 'green'
-    }
-    if (value === 2) {
-        return 'red'
-    }
-    return 'orange'
-}
-
-/**
- * 函数说明：交付状态颜色映射，便于运营快速识别源码交付进度。
- */
-const resolveDeliveryStatusColor = (status: number | string) => {
-    const value = Number(status)
-    if (value === 1) {
-        return 'green'
-    }
-    if (value === 2) {
-        return 'orange'
-    }
-    if (value === 3) {
-        return 'red'
-    }
-    return 'gray'
-}
-
-/**
- * 函数说明：收集订单交付链路缺失项，便于后台快速识别“已交付但资料不完整”的异常。
- */
-const collectDeliveryIssues = (record: Record<string, any>) => {
-    const issues = Array.isArray(record.deliveryIssues) ? record.deliveryIssues : []
-    return issues.map((item) => String(item || '').trim()).filter(Boolean)
-}
-
-/**
- * 函数说明：输出后台订单交付校验标签颜色，统一运营对交付完整性的识别方式。
- */
-const resolveDeliveryCheckColor = (record: Record<string, any>) => {
-    const status = String(record.deliveryCheckStatus || '').trim()
-    if (!status) {
-        return 'gray'
-    }
-    if (status === 'ok') {
-        return 'green'
-    }
-    if (status === 'expired' || status === 'license_inactive' || status === 'download_invalid') {
-        return 'red'
-    }
-    return 'orange'
-}
-
-/**
- * 函数说明：输出后台订单交付校验文案，直接提示当前记录还缺哪一步。
- */
-const resolveDeliveryCheckText = (record: Record<string, any>) => {
-    if (!record.isSourceDeliveryOrder) {
-        return '不参与'
-    }
-    return String(record.deliveryCheckText || '资料完整')
-}
-
-/**
- * 函数说明：为交付联动状态块输出卡片样式类，便于在表格中直接形成可扫读的运营块。
- */
-const resolveDeliveryCheckBlockClass = (record: Record<string, any>) => {
-    const status = String(record.deliveryCheckStatus || '').trim()
-    if (status === 'ok') {
-        return 'is-ok'
-    }
-    if (status === 'expired' || status === 'license_inactive' || status === 'download_invalid') {
-        return 'is-danger'
-    }
-    return 'is-warning'
-}
-
-/**
- * 函数说明：输出下载检测标签颜色，便于运营在弹窗内直接识别链接健康度。
- */
-const resolveDownloadCheckTagColor = (status: number | string) => {
-    const value = Number(status || 0)
-    if (value === 1) {
-        return 'green'
-    }
-    if (value === 2) {
-        return 'red'
-    }
-    return 'gray'
-}
 
 /**
  * 函数说明：生成 CSV 并触发浏览器下载，支持 UTF-8 BOM 防止中文乱码。
@@ -1089,21 +350,18 @@ const { pager, getLists, resetPage, resetParams } = usePaging({
  * 函数说明：加载交付联动汇总数据，供筛选区上方运营总览卡直接显示。
  */
 const loadLinkageSummary = async () => {
+    const serial = ++summaryRequestSerial
+    summaryLoading.value = true
+    summaryError.value = ''
     try {
-        const data: any = await getOrderLinkageSummary()
-        linkageSummary.value = {
-            sourceOrderCount: Number(data?.sourceOrderCount || 0),
-            abnormalCount: Number(data?.abnormalCount || 0),
-            okCount: Number(data?.okCount || 0),
-            pendingDeliveryCount: Number(data?.pendingDeliveryCount || 0),
-            licenseInactiveCount: Number(data?.licenseInactiveCount || 0),
-            domainMismatchCount: Number(data?.domainMismatchCount || 0),
-            downloadInvalidCount: Number(data?.downloadInvalidCount || 0),
-            deliveryIncompleteCount: Number(data?.deliveryIncompleteCount || 0),
-            expiredCount: Number(data?.expiredCount || 0)
-        }
-    } catch (error) {
-        console.error('[consumer-order] 加载交付联动汇总失败', error)
+        const data = normalizeOrderLinkageSummary(await getOrderLinkageSummary())
+        if (serial !== summaryRequestSerial) return
+        linkageSummary.value = data
+        summaryLoaded.value = true
+    } catch {
+        if (serial === summaryRequestSerial) summaryError.value = '交付概况加载失败，请重试'
+    } finally {
+        if (serial === summaryRequestSerial) summaryLoading.value = false
     }
 }
 
@@ -1114,10 +372,16 @@ const refreshOrderPage = async () => {
     await Promise.all([getLists(), loadLinkageSummary()])
 }
 /** 接住列表交互中的失败，保留 hook 对其它调用方的拒绝语义。 */
-const runOrderQuery = async (query: () => Promise<unknown>) => { try { await query(); return true } catch { return false } }
+const runOrderQuery = async (query: () => Promise<unknown>) => {
+    try {
+        await query()
+        return true
+    } catch {
+        return false
+    }
+}
 /** 分页时仅刷新当前订单列表，异常交由列表错误区显示。 */
 const loadOrderList = () => runOrderQuery(getLists)
-
 
 /**
  * 函数说明：把路由里的联动筛选参数回填到订单页筛选表单，支持从授权页反向跳转。
@@ -1143,17 +407,22 @@ const clearRouteFilters = async () => {
     ) {
         return
     }
-    await router.replace({
-        path: route.path,
-        query: {}
-    })
+    routeResetPending = true
+    try {
+        await router.replace({ path: route.path, query: {} })
+        // 等待路由监听消费本次清理；随后由重置入口统一请求一次。
+        await nextTick()
+    } finally {
+        routeResetPending = false
+    }
 }
 
 /**
  * 函数说明：执行订单筛选查询。
  */
 const handleSearch = async () => {
-    if (await runOrderQuery(() => Promise.all([resetPage(), loadLinkageSummary()]))) feedback.msgSuccess('订单筛选条件已生效')
+    if (await runOrderQuery(() => Promise.all([resetPage(), loadLinkageSummary()])))
+        feedback.msgSuccess('订单筛选条件已生效')
 }
 
 /**
@@ -1161,7 +430,8 @@ const handleSearch = async () => {
  */
 const handleResetFilters = async () => {
     await clearRouteFilters()
-    if (await runOrderQuery(() => Promise.all([resetParams(), loadLinkageSummary()]))) feedback.msgSuccess('订单筛选条件已重置')
+    if (await runOrderQuery(() => Promise.all([resetParams(), loadLinkageSummary()])))
+        feedback.msgSuccess('订单筛选条件已重置')
 }
 
 /**
@@ -1184,13 +454,16 @@ const handleQuickFilterDelivery = async (status: string) => {
  */
 const handleClearRepairContext = async () => {
     await clearRouteFilters()
-    if (await runOrderQuery(() => Promise.all([resetParams(), loadLinkageSummary()]))) feedback.msgSuccess('已退出授权联动修复上下文')
+    if (await runOrderQuery(() => Promise.all([resetParams(), loadLinkageSummary()])))
+        feedback.msgSuccess('已退出授权联动修复上下文')
 }
 
 /**
  * 函数说明：触发后台补单，补发会员权益或积分。
  */
 const handleOpenReissue = (orderSn: string) => {
+    if (reissueSubmitting.value) return
+    reissueError.value = ''
     const targetOrderSn = String(orderSn || '').trim()
     if (!targetOrderSn) {
         return
@@ -1206,6 +479,8 @@ const handleOpenReissue = (orderSn: string) => {
  * 函数说明：打开订单交付弹窗，回填当前交付状态与授权信息。
  */
 const handleOpenDelivery = (record: Record<string, any>) => {
+    if (deliverySubmitting.value) return
+    deliveryError.value = ''
     deliveryModal.visible = true
     deliveryModal.id = Number(record.id || 0)
     deliveryModal.orderSn = String(record.orderSn || '').trim()
@@ -1230,22 +505,30 @@ const handleOpenDelivery = (record: Record<string, any>) => {
  * 函数说明：确认提交订单补单，支持补充交易号与备注，便于后续审计。
  */
 const handleSubmitReissue = async () => {
+    if (reissueSubmitting.value) return false
     const targetOrderSn = String(reissueModal.orderSn || '').trim()
     if (!targetOrderSn) {
         feedback.msgWarning('订单号不能为空')
-        return
+        return false
+    }
+    const payload = {
+        orderSn: targetOrderSn,
+        tradeNo: String(reissueModal.tradeNo || '').trim(),
+        payChannel: String(reissueModal.payChannel || '').trim() || 'admin_manual',
+        remark: String(reissueModal.remark || '').trim()
     }
     reissueSubmitting.value = true
+    reissueError.value = ''
     try {
-        await reissueOrder({
-            orderSn: targetOrderSn,
-            tradeNo: String(reissueModal.tradeNo || '').trim(),
-            payChannel: String(reissueModal.payChannel || '').trim() || 'admin_manual',
-            remark: String(reissueModal.remark || '').trim()
-        })
-        reissueModal.visible = false
+        await reissueOrder(payload)
+        if (reissueModal.orderSn === targetOrderSn) reissueModal.visible = false
         feedback.msgSuccess('补单成功，权益已补发')
-        await refreshOrderPage()
+        await runOrderQuery(refreshOrderPage)
+        return true
+    } catch (error) {
+        reissueError.value = '补单未成功，已保留填写内容，请核对后重试。'
+        if (!(error as { notified?: boolean })?.notified) feedback.msgError(reissueError.value)
+        return false
     } finally {
         reissueSubmitting.value = false
     }
@@ -1255,25 +538,35 @@ const handleSubmitReissue = async () => {
  * 函数说明：保存订单交付信息，统一记录源码交付状态、绑定域名和下载链接。
  */
 const handleSubmitDelivery = async () => {
+    if (deliverySubmitting.value) return false
     const targetOrderSn = String(deliveryModal.orderSn || '').trim()
     if (!targetOrderSn) {
         feedback.msgWarning('订单号不能为空')
-        return
+        return false
+    }
+    const targetId = deliveryModal.id
+    const payload = {
+        orderSn: targetOrderSn,
+        deliveryStatus: Number(deliveryModal.deliveryStatus || 0),
+        licenseBoundDomain: String(deliveryModal.licenseBoundDomain || '').trim(),
+        licenseKey: String(deliveryModal.licenseKey || '').trim(),
+        downloadUrl: String(deliveryModal.downloadUrl || '').trim(),
+        deliveryNote: String(deliveryModal.deliveryNote || '').trim(),
+        deliveredTime: Number(deliveryModal.deliveredTime || 0)
     }
     deliverySubmitting.value = true
+    deliveryError.value = ''
     try {
-        await saveOrderDelivery({
-            orderSn: targetOrderSn,
-            deliveryStatus: Number(deliveryModal.deliveryStatus || 0),
-            licenseBoundDomain: String(deliveryModal.licenseBoundDomain || '').trim(),
-            licenseKey: String(deliveryModal.licenseKey || '').trim(),
-            downloadUrl: String(deliveryModal.downloadUrl || '').trim(),
-            deliveryNote: String(deliveryModal.deliveryNote || '').trim(),
-            deliveredTime: Number(deliveryModal.deliveredTime || 0)
-        })
-        deliveryModal.visible = false
+        await saveOrderDelivery(payload)
+        if (deliveryModal.id === targetId && deliveryModal.orderSn === targetOrderSn)
+            deliveryModal.visible = false
         feedback.msgSuccess('订单交付信息已保存')
-        await refreshOrderPage()
+        await runOrderQuery(refreshOrderPage)
+        return true
+    } catch (error) {
+        deliveryError.value = '交付信息保存失败，您的修改已保留，请重试。'
+        if (!(error as { notified?: boolean })?.notified) feedback.msgError(deliveryError.value)
+        return false
     } finally {
         deliverySubmitting.value = false
     }
@@ -1285,34 +578,56 @@ const handleSubmitDelivery = async () => {
 const handleCheckDownload = async (record: Record<string, any>) => {
     const targetId = Number(record.id || deliveryModal.id || 0)
     const targetOrderSn = normalizeOrderSn(record.orderSn || deliveryModal.orderSn)
-    if (targetId <= 0) {
-        feedback.msgWarning('订单ID无效，无法检测下载链接')
-        return
+    if (targetId <= 0 || !targetOrderSn) {
+        feedback.msgWarning('订单信息无效，无法检测下载链接')
+        return false
     }
-    if (!targetOrderSn) {
-        feedback.msgWarning('订单号无效，无法检测下载链接')
-        return
-    }
+    if (isRowActionLoading(targetOrderSn, 'check_download')) return false
+    const modalDownloadUrl = deliveryModal.downloadUrl
     setRowActionLoading(targetOrderSn, 'check_download', true)
     try {
         const data: any = await checkOrderDownload({ id: targetId })
-        const latestOrder = data?.order || {}
-        deliveryModal.downloadCheckStatus = Number(latestOrder.downloadCheckStatus || 0)
-        deliveryModal.downloadCheckStatusText = String(
-            latestOrder.downloadCheckStatusText || '未检测'
+        const latestOrder = data?.order
+        if (
+            !latestOrder ||
+            typeof latestOrder !== 'object' ||
+            Array.isArray(latestOrder) ||
+            ![0, 1, 2].includes(Number(latestOrder.downloadCheckStatus)) ||
+            (latestOrder.id !== undefined && Number(latestOrder.id) !== targetId) ||
+            (latestOrder.orderSn !== undefined &&
+                normalizeOrderSn(latestOrder.orderSn) !== targetOrderSn)
         )
-        deliveryModal.downloadCheckTime = String(latestOrder.downloadCheckTime || '')
-        deliveryModal.downloadCheckMessage = String(latestOrder.downloadCheckMessage || '')
-        deliveryModal.deliveryCheckStatus = String(
-            latestOrder.deliveryCheckStatus || deliveryModal.deliveryCheckStatus || ''
-        ).trim()
-        deliveryModal.deliveryCheckText = String(
-            latestOrder.deliveryCheckText || deliveryModal.deliveryCheckText || '资料完整'
-        )
+            throw new Error('invalid order response')
+        // 只回填仍然对应本次订单与链接的检查信息；A 的迟到结果不会覆盖 B 的弹窗或新草稿。
+        if (
+            deliveryModal.id === targetId &&
+            normalizeOrderSn(deliveryModal.orderSn) === targetOrderSn &&
+            deliveryModal.downloadUrl === modalDownloadUrl
+        ) {
+            deliveryModal.downloadCheckStatus = Number(latestOrder.downloadCheckStatus || 0)
+            deliveryModal.downloadCheckStatusText = String(
+                latestOrder.downloadCheckStatusText || '未检测'
+            )
+            deliveryModal.downloadCheckTime = String(latestOrder.downloadCheckTime || '')
+            deliveryModal.downloadCheckMessage = String(latestOrder.downloadCheckMessage || '')
+            deliveryModal.deliveryCheckStatus = String(
+                latestOrder.deliveryCheckStatus || deliveryModal.deliveryCheckStatus || ''
+            ).trim()
+            deliveryModal.deliveryCheckText = String(
+                latestOrder.deliveryCheckText || deliveryModal.deliveryCheckText || '资料完整'
+            )
+        }
         feedback.msgSuccess(
-            deliveryModal.downloadCheckStatus === 1 ? '下载链接检测通过' : '下载链接检测已完成'
+            Number(latestOrder.downloadCheckStatus) === 1
+                ? '下载链接检测通过'
+                : '下载链接检测已完成'
         )
-        await refreshOrderPage()
+        await runOrderQuery(refreshOrderPage)
+        return true
+    } catch (error) {
+        if (!(error as { notified?: boolean })?.notified)
+            feedback.msgError('下载链接检测失败，请重试。')
+        return false
     } finally {
         setRowActionLoading(targetOrderSn, 'check_download', false)
     }
@@ -1402,21 +717,24 @@ const handleGoLicenseFromDelivery = async () => {
  */
 const handleCloseOrder = async (orderSn: string) => {
     const targetOrderSn = String(orderSn || '').trim()
-    if (!targetOrderSn) {
-        return
-    }
-    try {
-        await feedback.confirm(
-            `确定关闭订单「${targetOrderSn}」吗？关闭后该订单将无法继续支付，请先确认当前状态是否正确。`
-        )
-    } catch {
-        return
-    }
+    if (!targetOrderSn || isRowActionLoading(targetOrderSn, 'close')) return false
     setRowActionLoading(targetOrderSn, 'close', true)
     try {
+        try {
+            await feedback.confirm(
+                `确定关闭订单「${targetOrderSn}」吗？关闭后该订单将无法继续支付，请先确认当前状态是否正确。`
+            )
+        } catch {
+            return false
+        }
         await closeOrder({ orderSn: targetOrderSn })
         feedback.msgSuccess('订单已关闭')
-        await refreshOrderPage()
+        await runOrderQuery(refreshOrderPage)
+        return true
+    } catch (error) {
+        if (!(error as { notified?: boolean })?.notified)
+            feedback.msgError('关闭订单失败，请刷新状态后重试。')
+        return false
     } finally {
         setRowActionLoading(targetOrderSn, 'close', false)
     }
@@ -1426,29 +744,34 @@ const handleCloseOrder = async (orderSn: string) => {
  * 函数说明：按当前筛选条件导出订单 CSV。
  */
 const handleExport = async () => {
+    if (exporting.value) return false
+    const filters = { ...queryParams }
     exporting.value = true
     try {
-        const data = await exportOrderList(queryParams)
+        const data = await exportOrderList(filters)
         const lists = Array.isArray(data?.lists) ? data.lists : []
         if (lists.length === 0) {
             feedback.msgWarning('暂无可导出的订单数据')
-            return
+            return false
         }
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-')
         downloadAsCsv(`uiedtool-orders-${timestamp}.csv`, lists)
         feedback.msgSuccess(`已导出 ${lists.length} 条订单`)
+        return true
+    } catch (error) {
+        if (!(error as { notified?: boolean })?.notified)
+            feedback.msgError('订单导出失败，请重试。')
+        return false
     } finally {
         exporting.value = false
     }
 }
 
-onActivated(() => {
-    void runOrderQuery(refreshOrderPage)
-})
-
+/** 路由进入是唯一自动读取入口，避免首次激活重复读，以及缓存页离开后仍跟随其它页面请求。 */
 watch(
     () => route.fullPath,
     async () => {
+        if (routeResetPending || (route.name ?? route.path) !== orderRouteIdentity) return
         syncFiltersFromRoute()
         pager.page = 1
         await runOrderQuery(refreshOrderPage)
@@ -1456,434 +779,40 @@ watch(
     { immediate: true }
 )
 </script>
-
 <style scoped lang="scss">
-.pro-page {
-    display: flex;
-    flex-direction: column;
+.consumer-order-page {
+    padding: 20px 24px;
+    min-width: 0;
 }
-
-.pro-page-header {
-    padding: 0 0 10px;
+.order-count {
+    font-size: 13px;
+    color: var(--color-text-3);
 }
-
-.pro-card {
-    border-radius: 12px;
-}
-
-.filter-result {
-    margin-top: 10px;
-    font-size: 12px;
-    color: var(--color-text-3, #86909c);
-}
-
-.linkage-summary-grid {
+.order-page-sections {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 12px;
-}
-
-.repair-context-block {
-    display: grid;
-    grid-template-columns: minmax(0, 1.55fr) minmax(260px, 0.85fr);
     gap: 16px;
 }
-
-.repair-context-block__main,
-.repair-context-block__aside {
-    border: 1px solid var(--color-border-2, #e5e6eb);
-    border-radius: 14px;
-    background: #fff;
-    padding: 18px;
+.order-panel {
+    border: 1px solid var(--uied-admin-border);
+    border-radius: var(--uied-admin-radius);
+    min-width: 0;
 }
-
-.repair-context-block__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    height: 26px;
-    padding: 0 10px;
-    border-radius: 999px;
-    border: 1px solid #d8d2ff;
-    background: #f3efff;
-    color: #5b47d6;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.repair-context-block__title {
-    margin-top: 12px;
-    font-size: 22px;
-    line-height: 1.35;
-    font-weight: 700;
-    color: var(--color-text-1, #1d2129);
-}
-
-.repair-context-block__desc {
-    margin-top: 8px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--color-text-3, #86909c);
-}
-
-.repair-context-block__meta {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.repair-context-block__meta-item {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.repair-context-block__meta-item span {
-    display: block;
-    font-size: 12px;
-    color: var(--color-text-3, #86909c);
-}
-
-.repair-context-block__meta-item strong {
-    display: block;
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--color-text-1, #1d2129);
-    word-break: break-all;
-}
-
-.repair-context-block__aside-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-text-1, #1d2129);
-}
-
-.repair-context-block__aside-text {
-    margin-top: 8px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--color-text-3, #86909c);
-}
-
-.linkage-summary-card {
-    appearance: none;
-    border: 1px solid var(--color-border-2, #e5e6eb);
-    border-radius: 14px;
-    background: #fff;
-    padding: 16px;
-    text-align: left;
-    cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease;
-}
-
-.linkage-summary-card:hover {
-    border-color: rgb(var(--primary-6));
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.linkage-summary-card--danger {
-    border-color: #f3d0d0;
-    background: #fff8f8;
-}
-
-.linkage-summary-card__label {
-    font-size: 12px;
-    color: var(--color-text-3, #86909c);
-}
-
-.linkage-summary-card__value {
-    margin-top: 8px;
-    font-size: 24px;
-    line-height: 1;
-    font-weight: 700;
-    color: var(--color-text-1, #1d2129);
-}
-
-.linkage-summary-card__desc {
-    margin-top: 8px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-info {
+.order-page-pagination {
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--color-text-3, #86909c);
+    justify-content: flex-end;
+    margin-top: 16px;
+    max-width: 100%;
+    overflow-x: auto;
 }
-
-.delivery-check-popover {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-width: 320px;
-    font-size: 12px;
-    color: var(--color-text-2, #4e5969);
-}
-
-.delivery-check-issues {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-}
-
-.delivery-check-inline {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.delivery-check-inline__text {
-    font-size: 12px;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 0.85fr);
-    gap: 16px;
-    margin-bottom: 16px;
-}
-
-.delivery-workspace__main,
-.delivery-workspace__aside {
-    border: 1px solid var(--color-border-2, #e5e6eb);
-    border-radius: 14px;
-    background: #fff;
-    padding: 18px;
-}
-
-.delivery-workspace__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    height: 26px;
-    padding: 0 10px;
-    border-radius: 999px;
-    border: 1px solid #d8d2ff;
-    background: #f3efff;
-    color: #5b47d6;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.delivery-workspace__title {
-    margin-top: 12px;
-    font-size: 22px;
-    line-height: 1.35;
-    font-weight: 700;
-    color: var(--color-text-1, #1d2129);
-}
-
-.delivery-workspace__desc {
-    margin-top: 8px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-workspace__meta {
-    margin-top: 14px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-}
-
-.delivery-workspace__meta-item {
-    padding: 12px 14px;
-    border-radius: 12px;
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.delivery-workspace__meta-item span {
-    display: block;
-    font-size: 12px;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-workspace__meta-item strong {
-    display: block;
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--color-text-1, #1d2129);
-    word-break: break-all;
-}
-
-.delivery-workspace__aside-title {
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-text-1, #1d2129);
-}
-
-.delivery-workspace__aside-text {
-    margin-top: 8px;
-    margin-bottom: 16px;
-    font-size: 13px;
-    line-height: 1.7;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-workspace-checklist {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 18px;
-}
-
-.delivery-workspace-checklist__item {
-    border: 1px solid var(--color-border-2, #e5e6eb);
-    border-radius: 14px;
-    background: #fff;
-    padding: 14px;
-}
-
-.delivery-workspace-checklist__item.is-ok {
-    border-color: #d7ebde;
-    background: #f7fcf8;
-}
-
-.delivery-workspace-checklist__item.is-warning {
-    border-color: #f0dfb0;
-    background: #fffaf0;
-}
-
-.delivery-workspace-checklist__item.is-danger {
-    border-color: #f0c8c8;
-    background: #fff7f7;
-}
-
-.delivery-workspace-checklist__label {
-    font-size: 12px;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-workspace-checklist__value {
-    margin-top: 8px;
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--color-text-1, #1d2129);
-}
-
-.delivery-workspace-checklist__desc {
-    margin-top: 8px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-check-block {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-    border-radius: 14px;
-    border: 1px solid var(--color-border-2, #e5e6eb);
-    background: #fff;
-}
-
-.delivery-check-block.is-ok {
-    border-color: #d7ebde;
-    background: #f7fcf8;
-}
-
-.delivery-check-block.is-warning {
-    border-color: #f0dfb0;
-    background: #fffaf0;
-}
-
-.delivery-check-block.is-danger {
-    border-color: #f0c8c8;
-    background: #fff7f7;
-}
-
-.delivery-check-block__head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-}
-
-.delivery-check-block__meta-text {
-    font-size: 12px;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-check-block__meta {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.delivery-check-block__meta > div,
-.delivery-check-block__detail {
-    padding: 8px 10px;
-    border-radius: 10px;
-    background: rgba(255, 255, 255, 0.82);
-}
-
-.delivery-check-block__meta span {
-    display: block;
-    font-size: 11px;
-    color: var(--color-text-3, #86909c);
-}
-
-.delivery-check-block__meta strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--color-text-1, #1d2129);
-    word-break: break-all;
-}
-
-.delivery-check-block__detail {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--color-text-2, #4e5969);
-}
-
-.delivery-check-block__issues {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.delivery-check-block__issue {
-    padding: 8px 10px;
-    border-radius: 10px;
-    border: 1px solid rgba(240, 170, 45, 0.18);
-    background: rgba(255, 255, 255, 0.86);
-    font-size: 12px;
-    line-height: 1.6;
-    color: var(--color-text-2, #4e5969);
-}
-
-@media (max-width: 1440px) {
-    .linkage-summary-grid {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
+@media (max-width: 600px) {
+    .consumer-order-page {
+        padding: 16px 12px;
     }
-
-    .delivery-workspace-checklist {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .order-panel :deep(.arco-card-body) {
+        padding: 16px;
     }
-}
-
-@media (max-width: 960px) {
-    .linkage-summary-grid,
-    .delivery-check-block__meta,
-    .delivery-workspace,
-    .delivery-workspace__meta,
-    .delivery-workspace-checklist {
-        grid-template-columns: 1fr;
+    .order-page-pagination :deep(.arco-pagination-jumper) {
+        display: none;
     }
 }
 </style>

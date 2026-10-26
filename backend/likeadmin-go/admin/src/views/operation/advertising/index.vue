@@ -284,7 +284,7 @@ import {
     type AdvertisingItem
 } from '@/api/operation/advertising'
 import AdminPageHeader from '@/components/page-header/index.vue'
-import ConfigEditFrame from '../../setting/website/components/config-edit-frame.vue'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
 import useAppStore from '@/stores/modules/app'
 import feedback from '@/utils/feedback'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'

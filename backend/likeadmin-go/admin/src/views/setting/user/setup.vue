@@ -36,9 +36,9 @@ import { getUserSetup, setUserSetup } from '@/api/setting/user'
 import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave } from 'vue-router'
 import AdminPageHeader from '@/components/page-header/index.vue'
-import ConfigEditFrame from '../website/components/config-edit-frame.vue'
-import { useConfigLoad } from '../website/composables/use-config-load'
-import { useOperateSubmit } from '../website/composables/use-operate-submit'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useConfigLoad } from '@/composables/use-config-load'
+import { useOperateSubmit } from '@/composables/use-operate-submit'
 
 const formData = reactive({
     defaultAvatar: ''

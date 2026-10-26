@@ -123,7 +123,7 @@ import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave } from 'vue-router'
 import OperateCollapse from './components/operate-collapse.vue'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
-import { useOperateSubmit } from './composables/use-operate-submit'
+import { useOperateSubmit } from '@/composables/use-operate-submit'
 
 interface ToolsHotToolItem {
     title: string

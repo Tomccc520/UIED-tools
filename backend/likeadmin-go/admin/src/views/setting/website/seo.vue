@@ -173,9 +173,9 @@ import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave } from 'vue-router'
 import ConfigOverviewCollapse from './components/config-overview-collapse.vue'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
-import { useOperateSubmit } from './composables/use-operate-submit'
-import { useConfigLoad } from './composables/use-config-load'
-import ConfigEditFrame from './components/config-edit-frame.vue'
+import { useOperateSubmit } from '@/composables/use-operate-submit'
+import { useConfigLoad } from '@/composables/use-config-load'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
 import { OFFICIAL_SITE_DEFAULT_SEO } from './defaults/officialSite'
 
 interface ToolsSeoPageItem {

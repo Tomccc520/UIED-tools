@@ -418,7 +418,7 @@ import {
 } from '@/api/setting/license'
 import feedback from '@/utils/feedback'
 import OperateCollapse from './components/operate-collapse.vue'
-import { useOperateSubmit } from './composables/use-operate-submit'
+import { useOperateSubmit } from '@/composables/use-operate-submit'
 
 const { isSubmitting, lastSavedAt, runSubmit } = useOperateSubmit('授权配置已保存')
 const isVerifying = ref(false)

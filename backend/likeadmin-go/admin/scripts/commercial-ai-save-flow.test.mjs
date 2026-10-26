@@ -22,32 +22,39 @@ const execute = (source, bindings, exposure) => {
 }
 /** 读取页面生产实现，避免测试另写保存逻辑。 */
 const script = file => fs.readFileSync(new URL(file, views), 'utf8').match(/<script\b[^>]*>([\s\S]*?)<\/script>/)[1]
+/** 载入商业化共享模型的真实实现，拆分后仍由相同函数生成默认草稿和规范化请求。 */
+const commercialModel = () => execute(fs.readFileSync(new URL('user/components/commercial/commercial-config.ts', views), 'utf8'), {}, 'createCommercialDraft,sanitizeMemberPlans,sanitizePointsPacks,sanitizeToolConsumeRules,sanitizeConsumeRiskRules,detectDuplicatedToolKeys')
 /** 创建失败、延迟、重复操作均可控制的网络边界。 */
 const contextFor = () => {
-    const calls = { reads: 0, saves: [], successes: [], errors: [], confirms: 0 }
-    const io = { read: async () => ({}), save: async () => {}, confirm: async () => {} }
+    const calls = { reads: 0, saves: [], certificates: 0, successes: [], errors: [], confirms: 0 }
+    const io = { read: async () => ({}), save: async () => {}, sync: async () => certificateFixture(), confirm: async () => {} }
     const feedback = { msgSuccess: message => calls.successes.push(message), msgError: message => calls.errors.push(message), msgWarning() {}, confirm: async () => { calls.confirms++; return io.confirm() } }
-    const composable = (file, name) => execute(fs.readFileSync(new URL('website/composables/' + file, views), 'utf8'), { feedback }, name)[name]
+    const composable = (file, name) => execute(fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback }, name)[name]
     const bindings = {
-        feedback, onMounted() {}, onBeforeUnmount() {}, onBeforeRouteLeave() {},
+        feedback, onMounted() {}, onActivated() {}, onDeactivated() {}, onBeforeUnmount() {}, onBeforeRouteLeave() {},
         window: { addEventListener() {}, removeEventListener() {} },
         useConfigLoad: composable('use-config-load.ts', 'useConfigLoad'),
         useOperateSubmit: composable('use-operate-submit.ts', 'useOperateSubmit'),
         useRouter: () => ({ push() {} }),
         read: async () => { calls.reads++; return io.read() },
-        save: async payload => { calls.saves.push(JSON.parse(JSON.stringify(payload))); return io.save(payload) }
+        save: async payload => { calls.saves.push(JSON.parse(JSON.stringify(payload))); return io.save(payload) },
+        sync: async () => { calls.certificates++; return io.sync() }
     }
     return { calls, io, bindings }
 }
 /** 构造可保存的商业化设置，保留真实形态的零值、套餐与合成凭据。 */
 const loginFixture = () => ({ frontendLoginEnabled: 0, memberEnabled: 0, dailyGiftPoints: 0, toolConsumeRules: [{ toolKey: 'free', consumePoints: 0, memberFree: 1, status: 1 }], memberPlans: [{ code: 'monthly', name: '月度会员', price: 19, memberDays: 30, status: 1 }], pointsPacks: [{ code: 'pack', name: '积分包', price: 9, points: 100, status: 1 }], paymentChannels: ['mock'], wechatAppSecret: 'synthetic-login-secret', paymentRequestToken: 'synthetic-request-token' })
+/** 提供合成的已保存支付参数，测试不访问商户平台或真实凭据。 */
+const wechatLoginFixture = () => ({ ...loginFixture(), paymentWechatMchId: 'synthetic-mch', paymentWechatSerialNo: 'synthetic-merchant-serial', paymentWechatApiV3Key: 'synthetic-v3-key', paymentWechatPrivateKey: 'synthetic-private-key', paymentWechatPlatformCert: 'synthetic-old-certificate' })
+/** 模拟同步接口已经持久化后返回的完整证书结果。 */
+const certificateFixture = () => ({ platformCertPem: 'synthetic-new-certificate', platformSerialNo: 'synthetic-platform-serial', effectiveTime: '2026-10-26T00:00:00Z', expireTime: '2027-10-26T00:00:00Z', syncedAt: 1792972800 })
 /** 等待页面首次自动读取完成。 */
 const settle = () => new Promise(resolve => setImmediate(resolve))
 /** 载入真实登录设置或头像设置页，不触发实际 API。 */
 const createUserPage = async (file = 'login_register.vue', read = async () => loginFixture()) => {
     const state = contextFor()
     state.io.read = read
-    const page = execute(script('user/' + file), { ...state.bindings, getLogin: state.bindings.read, setLogin: state.bindings.save, getUserSetup: state.bindings.read, setUserSetup: state.bindings.save }, 'getData,handleSubmit,formData,reload:typeof reloadLoginConfig === "undefined" ? reloadUserSetup : reloadLoginConfig,dirty:typeof hasUnsavedChanges === "undefined" ? undefined : hasUnsavedChanges,error:typeof submitError === "undefined" ? undefined : submitError')
+    const page = execute(script('user/' + file), { ...state.bindings, ...commercialModel(), getLogin: state.bindings.read, setLogin: state.bindings.save, syncWechatPlatformCert: state.bindings.sync, getUserSetup: state.bindings.read, setUserSetup: state.bindings.save }, 'getData,handleSubmit,formData,reload:typeof reloadLoginConfig === "undefined" ? reloadUserSetup : reloadLoginConfig,dirty:typeof hasUnsavedChanges === "undefined" ? undefined : hasUnsavedChanges,error:typeof submitError === "undefined" ? undefined : submitError,syncCertificates:typeof handleSyncWechatPlatformCert === "undefined" ? undefined : handleSyncWechatPlatformCert,certificateError:typeof certSyncError === "undefined" ? undefined : certSyncError,syncing:typeof syncWechatCertLoading === "undefined" ? undefined : syncWechatCertLoading')
     await settle()
     return { ...state, page }
 }
@@ -115,6 +122,96 @@ test('用户头像首次读取失败时不能以空值覆盖原配置', async ()
     const { page, calls } = await createUserPage('setup.vue', async () => { throw Error('read failed') })
     await page.handleSubmit()
     assert.equal(calls.saves.length, 0)
+})
+
+test('同步平台证书只使用已保存参数，未保存的商户凭据或证书不会发送请求', async () => {
+    const { page, calls } = await createUserPage('login_register.vue', async () => wechatLoginFixture())
+    page.formData.paymentWechatMchId = 'synthetic-unsaved-mch'
+    await page.syncCertificates()
+    assert.equal(calls.certificates, 0)
+    assert.match(page.certificateError.value, /先保存配置/)
+    page.formData.paymentWechatMchId = 'synthetic-mch'
+    page.formData.paymentWechatPlatformCert = 'synthetic-manual-certificate'
+    await page.syncCertificates()
+    assert.equal(calls.certificates, 0)
+    assert.equal(page.formData.paymentWechatPlatformCert, 'synthetic-manual-certificate')
+})
+
+test('证书同步中禁止保存、重新读取和重复同步，结束后只更新证书基线', async () => {
+    const { page, calls, io } = await createUserPage('login_register.vue', async () => wechatLoginFixture())
+    let complete
+    io.sync = () => new Promise(resolve => { complete = resolve })
+    const pending = page.syncCertificates()
+    await page.handleSubmit(); await page.reload(); await page.getData(); await page.syncCertificates()
+    assert.equal(calls.certificates, 1)
+    assert.equal(calls.saves.length, 0)
+    assert.equal(calls.reads, 1)
+    page.formData.userCenterTitle = '同步期间继续编辑的标题'
+    complete(certificateFixture()); await pending
+    assert.equal(page.formData.paymentWechatPlatformCert, 'synthetic-new-certificate')
+    assert.equal(page.formData.userCenterTitle, '同步期间继续编辑的标题')
+    assert.equal(page.dirty.value, true)
+    await page.handleSubmit()
+    assert.equal(calls.saves[0].userCenterTitle, '同步期间继续编辑的标题')
+    assert.equal(page.dirty.value, false)
+})
+
+test('证书同步成功本身已持久化，不制造全页未保存状态或重复保存请求', async () => {
+    const { page, calls } = await createUserPage('login_register.vue', async () => wechatLoginFixture())
+    await page.syncCertificates()
+    assert.equal(page.formData.paymentWechatPlatformSerialNo, 'synthetic-platform-serial')
+    assert.equal(page.formData.paymentWechatPlatformCert, 'synthetic-new-certificate')
+    assert.equal(page.dirty.value, false)
+    assert.equal(calls.saves.length, 0)
+    assert.equal(calls.reads, 1)
+})
+
+test('同步晚返回不会覆盖新凭据或证书草稿，继续同步前仍要求保存', async () => {
+    const { page, calls, io } = await createUserPage('login_register.vue', async () => wechatLoginFixture())
+    let complete
+    io.sync = () => new Promise(resolve => { complete = resolve })
+    const pending = page.syncCertificates()
+    page.formData.paymentWechatPrivateKey = 'synthetic-new-draft-key'
+    page.formData.paymentWechatPlatformCert = 'synthetic-new-draft-certificate'
+    complete(certificateFixture()); await pending
+    assert.equal(page.formData.paymentWechatPrivateKey, 'synthetic-new-draft-key')
+    assert.equal(page.formData.paymentWechatPlatformCert, 'synthetic-new-draft-certificate')
+    assert.equal(page.dirty.value, true)
+    assert.match(page.certificateError.value, /未覆盖/)
+    await page.syncCertificates()
+    assert.equal(calls.certificates, 1)
+})
+
+test('同步接口失败或无效响应不覆盖旧证书，释放锁后可重试', async () => {
+    const { page, calls, io } = await createUserPage('login_register.vue', async () => wechatLoginFixture())
+    io.sync = async () => { throw Error('synthetic error; no credentials') }
+    await page.syncCertificates()
+    assert.equal(page.formData.paymentWechatPlatformCert, 'synthetic-old-certificate')
+    assert.match(page.certificateError.value, /同步失败/)
+    assert.equal(page.syncing.value, false)
+    io.sync = async () => ({})
+    await page.syncCertificates()
+    assert.equal(page.formData.paymentWechatPlatformCert, 'synthetic-old-certificate')
+    assert.equal(page.dirty.value, false)
+    io.sync = async () => certificateFixture()
+    await page.syncCertificates()
+    assert.equal(calls.certificates, 3)
+    assert.equal(page.formData.paymentWechatPlatformCert, 'synthetic-new-certificate')
+    assert.equal(page.certificateError.value, '')
+})
+
+test('商业化首次读取失败或保存未完成时不能开始平台证书同步', async () => {
+    const failed = await createUserPage('login_register.vue', async () => { throw Error('read failed') })
+    await failed.page.syncCertificates()
+    assert.equal(failed.calls.certificates, 0)
+    const { page, calls, io } = await createUserPage('login_register.vue', async () => wechatLoginFixture())
+    let complete
+    io.save = () => new Promise(resolve => { complete = resolve })
+    page.formData.userCenterTitle = '正在提交标题'
+    const pending = page.handleSubmit()
+    await page.syncCertificates()
+    assert.equal(calls.certificates, 0)
+    complete(); await pending
 })
 
 /** 构造彼此独立的三个 AI 模块，凭据只用于检查原值透传。 */

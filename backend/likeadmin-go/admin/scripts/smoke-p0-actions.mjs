@@ -9,6 +9,7 @@
 
 import fs from 'node:fs'
 import path from 'node:path'
+import { collectVueSourceGraph } from './lib/vue-source-graph.mjs'
 import {
     ADMIN_P0_ACTION_PAGES,
     resolveAdminP0StaticMarkers
@@ -32,12 +33,7 @@ const readSourceFile = (relativePath) => {
  */
 const readPageSourceText = ({ file, files }) => {
     const fileList = [file, ...(Array.isArray(files) ? files : [])].filter(Boolean)
-    return fileList
-        .map((sourceFile) => ({
-            file: sourceFile,
-            text: readSourceFile(sourceFile)
-        }))
-        .filter((item) => item.text)
+    return collectVueSourceGraph(cwd, fileList)
 }
 
 /**
@@ -45,14 +41,15 @@ const readPageSourceText = ({ file, files }) => {
  */
 const collectMissingMarkers = (pageSpec) => {
     const sourceList = readPageSourceText(pageSpec)
-    if (sourceList.length === 0) {
+    if (sourceList.length === 0 || !sourceList[0].text) {
         return [`${pageSpec.file}: 文件不存在或不可读`]
     }
+    const missingFiles = sourceList.filter(item => !item.text).map(item => `${item.file}: 页面引用的组件不存在或不可读`)
     const combinedText = sourceList.map((item) => item.text).join('\n')
     const markerList = resolveAdminP0StaticMarkers(pageSpec)
-    return markerList
+    return missingFiles.concat(markerList
         .filter((marker) => !combinedText.includes(`data-admin-smoke="${marker}"`))
-        .map((marker) => `${pageSpec.file}: 缺少 data-admin-smoke="${marker}"`)
+        .map((marker) => `${pageSpec.file}: 缺少 data-admin-smoke="${marker}"`))
 }
 
 /**

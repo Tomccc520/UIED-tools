@@ -10,6 +10,7 @@ import vm from 'node:vm'
 import test from 'node:test'
 import ts from 'typescript'
 import { computed, reactive, ref } from 'vue'
+import { buildAppendToolPolicyRules } from '../src/views/setting/website/composables/tool-catalog-domain.ts'
 
 const viewUrl = new URL('../src/views/setting/website/', import.meta.url)
 
@@ -34,7 +35,7 @@ const executeScript = (source, bindings, exposed) => {
 
 /** 编译现有配置组合式函数，保留真实的加载、提交和重复请求保护。 */
 const readComposable = (file, name, feedback) => executeScript(
-    fs.readFileSync(new URL('composables/' + file, viewUrl), 'utf8'), { feedback }, [name]
+    fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback }, [name]
 )[name]
 
 /** 构造仅替换网络与消息边界的榜单配置页，不发送真实请求或写数据库。 */
@@ -72,11 +73,6 @@ const deferred = () => {
 }
 
 test('仅新增同步保留免费工具的 0 分，并保持已有工具规则原样', () => {
-    const source = readPageScript('tools_catalog.vue')
-    const parsed = ts.createSourceFile('catalog.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
-    const declaration = parsed.statements.find((statement) => ts.isVariableStatement(statement)
-        && statement.declarationList.declarations.some((item) => item.name.getText(parsed) === 'buildAppendToolPolicyRules'))
-    const { buildAppendToolPolicyRules } = executeScript(declaration.getText(parsed), {}, ['buildAppendToolPolicyRules'])
     const existing = [{ toolKey: 'existing', consumePoints: 5, memberFree: 0, status: 1, sort: 3 }]
     const actual = buildAppendToolPolicyRules([
         { toolKey: 'existing', consumePoints: 0 },

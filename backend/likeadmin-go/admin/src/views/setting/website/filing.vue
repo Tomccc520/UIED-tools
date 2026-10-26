@@ -29,14 +29,12 @@
     </div>
 </template>
 <script setup lang="ts" name="webFilling">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
 import AdminPageHeader from '@/components/page-header/index.vue'
 import useUserStore from '@/stores/modules/user'
 import feedback from '@/utils/feedback'
-import ConfigEditFrame from './components/config-edit-frame.vue'
-import { useConfigLoad } from './composables/use-config-load'
-import { useOperateSubmit } from './composables/use-operate-submit'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useConfigEditor } from '@/composables/use-config-editor'
 import { getCopyright, setCopyright } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
@@ -47,29 +45,18 @@ const formData = ref<FilingItem[]>([])
 const userStore = useUserStore()
 /** 根据当前权限控制编辑与保存，脚本调用同样遵守按钮权限。 */
 const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:copyright:save'))
-const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('备案与版权配置已保存')
-const baselineSnapshot = ref('')
-/** 按完整编辑值比较草稿，不忽略有意义的正文和空白改动。 */
-const hasUnsavedChanges = computed(() => Boolean(baselineSnapshot.value) && buildSnapshot() !== baselineSnapshot.value)
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
-/** 统一检查加载、权限与并发状态，读取失败后不能发布默认表单。 */
-const canOperate = () => canEdit.value && hasLoadedData.value && !isLoadingData.value && !isSubmitting.value && !loadErrorMessage.value
-
 /** 克隆本页条目字段，防止异步保存引用仍会变化的响应式列表。 */
 const buildPayload = (): FilingItem[] => formData.value.map(item => ({ name: item.name, link: item.link }))
 /** 保留文字与链接的完整值，顺序变化同样视为未保存。 */
 const buildSnapshot = () => JSON.stringify(buildPayload())
+/** 公共编辑器维护读写状态和草稿保护，页面继续负责字段与接口。 */
+const { isLoadingData, hasLoadedData, loadErrorMessage, isSubmitting, lastSavedAt, submitError, hasUnsavedChanges, canOperate, loadConfiguration, reloadConfiguration, submitConfiguration } = useConfigEditor({ canEdit, snapshot: buildSnapshot, successText: '备案与版权配置已保存' })
 /** 读取真实列表；非法响应视为失败，不用默认空列表覆盖既有内容。 */
-const getData = async () => {
-    if (isSubmitting.value) return false
-    return loadConfiguration(async () => {
-        const data = await getCopyright()
-        if (!Array.isArray(data) || data.some(item => !item || typeof item.name !== 'string' || typeof item.link !== 'string')) throw new Error('备案配置响应不完整')
-        formData.value = data.map(item => ({ name: item.name, link: item.link }))
-        baselineSnapshot.value = buildSnapshot()
-        submitError.value = ''
-    })
-}
+const getData = () => loadConfiguration(async () => {
+    const data = await getCopyright()
+    if (!Array.isArray(data) || data.some(item => !item || typeof item.name !== 'string' || typeof item.link !== 'string')) throw new Error('备案配置响应不完整')
+    formData.value = data.map(item => ({ name: item.name, link: item.link }))
+})
 /** 在已就绪且有权限时新增空白条目，保存前仍需填写显示内容。 */
 const addItem = () => { if (canOperate()) formData.value.push({ name: '', link: '' }) }
 /** 删除指定条目，至少保留一条，禁止非法索引误删列表末项。 */
@@ -96,28 +83,14 @@ const handleSubmit = async () => {
     const invalid = payload.findIndex(item => !item.name.trim() || !isValidFilingLink(item.link))
     if (invalid >= 0) { feedback.msgError(`请检查第 ${invalid + 1} 条的显示内容和链接格式`); return false }
     const snapshot = JSON.stringify(payload)
-    return runSubmit(async () => { await setCopyright(payload); baselineSnapshot.value = snapshot })
+    return submitConfiguration(() => setCopyright(payload), snapshot)
 }
 /** 安全打开主站预览，不传递后台登录信息。 */
 const openToolsPreview = () => window.open(resolveToolsPreviewUrl(appStore.config), '_blank', 'noopener,noreferrer')
-/** 重新加载前确认放弃草稿；保存中不允许重读覆盖表单。 */
-const reloadData = async () => {
-    if (isSubmitting.value) return false
-    return reloadConfiguration(getData)
-}
-/** 刷新或关闭浏览器时保护尚未保存的编辑。 */
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (hasUnsavedChanges.value || isSubmitting.value) { event.preventDefault(); event.returnValue = '' }
-}
-/** 路由离开时确认草稿；提交未结束时阻止跳转，避免误判保存结果。 */
-const confirmLeave = async () => {
-    if (isSubmitting.value) return false
-    if (!hasUnsavedChanges.value) return true
-    try { await feedback.confirm('当前页面存在未保存更改，确定离开吗？'); return true } catch { return false }
-}
-onBeforeRouteLeave(confirmLeave)
-onMounted(() => { void getData(); window.addEventListener('beforeunload', handleBeforeUnload) })
-onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+/** 重新读取前由公共编辑器确认草稿，提交期间不启动读取。 */
+const reloadData = () => reloadConfiguration(getData)
+/** 页面挂载后读取本页业务数据，公共编辑器自行清理离开守卫。 */
+onMounted(() => { void getData() })
 </script>
 <style scoped lang="scss">
 .basic-config-page { min-width: 0; }

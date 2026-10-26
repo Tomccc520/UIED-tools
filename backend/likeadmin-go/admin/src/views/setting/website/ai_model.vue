@@ -26,496 +26,111 @@
             </template>
         </admin-page-header>
 
-        <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadAiModel">
-        <a-card class="page-card pro-panel-card" :bordered="false">
-
-            <div v-if="showMattingSection" class="section-block">
-                <div class="section-header">
-                    <div>
-                        <h3>服务商与密钥</h3>
-                        <p>保存后，抠图工具使用这里的默认服务商。</p>
-                    </div>
-                    <a-tag
-                        :color="
+        <config-edit-frame
+            :loading="isLoadingData"
+            :ready="hasLoadedData"
+            :error="loadErrorMessage"
+            :save-error="submitError"
+            :dirty="hasUnsavedChanges"
+            :saving="isSubmitting"
+            :saved-at="lastSavedAt"
+            @retry="reloadAiModel"
+        >
+            <div class="ai-config-panels">
+                <ai-matting-panel
+                    v-if="showMattingSection"
+                    v-model="formData.modelId"
+                    :providers="formData.mattingProviders"
+                    :current-provider="currentMattingProviderForm"
+                    :ready="
+                        Boolean(
                             currentMattingProviderForm &&
-                            isMattingProviderReady(currentMattingProviderForm)
-                                ? 'green'
-                                : 'orange'
-                        "
-                        bordered
-                    >
-                        {{
-                            currentMattingProviderForm &&
-                            isMattingProviderReady(currentMattingProviderForm)
-                                ? '可调用'
-                                : '待配置'
-                        }}
-                    </a-tag>
-                </div>
+                                isMattingProviderReady(currentMattingProviderForm)
+                        )
+                    "
+                    @patch="patchMattingProvider"
+                />
+                <ai-provider-panel
+                    v-if="showProviderSection"
+                    v-model="selectedProviderKey"
+                    :providers="formData.providers"
+                    :current-provider="currentProviderForm"
+                    :ready="Boolean(currentProviderForm && isProviderReady(currentProviderForm))"
+                    :fetching-provider-key="fetchingProviderKey"
+                    @patch="patchTextProvider"
+                    @set-default="setCurrentProviderAsDefault"
+                    @fetch-models="handleFetchProviderModels"
+                />
+                <ai-ability-panel
+                    v-if="showAbilitySection"
+                    v-model="selectedAbilityKey"
+                    :abilities="formData.imageAbilities"
+                    :current-ability="currentAbilityForm"
+                    :ready="Boolean(currentAbilityForm && isImageAbilityReady(currentAbilityForm))"
+                    @patch="patchToolAbility"
+                />
+            </div>
 
-                <div class="section-switcher">
-                    <div class="section-switcher__main">
-                        <div class="section-switcher__label">当前服务商</div>
-                        <a-select v-model="formData.modelId" placeholder="请选择抠图服务商">
-                            <a-option
-                                v-for="item in formData.mattingProviders"
-                                :key="item.provider"
-                                :value="item.provider"
-                            >
-                                {{ item.label }}
-                            </a-option>
-                        </a-select>
-                    </div>
-                    <div v-if="currentMattingProviderForm" class="section-switcher__meta">
-                        <a-tag bordered>{{ currentMattingProviderForm.provider }}</a-tag>
-                        <span class="matting-provider-desc">
-                            {{ currentMattingProviderForm.description }}
-                        </span>
-                    </div>
-                </div>
-
-                <a-alert type="info" :closable="false" show-icon>
-                    密钥仅保存于管理后台并由服务端内部读取，不会返回给官网浏览器。
-                </a-alert>
-
-                <a-card
-                    v-if="currentMattingProviderForm"
-                    class="single-config-card matting-config-card"
-                    :bordered="false"
+            <template #actions>
+                <a-button
+                    v-perms="['setting:ai:model:save']"
+                    type="primary"
+                    data-admin-smoke="ai-matting-save"
+                    :loading="isSubmitting"
+                    :disabled="Boolean(fetchingProviderKey)"
+                    @click="handleSave"
                 >
-                    <a-form layout="vertical" :model="currentMattingProviderForm">
-                        <a-row :gutter="16">
-                            <template v-if="currentMattingProviderForm.provider === 'koukoutu'">
-                                <a-col :xs="24">
-                                    <a-form-item label="API 地址">
-                                        <a-input
-                                            v-model="currentMattingProviderForm.apiUrl"
-                                            placeholder="https://sync.koukoutu.com/v1/create"
-                                        />
-                                    </a-form-item>
-                                </a-col>
-                                <a-col :xs="24">
-                                    <a-form-item label="API Key">
-                                        <a-input-password
-                                            v-model="currentMattingProviderForm.apiKey"
-                                            autocomplete="off"
-                                            placeholder="请输入抠抠图 X-API-Key"
-                                            allow-clear
-                                        />
-                                    </a-form-item>
-                                </a-col>
-                            </template>
-                            <template v-else>
-                                <a-col :xs="24" :lg="12">
-                                    <a-form-item label="AccessKey ID">
-                                        <a-input-password
-                                            v-model="currentMattingProviderForm.accessKeyId"
-                                            autocomplete="off"
-                                            placeholder="请输入阿里云 AccessKey ID"
-                                            allow-clear
-                                        />
-                                    </a-form-item>
-                                </a-col>
-                                <a-col :xs="24" :lg="12">
-                                    <a-form-item label="AccessKey Secret">
-                                        <a-input-password
-                                            v-model="currentMattingProviderForm.accessKeySecret"
-                                            autocomplete="off"
-                                            placeholder="请输入阿里云 AccessKey Secret"
-                                            allow-clear
-                                        />
-                                    </a-form-item>
-                                </a-col>
-                                <a-col :xs="24">
-                                    <a-form-item label="Endpoint">
-                                        <a-input
-                                            v-model="currentMattingProviderForm.endpoint"
-                                            placeholder="imageseg.cn-shanghai.aliyuncs.com"
-                                        />
-                                    </a-form-item>
-                                </a-col>
-                            </template>
-                            <a-col :xs="24" :lg="12">
-                                <a-form-item label="请求超时（秒）">
-                                    <a-input-number
-                                        v-model="currentMattingProviderForm.timeoutSeconds"
-                                        :min="10"
-                                        :max="300"
-                                        class="w-full"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                        </a-row>
-                    </a-form>
-                </a-card>
-            </div>
-
-            <div v-if="showProviderSection" class="section-block">
-                <div class="section-header">
-                    <div>
-                        <h3>服务商连接</h3>
-                        <p>
-                            选择服务商，设置连接地址、默认模型与启用状态。
-                        </p>
-                    </div>
-                </div>
-
-                <div class="section-switcher">
-                    <div class="section-switcher__main">
-                        <div class="section-switcher__label">选择 Provider</div>
-                        <a-select
-                            v-model="selectedProviderKey"
-                            placeholder="请选择要维护的 Provider"
-                        >
-                            <a-option
-                                v-for="provider in formData.providers"
-                                :key="provider.provider"
-                                :value="provider.provider"
-                            >
-                                {{ provider.label || provider.provider }}
-                            </a-option>
-                        </a-select>
-                    </div>
-                    <div v-if="currentProviderForm" class="section-switcher__meta">
-                        <a-tag bordered>{{ currentProviderForm.provider }}</a-tag>
-                        <a-tag v-if="currentProviderForm.isDefault" color="green" bordered
-                            >默认</a-tag
-                        >
-                        <a-tag v-if="isProviderReady(currentProviderForm)" color="arcoblue" bordered
-                            >可调用</a-tag
-                        >
-                    </div>
-                </div>
-
-                <a-card v-if="currentProviderForm" class="single-config-card" :bordered="false">
-                    <template #title>
-                        <div class="provider-card__title">
-                            <div class="provider-card__meta">
-                                <span class="provider-name">{{
-                                    currentProviderForm.label || currentProviderForm.provider
-                                }}</span>
-                                <a-tag size="small" bordered>{{
-                                    currentProviderForm.provider
-                                }}</a-tag>
-                            </div>
-                            <div class="provider-card__actions">
-                                <a-switch
-                                    v-model="currentProviderForm.enabled"
-                                    checked-text="启用"
-                                    unchecked-text="停用"
-                                />
-                                <a-button
-                                    size="small"
-                                    type="outline"
-                                    :disabled="!currentProviderForm.enabled"
-                                    @click="setCurrentProviderAsDefault"
-                                >
-                                    设为默认
-                                </a-button>
-                            </div>
-                        </div>
-                    </template>
-
-                    <div class="provider-card__desc">
-                        {{ currentProviderForm.description || '未填写 Provider 描述。' }}
-                    </div>
-
-                    <a-form layout="vertical" :model="currentProviderForm">
-                        <a-row :gutter="16">
-                            <a-col :xs="24" :lg="12">
-                                <a-form-item label="Provider 名称">
-                                    <a-input
-                                        v-model="currentProviderForm.label"
-                                        placeholder="请输入展示名称"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24" :lg="12">
-                                <a-form-item label="默认模型">
-                                    <a-select
-                                        v-model="currentProviderForm.defaultModel"
-                                        allow-search
-                                        allow-create
-                                        placeholder="获取模型后选择，或输入自定义模型 ID"
-                                    >
-                                        <a-option
-                                            v-for="model in currentProviderForm.models || []"
-                                            :key="model.value"
-                                            :value="model.value"
-                                        >
-                                            {{ model.label || model.value }}
-                                        </a-option>
-                                    </a-select>
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24">
-                                <a-form-item label="Base URL">
-                                    <a-input
-                                        v-model="currentProviderForm.baseUrl"
-                                        placeholder="请输入兼容 Chat Completions 的基础地址"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24">
-                                <a-form-item label="API Key">
-                                    <div class="provider-key-row">
-                                        <a-input-password
-                                            v-model="currentProviderForm.apiKey"
-                                            autocomplete="off"
-                                            placeholder="请输入 API Key，模型获取与前端调用均由后端代理"
-                                            allow-clear
-                                        />
-                                        <a-button
-                                            type="primary"
-                                            :loading="fetchingProviderKey === currentProviderForm.provider"
-                                            :disabled="
-                                                !currentProviderForm.baseUrl?.trim() ||
-                                                !currentProviderForm.apiKey?.trim()
-                                            "
-                                            @click="handleFetchProviderModels"
-                                        >
-                                            获取模型
-                                        </a-button>
-                                    </div>
-                                    <div class="field-help">
-                                        Key 只提交给本站 Go 服务端，由服务端请求 Provider 的 /models 接口，不会直接暴露给官网前端。
-                                    </div>
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24">
-                                <a-form-item label="Provider 说明">
-                                    <a-textarea
-                                        v-model="currentProviderForm.description"
-                                        :auto-size="{ minRows: 2, maxRows: 3 }"
-                                        placeholder="补充这个 Provider 的适用场景或模型说明"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                        </a-row>
-                    </a-form>
-
-                    <div class="model-tip-block">
-                        <div class="model-tip-header">
-                            <div class="model-tip-title">当前模型库</div>
-                            <a-tag v-if="currentProviderForm.models?.length" color="green" bordered>
-                                已获取 {{ currentProviderForm.models.length }} 个
-                            </a-tag>
-                        </div>
-                        <div v-if="currentProviderForm.models?.length" class="model-tags">
-                            <a-tag
-                                v-for="model in displayedProviderModels"
-                                :key="`${currentProviderForm.provider}-${model.value}`"
-                                color="arcoblue"
-                                bordered
-                                class="model-tag-select"
-                                @click="currentProviderForm.defaultModel = model.value"
-                            >
-                                {{ model.label }}
-                            </a-tag>
-                            <a-tag v-if="currentProviderForm.models.length > displayedProviderModels.length" bordered>
-                                另有 {{ currentProviderForm.models.length - displayedProviderModels.length }} 个，请在默认模型中搜索
-                            </a-tag>
-                        </div>
-                        <a-empty
-                            v-else
-                            description="填写 Base URL 和 API Key 后点击“获取模型”。"
-                        />
-                    </div>
-                </a-card>
-            </div>
-
-            <div v-if="showAbilitySection" class="section-block">
-                <div class="section-header">
-                    <div>
-                        <h3>AI 工具能力代理管理</h3>
-                        <p>
-                            统一管理 PromptReverse、StableDiffusion、AI
-                            二维码、OCR、图像增强、文本配音等工具页的上游能力地址，前端统一走后端代理。
-                        </p>
-                    </div>
-                </div>
-
-                <div class="section-switcher">
-                    <div class="section-switcher__main">
-                        <div class="section-switcher__label">选择工具能力</div>
-                        <a-select v-model="selectedAbilityKey" placeholder="请选择要维护的工具能力">
-                            <a-option
-                                v-for="ability in formData.imageAbilities"
-                                :key="ability.ability"
-                                :value="ability.ability"
-                            >
-                                {{ ability.label || ability.ability }}
-                            </a-option>
-                        </a-select>
-                    </div>
-                    <div v-if="currentAbilityForm" class="section-switcher__meta">
-                        <a-tag bordered>{{ currentAbilityForm.ability }}</a-tag>
-                        <a-tag
-                            v-if="isImageAbilityReady(currentAbilityForm)"
-                            color="arcoblue"
-                            bordered
-                            >可调用</a-tag
-                        >
-                    </div>
-                </div>
-
-                <a-card v-if="currentAbilityForm" class="single-config-card" :bordered="false">
-                    <template #title>
-                        <div class="provider-card__title">
-                            <div class="provider-card__meta">
-                                <span class="provider-name">{{
-                                    currentAbilityForm.label || currentAbilityForm.ability
-                                }}</span>
-                                <a-tag size="small" bordered>{{
-                                    currentAbilityForm.ability
-                                }}</a-tag>
-                            </div>
-                            <div class="provider-card__actions">
-                                <a-switch
-                                    v-model="currentAbilityForm.enabled"
-                                    checked-text="启用"
-                                    unchecked-text="停用"
-                                />
-                            </div>
-                        </div>
-                    </template>
-
-                    <div class="provider-card__desc">
-                        {{ currentAbilityForm.description || '未填写能力说明。' }}
-                    </div>
-
-                    <a-form layout="vertical" :model="currentAbilityForm">
-                        <a-row :gutter="16">
-                            <a-col :xs="24" :lg="12">
-                                <a-form-item label="能力名称">
-                                    <a-input
-                                        v-model="currentAbilityForm.label"
-                                        placeholder="请输入能力名称"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24" :lg="12">
-                                <a-form-item label="请求方法">
-                                    <a-select
-                                        v-model="currentAbilityForm.method"
-                                        placeholder="请选择请求方法"
-                                    >
-                                        <a-option value="GET">GET</a-option>
-                                        <a-option value="POST">POST</a-option>
-                                    </a-select>
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24">
-                                <a-form-item label="上游地址">
-                                    <a-input
-                                        v-model="currentAbilityForm.upstreamUrl"
-                                        placeholder="请输入上游接口完整地址"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24" :lg="12">
-                                <a-form-item label="API Key 请求头">
-                                    <a-input
-                                        v-model="currentAbilityForm.apiKeyHeader"
-                                        placeholder="例如 Authorization / X-API-Key"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24" :lg="12">
-                                <a-form-item label="超时时间（秒）">
-                                    <a-input-number
-                                        v-model="currentAbilityForm.timeoutSeconds"
-                                        :min="10"
-                                        :max="300"
-                                        class="w-full"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24">
-                                <a-form-item label="API Key">
-                                    <a-input-password
-                                        v-model="currentAbilityForm.apiKey"
-                                        autocomplete="off"
-                                        placeholder="如上游需要鉴权，可在这里填写 API Key"
-                                        allow-clear
-                                    />
-                                </a-form-item>
-                            </a-col>
-                            <a-col :xs="24">
-                                <a-form-item label="能力说明">
-                                    <a-textarea
-                                        v-model="currentAbilityForm.description"
-                                        :auto-size="{ minRows: 2, maxRows: 3 }"
-                                        placeholder="补充这个图片 AI 能力的适用工具页或限制说明"
-                                    />
-                                </a-form-item>
-                            </a-col>
-                        </a-row>
-                    </a-form>
-                </a-card>
-            </div>
-        </a-card>
-
-        <template #actions>
-            <a-button
-                v-perms="['setting:ai:model:save']"
-                type="primary"
-                data-admin-smoke="ai-matting-save"
-                :loading="isSubmitting"
-                :disabled="Boolean(fetchingProviderKey)"
-                @click="handleSave"
-            >
-                保存当前配置
-            </a-button>
-        </template>
+                    保存当前配置
+                </a-button>
+            </template>
         </config-edit-frame>
     </div>
 </template>
 
 <script lang="ts" setup name="settingAiModel">
 import AdminPageHeader from '@/components/page-header/index.vue'
+import AiMattingPanel from './components/ai-matting-panel.vue'
+import AiProviderPanel from './components/ai-provider-panel.vue'
+import AiAbilityPanel from './components/ai-ability-panel.vue'
 import {
     fetchAiProviderModels,
     getAiModelDetail,
     saveAiModel,
-    type AiModelOption,
     type AiMattingProviderConfig,
     type AiImageAbilityConfig,
     type AiProviderConfig,
-    type AiProviderCurrent,
-    type AiModelSavePayload
+    type AiModelSavePayload,
 } from '@/api/setting/ai_model'
 import feedback from '@/utils/feedback'
 import { onBeforeRouteLeave } from 'vue-router'
-import ConfigEditFrame from './components/config-edit-frame.vue'
-import { useOperateSubmit } from './composables/use-operate-submit'
-import { useConfigLoad } from './composables/use-config-load'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useOperateSubmit } from '@/composables/use-operate-submit'
+import { useConfigLoad } from '@/composables/use-config-load'
 import { useRoute } from 'vue-router'
 
 type AiModelPageMode = 'matting' | 'provider' | 'ability' | 'all'
 
 const route = useRoute()
+// 后台按 fullPath 缓存独立实例；保存职责固定为本实例创建时的菜单，不跟随其他活动标签变化。
+const instanceRoutePath = route.path
+let isPageActive = true
+let isPageDisposed = false
+let unloadAttached = false
 
 const formData = reactive<{
     modelId: string
-    supported: AiModelOption[]
-    currentModelName: string
     mattingProviders: AiMattingProviderConfig[]
     providers: AiProviderConfig[]
     imageAbilities: AiImageAbilityConfig[]
-    providerCurrent: AiProviderCurrent | null
 }>({
     modelId: '',
-    supported: [],
-    currentModelName: '',
     mattingProviders: [],
     providers: [],
     imageAbilities: [],
-    providerCurrent: null
 })
 
 /**
- * 函数说明：控制 AI 模型页运营模式。简版聚焦当前模块配置，高级模式展示全局统计视图。
+ * 函数说明：按当前菜单维护独立基线，选择状态不参与持久化。
  */
 const baselineSnapshot = ref('')
 const selectedProviderKey = ref('')
@@ -523,51 +138,36 @@ const selectedAbilityKey = ref('')
 const fetchingProviderKey = ref('')
 const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('当前 AI 配置已保存')
 
-const pageMetaMap: Record<
-    AiModelPageMode,
-    { title: string; subtitle: string; tag: string; items: string[] }
-> = {
+const pageMetaMap: Record<AiModelPageMode, { title: string; subtitle: string }> = {
     all: {
         title: 'AI 模型管理',
-        subtitle:
-            '统一管理抠图 API、文本 AI Provider 与图片 AI 能力，前端工具统一走这里的后台配置。',
-        tag: '综合视图',
-        items: ['统一查看 AI 抠图、文本 Provider、工具能力三条链路。', '适合做发布前总检查与统一保存。']
+        subtitle: '统一管理抠图 API、文本 AI 服务商与工具能力，前端工具通过后端代理调用。',
     },
     matting: {
         title: 'AI 抠图 API',
-        subtitle:
-            '这里只维护阿里云与抠抠图 API 的默认服务商，密钥保存在后台服务端，不会暴露给前端。',
-        tag: '抠图 API',
-        items: ['切换当前生效的抠图 API Provider。', '保存后证件照换底色、AI 抠图页即时生效。']
+        subtitle: '维护阿里云与抠抠图的默认服务商，密钥保存在后台服务端。',
     },
     provider: {
         title: 'AI Provider 管理',
-        subtitle:
-            '统一管理豆包、Kimi、DeepSeek、OpenAI 等文本能力 Provider，前端聊天/写作/搜索都从这里读取。',
-        tag: '文本 Provider',
-        items: ['维护 Provider 基础地址、Key 和默认模型。', '前端聊天/写作/搜索统一走后端代理，不再暴露前端 Key。']
+        subtitle: '维护文本服务商的连接、密钥和默认模型，供聊天、写作与搜索使用。',
     },
     ability: {
         title: 'AI 工具能力代理',
-        subtitle:
-            '统一管理 PromptReverse、StableDiffusion、AI 二维码、OCR、图像增强、文本配音等工具页的上游能力。',
-        tag: '图片与工具能力',
-        items: ['维护图片类与工具类上游能力地址、请求方式和超时。', '保存后 OCR、图像增强、二维码等页面统一读取。']
-    }
+        subtitle: '维护二维码、OCR、图像增强与配音等工具的上游能力。',
+    },
 }
 
 /**
- * 函数说明：根据当前路由路径识别 AI 模型页面模式，支持同一组件在多个后台菜单下复用。
+ * 函数说明：按实例所属菜单识别配置范围，缓存失活后不跟随全局路由切换写入职责。
  */
 const pageMode = computed<AiModelPageMode>(() => {
-    if (route.path.endsWith('/ai_provider')) {
+    if (instanceRoutePath.endsWith('/ai_provider')) {
         return 'provider'
     }
-    if (route.path.endsWith('/ai_ability')) {
+    if (instanceRoutePath.endsWith('/ai_ability')) {
         return 'ability'
     }
-    if (route.path.endsWith('/ai_model')) {
+    if (instanceRoutePath.endsWith('/ai_model')) {
         return 'matting'
     }
     return 'all'
@@ -623,13 +223,6 @@ const currentProviderForm = computed(() => {
 })
 
 /**
- * 函数说明：限制模型标签首屏数量，大模型库通过默认模型搜索框完成选择。
- */
-const displayedProviderModels = computed(() => {
-    return (currentProviderForm.value?.models || []).slice(0, 12)
-})
-
-/**
  * 函数说明：根据当前下拉选中的工具能力返回可编辑对象，避免后台同时渲染全部能力卡片。
  */
 const currentAbilityForm = computed(() => {
@@ -677,23 +270,96 @@ const isImageAbilityReady = (ability: AiImageAbilityConfig) => {
     )
 }
 
+/** 只在配置已完整加载且未提交时接受面板草稿；获取模型期间仍允许修正连接地址。 */
+const canEditAiDraft = () =>
+    isPageActive &&
+    !isPageDisposed &&
+    hasLoadedData.value &&
+    !isLoadingData.value &&
+    !isSubmitting.value &&
+    !loadErrorMessage.value
+
+/** 按显式字段白名单更新父级对象，子面板不能改标识、模型库或另一个模块。 */
+const applyAiDraftPatch = <T extends object>(
+    target: T | undefined,
+    patch: Partial<T>,
+    fields: (keyof T)[]
+) => {
+    if (!target || !canEditAiDraft() || !patch || typeof patch !== 'object' || Array.isArray(patch))
+        return
+    for (const field of fields)
+        if (Object.prototype.hasOwnProperty.call(patch, field))
+            target[field] = patch[field] as T[keyof T]
+}
+
+/** 根据抠图服务商标识合并草稿，未知服务商及隐藏模块的回调不修改数据。 */
+const patchMattingProvider = (provider: string, patch: Partial<AiMattingProviderConfig>) => {
+    if (!showMattingSection.value) return
+    applyAiDraftPatch(
+        formData.mattingProviders.find((item) => item.provider === provider),
+        patch,
+        ['apiUrl', 'apiKey', 'accessKeyId', 'accessKeySecret', 'endpoint', 'timeoutSeconds']
+    )
+}
+
+/** 根据文本服务商标识编辑连接字段，默认项和模型库仍由父级专用动作维护。 */
+const patchTextProvider = (provider: string, patch: Partial<AiProviderConfig>) => {
+    if (!showProviderSection.value) return
+    applyAiDraftPatch(
+        formData.providers.find((item) => item.provider === provider),
+        patch,
+        ['label', 'description', 'enabled', 'baseUrl', 'apiKey', 'defaultModel']
+    )
+}
+
+/** 根据工具能力标识合并草稿，能力切换不会把迟到回调套给新选项。 */
+const patchToolAbility = (ability: string, patch: Partial<AiImageAbilityConfig>) => {
+    if (!showAbilitySection.value) return
+    applyAiDraftPatch(
+        formData.imageAbilities.find((item) => item.ability === ability),
+        patch,
+        [
+            'label',
+            'description',
+            'enabled',
+            'method',
+            'upstreamUrl',
+            'apiKeyHeader',
+            'apiKey',
+            'timeoutSeconds',
+        ]
+    )
+}
+
 /** 按当前菜单构造补丁载荷，隐藏模块的旧快照不会随当前页一起写回。 */
 const buildSavePayload = (): AiModelSavePayload => {
-    if (pageMode.value === 'matting') return {
-        scope: 'matting', modelId: formData.modelId,
-        mattingProviders: formData.mattingProviders.map(item => ({ ...item }))
-    }
-    if (pageMode.value === 'provider') return {
-        scope: 'provider', providers: formData.providers.map(item => ({ ...item, models: item.models.map(model => ({ ...model })) }))
-    }
-    if (pageMode.value === 'ability') return {
-        scope: 'ability', imageAbilities: formData.imageAbilities.map(item => ({ ...item }))
-    }
+    if (pageMode.value === 'matting')
+        return {
+            scope: 'matting',
+            modelId: formData.modelId,
+            mattingProviders: formData.mattingProviders.map((item) => ({ ...item })),
+        }
+    if (pageMode.value === 'provider')
+        return {
+            scope: 'provider',
+            providers: formData.providers.map((item) => ({
+                ...item,
+                models: item.models.map((model) => ({ ...model })),
+            })),
+        }
+    if (pageMode.value === 'ability')
+        return {
+            scope: 'ability',
+            imageAbilities: formData.imageAbilities.map((item) => ({ ...item })),
+        }
     return {
         modelId: formData.modelId,
-        mattingProviders: formData.mattingProviders.map(item => ({ ...item })),
-        providers: formData.providers.map(item => ({ ...item, models: item.models.map(model => ({ ...model })) })),
-        imageAbilities: formData.imageAbilities.map(item => ({ ...item }))
+        mattingProviders: formData.mattingProviders.map((item) => ({ ...item })),
+        providers: formData.providers.map((item) => ({
+            ...item,
+            models: item.models.map((model) => ({ ...model })),
+        })),
+        imageAbilities: formData.imageAbilities.map((item) => ({ ...item })),
     }
 }
 
@@ -804,7 +470,7 @@ const validationTips = computed(() => {
     return [
         ...collectMattingValidationTips(),
         ...collectProviderValidationTips(),
-        ...collectAbilityValidationTips()
+        ...collectAbilityValidationTips(),
     ]
 })
 
@@ -814,7 +480,7 @@ const validationTips = computed(() => {
 const setDefaultProvider = (targetIndex: number) => {
     formData.providers = formData.providers.map((item, index) => ({
         ...item,
-        isDefault: item.enabled ? index === targetIndex : false
+        isDefault: item.enabled ? index === targetIndex : false,
     }))
 }
 
@@ -822,6 +488,7 @@ const setDefaultProvider = (targetIndex: number) => {
  * 函数说明：将当前下拉选中的 Provider 设置为默认项，保持后台操作聚焦在当前选择对象。
  */
 const setCurrentProviderAsDefault = () => {
+    if (!canEditAiDraft() || !showProviderSection.value) return
     const currentIndex = formData.providers.findIndex(
         (item) => item.provider === selectedProviderKey.value
     )
@@ -835,7 +502,12 @@ const setCurrentProviderAsDefault = () => {
  * 函数说明：通过后端代理请求当前 Provider 模型接口，并将真实模型列表写入待保存配置。
  */
 const handleFetchProviderModels = async () => {
-    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value || fetchingProviderKey.value) return
+    if (
+        !canEditAiDraft() ||
+        !showProviderSection.value ||
+        fetchingProviderKey.value
+    )
+        return
     const provider = currentProviderForm.value
     if (!provider) {
         feedback.msgError('请先选择 Provider')
@@ -857,9 +529,14 @@ const handleFetchProviderModels = async () => {
         const data = await fetchAiProviderModels({
             provider: provider.provider,
             baseUrl: requestBaseUrl,
-            apiKey: requestApiKey
+            apiKey: requestApiKey,
         })
-        if (!formData.providers.includes(provider) || provider.baseUrl.trim() !== requestBaseUrl || provider.apiKey.trim() !== requestApiKey) {
+        if (
+            isPageDisposed ||
+            !formData.providers.includes(provider) ||
+            provider.baseUrl.trim() !== requestBaseUrl ||
+            provider.apiKey.trim() !== requestApiKey
+        ) {
             feedback.msgWarning('服务商连接配置已变化，请重新获取模型。')
             return
         }
@@ -876,31 +553,42 @@ const handleFetchProviderModels = async () => {
 /**
  * 函数说明：读取后端 AI 模型详情并回填表单。
  */
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
+const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } =
+    useConfigLoad(hasUnsavedChanges)
 /** 读取完整详情供当前模块编辑，接口失败时保留原草稿与基线。 */
-const getData = async () => loadConfiguration(async () => {
-    const data = await getAiModelDetail()
-    formData.modelId = data.currentModelId || ''
-    formData.supported = data.supported || []
-    formData.currentModelName = data.current?.modelName || ''
-    formData.mattingProviders = (data.mattingProviders || []).map(item => ({ ...item }))
-    formData.providers = (data.providers || []).map(item => ({ ...item, models: item.models || [] }))
-    formData.imageAbilities = (data.imageAbilities || []).map(item => ({ ...item }))
-    formData.providerCurrent = data.providerCurrent || null
-    selectedProviderKey.value = formData.providers[0]?.provider || ''
-    selectedAbilityKey.value = formData.imageAbilities[0]?.ability || ''
-    baselineSnapshot.value = buildSnapshot()
-})
+const getData = async () => {
+    if (!isPageActive || isPageDisposed || isSubmitting.value || fetchingProviderKey.value)
+        return false
+    return loadConfiguration(async () => {
+        const data = await getAiModelDetail()
+        if (isPageDisposed) return
+        formData.modelId = data.currentModelId || ''
+        formData.mattingProviders = (data.mattingProviders || []).map((item) => ({ ...item }))
+        formData.providers = (data.providers || []).map((item) => ({
+            ...item,
+            models: item.models || [],
+        }))
+        formData.imageAbilities = (data.imageAbilities || []).map((item) => ({ ...item }))
+        selectedProviderKey.value = formData.providers[0]?.provider || ''
+        selectedAbilityKey.value = formData.imageAbilities[0]?.ability || ''
+        baselineSnapshot.value = buildSnapshot()
+    })
+}
 
 /** 重新加载前保护当前模块草稿，保存或获取模型过程中不覆盖编辑内容。 */
 const reloadAiModel = async () => {
-    if (isSubmitting.value || fetchingProviderKey.value) return false
+    if (!isPageActive || isPageDisposed || isSubmitting.value || fetchingProviderKey.value)
+        return false
     return reloadConfiguration(getData)
 }
 
 /** 保存当前模块的明确补丁，持久化成功即更新基线，不依赖二次读取确认。 */
 const handleSave = async () => {
-    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value || fetchingProviderKey.value) return
+    if (
+        !canEditAiDraft() ||
+        fetchingProviderKey.value
+    )
+        return
     if (validationTips.value.length > 0) {
         feedback.msgError(validationTips.value[0])
         return
@@ -909,7 +597,7 @@ const handleSave = async () => {
     const submittedSnapshot = JSON.stringify(payload)
     await runSubmit(async () => {
         await saveAiModel(payload)
-        baselineSnapshot.value = submittedSnapshot
+        if (!isPageDisposed) baselineSnapshot.value = submittedSnapshot
     })
 }
 
@@ -917,7 +605,7 @@ const handleSave = async () => {
  * 函数说明：浏览器刷新或关闭前提醒未保存变更，减少误操作。
  */
 const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (!hasUnsavedChanges.value) {
+    if (!isPageActive || isPageDisposed || !hasUnsavedChanges.value) {
         return
     }
     event.preventDefault()
@@ -940,193 +628,46 @@ onBeforeRouteLeave(async () => {
     }
 })
 
-onMounted(() => {
-    void getData()
-    window.addEventListener('beforeunload', handleBeforeUnload)
-})
+/** 激活缓存页时恢复刷新保护，不重新读取或覆盖已有草稿。 */
+const activatePage = () => {
+    if (isPageDisposed) return
+    isPageActive = true
+    if (!unloadAttached) {
+        window.addEventListener('beforeunload', handleBeforeUnload)
+        unloadAttached = true
+    }
+}
 
+/** 缓存页失活时释放全局监听，避免未保存草稿影响其他标签的刷新。 */
+const deactivatePage = () => {
+    isPageActive = false
+    if (unloadAttached) {
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        unloadAttached = false
+    }
+}
+
+onMounted(() => {
+    activatePage()
+    void getData()
+})
+onActivated(activatePage)
+onDeactivated(deactivatePage)
 onBeforeUnmount(() => {
-    window.removeEventListener('beforeunload', handleBeforeUnload)
+    isPageDisposed = true
+    deactivatePage()
 })
 </script>
 
 <style lang="scss" scoped>
-.setting-ai-model {
-    .layout-page-actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        flex-wrap: wrap;
-    }
-
-    .section-switcher {
-        display: flex;
-        align-items: flex-end;
-        justify-content: space-between;
-        gap: 16px;
-        margin-bottom: 16px;
-        padding: 14px 16px;
-        border-radius: 14px;
-        border: 1px solid var(--color-border-2);
-        background: var(--color-fill-1);
-    }
-
-    .section-switcher__main {
-        flex: 1;
-        max-width: 420px;
-    }
-
-    .section-switcher__label {
-        margin-bottom: 8px;
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--color-text-2);
-    }
-
-    .section-switcher__meta {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .section-block {
-        margin-top: 16px;
-        padding: 14px;
-        border: 1px solid var(--color-border-2);
-        border-radius: 12px;
-        background: #fff;
-    }
-
-    .section-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 12px;
-    }
-
-    .section-header h3 {
-        margin: 0;
-        font-size: 15px;
-        font-weight: 600;
-        color: var(--color-text-1);
-    }
-
-    .section-header p {
-        margin: 4px 0 0;
-        font-size: 12px;
-        color: var(--color-text-3);
-    }
-
-    .matting-provider-desc {
-        max-width: 520px;
-        font-size: 12px;
-        line-height: 1.6;
-        color: var(--color-text-3);
-    }
-
-    .matting-config-card {
-        margin-top: 16px;
-    }
-
-    .single-config-card {
-        border: 1px solid var(--color-border-2);
-        border-radius: 14px;
-        background: linear-gradient(180deg, #fff, var(--color-fill-1));
-    }
-
-    .provider-card__title {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-    }
-
-    .provider-card__meta {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .provider-name {
-        font-weight: 600;
-        color: var(--color-text-1);
-    }
-
-    .provider-card__actions {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .provider-key-row {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 8px;
-        width: 100%;
-    }
-
-    .field-help {
-        margin-top: 7px;
-        color: var(--color-text-3);
-        font-size: 12px;
-        line-height: 1.65;
-    }
-
-    .provider-card__desc {
-        margin-bottom: 14px;
-        font-size: 13px;
-        color: var(--color-text-3);
-        line-height: 1.7;
-    }
-
-    .model-tip-block {
-        margin-top: 4px;
-        padding-top: 12px;
-        border-top: 1px dashed var(--color-border-2);
-    }
-
-    .model-tip-title {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--color-text-2);
-    }
-
-    .model-tip-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        margin-bottom: 10px;
-    }
-
-    .model-tags {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    .model-tag-select {
-        cursor: pointer;
-    }
+.layout-page-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
-
-@media (max-width: 768px) {
-    .setting-ai-model {
-
-        .section-switcher,
-        .provider-card__title {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .provider-key-row {
-            grid-template-columns: 1fr;
-        }
-    }
+.ai-config-panels {
+    display: grid;
+    gap: 16px;
 }
 </style>

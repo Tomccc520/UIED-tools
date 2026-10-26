@@ -1149,21 +1149,9 @@ func (lSrv settingLoginService) SyncWechatPlatformCert() (res map[string]interfa
 	if platformCertPEM == "" {
 		return nil, response.AssertArgumentError.Make("微信平台证书解密后为空")
 	}
-	if err := util.ConfigUtil.Set(lSrv.db, loginConfigType, loginConfigPaymentWechatPlatCa, platformCertPEM); err != nil {
-		return nil, response.CheckErr(err, "SyncWechatPlatformCert Save paymentWechatPlatformCert err")
-	}
-	if err := util.ConfigUtil.Set(lSrv.db, loginConfigType, loginConfigPaymentWechatPlatSN, strings.TrimSpace(selectedItem.SerialNo)); err != nil {
-		return nil, response.CheckErr(err, "SyncWechatPlatformCert Save paymentWechatPlatformSerialNo err")
-	}
-	if err := util.ConfigUtil.Set(lSrv.db, loginConfigType, loginConfigPaymentWechatPlatET, strings.TrimSpace(selectedItem.EffectiveTime)); err != nil {
-		return nil, response.CheckErr(err, "SyncWechatPlatformCert Save paymentWechatPlatformEffectiveTime err")
-	}
-	if err := util.ConfigUtil.Set(lSrv.db, loginConfigType, loginConfigPaymentWechatPlatXP, strings.TrimSpace(selectedItem.ExpireTime)); err != nil {
-		return nil, response.CheckErr(err, "SyncWechatPlatformCert Save paymentWechatPlatformExpireTime err")
-	}
 	syncedAt := time.Now().Unix()
-	if err := util.ConfigUtil.Set(lSrv.db, loginConfigType, loginConfigPaymentWechatSyncAt, strconv.FormatInt(syncedAt, 10)); err != nil {
-		return nil, response.CheckErr(err, "SyncWechatPlatformCert Save paymentWechatPlatformSyncedAt err")
+	if err := lSrv.saveWechatPlatformCertificate(platformCertPEM, selectedItem.SerialNo, selectedItem.EffectiveTime, selectedItem.ExpireTime, syncedAt); err != nil {
+		return nil, err
 	}
 
 	return map[string]interface{}{
@@ -1173,4 +1161,23 @@ func (lSrv settingLoginService) SyncWechatPlatformCert() (res map[string]interfa
 		"platformCertPem":  platformCertPEM,
 		"syncedAt":         syncedAt,
 	}, nil
+}
+
+// saveWechatPlatformCertificate 函数说明：在同一事务内保存证书及其元数据，任一写入失败均回滚，避免证书与序列号错配。
+func (lSrv settingLoginService) saveWechatPlatformCertificate(certificate, serialNo, effectiveTime, expireTime string, syncedAt int64) error {
+	values := []struct{ name, value string }{
+		{loginConfigPaymentWechatPlatCa, certificate},
+		{loginConfigPaymentWechatPlatSN, strings.TrimSpace(serialNo)},
+		{loginConfigPaymentWechatPlatET, strings.TrimSpace(effectiveTime)},
+		{loginConfigPaymentWechatPlatXP, strings.TrimSpace(expireTime)},
+		{loginConfigPaymentWechatSyncAt, strconv.FormatInt(syncedAt, 10)},
+	}
+	return lSrv.db.Transaction(func(tx *gorm.DB) error {
+		for _, value := range values {
+			if err := util.ConfigUtil.Set(tx, loginConfigType, value.name, value.value); err != nil {
+				return response.CheckErr(err, "SyncWechatPlatformCert Save certificate configuration err")
+			}
+		}
+		return nil
+	})
 }

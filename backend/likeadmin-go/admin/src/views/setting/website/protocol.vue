@@ -30,14 +30,12 @@
     </div>
 </template>
 <script setup lang="ts" name="webProtocol">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { computed, onMounted, reactive, ref } from 'vue'
 import AdminPageHeader from '@/components/page-header/index.vue'
 import useUserStore from '@/stores/modules/user'
 import feedback from '@/utils/feedback'
-import ConfigEditFrame from './components/config-edit-frame.vue'
-import { useConfigLoad } from './composables/use-config-load'
-import { useOperateSubmit } from './composables/use-operate-submit'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useConfigEditor } from '@/composables/use-config-editor'
 import { getProtocol, setProtocol } from '@/api/setting/website'
 
 interface ProtocolDetail { name: string; content: string }
@@ -49,14 +47,6 @@ const protocolTypes: { key: keyof ProtocolFormData; title: string }[] = [{ key: 
 const userStore = useUserStore()
 /** 根据当前权限控制编辑与保存，脚本调用同样遵守按钮权限。 */
 const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:protocol:save'))
-const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('协议配置已保存')
-const baselineSnapshot = ref('')
-/** 按完整编辑值比较草稿，不忽略有意义的正文和空白改动。 */
-const hasUnsavedChanges = computed(() => Boolean(baselineSnapshot.value) && buildSnapshot() !== baselineSnapshot.value)
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
-/** 统一检查加载、权限与并发状态，读取失败后不能发布默认表单。 */
-const canOperate = () => canEdit.value && hasLoadedData.value && !isLoadingData.value && !isSubmitting.value && !loadErrorMessage.value
-
 /** 只有用户明确开启正文编辑后才接受编辑器输出，初始化归一化不得改写法务原文。 */
 const updateProtocolBody = (key: keyof ProtocolFormData, value: string) => {
     if (!canOperate() || !editingBodies[key] || typeof value !== 'string') return
@@ -74,19 +64,16 @@ const getPlainTextLength = (html: string) => String(html || '').replace(/<[^>]+>
 const buildPayload = (): ProtocolFormData => ({ service: { name: formData.value.service.name, content: formData.value.service.content }, privacy: { name: formData.value.privacy.name, content: formData.value.privacy.content } })
 /** 使用原始协议内容生成快照，不把正文前后空白变更误判为已保存。 */
 const buildSnapshot = () => JSON.stringify(buildPayload())
+/** 公共编辑器维护读写状态和草稿保护，页面继续负责字段与接口。 */
+const { isLoadingData, hasLoadedData, loadErrorMessage, isSubmitting, lastSavedAt, submitError, hasUnsavedChanges, canOperate, loadConfiguration, reloadConfiguration, submitConfiguration } = useConfigEditor({ canEdit, snapshot: buildSnapshot, successText: '协议配置已保存' })
 /** 只接受完整协议响应；加载失败时禁止默认空正文覆盖服务端内容。 */
-const getData = async () => {
-    if (isSubmitting.value) return false
-    return loadConfiguration(async () => {
-        const data = await getProtocol()
-        if (!data || protocolTypes.some(item => typeof data[item.key]?.name !== 'string' || typeof data[item.key]?.content !== 'string')) throw new Error('协议配置响应不完整')
-        editingBodies.service = false
-        editingBodies.privacy = false
-        formData.value = { service: { name: data.service.name, content: data.service.content }, privacy: { name: data.privacy.name, content: data.privacy.content } }
-        baselineSnapshot.value = buildSnapshot()
-        submitError.value = ''
-    })
-}
+const getData = () => loadConfiguration(async () => {
+    const data = await getProtocol()
+    if (!data || protocolTypes.some(item => typeof data[item.key]?.name !== 'string' || typeof data[item.key]?.content !== 'string')) throw new Error('协议配置响应不完整')
+    editingBodies.service = false
+    editingBodies.privacy = false
+    formData.value = { service: { name: data.service.name, content: data.service.content }, privacy: { name: data.privacy.name, content: data.privacy.content } }
+})
 /** 保存两份协议的独立快照；不生成、修订或格式化法务正文，也不重复读回。 */
 const handleSave = async () => {
     if (!canOperate() || !hasUnsavedChanges.value) return false
@@ -94,26 +81,12 @@ const handleSave = async () => {
     const invalid = protocolTypes.find(item => !payload[item.key].name.trim() || getPlainTextLength(payload[item.key].content) === 0)
     if (invalid) { feedback.msgError(`请填写${invalid.title}名称和正文`); return false }
     const snapshot = JSON.stringify(payload)
-    return runSubmit(async () => { await setProtocol(payload); baselineSnapshot.value = snapshot })
+    return submitConfiguration(() => setProtocol(payload), snapshot)
 }
-/** 重新加载前确认放弃草稿；保存中不允许重读覆盖表单。 */
-const reloadData = async () => {
-    if (isSubmitting.value) return false
-    return reloadConfiguration(getData)
-}
-/** 刷新或关闭浏览器时保护尚未保存的编辑。 */
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (hasUnsavedChanges.value || isSubmitting.value) { event.preventDefault(); event.returnValue = '' }
-}
-/** 路由离开时确认草稿；提交未结束时阻止跳转，避免误判保存结果。 */
-const confirmLeave = async () => {
-    if (isSubmitting.value) return false
-    if (!hasUnsavedChanges.value) return true
-    try { await feedback.confirm('当前页面存在未保存更改，确定离开吗？'); return true } catch { return false }
-}
-onBeforeRouteLeave(confirmLeave)
-onMounted(() => { void getData(); window.addEventListener('beforeunload', handleBeforeUnload) })
-onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+/** 重新读取前由公共编辑器确认草稿，提交期间不启动读取。 */
+const reloadData = () => reloadConfiguration(getData)
+/** 页面挂载后读取本页业务数据，公共编辑器自行清理离开守卫。 */
+onMounted(() => { void getData() })
 </script>
 <style scoped lang="scss">
 .basic-config-page { min-width: 0; }

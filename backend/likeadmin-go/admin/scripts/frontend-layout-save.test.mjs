@@ -31,7 +31,7 @@ const createPage = () => {
     const initial = { ...helpers.createFrontendContent(), otherPage: '不能写入', toolsChangelogTimeline: '[]' }
     const io = { read: async () => initial, save: async () => ({}), confirm: async () => {} }
     const feedback = { msgSuccess: text => calls.success.push(text), msgError: text => calls.errors.push(text), confirm: async () => { calls.confirms++; return io.confirm() } }
-    const composable = (file, name) => execute(fs.readFileSync(new URL('composables/' + file, root), 'utf8'), { feedback }, [name])[name]
+    const composable = (file, name) => execute(fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback }, [name])[name]
     const source = fs.readFileSync(new URL('frontend_layout.vue', root), 'utf8').match(/<script\b[^>]*>([\s\S]*?)<\/script>/)[1]
     const page = execute(source, {
         ...helpers, feedback, defaultChangelogTimelineSource: [],
