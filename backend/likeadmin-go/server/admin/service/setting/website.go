@@ -171,6 +171,23 @@ func normalizeToolsLayoutArrayConfig(raw string, defaultJSON string) string {
 	return trimmed
 }
 
+// preserveNavigationEditorRawValues 函数说明：管理端编辑器读取已存原文，保留异常和空数组供修复；缺失配置继续展示默认值，不影响主站回退或数据库内容。
+func preserveNavigationEditorRawValues(normalized, stored map[string]string) map[string]string {
+	fields := []string{
+		toolsHeaderLinksConfigName, toolsSearchQuickToolsConfigName, toolsAiChatHeaderLinksConfigName, toolsAiCommonHeaderLinksConfigName,
+		toolsSidebarRecommendConfigName, toolsSidebarCategoryMenusConfigName, toolsSidebarMenuBlocksConfigName,
+		toolsSidebarBottomLinksConfigName, toolsAiToolboxSidebarMenusConfigName,
+		toolsFooterSupportLinksConfigName, toolsFooterRecordLinksConfigName, toolsOfficialMediaLinksConfigName,
+		toolsFooterQuickSectionsConfigName, toolsFooterFriendSectionsConfigName,
+	}
+	for _, field := range fields {
+		if raw, exists := stored[field]; exists {
+			normalized[field] = raw
+		}
+	}
+	return normalized
+}
+
 /**
  * 函数说明：标准化 tools 侧栏菜单样式模块配置，空值/空数组/非法JSON统一回退默认模块。
  */
@@ -566,7 +583,7 @@ func (wSrv settingWebsiteService) Detail() (res map[string]string, e error) {
 	homepageLearningConfig := defaults.NormalizeHomepageLearningConfig(data)
 	homepageLearningValues := defaults.HomepageLearningConfigToWebsiteValues(homepageLearningConfig)
 
-	return map[string]string{
+	return preserveNavigationEditorRawValues(map[string]string{
 		"name":                                               data["name"],
 		"logo":                                               util.UrlUtil.ToAbsoluteUrl(data["logo"]),
 		"favicon":                                            util.UrlUtil.ToAbsoluteUrl(data["favicon"]),
@@ -622,7 +639,7 @@ func (wSrv settingWebsiteService) Detail() (res map[string]string, e error) {
 		defaults.ToolsHomepageLearningCategorySlugConfigName: homepageLearningValues[defaults.ToolsHomepageLearningCategorySlugConfigName],
 		defaults.ToolsHomepageLearningCategoryIDsConfigName:  homepageLearningValues[defaults.ToolsHomepageLearningCategoryIDsConfigName],
 		defaults.ToolsHomepageLearningLimitConfigName:        homepageLearningValues[defaults.ToolsHomepageLearningLimitConfigName],
-	}, nil
+	}, data), nil
 }
 
 /**

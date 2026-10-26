@@ -411,7 +411,7 @@ try {
         await page.getByRole('button', { name: '重新加载', exact: true }).click()
         await page.locator('.arco-modal').getByRole('button', { name: '取消', exact: true }).click()
         assert.equal(await sidebarInput.inputValue(), '样例：菜单草稿')
-        await page.getByRole('button', { name: '保存配置', exact: true }).click()
+        await page.locator('[data-admin-smoke="sidebar-save-top"]').click()
         await waitSaveState('saved')
         assert.equal(fixture.toolsSiteSlogan, '样例：菜单草稿')
         assert.equal(Object.hasOwn(saves.at(-1), 'toolsCategoryTree'), false)

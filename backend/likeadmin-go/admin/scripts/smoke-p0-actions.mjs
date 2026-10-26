@@ -189,9 +189,9 @@ const collectFrontendLayoutScopeErrors = () => {
 }
 
 /**
- * 函数说明：守护工具主数据与菜单设置的操作去重和简版保存边界。
+ * 函数说明：守护工具主数据操作去重；菜单字段保存边界由真实脚本 PATCH 回归覆盖。
  */
-const collectCatalogAndSidebarScopeErrors = () => {
+const collectCatalogActionErrors = () => {
     const errors = []
     const catalogPath = 'src/views/setting/website/tools_catalog.vue'
     const catalogSource = readSourceFile(catalogPath)
@@ -212,35 +212,8 @@ const collectCatalogAndSidebarScopeErrors = () => {
         }
     }
 
-    const sidebarPath = 'src/views/setting/website/sidebar.vue'
-    const sidebarSource = readSourceFile(sidebarPath)
-    if (!sidebarSource) {
-        errors.push(`${sidebarPath}: 文件不存在或不可读`)
-        return errors
-    }
-    const validateBlock = sliceSourceBetween(
-        sidebarSource,
-        'const validateBeforeSubmit = (showMessage = true): boolean => {',
-        'const buildSidebarPayload = '
-    )
-    const payloadBlock = sliceSourceBetween(
-        sidebarSource,
-        'const buildSidebarPayload = (): Record<string, string> => {',
-        'const handleSubmit = '
-    )
-    if (!validateBlock.includes('if (!simpleMode.value || hasAdvancedSidebarChanges.value)')) {
-        errors.push(`${sidebarPath}: 简版校验必须保护已编辑的高级菜单草稿`)
-    }
-    if (!payloadBlock.includes('if (!simpleMode.value || hasAdvancedSidebarChanges.value)')) {
-        errors.push(`${sidebarPath}: 简版提交必须保留已编辑的高级菜单草稿`)
-    }
-    const simplePayloadBlock = payloadBlock.split('if (!simpleMode.value || hasAdvancedSidebarChanges.value)')[0]
-    const advancedSidebarFields = ['toolsSidebarMenuBlocks', 'toolsAiToolboxSidebarMenus']
-    advancedSidebarFields.forEach((fieldName) => {
-        if (simplePayloadBlock.includes(fieldName)) {
-            errors.push(`${sidebarPath}: 简版提交不应包含 ${fieldName}`)
-        }
-    })
+    // Sidebar 已使用统一字段补丁与完整草稿基线；旧 simpleMode 源码分支检查会误判。
+    // 未改高级字段不写入、切回简版保留高级草稿由 sidebar-config-flow.test.mjs 实际执行验证。
     return errors
 }
 
@@ -250,7 +223,7 @@ const errors = [
     ...collectRedundantContentErrors(),
     ...collectWebsiteSettingsRedundantContentErrors(),
     ...collectFrontendLayoutScopeErrors(),
-    ...collectCatalogAndSidebarScopeErrors()
+    ...collectCatalogActionErrors()
 ]
 
 if (errors.length > 0) {

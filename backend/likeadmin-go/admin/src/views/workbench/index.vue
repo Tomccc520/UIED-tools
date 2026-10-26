@@ -37,10 +37,10 @@
                 >
             </div>
             <a-spin :loading="loading" tip="正在读取统计数据..." class="data-loading">
-                <div v-if="hasLoaded && hasMetrics" class="panel">
-                    <data-panel :metric-items="todayCards" />
+                <div v-if="hasLoaded && (hasMetrics || hasVisitorData)" class="panel">
+                    <data-panel v-if="hasMetrics" :metric-items="todayCards" />
                     <trend-panel :option="visitorOption" :has-data="hasVisitorData" />
-                    <p class="metric-note">
+                    <p v-if="hasMetrics" class="metric-note">
                         工具访问来自工具页访问统计；订单量包含已创建订单，销售额仅统计已支付订单。
                     </p>
                 </div>
@@ -90,7 +90,7 @@
 
 <script lang="ts" setup name="workbench">
 import { Message } from '@arco-design/web-vue'
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { computed, onActivated, onBeforeUnmount, onDeactivated, onMounted, reactive, ref } from 'vue'
 import { getWorkbench } from '@/api/app'
 import useUserStore from '@/stores/modules/user'
 import { flattenAdminNavigation, getAdminQuickNavigation, adminNavigationTitle, getAdminTaskDefinition } from '@/utils/admin-navigation'
@@ -119,6 +119,10 @@ const workbenchData = reactive({
     today: {} as Record<string, any>,
     visitor: {} as Record<string, any>
 })
+const statisticsFreshnessMs = 5 * 60 * 1000
+let lastLoadedAt = 0
+let pageActive = true
+let disposed = false
 let requestSequence = 0
 let requestTimer: ReturnType<typeof setTimeout> | undefined
 
@@ -307,7 +311,7 @@ const resetTodoList = () => {
  * 函数说明：读取真实工作台数据，12 秒内给出结果；失败保留已加载数据，并提供页面级重试。
  */
 const getData = async () => {
-    if (loading.value) return
+    if (!pageActive || disposed || loading.value) return
     const sequence = ++requestSequence
     loading.value = true
     errorMessage.value = ''
@@ -326,23 +330,43 @@ const getData = async () => {
         workbenchData.visitor =
             response.visitor && typeof response.visitor === 'object' ? response.visitor : {}
         hasLoaded.value = true
+        lastLoadedAt = Date.now()
     } catch (error) {
         if (sequence !== requestSequence) return
         console.error('[workbench] 统计数据读取失败', error)
         errorMessage.value = '工作台数据加载失败，请重试'
     } finally {
-        if (requestTimer) clearTimeout(requestTimer)
-        requestTimer = undefined
-        if (sequence === requestSequence) loading.value = false
+        if (sequence === requestSequence) {
+            if (requestTimer) clearTimeout(requestTimer)
+            requestTimer = undefined
+            loading.value = false
+        }
     }
 }
 
-onMounted(() => {
-    void getData()
-})
-onBeforeUnmount(() => {
+/** 激活缓存工作台时复用五分钟内的统计；失败、未加载或过期才读取，手动刷新不受缓存限制。 */
+const activateWorkbench = () => {
+    if (disposed) return
+    pageActive = true
+    if (!hasLoaded.value || errorMessage.value || Date.now() - lastLoadedAt >= statisticsFreshnessMs)
+        void getData()
+}
+
+/** 失活时让旧结果与超时失效，避免后台更新统计或旧请求清除再次激活后的计时器。 */
+const deactivateWorkbench = () => {
+    pageActive = false
     requestSequence += 1
     if (requestTimer) clearTimeout(requestTimer)
+    requestTimer = undefined
+    loading.value = false
+}
+
+onMounted(activateWorkbench)
+onActivated(activateWorkbench)
+onDeactivated(deactivateWorkbench)
+onBeforeUnmount(() => {
+    disposed = true
+    deactivateWorkbench()
 })
 </script>
 

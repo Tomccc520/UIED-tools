@@ -8,742 +8,287 @@
 -->
 <template>
     <div class="website-header-settings pro-page-shell">
-        <admin-page-header class="layout-page-header" title="顶部与搜索">
-            <template #subtitle>
-                维护顶部快捷入口、搜索推荐和 AI 工具页运营链接。
-            </template>
+        <admin-page-header title="顶部与搜索" description="维护顶栏、搜索推荐及 AI 工具页的链接。">
             <template #extra>
-                <div class="layout-page-actions">
-                    <a-button data-admin-smoke="website-header-reload" size="small" @click="reloadHeaderData"
-                        >重新加载</a-button
-                    >
-                    <a-button data-admin-smoke="website-header-preview" size="small" @click="openToolsPreview"
-                        >前端预览</a-button
-                    >
-                    <a-button data-admin-smoke="website-header-health" size="small" @click="runHeaderHealthCheck"
-                        >一键体检</a-button
-                    >
-                </div>
+                <a-button data-admin-smoke="website-header-reload" :disabled="isSubmitting" :loading="isLoadingData" @click="reloadHeaderData">重新加载</a-button>
+                <a-button data-admin-smoke="website-header-preview" @click="openToolsPreview">预览已保存内容</a-button>
+                <a-button data-admin-smoke="website-header-health" :disabled="!hasLoadedData || isLoadingData" @click="runHeaderHealthCheck">检查配置</a-button>
             </template>
         </admin-page-header>
 
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadHeaderData">
-        <a-card class="page-card pro-panel-card" :bordered="false">
-            <config-overview-collapse
-                v-model="overviewCollapseKeys"
-                :summary="headerActionSummary"
-                :pending-count="headerValidationTips.length"
-                :items="headerFocusItems"
-            />
+            <a-alert v-if="hasLoadedData && !canEdit" type="info" class="header-notice">当前账号仅可查看配置，不能编辑或保存。</a-alert>
+            <a-alert v-if="damagedFieldCount" type="warning" class="header-notice" :closable="false">{{ damagedFieldCount }} 组链接数据需要修复，原始内容已保留。其他分组的修改可以单独保存。</a-alert>
+            <a-card class="header-workspace pro-panel-card" :bordered="false">
+                <a-tabs v-model:active-key="activeHeaderTab" class="header-section-tabs">
+                    <a-tab-pane key="top" title="顶栏链接" />
+                    <a-tab-pane key="search" title="搜索推荐" />
+                    <a-tab-pane key="ai" title="AI 工具页" />
+                </a-tabs>
+                <fieldset :disabled="!canEdit" :inert="!canEdit ? '' : undefined" class="header-edit-fields">
+                    <a-form v-if="activeHeaderTab === 'search'" :model="formData" layout="vertical" class="search-provider-form">
+                        <h2>搜索服务方</h2>
+                        <p class="header-help">显示在主站搜索面板的服务来源说明，可留空。</p>
+                        <div class="header-provider-grid">
+                            <a-form-item label="服务方名称"><a-input v-model="formData.toolsSearchProviderLabel" :input-attrs="{ 'aria-label': '搜索服务方名称' }" :max-length="80" placeholder="如：硅基流动" /></a-form-item>
+                            <a-form-item label="服务方链接"><a-input v-model="formData.toolsSearchProviderLink" :input-attrs="{ 'aria-label': '搜索服务方链接' }" placeholder="https://" /></a-form-item>
+                        </div>
+                    </a-form>
 
-            <div class="mode-toolbar">
-                <a-space>
-                    <a-switch v-model="simpleMode" type="round" />
-                    <span class="mode-toolbar__label">{{ simpleMode ? '运营简版（推荐）' : '高级模式' }}</span>
-                </a-space>
-            </div>
-
-            <div class="layout-group mt-5">
-                <div class="group-head">
-                    <span>头部快捷链接</span>
-                    <div class="group-actions">
-                        <a-button type="text" @click="addHeaderLink">新增链接</a-button>
-                    </div>
-                </div>
-                <div class="form-tips mb-2">用于前端顶部导航右侧快捷入口，建议控制在 3-8 条，避免过长导致换行。</div>
-                <div v-if="headerLinks.length === 0" class="form-tips">
-                    这一组还没开始配置，先补 1 条官网核心入口，前端头部就能先跑起来。
-                </div>
-                <div v-for="(item, index) in headerLinks" :key="`header-link-${index}`" class="link-row">
-                    <a-input v-model="item.name" placeholder="名称，如：个人网站" />
-                    <a-input v-model="item.link" placeholder="链接，如：https://uiedtool.com/" />
-                    <div class="row-actions">
-                        <a-button type="text" @click="moveLinkItem(headerLinks, index, -1)">上移</a-button>
-                        <a-button type="text" @click="moveLinkItem(headerLinks, index, 1)">下移</a-button>
-                        <a-button type="text" status="danger" @click="removeHeaderLink(index)">删除</a-button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="layout-group mt-5">
-                <div class="group-head">
-                    <span>搜索面板快捷入口</span>
-                    <div class="group-actions">
-                        <a-button type="text" @click="addSearchQuickTool">新增入口</a-button>
-                    </div>
-                </div>
-                <div class="form-tips mb-2">用于前端搜索面板首屏默认推荐，建议维护 4-8 条高频 AI / 工具入口。</div>
-                <a-form
-                    :model="formData"
-                    :label-col-props="{ span: 6 }"
-                    :wrapper-col-props="{ span: 18 }"
-                    class="compact-form search-provider-form"
-                >
-                    <a-form-item label="服务方名称">
-                        <a-input
-                            v-model="formData.toolsSearchProviderLabel"
-                            maxlength="80"
-                            show-word-limit
-                            placeholder="如：硅基流动 x 华为云联合 SiliconFlow"
-                        />
-                    </a-form-item>
-                    <a-form-item label="服务方链接">
-                        <a-input
-                            v-model="formData.toolsSearchProviderLink"
-                            placeholder="如：https://cloud.siliconflow.cn/i/AZywGNhl"
-                        />
-                    </a-form-item>
-                </a-form>
-                <div v-if="searchQuickTools.length === 0" class="form-tips">
-                    搜索弹层还没有默认推荐，先补 1 条高频工具入口，首屏会更完整。
-                </div>
-                <div v-for="(item, index) in searchQuickTools" :key="`search-quick-${index}`" class="search-quick-row">
-                    <a-input v-model="item.name" placeholder="标题，如：DeepSeek R1对话" />
-                    <a-input v-model="item.desc" placeholder="简介，如：基于 DeepSeek-R1 推理模型的智能对话" />
-                    <a-input v-model="item.link" placeholder="链接，如：/tools/ai/deepseek-r1" />
-                    <div class="row-actions">
-                        <a-button type="text" @click="moveLinkItem(searchQuickTools, index, -1)">上移</a-button>
-                        <a-button type="text" @click="moveLinkItem(searchQuickTools, index, 1)">下移</a-button>
-                        <a-button type="text" status="danger" @click="removeSearchQuickTool(index)">删除</a-button>
-                    </div>
-                </div>
-            </div>
-
-            <div v-if="!simpleMode" class="layout-group mt-5">
-                <div class="group-head">
-                    <span>AI对话页顶部链接</span>
-                    <div class="group-actions">
-                        <a-button type="text" @click="addAiChatHeaderLink">新增链接</a-button>
-                    </div>
-                </div>
-                <div class="form-tips mb-2">用于 AIChat / DeepSeek 等对话页顶部快捷入口。</div>
-                <div v-if="aiChatHeaderLinks.length === 0" class="form-tips">
-                    对话页顶部还没有快捷入口，先补 1 条最常用的模型或服务链接即可。
-                </div>
-                <div v-for="(item, index) in aiChatHeaderLinks" :key="`ai-chat-header-${index}`" class="link-row">
-                    <a-input v-model="item.name" placeholder="名称，如：AI工具箱导航" />
-                    <a-input v-model="item.link" placeholder="链接，如：https://hao.uied.cn/ai" />
-                    <div class="row-actions">
-                        <a-button type="text" @click="moveLinkItem(aiChatHeaderLinks, index, -1)">上移</a-button>
-                        <a-button type="text" @click="moveLinkItem(aiChatHeaderLinks, index, 1)">下移</a-button>
-                        <a-button type="text" status="danger" @click="removeAiChatHeaderLink(index)">删除</a-button>
-                    </div>
-                </div>
-            </div>
-
-            <div v-if="!simpleMode" class="layout-group mt-5">
-                <div class="group-head">
-                    <span>AI通用页顶部链接</span>
-                    <div class="group-actions">
-                        <a-button type="text" @click="addAiCommonHeaderLink">新增链接</a-button>
-                    </div>
-                </div>
-                <div class="form-tips mb-2">用于提示词反推、文本配音等通用 AI 工具页顶部推荐入口。</div>
-                <div v-if="aiCommonHeaderLinks.length === 0" class="form-tips">
-                    通用 AI 页顶部还没有快捷入口，先补 1 条最常用的运营入口即可。
-                </div>
-                <div v-for="(item, index) in aiCommonHeaderLinks" :key="`ai-common-header-${index}`" class="link-row">
-                    <a-input v-model="item.name" placeholder="名称，如：AI工具导航" />
-                    <a-input v-model="item.link" placeholder="链接，如：https://hao.uied.cn/ai" />
-                    <div class="row-actions">
-                        <a-button type="text" @click="moveLinkItem(aiCommonHeaderLinks, index, -1)">上移</a-button>
-                        <a-button type="text" @click="moveLinkItem(aiCommonHeaderLinks, index, 1)">下移</a-button>
-                        <a-button type="text" status="danger" @click="removeAiCommonHeaderLink(index)">删除</a-button>
-                    </div>
-                </div>
-            </div>
-        </a-card>
-
-            <template #actions>
-                <a-button v-perms="['setting:website:header:save']" data-admin-smoke="website-header-save" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
-            </template>
+                    <section v-for="section in visibleLinkSections" :key="section.key" class="header-link-section" :aria-label="section.title">
+                        <header class="header-link-section__heading">
+                            <div><h2>{{ section.title }}</h2><p class="header-help">{{ section.description }}</p></div>
+                            <a-button :disabled="!canOperate() || Boolean(linkFieldErrors[section.key])" @click="addLinkItem(section.key)">新增链接</a-button>
+                        </header>
+                        <a-alert v-if="linkFieldErrors[section.key]" type="error" class="header-notice" :closable="false">{{ linkFieldErrors[section.key] }}</a-alert>
+                        <template v-else>
+                            <a-empty v-if="!getLinkItems(section.key).length" description="暂无自定义链接。留空时沿用主站默认入口。" />
+                            <div v-for="(item, index) in getLinkItems(section.key)" :key="`${section.key}-${index}`" class="header-link-row">
+                                <div class="header-link-row__fields">
+                                    <label>名称<a-input v-model="item.name" :input-attrs="{ 'aria-label': `${section.title}第${index + 1}条名称` }" placeholder="显示名称" /></label>
+                                    <label>链接<a-input v-model="item.link" :input-attrs="{ 'aria-label': `${section.title}第${index + 1}条链接` }" placeholder="站内路径、锚点或 https:// 地址" /></label>
+                                    <label v-if="section.key === 'toolsSearchQuickTools'" class="header-link-row__description">简介<a-input v-model="item.desc" :input-attrs="{ 'aria-label': `${section.title}第${index + 1}条简介` }" placeholder="简短说明工具用途" /></label>
+                                </div>
+                                <div class="header-row-actions">
+                                    <a-button type="text" :disabled="index === 0" :aria-label="`上移${section.title}第${index + 1}条`" @click="moveLinkItem(section.key, index, -1)">上移</a-button>
+                                    <a-button type="text" :disabled="index === getLinkItems(section.key).length - 1" :aria-label="`下移${section.title}第${index + 1}条`" @click="moveLinkItem(section.key, index, 1)">下移</a-button>
+                                    <a-button type="text" status="danger" :aria-label="`删除${section.title}第${index + 1}条`" @click="removeLinkItem(section.key, index)">删除</a-button>
+                                </div>
+                            </div>
+                        </template>
+                        <details v-if="linkFieldErrors[section.key]" :open="repairExpanded[section.key]" class="header-repair" @toggle="recordRepairExpanded(section.key, $event)">
+                            <summary>修复原始数据</summary>
+                            <p class="header-help">输入对象数组；确认修复后再保存。不会自动替换或清空原始内容。</p>
+                            <a-textarea v-model="linkRepairDrafts[section.key]" :textarea-attrs="{ 'aria-label': `${section.title}原始 JSON` }" :auto-size="{ minRows: 6, maxRows: 16 }" />
+                            <div class="header-repair__actions"><a-button :disabled="!canOperate()" @click="applyLinkRepair(section.key)">应用修复</a-button><a-button @click="resetLinkRepair(section.key)">恢复原文</a-button></div>
+                        </details>
+                    </section>
+                    <details class="header-defaults"><summary>恢复默认配置</summary><p class="header-help">将所有分组回填为项目默认值，检查后统一保存。</p><a-button @click="restoreHeaderDefaults">回填默认配置</a-button></details>
+                </fieldset>
+            </a-card>
+            <template #actions><a-button v-perms="['setting:website:header:save']" data-admin-smoke="website-header-save" type="primary" :disabled="!canEdit || !hasUnsavedChanges" :loading="isSubmitting" @click="handleSubmit">保存更改</a-button></template>
         </config-edit-frame>
     </div>
 </template>
 
 <script lang="ts" setup name="websiteHeaderSettings">
+import { computed, onMounted, reactive, ref } from 'vue'
 import AdminPageHeader from '@/components/page-header/index.vue'
+import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useConfigEditor } from '@/composables/use-config-editor'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
+import useUserStore from '@/stores/modules/user'
 import feedback from '@/utils/feedback'
-import { onBeforeRouteLeave } from 'vue-router'
-import ConfigOverviewCollapse from './components/config-overview-collapse.vue'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
-import { useOperateSubmit } from '@/composables/use-operate-submit'
-import { useConfigLoad } from '@/composables/use-config-load'
-import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { readConfigLinks, buildConfigFieldPatch } from './composables/config-links'
 import { OFFICIAL_SITE_DEFAULT_HEADER } from './defaults/officialSite'
 
-interface ToolsLinkItem {
-    name: string
-    link: string
-    desc?: string
-}
-
+interface ToolsLinkItem extends Record<string, unknown> { name: string; link: string; desc?: string }
+type HeaderTab = 'top' | 'search' | 'ai'
+type HeaderLinkField = 'toolsHeaderLinks' | 'toolsSearchQuickTools' | 'toolsAiChatHeaderLinks' | 'toolsAiCommonHeaderLinks'
+interface HeaderLinkSection { key: HeaderLinkField; tab: HeaderTab; title: string; description: string }
+const linkSections: HeaderLinkSection[] = [
+    { key: 'toolsHeaderLinks', tab: 'top', title: '顶栏快捷链接', description: '主站顶部的常用入口，建议保持简短。' },
+    { key: 'toolsSearchQuickTools', tab: 'search', title: '搜索推荐入口', description: '主站搜索面板的默认推荐，按这里的顺序展示。' },
+    { key: 'toolsAiChatHeaderLinks', tab: 'ai', title: 'AI 对话页链接', description: '用于 DeepSeek 等对话工具页的顶部入口。' },
+    { key: 'toolsAiCommonHeaderLinks', tab: 'ai', title: '其他 AI 工具页链接', description: '用于文本配音、提示词等通用 AI 工具页。' }
+]
+const linkFields = linkSections.map(section => section.key)
 const appStore = useAppStore()
-const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('头部设置已保存')
-const baselineSnapshot = ref('')
-const simpleMode = ref(true)
-const overviewCollapseKeys = ref<(string | number)[]>([])
-
-const formData = reactive<Record<string, string>>({
-    toolsSearchProviderLabel: '',
-    toolsSearchProviderLink: '',
-})
-
+const userStore = useUserStore()
+/** 根据当前账号权限控制编辑区和全部修改函数，支持超级管理员通配权限。 */
+const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:website:header:save'))
+const activeHeaderTab = ref<HeaderTab>('top')
+/** 只挂载当前任务的表单，切换时由父级草稿保留所有分组内容。 */
+const visibleLinkSections = computed(() => linkSections.filter(section => section.tab === activeHeaderTab.value))
+const formData = reactive({ toolsSearchProviderLabel: '', toolsSearchProviderLink: '' })
 const headerLinks = ref<ToolsLinkItem[]>([])
 const searchQuickTools = ref<ToolsLinkItem[]>([])
 const aiChatHeaderLinks = ref<ToolsLinkItem[]>([])
 const aiCommonHeaderLinks = ref<ToolsLinkItem[]>([])
+const linkLists = { toolsHeaderLinks: headerLinks, toolsSearchQuickTools: searchQuickTools, toolsAiChatHeaderLinks: aiChatHeaderLinks, toolsAiCommonHeaderLinks: aiCommonHeaderLinks }
+const rawLinkFields = reactive<Record<HeaderLinkField, string>>({ toolsHeaderLinks: '', toolsSearchQuickTools: '', toolsAiChatHeaderLinks: '', toolsAiCommonHeaderLinks: '' })
+const linkFieldErrors = reactive<Record<HeaderLinkField, string>>({ ...rawLinkFields })
+const linkRepairDrafts = reactive<Record<HeaderLinkField, string>>({ ...rawLinkFields })
+const repairExpanded = reactive<Record<HeaderLinkField, boolean>>({ toolsHeaderLinks: false, toolsSearchQuickTools: false, toolsAiChatHeaderLinks: false, toolsAiCommonHeaderLinks: false })
+const baselineHeaderPayload = ref<Record<string, string>>({})
+/** 汇总需修复的分组数量，保持异常提示可见，不把空展示当作空配置。 */
+const damagedFieldCount = computed(() => linkFields.filter(field => linkFieldErrors[field]).length)
 
-/**
- * 函数说明：深拷贝头部链接列表，避免默认值对象被编辑态污染。
- */
-const cloneLinkItems = (items: ToolsLinkItem[]): ToolsLinkItem[] => {
-    return items.map((item) => ({
-        name: String(item.name || ''),
-        link: String(item.link || ''),
-        desc: String(item.desc || ''),
-    }))
+/** 读取指定分组的真实草稿，未知字段继续随对象保留。 */
+const getLinkItems = (field: HeaderLinkField): ToolsLinkItem[] => linkLists[field].value
+/** 读取当前链接数据；搜索简介是可编辑文字，其他扩展字段不做投影或强制转换。 */
+const readHeaderLinks = (field: HeaderLinkField, value: unknown): ToolsLinkItem[] => {
+    const label = linkSections.find(section => section.key === field)!.title
+    const items = readConfigLinks(value, label)
+    if (field === 'toolsSearchQuickTools' && items.some(item => item.desc !== undefined && typeof item.desc !== 'string')) throw new Error(`${label}的简介应为文字，原始内容已保留。`)
+    return items as ToolsLinkItem[]
 }
-
-/**
- * 函数说明：解析链接数组 JSON，异常时回退为空数组，避免编辑页面被坏数据拖垮。
- */
-const parseLinkItems = (value: unknown): ToolsLinkItem[] => {
-    try {
-        const parsed = typeof value === 'string' ? JSON.parse(value || '[]') : value
-        if (!Array.isArray(parsed)) {
-            return []
-        }
-        return parsed.map((item) => ({
-            name: String(item?.name || ''),
-            link: String(item?.link || ''),
-            desc: String(item?.desc || ''),
-        }))
-    } catch {
-        return []
-    }
-}
-
-/**
- * 函数说明：判断链接是否为允许格式，支持站内路径、锚点与 http(s) 外链。
- */
-const isValidLinkValue = (link: string): boolean => {
-    const value = String(link || '').trim()
-    if (!value) {
-        return false
-    }
-    if (value.startsWith('/')) {
-        return true
-    }
-    if (value.startsWith('#')) {
-        return true
-    }
-    return /^https?:\/\//i.test(value)
-}
-
-/**
- * 函数说明：生成当前编辑状态快照，用于离开页面前判断是否存在未保存改动。
- */
-const buildHeaderSnapshot = (): string => {
-    return JSON.stringify({
-        toolsHeaderLinks: headerLinks.value,
-        toolsSearchQuickTools: searchQuickTools.value,
-        toolsSearchProviderLabel: formData.toolsSearchProviderLabel.trim(),
-        toolsSearchProviderLink: formData.toolsSearchProviderLink.trim(),
-        toolsAiChatHeaderLinks: aiChatHeaderLinks.value,
-        toolsAiCommonHeaderLinks: aiCommonHeaderLinks.value,
-    })
-}
-
-/**
- * 函数说明：更新基线快照，表示页面当前状态已与后端同步。
- */
-const updateBaselineSnapshot = () => {
-    baselineSnapshot.value = buildHeaderSnapshot()
-}
-
-/**
- * 函数说明：判断当前页面是否存在未保存变更，减少运营误操作。
- */
-const hasUnsavedChanges = computed<boolean>(() => {
-    if (!baselineSnapshot.value) {
-        return false
-    }
-    return buildHeaderSnapshot() !== baselineSnapshot.value
+/** 组装完整本页载荷；损坏但未修复的分组维持原始字符串，不将其空展示数组写回。 */
+const buildHeaderPayload = (): Record<string, string> => ({
+    ...formData,
+    ...Object.fromEntries(linkFields.map(field => [field, linkFieldErrors[field] ? rawLinkFields[field] : JSON.stringify(getLinkItems(field))]))
 })
-
-/**
- * 函数说明：生成头部设置页动作摘要，帮助运营先理解当前头部入口维护重点。
- */
-const headerActionSummary = computed(() => {
-    if (formData.toolsSearchProviderLink.trim() && !/^https?:\/\//i.test(formData.toolsSearchProviderLink.trim())) {
-        return '搜索服务方链接格式不合法，建议先修正链接，再继续维护顶部入口和 AI 顶部运营位。'
-    }
-    if (headerLinks.value.length === 0) {
-        return '当前没有头部快捷链接，建议先恢复前端默认或补齐官网核心入口。'
-    }
-    return '建议先确认搜索面板服务方和快捷入口都完整，再继续补齐 AI 对话页和通用 AI 页顶部链接。'
+/** 草稿比较同时保护未应用的修复文本，避免离开页面丢失正在修复的原始数据。 */
+const buildHeaderSnapshot = (): string => JSON.stringify({
+    payload: buildHeaderPayload(),
+    pendingRepairs: Object.fromEntries(linkFields.filter(field => linkFieldErrors[field] && linkRepairDrafts[field] !== rawLinkFields[field]).map(field => [field, linkRepairDrafts[field]]))
 })
+const { isLoadingData, hasLoadedData, loadErrorMessage, isSubmitting, lastSavedAt, submitError, hasUnsavedChanges, canOperate, loadConfiguration, reloadConfiguration, submitConfiguration } = useConfigEditor({ canEdit, snapshot: buildHeaderSnapshot, successText: '顶部与搜索配置已保存' })
 
-/**
- * 函数说明：生成头部设置页重点检查项，统一展示顶部导航和搜索面板的当前状态。
- */
-const headerFocusItems = computed(() => {
-    const hasProvider = Boolean(formData.toolsSearchProviderLabel.trim() && formData.toolsSearchProviderLink.trim())
-    return [
-        {
-            label: '搜索服务方',
-            value: hasProvider ? '已配置' : '待补充',
-            desc: hasProvider
-                ? formData.toolsSearchProviderLabel
-                : '服务方名称和链接建议成对维护，便于搜索面板解释来源。',
-            className: hasProvider ? 'is-ok' : 'is-warning',
-        },
-        {
-            label: '搜索推荐',
-            value: `${searchQuickTools.value.length} 条`,
-            desc: searchQuickTools.value.length > 0 ? '用于搜索面板首屏默认推荐。' : '建议优先维护 4-8 条高频入口。',
-            className: searchQuickTools.value.length > 0 ? 'is-ok' : 'is-danger',
-        },
-        {
-            label: 'AI 顶部入口',
-            value: `${aiChatHeaderLinks.value.length + aiCommonHeaderLinks.value.length} 条`,
-            desc: '覆盖 AI 对话页与通用 AI 工具页的顶部运营入口。',
-            className: aiChatHeaderLinks.value.length + aiCommonHeaderLinks.value.length > 0 ? 'is-ok' : '',
-        },
-    ]
-})
-
-const headerValidationTips = computed(() => {
-    const tips: string[] = []
-    if (formData.toolsSearchProviderLink.trim() && !/^https?:\/\//i.test(formData.toolsSearchProviderLink.trim())) {
-        tips.push('搜索面板服务方链接需为 http(s) 地址。')
-    }
-    return tips
-})
-
-/**
- * 函数说明：读取后端配置并回填页面表单，保持本页独立编辑且不覆盖其它官网设置。
- */
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
-
-/** 读取并回填已成功返回的配置，失败时保留原编辑内容。 */
-const getData = async () => loadConfiguration(async () => {
+/** 原子回填已读取配置；单组坏 JSON 单独记录，缺失字段或错误响应不覆盖已有草稿。 */
+const getData = () => loadConfiguration(async () => {
     const data = await getWebsite()
-    formData.toolsSearchProviderLabel = String(data.toolsSearchProviderLabel || '')
-    formData.toolsSearchProviderLink = String(data.toolsSearchProviderLink || '')
-    headerLinks.value = parseLinkItems(data.toolsHeaderLinks)
-    searchQuickTools.value = parseLinkItems(data.toolsSearchQuickTools)
-    aiChatHeaderLinks.value = parseLinkItems(data.toolsAiChatHeaderLinks)
-    aiCommonHeaderLinks.value = parseLinkItems(data.toolsAiCommonHeaderLinks)
-    updateBaselineSnapshot()
+    const requiredKeys = [...Object.keys(formData), ...linkFields]
+    if (!data || requiredKeys.some(key => typeof data[key] !== 'string')) throw new Error('顶部与搜索配置响应不完整')
+    const nextLists = {} as Record<HeaderLinkField, ToolsLinkItem[]>
+    const nextErrors = {} as Record<HeaderLinkField, string>
+    for (const field of linkFields) {
+        try { nextLists[field] = readHeaderLinks(field, data[field]); nextErrors[field] = '' }
+        catch (error) { nextLists[field] = []; nextErrors[field] = error instanceof Error ? error.message : '链接数据无效，原始内容已保留。' }
+    }
+    formData.toolsSearchProviderLabel = data.toolsSearchProviderLabel as string
+    formData.toolsSearchProviderLink = data.toolsSearchProviderLink as string
+    for (const field of linkFields) {
+        rawLinkFields[field] = data[field] as string
+        linkRepairDrafts[field] = data[field] as string
+        linkLists[field].value = nextLists[field]
+        linkFieldErrors[field] = nextErrors[field]
+        repairExpanded[field] = false
+    }
+    baselineHeaderPayload.value = buildHeaderPayload()
 })
-
-/**
- * 函数说明：重新读取后台头部配置，方便脚本导入后立即回显最新数据。
- */
-const reloadHeaderData = async () => {
-    if (isSubmitting.value) return
-    if (!await reloadConfiguration(getData)) return
-    feedback.msgSuccess('已重新加载后台头部配置')
+/** 重新读取前由公共控制器确认草稿，不在保存中覆盖表单。 */
+const reloadHeaderData = () => reloadConfiguration(getData)
+/** 保留原始链接行为，允许站内路径、锚点和 HTTP(S) 地址。 */
+const isValidLinkValue = (link: string): boolean => /^(?:\/|#|https?:\/\/)/i.test(String(link || '').trim())
+/** 根据字段定位实际编辑页签；坏 JSON 的修复入口同时自动展开。 */
+const revealField = (field: HeaderLinkField | 'toolsSearchProviderLink') => {
+    activeHeaderTab.value = field === 'toolsSearchProviderLink' ? 'search' : linkSections.find(section => section.key === field)!.tab
+    if (field !== 'toolsSearchProviderLink' && linkFieldErrors[field]) repairExpanded[field] = true
 }
-
-/**
- * 函数说明：统一确认高风险移除操作，避免运营误删配置项。
- */
-const confirmHeaderDangerAction = async (message: string) => {
+/** 从原生 details 记录展开选择，普通编辑不会重置用户已展开的修复区。 */
+const recordRepairExpanded = (field: HeaderLinkField, event: Event) => { repairExpanded[field] = Boolean((event.target as HTMLDetailsElement).open) }
+/** 明确应用有效的修复文本，解析失败保留原文和输入，不生成空列表。 */
+const applyLinkRepair = (field: HeaderLinkField): boolean => {
+    if (!canOperate()) return false
     try {
-        await feedback.confirm(message)
+        const items = readHeaderLinks(field, linkRepairDrafts[field])
+        linkLists[field].value = items
+        linkFieldErrors[field] = ''
+        repairExpanded[field] = false
         return true
-    } catch {
+    } catch (error) {
+        linkFieldErrors[field] = error instanceof Error ? error.message : '链接数据无效，原始内容已保留。'
+        revealField(field)
         return false
     }
 }
-
-/**
- * 函数说明：将当前表单恢复为前端默认头部配置，便于后台一键回填后再保存。
- */
+/** 放弃尚未应用的修复输入，仅恢复读取时原文，不触及其他字段。 */
+const resetLinkRepair = (field: HeaderLinkField) => {
+    if (!canOperate()) return
+    linkRepairDrafts[field] = rawLinkFields[field]
+}
+/** 创建本地空链接草稿，损坏分组须先明确修复后再编辑。 */
+const addLinkItem = (field: HeaderLinkField) => {
+    if (!canOperate() || linkFieldErrors[field]) return
+    getLinkItems(field).push(field === 'toolsSearchQuickTools' ? { name: '', link: '', desc: '' } : { name: '', link: '' })
+}
+/** 确认后移除当前链接；异步确认期间卸载或切换数据后不误删其他条目。 */
+const removeLinkItem = async (field: HeaderLinkField, index: number) => {
+    if (!canOperate()) return
+    const item = getLinkItems(field)[index]
+    if (!item) return
+    try { await feedback.confirm(`确定移除链接「${item.name.trim() || `第 ${index + 1} 条`}」吗？`) } catch { return }
+    if (!canOperate() || getLinkItems(field)[index] !== item) return
+    getLinkItems(field).splice(index, 1)
+}
+/** 调整有效位置的链接顺序，首末边界不改变内容，保留每个条目的扩展字段。 */
+const moveLinkItem = (field: HeaderLinkField, index: number, step: -1 | 1) => {
+    if (!canOperate()) return
+    const list = getLinkItems(field)
+    const target = index + step
+    if (!Number.isInteger(index) || index < 0 || index >= list.length || target < 0 || target >= list.length) return
+    ;[list[index], list[target]] = [list[target], list[index]]
+}
+/** 默认值只能通过显式确认回填，网络错误和坏数据不会触发恢复默认。 */
 const restoreHeaderDefaults = async () => {
-    const confirmed = await confirmHeaderDangerAction('确定回填前端默认头部配置吗？当前未保存修改将被覆盖。')
-    if (!confirmed) {
-        return
-    }
+    if (!canOperate()) return
+    try { await feedback.confirm('确定回填所有默认配置吗？当前未保存的顶部与搜索修改将被替换，检查后再保存。') } catch { return }
+    if (!canOperate()) return
     formData.toolsSearchProviderLabel = OFFICIAL_SITE_DEFAULT_HEADER.searchProviderLabel
     formData.toolsSearchProviderLink = OFFICIAL_SITE_DEFAULT_HEADER.searchProviderLink
-    headerLinks.value = cloneLinkItems(OFFICIAL_SITE_DEFAULT_HEADER.headerLinks)
-    searchQuickTools.value = cloneLinkItems(OFFICIAL_SITE_DEFAULT_HEADER.searchQuickTools)
-    aiChatHeaderLinks.value = cloneLinkItems(OFFICIAL_SITE_DEFAULT_HEADER.aiChatHeaderLinks)
-    aiCommonHeaderLinks.value = cloneLinkItems(OFFICIAL_SITE_DEFAULT_HEADER.aiCommonHeaderLinks)
-    feedback.msgSuccess('已回填前端默认头部配置，请确认后保存')
-}
-
-/**
- * 函数说明：新增头部快捷链接条目。
- */
-const addHeaderLink = () => {
-    headerLinks.value.push({ name: '', link: '' })
-}
-
-/**
- * 函数说明：删除指定头部快捷链接条目。
- */
-const removeHeaderLink = async (index: number) => {
-    const currentItem = headerLinks.value[index]
-    const itemName = String(currentItem?.name || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmHeaderDangerAction(`确定删除头部快捷链接「${itemName}」吗？`)
-    if (!confirmed) {
-        return
+    const defaults = { toolsHeaderLinks: OFFICIAL_SITE_DEFAULT_HEADER.headerLinks, toolsSearchQuickTools: OFFICIAL_SITE_DEFAULT_HEADER.searchQuickTools, toolsAiChatHeaderLinks: OFFICIAL_SITE_DEFAULT_HEADER.aiChatHeaderLinks, toolsAiCommonHeaderLinks: OFFICIAL_SITE_DEFAULT_HEADER.aiCommonHeaderLinks }
+    for (const field of linkFields) {
+        linkLists[field].value = readHeaderLinks(field, defaults[field])
+        linkFieldErrors[field] = ''
+        linkRepairDrafts[field] = rawLinkFields[field]
+        repairExpanded[field] = false
     }
-    headerLinks.value.splice(index, 1)
+    feedback.msgSuccess('默认配置已加入草稿，检查后保存。')
 }
-
-/**
- * 函数说明：新增搜索面板快捷入口条目。
- */
-const addSearchQuickTool = () => {
-    searchQuickTools.value.push({ name: '', desc: '', link: '' })
-}
-
-/**
- * 函数说明：删除指定搜索面板快捷入口条目。
- */
-const removeSearchQuickTool = async (index: number) => {
-    const currentItem = searchQuickTools.value[index]
-    const itemName = String(currentItem?.name || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmHeaderDangerAction(`确定删除搜索快捷入口「${itemName}」吗？`)
-    if (!confirmed) {
-        return
+/** 校验本次改变的字段，未编辑的损坏原文不进入补丁；定位错误而不留下隐藏阻断。 */
+const validateBeforeSubmit = (showMessage = true, checkAll = false): boolean => {
+    const patch = checkAll ? buildHeaderPayload() : buildConfigFieldPatch(buildHeaderPayload(), baselineHeaderPayload.value)
+    const pendingRepair = linkFields.find(field => linkFieldErrors[field] && linkRepairDrafts[field] !== rawLinkFields[field])
+    if (pendingRepair) { revealField(pendingRepair); if (showMessage) feedback.msgError('请先应用或恢复正在编辑的原始数据，再保存其他更改。'); return false }
+    if (Object.hasOwn(patch, 'toolsSearchProviderLink') && formData.toolsSearchProviderLink.trim() && !/^https?:\/\//i.test(formData.toolsSearchProviderLink.trim())) {
+        revealField('toolsSearchProviderLink'); if (showMessage) feedback.msgError('搜索服务方链接需为 http(s) 地址。'); return false
     }
-    searchQuickTools.value.splice(index, 1)
-}
-
-/**
- * 函数说明：新增 AI 对话页顶部链接条目。
- */
-const addAiChatHeaderLink = () => {
-    aiChatHeaderLinks.value.push({ name: '', link: '' })
-}
-
-/**
- * 函数说明：删除指定 AI 对话页顶部链接条目。
- */
-const removeAiChatHeaderLink = async (index: number) => {
-    const currentItem = aiChatHeaderLinks.value[index]
-    const itemName = String(currentItem?.name || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmHeaderDangerAction(`确定删除 AI 对话顶部链接「${itemName}」吗？`)
-    if (!confirmed) {
-        return
-    }
-    aiChatHeaderLinks.value.splice(index, 1)
-}
-
-/**
- * 函数说明：新增 AI 通用页顶部链接条目。
- */
-const addAiCommonHeaderLink = () => {
-    aiCommonHeaderLinks.value.push({ name: '', link: '' })
-}
-
-/**
- * 函数说明：删除指定 AI 通用页顶部链接条目。
- */
-const removeAiCommonHeaderLink = async (index: number) => {
-    const currentItem = aiCommonHeaderLinks.value[index]
-    const itemName = String(currentItem?.name || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmHeaderDangerAction(`确定删除 AI 通用顶部链接「${itemName}」吗？`)
-    if (!confirmed) {
-        return
-    }
-    aiCommonHeaderLinks.value.splice(index, 1)
-}
-
-/**
- * 函数说明：通用数组排序方法，支持上移和下移。
- */
-function moveLinkItem<T>(list: T[], index: number, step: -1 | 1) {
-    const targetIndex = index + step
-    if (targetIndex < 0 || targetIndex >= list.length) {
-        return
-    }
-    const current = list[index]
-    list[index] = list[targetIndex]
-    list[targetIndex] = current
-}
-
-/**
- * 函数说明：执行页面级体检，提前发现缺失字段和非法链接。
- */
-const runHeaderHealthCheck = () => {
-    if (!validateBeforeSubmit(false)) {
-        return
-    }
-    feedback.msgSuccess('头部设置体检通过，可以保存发布。')
-}
-
-/**
- * 函数说明：打开前端首页预览，便于运营保存后立即核对展示结果。
- */
-const openToolsPreview = () => {
-    window.open(resolveToolsPreviewUrl(appStore.config), '_blank')
-}
-
-/**
- * 函数说明：统一校验头部页面保存前的必填项和链接格式。
- */
-const validateBeforeSubmit = (showMessage = true): boolean => {
-    formData.toolsSearchProviderLabel = formData.toolsSearchProviderLabel.trim()
-    formData.toolsSearchProviderLink = formData.toolsSearchProviderLink.trim()
-
-    if (formData.toolsSearchProviderLink && !/^https?:\/\//i.test(formData.toolsSearchProviderLink)) {
-        showMessage && feedback.msgError('搜索面板服务方链接需为 http(s) 地址')
-        return false
-    }
-
-    const invalidHeaderLink = headerLinks.value.find(
-        (item) => !String(item.name || '').trim() || !isValidLinkValue(item.link)
-    )
-    if (invalidHeaderLink) {
-        showMessage && feedback.msgError('头部快捷链接需同时填写名称与合法链接')
-        return false
-    }
-    const invalidSearchQuick = searchQuickTools.value.find(
-        (item) => !String(item.name || '').trim() || !isValidLinkValue(item.link)
-    )
-    if (invalidSearchQuick) {
-        showMessage && feedback.msgError('搜索快捷入口需至少填写标题与合法链接')
-        return false
-    }
-    const invalidAiChat = aiChatHeaderLinks.value.find(
-        (item) => !String(item.name || '').trim() || !isValidLinkValue(item.link)
-    )
-    if (invalidAiChat) {
-        showMessage && feedback.msgError('AI对话页顶部链接需同时填写名称与合法链接')
-        return false
-    }
-    const invalidAiCommon = aiCommonHeaderLinks.value.find(
-        (item) => !String(item.name || '').trim() || !isValidLinkValue(item.link)
-    )
-    if (invalidAiCommon) {
-        showMessage && feedback.msgError('AI通用页顶部链接需同时填写名称与合法链接')
-        return false
+    for (const field of linkFields) {
+        if (!Object.hasOwn(patch, field)) continue
+        if (linkFieldErrors[field]) { revealField(field); if (showMessage) feedback.msgError(linkFieldErrors[field]); return false }
+        if (getLinkItems(field).some(item => !item.name.trim() || !isValidLinkValue(item.link))) {
+            revealField(field); if (showMessage) feedback.msgError(`${linkSections.find(section => section.key === field)!.title}需填写名称与合法链接。`); return false
+        }
     }
     return true
 }
-
-/**
- * 函数说明：提交头部设置，仅保存本页负责的字段，避免覆盖其它官网配置。
- */
-const handleSubmit = async () => {
-    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
-    if (!validateBeforeSubmit(true)) {
-        return
-    }
-
-    const payload: Record<string, string> = {
-        toolsHeaderLinks: JSON.stringify(headerLinks.value),
-        toolsSearchQuickTools: JSON.stringify(searchQuickTools.value),
-        toolsSearchProviderLabel: formData.toolsSearchProviderLabel,
-        toolsSearchProviderLink: formData.toolsSearchProviderLink,
-        toolsAiChatHeaderLinks: JSON.stringify(aiChatHeaderLinks.value),
-        toolsAiCommonHeaderLinks: JSON.stringify(aiCommonHeaderLinks.value),
-    }
-
-    const submittedSnapshot = buildHeaderSnapshot()
-    const success = await runSubmit(async () => {
-        await setWebsite(payload)
-    })
-    if (!success) {
-        return
-    }
-    baselineSnapshot.value = submittedSnapshot
+/** 检查全部配置并定位问题，不改变草稿，也不把检查结果冒充实际发布。 */
+const runHeaderHealthCheck = () => {
+    if (!hasLoadedData.value || isLoadingData.value) return
+    if (validateBeforeSubmit(true, true)) feedback.msgSuccess('顶部与搜索配置检查通过。')
+}
+/** 使用原有预览入口打开已保存的主站配置。 */
+const openToolsPreview = () => { window.open(resolveToolsPreviewUrl(appStore.config), '_blank', 'noopener,noreferrer') }
+/** 保存本页字段增量及完整提交快照，失败留稿，提交中的新编辑不被确认成已保存。 */
+const handleSubmit = async (): Promise<boolean> => {
+    if (!canOperate() || !hasUnsavedChanges.value || !validateBeforeSubmit(true)) return false
+    const submittedPayload = buildHeaderPayload()
+    const patch = buildConfigFieldPatch(submittedPayload, baselineHeaderPayload.value)
+    if (!Object.keys(patch).length) return false
+    const saved = await submitConfiguration(() => setWebsite(patch), buildHeaderSnapshot())
+    if (saved) baselineHeaderPayload.value = submittedPayload
+    return saved
 }
 
-/**
- * 函数说明：页面刷新或关闭前提示未保存变更，避免运营误关闭标签页。
- */
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (!hasUnsavedChanges.value) {
-        return
-    }
-    event.preventDefault()
-    event.returnValue = ''
-}
-
-/**
- * 函数说明：路由切换前提示未保存变更，防止编辑中断。
- */
-onBeforeRouteLeave(async () => {
-    if (!hasUnsavedChanges.value) {
-        return true
-    }
-    try {
-        await feedback.confirm('当前页面存在未保存变更，确定离开吗？')
-        return true
-    } catch {
-        return false
-    }
-})
-
-onMounted(() => {
-    void getData()
-    window.addEventListener('beforeunload', handleBeforeUnload)
-})
-
-onBeforeUnmount(() => {
-    window.removeEventListener('beforeunload', handleBeforeUnload)
-})
+onMounted(() => { void getData() })
 </script>
 
 <style lang="scss" scoped>
-.pro-page-shell {
-    padding-bottom: 24px;
-}
-
-.layout-page-header {
-    margin-bottom: 16px;
-    padding: 0 4px;
-}
-
-.layout-page-actions,
-.layout-status-tags {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    flex-wrap: wrap;
-}
-
-.layout-page-actions {
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-.layout-status-tags {
-    gap: 8px;
-}
-
-.page-card {
-    border-radius: 8px;
-}
-
-.mode-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 1px solid var(--color-border-2);
-    border-radius: 8px;
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.mode-toolbar__label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-1);
-}
-
-.mode-toolbar__tip {
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.layout-group {
-    border: 1px solid var(--color-border-2);
-    border-radius: 8px;
-    padding: 16px;
-    background: #fff;
-}
-
-.group-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 10px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-1);
-    flex-wrap: wrap;
-}
-
-.group-actions {
-    display: inline-flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.group-actions :deep(.arco-btn) {
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 8px;
-}
-
-.group-actions :deep(.arco-btn.arco-btn-text) {
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.form-tips {
-    background: var(--color-fill-1, #f7f8fa);
-    border-radius: 8px;
-    border: 1px dashed var(--color-border-2, #e5e6eb);
-    padding: 10px 12px;
-    font-size: 12px;
-    line-height: 1.7;
-    color: var(--color-text-3);
-}
-
-.link-row {
-    display: grid;
-    grid-template-columns: minmax(180px, 240px) minmax(320px, 1fr) auto;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 12px 0;
-    border-top: 1px solid var(--color-border-2);
-}
-
-.search-quick-row {
-    display: grid;
-    grid-template-columns:
-        minmax(180px, 220px) minmax(260px, 1fr) minmax(280px, 1fr)
-        auto;
-    gap: 12px;
-    align-items: flex-start;
-    padding: 12px 0;
-    border-top: 1px solid var(--color-border-2);
-}
-
-.link-row:first-of-type,
-.search-quick-row:first-of-type {
-    border-top: 0;
-}
-
-.row-actions {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
-    min-height: 32px;
-    justify-content: flex-end;
-}
-
-.row-actions :deep(.arco-btn) {
-    padding: 0 8px;
-    border-radius: 8px;
-}
-
-@media (max-width: 920px) {
-    .link-row,
-    .search-quick-row,
-    .mode-toolbar {
-        grid-template-columns: 1fr;
-    }
-
-    .mode-toolbar {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+.website-header-settings { min-width: 0; }
+.header-notice { margin-bottom: 16px; }
+.header-edit-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+.header-section-tabs { margin-bottom: 20px; }
+.header-link-section + .header-link-section, .header-defaults { margin-top: 24px; }
+.header-link-section h2, .search-provider-form h2 { margin: 0; font-size: 16px; line-height: 1.5; color: var(--color-text-1); }
+.header-help { margin: 6px 0 16px; color: var(--color-text-3); font-size: 13px; line-height: 1.7; }
+.header-link-section__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.header-link-row { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 12px; padding: 16px 0; border-top: 1px solid var(--color-border-2); }
+.header-link-row__fields { flex: 1 1 420px; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 12px; }
+.header-link-row label { display: grid; gap: 8px; color: var(--color-text-2); font-size: 12px; min-width: 0; }
+.header-link-row__description { grid-column: 1 / -1; }
+.header-row-actions { display: flex; gap: 4px; align-self: flex-end; flex-wrap: wrap; }
+.header-provider-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.header-repair summary, .header-defaults summary { cursor: pointer; color: var(--color-text-3); width: fit-content; padding: 8px 0; font-size: 13px; }
+.header-repair summary:focus-visible, .header-defaults summary:focus-visible { outline: 2px solid rgb(var(--primary-6)); outline-offset: 2px; }
+.header-repair__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+@media (max-width: 600px) {
+    .header-workspace :deep(.arco-card-body) { padding: 16px; }
+    .header-provider-grid, .header-link-row__fields { grid-template-columns: minmax(0, 1fr); }
+    .header-link-row__description { grid-column: auto; }
+    .header-row-actions { width: 100%; }
+    .header-row-actions :deep(button), .header-repair__actions :deep(button), .header-defaults :deep(button) { min-height: 44px; }
 }
 </style>

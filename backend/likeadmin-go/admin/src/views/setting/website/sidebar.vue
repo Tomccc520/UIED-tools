@@ -14,56 +14,33 @@
             </template>
             <template #extra>
                 <div class="layout-page-actions">
-                    <a-button size="small" data-admin-smoke="sidebar-reload" @click="reloadSidebarData">重新加载</a-button>
-                    <a-button size="small" data-admin-smoke="sidebar-preview" @click="openToolsPreview">前端预览</a-button>
+                    <a-button size="small" data-admin-smoke="sidebar-reload" :disabled="isSubmitting || isLoadingData" @click="reloadSidebarData">重新加载</a-button>
+                    <a-button size="small" data-admin-smoke="sidebar-preview" @click="openToolsPreview">预览已保存内容</a-button>
                     <a-button size="small" data-admin-smoke="sidebar-health-check" @click="runSidebarHealthCheck">一键体检</a-button>
+                    <a-button data-admin-smoke="sidebar-mode-switch" :aria-expanded="!simpleMode" @click="simpleMode = !simpleMode">{{ simpleMode ? '高级菜单维护' : '收起高级维护' }}</a-button>
                 </div>
             </template>
         </admin-page-header>
 
-        <a-alert
-            v-if="saveResultText"
-            class="save-result-alert"
-            :type="saveResultType"
-            :closable="false"
-            show-icon
-        >
-            {{ saveResultText }}
-        </a-alert>
-
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadSidebarData">
+        <a-alert v-if="!canEdit" class="section-alert" type="info" :closable="false">当前为只读权限，可以查看配置，不能修改或保存。</a-alert>
+        <a-alert v-if="errorDefinitions.length || sidebarMenuBlocksParseError" class="section-alert" type="warning" :closable="false">
+            部分菜单数据格式异常，原文已保留，其他配置仍可单独保存。
+            <template #action><a-button @click="focusSidebarField(errorDefinitions[0]?.key || 'toolsSidebarMenuBlocks')">查看待修项</a-button></template>
+        </a-alert>
         <a-card class="page-card pro-panel-card" :bordered="false">
-            <div class="mode-toolbar">
-                <span class="mode-toolbar__label">按下方分组编辑，完成后统一保存。</span>
-                <a-button size="small" data-admin-smoke="sidebar-mode-switch" :aria-expanded="!simpleMode" @click="simpleMode = !simpleMode">
-                    {{ simpleMode ? '显示高级配置' : '收起高级配置' }}
-                </a-button>
-            </div>
-
-            <div v-if="!simpleMode" class="stats-grid mt-4">
-                <div class="stat-card">
-                    <div class="stat-label">底部入口</div>
-                    <div class="stat-value">{{ sidebarBottomLinks.length }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">AI工具箱菜单</div>
-                    <div class="stat-value">{{ aiToolboxSidebarMenus.length }}</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">解析状态</div>
-                    <div
-                        class="stat-value"
-                        :class="{ 'is-danger': Boolean(sidebarMenuBlocksParseError) }"
-                    >
-                        {{ sidebarMenuBlocksParseError ? '异常' : '正常' }}
-                    </div>
-                </div>
-            </div>
-
             <a-radio-group v-model="activeSidebarSection" type="button" class="sidebar-section-tabs" aria-label="菜单配置分组">
                 <a-radio value="brand">品牌文案</a-radio><a-radio value="recommend">推荐链接</a-radio><a-radio value="categories">一级菜单</a-radio><a-radio value="bottom">底部入口</a-radio>
             </a-radio-group>
+            <template v-for="definition in errorDefinitions" :key="definition.key">
+                <section v-if="definition.section !== 'advanced' && activeSidebarSection === definition.section" class="sidebar-repair">
+                    <a-alert type="error" :closable="false">{{ fieldErrors[definition.key] }}</a-alert>
+                    <a-textarea v-model="repairDrafts[definition.key]" :readonly="!canEdit" :textarea-attrs="{ 'aria-label': `${definition.label}原始 JSON` }" :auto-size="{ minRows: 5, maxRows: 12 }" />
+                    <a-space wrap><a-button :disabled="!canEdit" @click="applySidebarFieldRepair(definition.key)">应用修复草稿</a-button><a-button :disabled="!canEdit" @click="restoreSidebarFieldRepair(definition.key)">还原原文</a-button></a-space>
+                </section>
+            </template>
             <div v-show="activeSidebarSection === 'brand'" class="layout-group mt-5">
+                <fieldset class="sidebar-editable" :disabled="!canEdit || confirmingArrayAction" :inert="!canEdit || confirmingArrayAction ? '' : undefined">
                 <div class="group-head">
                     <span>品牌文案</span>
                 </div>
@@ -122,9 +99,11 @@
                         />
                     </a-form-item>
                 </a-form>
+                </fieldset>
             </div>
 
             <div v-show="activeSidebarSection === 'recommend'" class="layout-group mt-5">
+                <fieldset class="sidebar-editable" :disabled="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsSidebarRecommend)" :inert="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsSidebarRecommend) ? '' : undefined">
                 <div class="group-head">
                     <span>推荐链接</span>
                     <div class="group-actions">
@@ -132,8 +111,8 @@
                     </div>
                 </div>
                 <div class="form-tips mb-2">位于左栏“推荐工具”分组。支持站内路由、锚点和外链。</div>
-                <div v-if="sidebarRecommendLinks.length === 0" class="form-tips">
-                    推荐区还没开始配置，先补 1 条高频入口，左栏推荐区就能先展示。
+                <div v-if="!fieldErrors.toolsSidebarRecommend && sidebarRecommendLinks.length === 0" class="form-tips">
+                    暂无自定义推荐链接，当前沿用主站默认入口。
                 </div>
                 <div
                     v-for="(item, index) in sidebarRecommendLinks"
@@ -162,9 +141,11 @@
                         >
                     </div>
                 </div>
+                </fieldset>
             </div>
 
             <div v-show="activeSidebarSection === 'categories'" class="layout-group mt-5">
+                <fieldset class="sidebar-editable" :disabled="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsSidebarCategoryMenus)" :inert="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsSidebarCategoryMenus) ? '' : undefined">
                 <div class="group-head">
                     <span>前端一级菜单</span>
                     <div class="group-actions">
@@ -176,8 +157,8 @@
                     控制前端左栏第一层菜单按钮。支持自定义图标 URL（建议
                     SVG），如配置直达链接将优先跳转该链接。
                 </div>
-                <div v-if="sidebarCategoryMenus.length === 0" class="form-tips">
-                    一级菜单还没开始配置，先补 1 个主分类，左栏结构就能先立起来。
+                <div v-if="!fieldErrors.toolsSidebarCategoryMenus && sidebarCategoryMenus.length === 0" class="form-tips">
+                    暂无自定义一级菜单，当前沿用主站默认分类。
                 </div>
                 <div
                     v-for="(item, index) in sidebarCategoryMenus"
@@ -215,44 +196,11 @@
                         >
                     </div>
                 </div>
-            </div>
-
-            <div v-if="!simpleMode" class="layout-group mt-5">
-                <div class="group-head">
-                    <span>菜单样式模块</span>
-                    <div class="group-actions">
-                        <a-button type="text" data-admin-smoke="sidebar-format-blocks" @click="formatSidebarMenuBlocksEditor"
-                            >格式化</a-button
-                        >
-                        <a-button type="text" status="danger" data-admin-smoke="sidebar-clear-blocks" @click="resetSidebarMenuBlocksEditor"
-                            >清空为 []</a-button
-                        >
-                    </div>
-                </div>
-                <div class="form-tips mb-2">
-                    支持 <code>dropdown</code>、<code>list</code>、<code>image</code>、<code
-                        >category</code
-                    >
-                    四种模块类型。若为空数组，前端会回退为旧版分类菜单渲染。
-                </div>
-                <a-alert class="section-alert" type="warning" :closable="false" show-icon>
-                    菜单样式模块用于更复杂的导航表达。建议优先维护分类菜单；只有需要特殊下拉/图片/分组导航时再启用这里。
-                </a-alert>
-                <a-textarea
-                    v-model="sidebarMenuBlocksEditor"
-                    :rows="16"
-                    placeholder='请输入 JSON 数组，如：[{"key":"menu-dropdown","title":"下拉菜单","type":"dropdown","items":[{"name":"AI抠图","link":"/tools/photo/background"}]}]'
-                />
-                <div class="catalog-stat-row">
-                    <a-tag color="arcoblue" bordered>模块 {{ sidebarMenuBlocksCount }}</a-tag>
-                    <a-tag color="arcoblue" bordered>条目 {{ sidebarMenuBlockItemCount }}</a-tag>
-                </div>
-                <div v-if="sidebarMenuBlocksParseError" class="catalog-error">
-                    {{ sidebarMenuBlocksParseError }}
-                </div>
+                </fieldset>
             </div>
 
             <div v-show="activeSidebarSection === 'bottom'" class="layout-group mt-5">
+                <fieldset class="sidebar-editable" :disabled="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsSidebarBottomLinks)" :inert="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsSidebarBottomLinks) ? '' : undefined">
                 <div class="group-head">
                     <span>底部入口</span>
                     <div class="group-actions">
@@ -262,8 +210,8 @@
                 <div class="form-tips mb-2">
                     左栏底部固定入口，建议保留更新记录、意见反馈、关于我们等核心入口。
                 </div>
-                <div v-if="sidebarBottomLinks.length === 0" class="form-tips">
-                    底部入口还没开始配置，先补 1 条常用入口，左栏底部就能先成型。
+                <div v-if="!fieldErrors.toolsSidebarBottomLinks && sidebarBottomLinks.length === 0" class="form-tips">
+                    暂无自定义底部入口，当前沿用主站默认入口。
                 </div>
                 <div
                     v-for="(item, index) in sidebarBottomLinks"
@@ -290,9 +238,56 @@
                         >
                     </div>
                 </div>
+                </fieldset>
+            </div>
+
+        </a-card>
+        <section v-if="!simpleMode" class="sidebar-advanced" aria-label="高级菜单维护"><h2>高级菜单维护</h2><p>特殊导航模块和 AI 工具箱菜单，检查后统一保存。</p>
+            <div v-if="!simpleMode" class="layout-group mt-5">
+                <fieldset class="sidebar-editable" :disabled="!canEdit || confirmingArrayAction" :inert="!canEdit || confirmingArrayAction ? '' : undefined">
+                <div class="group-head">
+                    <span>菜单样式模块</span>
+                    <div class="group-actions">
+                        <a-button type="text" data-admin-smoke="sidebar-format-blocks" @click="formatSidebarMenuBlocksEditor"
+                            >格式化</a-button
+                        >
+                        <a-button type="text" status="danger" data-admin-smoke="sidebar-clear-blocks" @click="resetSidebarMenuBlocksEditor"
+                            >清空为 []</a-button
+                        >
+                    </div>
+                </div>
+                <div class="form-tips mb-2">
+                    支持 <code>dropdown</code>、<code>list</code>、<code>image</code>、<code
+                        >category</code
+                    >
+                    四种模块类型。若为空数组，前端会回退为旧版分类菜单渲染。
+                </div>
+                <a-alert class="section-alert" type="warning" :closable="false" show-icon>
+                    菜单样式模块用于更复杂的导航表达。建议优先维护分类菜单；只有需要特殊下拉/图片/分组导航时再启用这里。
+                </a-alert>
+                <a-textarea
+                    v-model="sidebarMenuBlocksEditor"
+                    :rows="12"
+                    :textarea-attrs="{ 'aria-label': '菜单样式模块 JSON' }"
+                    placeholder='请输入 JSON 数组，如：[{"key":"menu-dropdown","title":"下拉菜单","type":"dropdown","items":[{"name":"AI抠图","link":"/tools/photo/background"}]}]'
+                />
+                <div class="catalog-stat-row">
+                    <a-tag color="arcoblue" bordered>模块 {{ sidebarMenuBlocksCount }}</a-tag>
+                    <a-tag color="arcoblue" bordered>条目 {{ sidebarMenuBlockItemCount }}</a-tag>
+                </div>
+                <div v-if="sidebarMenuBlocksParseError" class="catalog-error">
+                    {{ sidebarMenuBlocksParseError }}
+                </div>
+                </fieldset>
             </div>
 
             <div v-if="!simpleMode" class="layout-group mt-5">
+                <section v-if="fieldErrors.toolsAiToolboxSidebarMenus" class="sidebar-repair">
+                    <a-alert type="error" :closable="false">{{ fieldErrors.toolsAiToolboxSidebarMenus }}</a-alert>
+                    <a-textarea v-model="repairDrafts.toolsAiToolboxSidebarMenus" :readonly="!canEdit" :textarea-attrs="{ 'aria-label': 'AI 工具箱独立左栏原始 JSON' }" :auto-size="{ minRows: 5, maxRows: 12 }" />
+                    <a-space wrap><a-button :disabled="!canEdit" @click="applySidebarFieldRepair('toolsAiToolboxSidebarMenus')">应用修复草稿</a-button><a-button :disabled="!canEdit" @click="restoreSidebarFieldRepair('toolsAiToolboxSidebarMenus')">还原原文</a-button></a-space>
+                </section>
+                <fieldset class="sidebar-editable" :disabled="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsAiToolboxSidebarMenus)" :inert="!canEdit || confirmingArrayAction || Boolean(fieldErrors.toolsAiToolboxSidebarMenus) ? '' : undefined">
                 <div class="group-head">
                     <span>AI工具箱独立左栏</span>
                     <div class="group-actions">
@@ -304,8 +299,8 @@
                     <code>/tools/ai/toolbox</code>
                     页面左栏固定入口，建议优先配置锚点或外链，避免和自动生成的 AI 分类导航重复。
                 </div>
-                <div v-if="aiToolboxSidebarMenus.length === 0" class="form-tips">
-                    AI 工具箱左栏还没开始配置，先补 1 个主分组，工具箱页结构就能先跑起来。
+                <div v-if="!fieldErrors.toolsAiToolboxSidebarMenus && aiToolboxSidebarMenus.length === 0" class="form-tips">
+                    暂无自定义 AI 工具箱菜单，当前沿用主站默认入口。
                 </div>
                 <div
                     v-for="(item, index) in aiToolboxSidebarMenus"
@@ -334,637 +329,256 @@
                         >
                     </div>
                 </div>
+                </fieldset>
             </div>
-        </a-card>
+        </section>
 
             <template #actions>
-                <a-button v-perms="['setting:website:sidebar:save']" data-admin-smoke="sidebar-save-top" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
+                <a-button v-perms="['setting:website:sidebar:save']" data-admin-smoke="sidebar-save-top" type="primary" :loading="isSubmitting" :disabled="!canEdit || !hasUnsavedChanges || confirmingArrayAction" @click="handleSubmit">保存前台菜单</a-button>
             </template>
         </config-edit-frame>
     </div>
 </template>
 
 <script lang="ts" setup name="websiteSidebarSettings">
+import { computed, onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AdminPageHeader from '@/components/page-header/index.vue'
-import { getWebsite, setWebsite } from '@/api/setting/website'
-import type { WebsiteSettingPayload } from '@/api/setting/website'
-import useAppStore from '@/stores/modules/app'
-import feedback from '@/utils/feedback'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
-import { resolveToolsPreviewUrl } from './composables/use-preview-url'
-import { useOperateSubmit } from '@/composables/use-operate-submit'
-import { useConfigLoad } from '@/composables/use-config-load'
 import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
+import { useConfigEditor } from '@/composables/use-config-editor'
+import { getWebsite, setWebsite, type WebsiteSettingPayload } from '@/api/setting/website'
+import useAppStore from '@/stores/modules/app'
+import useUserStore from '@/stores/modules/user'
+import feedback from '@/utils/feedback'
+import { resolveToolsPreviewUrl } from './composables/use-preview-url'
+import { readConfigObjectArray, readConfigLinks, buildConfigFieldPatch } from './composables/config-links'
 
-interface ToolsLinkItem {
-    name: string
-    link: string
-    desc?: string
-}
-
-interface ToolsSidebarCategoryMenuItem {
-    key: string
-    title: string
-    icon: string
-    cateTitle: string
-    link: string
-}
-
-interface ToolsSidebarMenuBlockItem {
-    name: string
-    link: string
-    category?: string
-    desc?: string
-    icon?: string
-    image?: string
-}
-
-interface ToolsSidebarMenuBlockEditor {
-    key: string
-    title: string
-    type: string
-    icon?: string
-    items: ToolsSidebarMenuBlockItem[]
-}
-
+interface ToolsLinkItem extends Record<string, unknown> { name: string; link: string; desc?: string }
+interface ToolsSidebarCategoryMenuItem extends Record<string, unknown> { key: string; title: string; icon: string; cateTitle: string; link: string }
+interface ToolsSidebarMenuBlockEditor extends Record<string, unknown> { key?: string; title?: string; type?: string; items?: Record<string, unknown>[] }
+type SidebarArrayKey = 'toolsSidebarRecommend' | 'toolsSidebarCategoryMenus' | 'toolsSidebarBottomLinks' | 'toolsAiToolboxSidebarMenus'
+type SidebarSection = 'brand' | 'recommend' | 'categories' | 'bottom'
+const arrayDefinitions: { key: SidebarArrayKey; label: string; section: SidebarSection | 'advanced' }[] = [
+    { key: 'toolsSidebarRecommend', label: '推荐链接', section: 'recommend' },
+    { key: 'toolsSidebarCategoryMenus', label: '一级菜单', section: 'categories' },
+    { key: 'toolsSidebarBottomLinks', label: '底部入口', section: 'bottom' },
+    { key: 'toolsAiToolboxSidebarMenus', label: 'AI 工具箱独立左栏', section: 'advanced' }
+]
 const appStore = useAppStore()
+const userStore = useUserStore()
 const router = useRouter()
-const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('菜单设置已保存')
-const baselineSnapshot = ref('')
+const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:website:sidebar:save'))
 const simpleMode = ref(true)
-const activeSidebarSection = ref('brand')
-const saveResultText = ref('')
-const saveResultType = ref<'success' | 'error'>('success')
-
-const formData = reactive<Record<string, string>>({
-    toolsSiteSlogan: '免费在线工具集',
-    toolsSidebarBrandLogo: '',
-    toolsSidebarBrandText: 'UIED-Tools',
-    toolsSidebarRecommendTitle: '推荐工具'
-})
-
+const activeSidebarSection = ref<SidebarSection>('brand')
+const confirmingArrayAction = ref(false)
+const baselinePayload = ref<Record<string, string>>({})
+/** 创建本页展示默认值，未修改的缺省字段不会顺带提交。 */
+const createSidebarDefaults = (): Record<string, string> => ({ toolsSiteSlogan: '免费在线工具集', toolsSidebarBrandLogo: '', toolsSidebarBrandText: 'UIED-Tools', toolsSidebarRecommendTitle: '推荐工具' })
+const formData = reactive(createSidebarDefaults())
 const sidebarRecommendLinks = ref<ToolsLinkItem[]>([])
 const sidebarCategoryMenus = ref<ToolsSidebarCategoryMenuItem[]>([])
 const sidebarBottomLinks = ref<ToolsLinkItem[]>([])
 const aiToolboxSidebarMenus = ref<ToolsLinkItem[]>([])
 const sidebarMenuBlocksEditor = ref('[]')
-
-/**
- * 函数说明：仅向素材选择器提供可加载的图片地址，避免内联 SVG 被浏览器误当成 URL 请求。
- */
-const sidebarBrandLogoMaterialValue = computed<string>(() => {
-    const value = String(formData.toolsSidebarBrandLogo || '').trim()
-    if (/<(?:svg|g)\b[\s\S]*<\/(?:svg|g)>/i.test(value)) {
-        return ''
-    }
-    return value
+const rawArrayFields = reactive<Record<string, string>>({})
+const repairDrafts = reactive<Record<string, string>>({})
+const fieldErrors = reactive<Record<string, string>>({})
+const collectionModels = { toolsSidebarRecommend: sidebarRecommendLinks, toolsSidebarCategoryMenus: sidebarCategoryMenus, toolsSidebarBottomLinks: sidebarBottomLinks, toolsAiToolboxSidebarMenus: aiToolboxSidebarMenus }
+/** 获取当前字段的中文名称，用于错误与修复反馈。 */
+const collectionLabel = (key: SidebarArrayKey) => arrayDefinitions.find(item => item.key === key)!.label
+/** 保留可视化菜单的未知字段，只为可编辑文字字段补齐合法草稿形态。 */
+const parseSidebarCategoryMenus = (value: unknown): ToolsSidebarCategoryMenuItem[] => readConfigObjectArray(value, '一级菜单').map((item, index) => {
+    for (const key of ['key', 'title', 'icon', 'cateTitle', 'link']) if (item[key] !== undefined && typeof item[key] !== 'string') throw new Error(`一级菜单第 ${index + 1} 项的${key}应为文字，原文已保留。`)
+    return { ...item, key: item.key ?? '', title: item.title ?? '', icon: item.icon ?? '', cateTitle: item.cateTitle ?? '', link: item.link ?? '' } as ToolsSidebarCategoryMenuItem
 })
-
-/**
- * 函数说明：接收素材库选择结果并同步到侧栏品牌 Logo 配置。
- */
-const handleSidebarBrandLogoMaterialChange = (value: string | string[]) => {
-    formData.toolsSidebarBrandLogo = Array.isArray(value) ? String(value[0] || '') : String(value || '')
-}
-
-/**
- * 函数说明：解析链接数组 JSON，异常时回退为空数组，避免运营页直接崩溃。
- */
-const parseLinkItems = (value: unknown): ToolsLinkItem[] => {
+/** 严格读取链接，解析错误交由字段错误反馈处理，不能默默转换为空列表。 */
+const parseLinkItems = (value: unknown, label = '链接列表'): ToolsLinkItem[] => readConfigLinks(value, label) as ToolsLinkItem[]
+/** 根据所属字段读取真实数据，未知扩展字段继续保留。 */
+const readSidebarCollection = (key: SidebarArrayKey, value: unknown) => key === 'toolsSidebarCategoryMenus' ? parseSidebarCategoryMenus(value) : parseLinkItems(value, collectionLabel(key))
+/** 原始配置按字符串保留，显式 null 和非数组数据由修复入口说明错误。 */
+const rawConfigText = (value: unknown): string => typeof value === 'string' ? value : value === undefined ? '[]' : JSON.stringify(value)
+/** 读取原始模块数组用于校验和格式化，不剥离模块或条目的未知字段。 */
+const parseSidebarMenuBlocks = (value: string): { items: ToolsSidebarMenuBlockEditor[]; error: string } => {
     try {
-        const parsed = typeof value === 'string' ? JSON.parse(value || '[]') : value
-        if (!Array.isArray(parsed)) {
-            return []
-        }
-        return parsed.map((item) => ({
-            name: String(item?.name || ''),
-            link: String(item?.link || ''),
-            desc: String(item?.desc || '')
-        }))
-    } catch {
-        return []
-    }
+        const items = readConfigObjectArray(value, '菜单样式模块')
+        items.forEach((item, index) => { if (item.items !== undefined) readConfigObjectArray(item.items, `第 ${index + 1} 个模块条目`) })
+        return { items: items as ToolsSidebarMenuBlockEditor[], error: '' }
+    } catch (error) { return { items: [], error: error instanceof Error ? error.message : '菜单样式模块格式错误，原文已保留。' } }
 }
-
-/**
- * 函数说明：解析前端一级菜单 JSON，确保字段齐全后再回填编辑表单。
- */
-const parseSidebarCategoryMenus = (value: unknown): ToolsSidebarCategoryMenuItem[] => {
-    try {
-        const parsed = typeof value === 'string' ? JSON.parse(value || '[]') : value
-        if (!Array.isArray(parsed)) {
-            return []
-        }
-        return parsed.map((item) => ({
-            key: String(item?.key || ''),
-            title: String(item?.title || ''),
-            icon: String(item?.icon || ''),
-            cateTitle: String(item?.cateTitle || ''),
-            link: String(item?.link || '')
-        }))
-    } catch {
-        return []
-    }
-}
-
-/**
- * 函数说明：解析菜单样式模块 JSON，用于体检和计数展示。
- */
-const parseSidebarMenuBlocks = (
-    value: string
-): { items: ToolsSidebarMenuBlockEditor[]; error: string } => {
-    try {
-        const parsed = JSON.parse(value || '[]')
-        if (!Array.isArray(parsed)) {
-            return { items: [], error: '菜单样式模块必须是 JSON 数组。' }
-        }
-        const items = parsed.map((item) => ({
-            key: String(item?.key || ''),
-            title: String(item?.title || ''),
-            type: String(item?.type || ''),
-            icon: String(item?.icon || ''),
-            items: Array.isArray(item?.items)
-                ? item.items.map((child: ToolsSidebarMenuBlockItem) => ({
-                      name: String(child?.name || ''),
-                      link: String(child?.link || ''),
-                      category: String(child?.category || ''),
-                      desc: String(child?.desc || ''),
-                      icon: String(child?.icon || ''),
-                      image: String(child?.image || '')
-                  }))
-                : []
-        }))
-        return { items, error: '' }
-    } catch (error) {
-        return { items: [], error: `菜单样式模块解析失败：${(error as Error).message}` }
-    }
-}
-
-/**
- * 函数说明：判断链接是否为允许格式，支持站内路径、锚点与 http(s) 外链。
- */
-const isValidLinkValue = (link: string, allowHash = true): boolean => {
-    const value = String(link || '').trim()
-    if (!value) {
-        return false
-    }
-    if (value.startsWith('/')) {
-        return true
-    }
-    if (allowHash && value.startsWith('#')) {
-        return true
-    }
-    return /^https?:\/\//i.test(value)
-}
-
-/**
- * 函数说明：校验侧栏品牌 Logo 值，支持站内地址、外链地址、data URL 与内联 SVG。
- */
-const isValidSidebarBrandLogo = (logoValue: string): boolean => {
-    const value = String(logoValue || '').trim()
-    if (!value) {
-        return true
-    }
-    const lowerValue = value.toLowerCase()
-    if (
-        lowerValue.startsWith('<svg') ||
-        lowerValue.startsWith('<g') ||
-        /<svg[\s\S]*<\/svg>/i.test(value) ||
-        /<g[\s\S]*<\/g>/i.test(value) ||
-        lowerValue.startsWith('data:image/')
-    ) {
-        return true
-    }
-    if (value.startsWith('/')) {
-        return true
-    }
-    return /^https?:\/\//i.test(value)
-}
-
-/**
- * 函数说明：生成当前编辑状态快照，用于离开页面前判断是否存在未保存改动。
- */
-const buildSidebarSnapshot = (): string => {
-    return JSON.stringify({
-        toolsSiteSlogan: formData.toolsSiteSlogan.trim(),
-        toolsSidebarBrandLogo: formData.toolsSidebarBrandLogo.trim(),
-        toolsSidebarBrandText: formData.toolsSidebarBrandText.trim(),
-        toolsSidebarRecommendTitle: formData.toolsSidebarRecommendTitle.trim(),
-        toolsSidebarRecommend: sidebarRecommendLinks.value,
-        toolsSidebarCategoryMenus: sidebarCategoryMenus.value,
-        toolsSidebarMenuBlocks: sidebarMenuBlocksEditor.value.trim(),
-        toolsSidebarBottomLinks: sidebarBottomLinks.value,
-        toolsAiToolboxSidebarMenus: aiToolboxSidebarMenus.value
-    })
-}
-
-/** 检查高级草稿是否有变化，切回简版后保存仍保留这些更改。 */
-const hasAdvancedSidebarChanges = computed(() => {
-    if (!baselineSnapshot.value) return false
-    const before = JSON.parse(baselineSnapshot.value)
-    const after = JSON.parse(buildSidebarSnapshot())
-    return ['toolsSidebarMenuBlocks', 'toolsAiToolboxSidebarMenus'].some(key => JSON.stringify(before[key]) !== JSON.stringify(after[key]))
-})
-
-/**
- * 函数说明：更新基线快照，表示页面当前状态已与后端同步。
- */
-const updateBaselineSnapshot = () => {
-    baselineSnapshot.value = buildSidebarSnapshot()
-}
-
-/**
- * 函数说明：判断当前页面是否存在未保存变更，减少运营误操作。
- */
-const hasUnsavedChanges = computed<boolean>(() => {
-    if (!baselineSnapshot.value) {
-        return false
-    }
-    return buildSidebarSnapshot() !== baselineSnapshot.value
-})
-
-const sidebarMenuBlocksParseResult = computed(() =>
-    parseSidebarMenuBlocks(sidebarMenuBlocksEditor.value)
-)
+const sidebarMenuBlocksParseResult = computed(() => parseSidebarMenuBlocks(sidebarMenuBlocksEditor.value))
 const sidebarMenuBlocksParseError = computed(() => sidebarMenuBlocksParseResult.value.error)
 const sidebarMenuBlocksCount = computed(() => sidebarMenuBlocksParseResult.value.items.length)
-const sidebarMenuBlockItemCount = computed(() => {
-    return sidebarMenuBlocksParseResult.value.items.reduce(
-        (count, item) => count + item.items.length,
-        0
-    )
-})
-
-/**
- * 函数说明：读取后端配置并回填页面表单，保持本页独立编辑且不覆盖其它官网设置。
- */
-const applySidebarWebsiteData = (data: WebsiteSettingPayload) => {
-    formData.toolsSiteSlogan = String(data.toolsSiteSlogan || formData.toolsSiteSlogan)
-    formData.toolsSidebarBrandLogo = String(data.toolsSidebarBrandLogo || '')
-    formData.toolsSidebarBrandText = String(
-        data.toolsSidebarBrandText || formData.toolsSidebarBrandText
-    )
-    formData.toolsSidebarRecommendTitle = String(
-        data.toolsSidebarRecommendTitle || formData.toolsSidebarRecommendTitle
-    )
-    sidebarRecommendLinks.value = parseLinkItems(data.toolsSidebarRecommend)
-    sidebarCategoryMenus.value = parseSidebarCategoryMenus(data.toolsSidebarCategoryMenus)
-    sidebarBottomLinks.value = parseLinkItems(data.toolsSidebarBottomLinks)
-    aiToolboxSidebarMenus.value = parseLinkItems(data.toolsAiToolboxSidebarMenus)
-    sidebarMenuBlocksEditor.value = String(data.toolsSidebarMenuBlocks || '[]').trim() || '[]'
-    updateBaselineSnapshot()
+const sidebarMenuBlockItemCount = computed(() => sidebarMenuBlocksParseResult.value.items.reduce((count, item) => count + (Array.isArray(item.items) ? item.items.length : 0), 0))
+const errorDefinitions = computed(() => arrayDefinitions.filter(item => Boolean(fieldErrors[item.key])))
+/** 组装本页完整语义状态，损坏字段保留原始文本，不能由展示空数组代替。 */
+const buildSidebarPayload = (): Record<string, string> => {
+    const result: Record<string, string> = { ...formData }
+    for (const item of arrayDefinitions) result[item.key] = fieldErrors[item.key] ? repairDrafts[item.key] : JSON.stringify(collectionModels[item.key].value)
+    const blocks = sidebarMenuBlocksParseResult.value
+    result.toolsSidebarMenuBlocks = blocks.error ? sidebarMenuBlocksEditor.value : JSON.stringify(blocks.items)
+    return result
 }
-
-/**
- * 函数说明：读取后端配置并回填页面表单，保持本页独立编辑且不覆盖其它官网设置。
- */
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
-
-/** 读取并回填已成功返回的配置，失败时保留原编辑内容。 */
-const getData = async () => loadConfiguration(async () => {
-    const data = await getWebsite()
-    applySidebarWebsiteData(data)
-})
-
-/**
- * 函数说明：核对保存接口回传的关键文案，避免接口被拦截或未落库时仍显示保存成功。
- */
-const assertSidebarSaveReadback = (
-    payload: Record<string, string>,
-    savedData: WebsiteSettingPayload
-) => {
-    const verifyKeys = Object.keys(payload)
-    const mismatchKey = verifyKeys.find(
-        (key) => String(savedData[key] || '').trim() !== String(payload[key] || '').trim()
-    )
-    if (mismatchKey) {
-        throw new Error('服务端未确认菜单配置已保存，请检查授权策略或数据库写入状态。')
-    }
+/** 使用完整语义状态保护草稿，原文修复尚未应用时也属于未保存输入。 */
+const buildSidebarSnapshot = () => JSON.stringify(buildSidebarPayload())
+const { isLoadingData, hasLoadedData, loadErrorMessage, isSubmitting, lastSavedAt, submitError, hasUnsavedChanges, canOperate, loadConfiguration, reloadConfiguration, submitConfiguration } = useConfigEditor({ canEdit, snapshot: buildSidebarSnapshot, successText: '前台菜单已保存' })
+/** 保留可加载的图片地址，内联 SVG 不作为 URL 交给素材选择器。 */
+const sidebarBrandLogoMaterialValue = computed(() => /<(?:svg|g)\b[\s\S]*<\/(?:svg|g)>/i.test(formData.toolsSidebarBrandLogo) ? '' : formData.toolsSidebarBrandLogo)
+/** 仅接受活动且可编辑页面的素材选择事件，迟到回调不能修改只读草稿。 */
+const handleSidebarBrandLogoMaterialChange = (value: string | string[]) => { if (canOperate()) formData.toolsSidebarBrandLogo = Array.isArray(value) ? String(value[0] || '') : String(value || '') }
+/** 将错误切到对应分组，高级错误同时展开维护区。 */
+const focusSidebarField = (key: string) => {
+    const definition = arrayDefinitions.find(item => item.key === key)
+    if (key === 'toolsSidebarMenuBlocks' || definition?.section === 'advanced') simpleMode.value = false
+    else activeSidebarSection.value = definition?.section as SidebarSection || 'brand'
 }
-
-/**
- * 函数说明：手动从后台重新拉取菜单设置，便于执行脚本导入后立即回显最新结果。
- */
-const reloadSidebarData = async () => {
-    if (isSubmitting.value) return
-    if (!await reloadConfiguration(getData)) return
-    feedback.msgSuccess('已重新加载后台菜单配置')
-}
-
-/**
- * 函数说明：统一确认侧栏高风险改动，避免运营误删配置内容。
- */
-const confirmSidebarDangerAction = async (message: string) => {
+/** 应用经过严格校验的修复草稿；失败保留原文及用户输入供继续修正。 */
+const applySidebarFieldRepair = (key: SidebarArrayKey): boolean => {
+    if (!canOperate() || confirmingArrayAction.value) return false
     try {
-        await feedback.confirm(message)
+        const next = readSidebarCollection(key, repairDrafts[key])
+        ;(collectionModels[key].value as Record<string, unknown>[]) = next
+        delete fieldErrors[key]
         return true
-    } catch {
-        return false
+    } catch (error) { fieldErrors[key] = error instanceof Error ? error.message : `${collectionLabel(key)}格式错误，原文已保留。`; focusSidebarField(key); return false }
+}
+/** 放弃尚未应用的修复文本，不改变服务端原始配置。 */
+const restoreSidebarFieldRepair = (key: SidebarArrayKey) => { if (canOperate()) repairDrafts[key] = rawArrayFields[key] }
+/** 只在响应结构可用时整体回填，字段解析异常单独留原文，其他配置仍可编辑。 */
+const applySidebarWebsiteData = (data: WebsiteSettingPayload) => {
+    if (!data || typeof data !== 'object' || Array.isArray(data)) throw new Error('前台菜单配置响应无效')
+    const nextForm = createSidebarDefaults()
+    for (const key of Object.keys(nextForm)) if (Object.prototype.hasOwnProperty.call(data, key)) {
+        const value = data[key]
+        if (typeof value !== 'string') throw new Error('前台菜单文字配置响应无效')
+        nextForm[key] = value
     }
-}
-
-/**
- * 函数说明：新增推荐链接条目，便于运营快速补充推荐区入口。
- */
-const addSidebarRecommendLink = () => {
-    sidebarRecommendLinks.value.push({ name: '', link: '' })
-}
-
-/**
- * 函数说明：删除指定推荐链接条目。
- */
-const removeSidebarRecommendLink = async (index: number) => {
-    const currentItem = sidebarRecommendLinks.value[index]
-    const itemName = String(currentItem?.name || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmSidebarDangerAction(`确定删除推荐链接「${itemName}」吗？`)
-    if (!confirmed) {
-        return
+    const nextCollections: Record<string, { raw: string; items: Record<string, unknown>[]; error: string }> = {}
+    for (const item of arrayDefinitions) {
+        const raw = rawConfigText(data[item.key])
+        try { nextCollections[item.key] = { raw, items: readSidebarCollection(item.key, raw), error: '' } }
+        catch (error) { nextCollections[item.key] = { raw, items: [], error: error instanceof Error ? error.message : `${item.label}格式错误，原文已保留。` } }
     }
-    sidebarRecommendLinks.value.splice(index, 1)
-}
-
-/**
- * 函数说明：新增侧栏分类菜单条目。
- */
-const addSidebarCategoryMenu = () => {
-    sidebarCategoryMenus.value.push({ key: '', title: '', icon: '', cateTitle: '', link: '' })
-}
-
-/**
- * 函数说明：删除指定侧栏分类菜单条目。
- */
-const removeSidebarCategoryMenu = async (index: number) => {
-    const currentItem = sidebarCategoryMenus.value[index]
-    const itemName =
-        String(currentItem?.title || currentItem?.key || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmSidebarDangerAction(`确定删除分类菜单「${itemName}」吗？`)
-    if (!confirmed) {
-        return
+    Object.assign(formData, nextForm)
+    for (const item of arrayDefinitions) {
+        const next = nextCollections[item.key]
+        rawArrayFields[item.key] = next.raw
+        repairDrafts[item.key] = next.raw
+        if (next.error) fieldErrors[item.key] = next.error
+        else delete fieldErrors[item.key]
+        ;(collectionModels[item.key].value as Record<string, unknown>[]) = next.items
     }
-    sidebarCategoryMenus.value.splice(index, 1)
+    sidebarMenuBlocksEditor.value = rawConfigText(data.toolsSidebarMenuBlocks)
+    baselinePayload.value = buildSidebarPayload()
 }
-
-/**
- * 函数说明：新增底部入口条目。
- */
-const addSidebarBottomLink = () => {
-    sidebarBottomLinks.value.push({ name: '', link: '' })
+/** 读取当前页配置，失败保留已存在的草稿；公共编辑器管理读写互斥与基线。 */
+const getData = () => loadConfiguration(async () => { applySidebarWebsiteData(await getWebsite()) })
+/** 明确确认后重载；取消不覆盖草稿，提交时不允许重读。 */
+const reloadSidebarData = () => reloadConfiguration(getData)
+/** 判断用户是否可以编辑指定列表，损坏列表先修复原始数据。 */
+const canEditCollection = (key: SidebarArrayKey) => canOperate() && !confirmingArrayAction.value && !fieldErrors[key]
+/** 创建推荐链接草稿，不立即写入服务端。 */
+const addSidebarRecommendLink = () => { if (canEditCollection('toolsSidebarRecommend')) sidebarRecommendLinks.value.push({ name: '', link: '' }) }
+/** 创建分类菜单草稿，不修改其他菜单或扩展字段。 */
+const addSidebarCategoryMenu = () => { if (canEditCollection('toolsSidebarCategoryMenus')) sidebarCategoryMenus.value.push({ key: '', title: '', icon: '', cateTitle: '', link: '' }) }
+/** 创建底部入口草稿。 */
+const addSidebarBottomLink = () => { if (canEditCollection('toolsSidebarBottomLinks')) sidebarBottomLinks.value.push({ name: '', link: '' }) }
+/** 创建 AI 工具箱独立左栏草稿。 */
+const addAiToolboxSidebarMenu = () => { if (canEditCollection('toolsAiToolboxSidebarMenus')) aiToolboxSidebarMenus.value.push({ name: '', link: '' }) }
+/** 确认后删除同一条草稿；确认期间重读或条目更换时不删除其他数据。 */
+const removeCollectionItem = async (key: SidebarArrayKey, index: number) => {
+    if (!canEditCollection(key)) return
+    const list = collectionModels[key].value
+    const item = list[index]
+    if (!item) return
+    confirmingArrayAction.value = true
+    try {
+        await feedback.confirm(`确定删除${collectionLabel(key)}「${String(item.name || item.title || `第 ${index + 1} 项`)}」吗？保存配置后才生效。`)
+        if (!canOperate() || collectionModels[key].value !== list) return
+        const currentIndex = list.indexOf(item as never)
+        if (currentIndex >= 0) list.splice(currentIndex, 1)
+    } catch { /* 取消确认保留原草稿。 */ }
+    finally { confirmingArrayAction.value = false }
 }
-
-/**
- * 函数说明：删除指定底部入口条目。
- */
-const removeSidebarBottomLink = async (index: number) => {
-    const currentItem = sidebarBottomLinks.value[index]
-    const itemName = String(currentItem?.name || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmSidebarDangerAction(`确定删除底部入口「${itemName}」吗？`)
-    if (!confirmed) {
-        return
-    }
-    sidebarBottomLinks.value.splice(index, 1)
-}
-
-/**
- * 函数说明：新增 AI 工具箱独立左栏菜单条目。
- */
-const addAiToolboxSidebarMenu = () => {
-    aiToolboxSidebarMenus.value.push({ name: '', link: '' })
-}
-
-/**
- * 函数说明：删除指定 AI 工具箱独立左栏菜单条目。
- */
-const removeAiToolboxSidebarMenu = async (index: number) => {
-    const currentItem = aiToolboxSidebarMenus.value[index]
-    const itemName = String(currentItem?.name || '').trim() || `第 ${index + 1} 项`
-    const confirmed = await confirmSidebarDangerAction(`确定删除 AI 工具箱菜单「${itemName}」吗？`)
-    if (!confirmed) {
-        return
-    }
-    aiToolboxSidebarMenus.value.splice(index, 1)
-}
-
-/**
- * 函数说明：通用数组排序方法，支持上移和下移。
- */
+/** 删除推荐链接的本地草稿。 */
+const removeSidebarRecommendLink = (index: number) => removeCollectionItem('toolsSidebarRecommend', index)
+/** 删除一级菜单的本地草稿。 */
+const removeSidebarCategoryMenu = (index: number) => removeCollectionItem('toolsSidebarCategoryMenus', index)
+/** 删除底部链接的本地草稿。 */
+const removeSidebarBottomLink = (index: number) => removeCollectionItem('toolsSidebarBottomLinks', index)
+/** 删除 AI 左栏入口的本地草稿。 */
+const removeAiToolboxSidebarMenu = (index: number) => removeCollectionItem('toolsAiToolboxSidebarMenus', index)
+/** 调整本地数组顺序；只读、非活动页与越界操作不更改数据。 */
 function moveLinkItem<T>(list: T[], index: number, step: -1 | 1) {
+    if (!canOperate() || confirmingArrayAction.value || !Number.isInteger(index)) return
     const targetIndex = index + step
-    if (targetIndex < 0 || targetIndex >= list.length) {
-        return
-    }
-    const current = list[index]
-    list[index] = list[targetIndex]
-    list[targetIndex] = current
+    if (index < 0 || index >= list.length || targetIndex < 0 || targetIndex >= list.length) return
+    ;[list[index], list[targetIndex]] = [list[targetIndex], list[index]]
 }
-
-/**
- * 函数说明：格式化菜单样式模块 JSON，减少运营手工排版成本。
- */
+/** 只格式化合法原始模块，不清洗未知字段，也不把异常输入替换成默认数据。 */
 const formatSidebarMenuBlocksEditor = () => {
+    if (!canOperate()) return
     const parsed = parseSidebarMenuBlocks(sidebarMenuBlocksEditor.value)
-    if (parsed.error) {
-        feedback.msgError(parsed.error)
-        return
-    }
+    if (parsed.error) { feedback.msgError(parsed.error); return }
     sidebarMenuBlocksEditor.value = JSON.stringify(parsed.items, null, 2)
 }
-
-/**
- * 函数说明：将菜单样式模块重置为空数组，方便回退旧版菜单结构。
- */
+/** 显式确认后清空模块草稿，允许恢复分类菜单渲染。 */
 const resetSidebarMenuBlocksEditor = async () => {
-    const confirmed = await confirmSidebarDangerAction(
-        '确定清空菜单样式模块 JSON 吗？此操作会把内容重置为 []。'
-    )
-    if (!confirmed) {
-        return
-    }
-    sidebarMenuBlocksEditor.value = '[]'
+    if (!canOperate() || confirmingArrayAction.value) return
+    confirmingArrayAction.value = true
+    try { await feedback.confirm('确定清空菜单样式模块吗？统一保存后生效。'); if (canOperate()) sidebarMenuBlocksEditor.value = '[]' }
+    catch { /* 取消时保留原始配置。 */ }
+    finally { confirmingArrayAction.value = false }
 }
-
-/**
- * 函数说明：执行页面级体检，提前发现缺失字段和非法链接。
- */
-const runSidebarHealthCheck = () => {
-    if (!validateBeforeSubmit(false)) {
-        return
+/** 允许站内路径、锚点和 HTTP(S) 链接，校验不改写原始输入。 */
+const isValidLinkValue = (link: string, allowHash = true): boolean => { const value = String(link || '').trim(); return Boolean(value && (value.startsWith('/') || (allowHash && value.startsWith('#')) || /^https?:\/\//i.test(value))) }
+/** 保持已有品牌标识格式契约，允许图片地址和内联 SVG。 */
+const isValidSidebarBrandLogo = (value: string): boolean => !value.trim() || /^(?:\/|https?:\/\/|data:image\/|\s*<(?:svg|g)\b)/i.test(value) || /<(?:svg|g)\b[\s\S]*<\/(?:svg|g)>/i.test(value)
+/** 校验本次实际变化字段；历史坏配置不会阻断其他分组的正常保存。 */
+const validateBeforeSubmit = (showMessage = true, patch: Record<string, string> = buildSidebarPayload()): boolean => {
+    /** 定位相关分组并反馈错误，错误不会留在不可见标签或高级区。 */
+    const reject = (key: string, message: string) => { focusSidebarField(key); if (showMessage) feedback.msgError(message); return false }
+    if ('toolsSidebarBrandText' in patch && !formData.toolsSidebarBrandText.trim()) return reject('brand', '品牌主文案不能为空')
+    if ('toolsSidebarRecommendTitle' in patch && !formData.toolsSidebarRecommendTitle.trim()) return reject('brand', '推荐分组标题不能为空')
+    if ('toolsSidebarBrandLogo' in patch && !isValidSidebarBrandLogo(formData.toolsSidebarBrandLogo)) return reject('brand', '品牌标识需为图片地址或内联 SVG')
+    for (const item of arrayDefinitions) {
+        if (!(item.key in patch)) continue
+        if (fieldErrors[item.key]) return reject(item.key, `${item.label}原文尚未修复，请先应用修复草稿或还原原文。`)
+        const list = collectionModels[item.key].value
+        if (item.key === 'toolsSidebarCategoryMenus') {
+            if ((list as ToolsSidebarCategoryMenuItem[]).some(entry => !entry.key.trim() || !entry.title.trim() || !entry.cateTitle.trim() || (entry.link && !isValidLinkValue(entry.link, false)))) return reject(item.key, '一级菜单需填写标识、菜单标题和分类标题；直达链接需为站内或 HTTP(S) 地址。')
+        } else if ((list as ToolsLinkItem[]).some(entry => !entry.name.trim() || !isValidLinkValue(entry.link))) return reject(item.key, `${item.label}需同时填写名称和有效地址。`)
     }
-    feedback.msgSuccess('菜单设置体检通过，可以保存发布。')
-}
-
-/**
- * 函数说明：打开前端首页预览，便于运营保存后立即核对展示结果。
- */
-const openToolsPreview = () => {
-    window.open(resolveToolsPreviewUrl(appStore.config), '_blank')
-}
-
-/**
- * 函数说明：跳转图标库，便于补充前端一级菜单图标。
- */
-const goIconLibrary = () => {
-    router.push('/material/icons')
-}
-
-/**
- * 函数说明：统一校验侧栏页面保存前的必填项和链接格式。
- */
-const validateBeforeSubmit = (showMessage = true): boolean => {
-    formData.toolsSiteSlogan = formData.toolsSiteSlogan.trim()
-    formData.toolsSidebarBrandLogo = formData.toolsSidebarBrandLogo.trim()
-    formData.toolsSidebarBrandText = formData.toolsSidebarBrandText.trim()
-    formData.toolsSidebarRecommendTitle = formData.toolsSidebarRecommendTitle.trim()
-
-    if (!formData.toolsSidebarBrandText) {
-        showMessage && feedback.msgError('品牌主文案不能为空')
-        return false
-    }
-    if (!formData.toolsSidebarRecommendTitle) {
-        showMessage && feedback.msgError('推荐分组标题不能为空')
-        return false
-    }
-    if (!isValidSidebarBrandLogo(formData.toolsSidebarBrandLogo)) {
-        showMessage && feedback.msgError('品牌 Logo 需为 /、http(s)、data:image 或内联 SVG')
-        return false
-    }
-    const invalidRecommend = sidebarRecommendLinks.value.find(
-        (item) => !String(item.name || '').trim() || !isValidLinkValue(item.link)
-    )
-    if (invalidRecommend) {
-        showMessage && feedback.msgError('推荐链接需同时填写名称与合法链接')
-        return false
-    }
-    const invalidCategory = sidebarCategoryMenus.value.find((item) => {
-        if (
-            !String(item.key || '').trim() ||
-            !String(item.title || '').trim() ||
-            !String(item.cateTitle || '').trim()
-        ) {
-            return true
-        }
-        return item.link ? !isValidLinkValue(item.link, false) : false
-    })
-    if (invalidCategory) {
-        showMessage &&
-            feedback.msgError('前端一级菜单需填写 key、标题、分类标题；直达链接需为 / 或 http(s)')
-        return false
-    }
-    const invalidBottom = sidebarBottomLinks.value.find(
-        (item) => !String(item.name || '').trim() || !isValidLinkValue(item.link)
-    )
-    if (invalidBottom) {
-        showMessage && feedback.msgError('底部入口需同时填写名称与合法链接')
-        return false
-    }
-    if (!simpleMode.value || hasAdvancedSidebarChanges.value) {
-        if (sidebarMenuBlocksParseError.value) {
-            showMessage && feedback.msgError(sidebarMenuBlocksParseError.value)
-            return false
-        }
-        const invalidAiSidebar = aiToolboxSidebarMenus.value.find(
-            (item) => !String(item.name || '').trim() || !isValidLinkValue(item.link)
-        )
-        if (invalidAiSidebar) {
-            showMessage && feedback.msgError('AI工具箱左栏菜单需同时填写名称与合法链接')
-            return false
-        }
-    }
+    if ('toolsSidebarMenuBlocks' in patch && sidebarMenuBlocksParseError.value) return reject('toolsSidebarMenuBlocks', sidebarMenuBlocksParseError.value)
     return true
 }
-
-/**
- * 函数说明：组装侧栏保存载荷；简版不提交未改动的高级项，但保留切换模式前已编辑的草稿。
- */
-const buildSidebarPayload = (): Record<string, string> => {
-    const payload: Record<string, string> = {
-        toolsSiteSlogan: formData.toolsSiteSlogan,
-        toolsSidebarBrandLogo: formData.toolsSidebarBrandLogo,
-        toolsSidebarBrandText: formData.toolsSidebarBrandText,
-        toolsSidebarRecommendTitle: formData.toolsSidebarRecommendTitle,
-        toolsSidebarRecommend: JSON.stringify(sidebarRecommendLinks.value),
-        toolsSidebarCategoryMenus: JSON.stringify(sidebarCategoryMenus.value),
-        toolsSidebarBottomLinks: JSON.stringify(sidebarBottomLinks.value)
-    }
-    if (!simpleMode.value || hasAdvancedSidebarChanges.value) {
-        Object.assign(payload, {
-            toolsSidebarMenuBlocks: JSON.stringify(sidebarMenuBlocksParseResult.value.items),
-            toolsAiToolboxSidebarMenus: JSON.stringify(aiToolboxSidebarMenus.value)
-        })
-    }
-    return payload
-}
-
-/**
- * 函数说明：提交菜单设置，仅保存本页负责的字段，避免覆盖其它官网配置。
- */
-const handleSubmit = async () => {
-    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
-    if (!validateBeforeSubmit(true)) {
-        return
-    }
-
-    saveResultText.value = ''
+/** 显式运行完整检查，不修改数据；读取未完成时不对展示默认值作成功结论。 */
+const runSidebarHealthCheck = () => { if (!hasLoadedData.value || isLoadingData.value || loadErrorMessage.value) return; if (validateBeforeSubmit(true)) feedback.msgSuccess('前台菜单检查通过') }
+/** 预览已保存的主站内容，不把本地草稿误表示为线上效果。 */
+const openToolsPreview = () => { window.open(resolveToolsPreviewUrl(appStore.config), '_blank', 'noopener,noreferrer') }
+/** 跳转已有图标库，仍遵守当前账号授权菜单与路由守卫。 */
+const goIconLibrary = () => { void router.push('/material/icons') }
+/** 仅提交本次字段差异；成功只记录已提交快照，不回填整包覆盖保存期间的新草稿。 */
+const handleSubmit = async (): Promise<boolean> => {
+    if (!canOperate() || confirmingArrayAction.value || !hasUnsavedChanges.value) return false
     const payload = buildSidebarPayload()
-    try {
-        const success = await runSubmit(async () => {
-            const savedData = await setWebsite(payload)
-            assertSidebarSaveReadback(payload, savedData)
-            applySidebarWebsiteData(savedData)
-        })
-        if (!success) {
-            return
-        }
-        saveResultType.value = 'success'
-        saveResultText.value = `菜单设置已保存并完成服务端回读确认（${lastSavedAt.value}）`
-    } catch (error) {
-        const message = String((error as Error)?.message || '').trim() || '菜单设置保存失败，请稍后重试。'
-        saveResultType.value = 'error'
-        saveResultText.value = message
-        if ((error as { notified?: boolean })?.notified !== true) {
-            feedback.msgError(message)
-        }
-        return
-    }
+    const patch = buildConfigFieldPatch(payload, baselinePayload.value) as Record<string, string>
+    if (!Object.keys(patch).length || !validateBeforeSubmit(true, patch)) return false
+    const snapshot = JSON.stringify(payload)
+    return submitConfiguration(async () => { await setWebsite(patch); baselinePayload.value = payload }, snapshot)
 }
-
-/**
- * 函数说明：页面刷新或关闭前提示未保存变更，避免运营误关闭标签页。
- */
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (!hasUnsavedChanges.value) {
-        return
-    }
-    event.preventDefault()
-    event.returnValue = ''
-}
-
-/**
- * 函数说明：路由切换前提示未保存变更，防止编辑中断。
- */
-onBeforeRouteLeave(async () => {
-    if (!hasUnsavedChanges.value) {
-        return true
-    }
-    try {
-        await feedback.confirm('当前页面存在未保存变更，确定离开吗？')
-        return true
-    } catch {
-        return false
-    }
-})
-
-onMounted(() => {
-    void getData()
-    window.addEventListener('beforeunload', handleBeforeUnload)
-})
-
-onBeforeUnmount(() => {
-    window.removeEventListener('beforeunload', handleBeforeUnload)
-})
+/** 挂载只读取当前页，公共控制器处理缓存激活、离开与刷新保护。 */
+onMounted(() => { void getData() })
 </script>
 
 <style lang="scss" scoped>
-.sidebar-section-tabs { margin-top: 16px; display: flex; flex-wrap: wrap; }
+.sidebar-editable { min-width: 0; border: 0; margin: 0; padding: 0; }
+.sidebar-repair { display: grid; gap: 12px; margin-top: 16px; }
+.sidebar-advanced { margin-top: 24px; }
+.sidebar-advanced > h2 { margin: 0; font-size: 16px; line-height: 1.5; }
+.sidebar-advanced > p { margin: 6px 0 16px; color: var(--color-text-3); font-size: 13px; line-height: 1.7; }
+
+.sidebar-section-tabs { margin-top: 0; display: flex; flex-wrap: wrap; }
+.sidebar-section-tabs :deep(.arco-radio-button-content) { white-space: nowrap; }
 .pro-page-shell {
     padding-bottom: 24px;
 }
@@ -974,12 +588,7 @@ onBeforeUnmount(() => {
     padding: 0 4px;
 }
 
-.save-result-alert {
-    margin-bottom: 16px;
-}
-
-.layout-page-actions,
-.layout-status-tags {
+.layout-page-actions {
     display: flex;
     align-items: center;
     gap: 16px;
@@ -991,246 +600,15 @@ onBeforeUnmount(() => {
     gap: 10px;
 }
 
-.layout-status-tags {
-    gap: 8px;
-}
-
 .page-card {
-    border-radius: 16px;
-}
-
-.page-entry-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 14px;
-}
-
-.page-entry-card {
-    padding: 16px 18px;
-    border-radius: 14px;
-    border: 1px solid var(--color-border-2);
-    background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
-}
-
-.page-entry-card__title {
-    margin-top: 0;
-    font-size: 16px;
-    line-height: 1.35;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.page-entry-card__desc {
-    margin-top: 8px;
-    line-height: 1.7;
-    font-size: 13px;
-    color: var(--color-text-2);
-}
-
-.page-entry-card__actions {
-    margin-top: 14px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.page-entry-list {
-    margin: 12px 0 0;
-    padding-left: 18px;
-    font-size: 13px;
-    color: var(--color-text-2);
-    line-height: 1.9;
-}
-
-.stat-card {
-    padding: 16px 18px;
-    border-radius: 14px;
-    border: 1px solid var(--color-border-2);
-    background: #fff;
-}
-
-.stat-label {
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.stat-value {
-    margin-top: 10px;
-    font-size: 28px;
-    line-height: 1;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.stat-value.is-danger,
-.catalog-error {
-    color: rgb(var(--red-6));
-}
-
-.ops-workspace {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(300px, 0.9fr);
-    gap: 12px;
-}
-
-.ops-workspace__main,
-.ops-workspace__aside {
-    border: 1px solid var(--color-border-2);
-    border-radius: 14px;
-    background: #fff;
-    padding: 16px;
-}
-
-.ops-workspace__eyebrow {
-    display: inline-flex;
-    align-items: center;
-    height: 24px;
-    padding: 0 9px;
-    border-radius: 999px;
-    border: 1px solid #d8d2ff;
-    background: #f3efff;
-    color: #5b47d6;
-    font-size: 12px;
-    font-weight: 700;
-}
-
-.ops-workspace__title {
-    margin-top: 10px;
-    font-size: 20px;
-    line-height: 1.35;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.ops-workspace__desc {
-    margin-top: 6px;
-    font-size: 13px;
-    line-height: 1.65;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__meta {
-    margin-top: 12px;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-}
-
-.ops-workspace__meta-item {
-    padding: 10px 12px;
-    border-radius: 10px;
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.ops-workspace__meta-item span {
-    display: block;
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__meta-item strong {
-    display: block;
-    margin-top: 4px;
-    font-size: 13px;
-    line-height: 1.6;
-    color: var(--color-text-1);
-    word-break: break-all;
-}
-
-.ops-workspace__aside-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.ops-workspace__checklist {
-    margin-top: 10px;
-    display: grid;
-    gap: 8px;
-}
-
-.ops-workspace__checklist-item {
-    border: 1px solid var(--color-border-2);
-    border-radius: 10px;
-    background: var(--color-fill-1, #f7f8fa);
-    padding: 10px 12px;
-}
-
-.ops-workspace__checklist-item.is-ok {
-    border-color: #d7ebde;
-    background: #f7fcf8;
-}
-
-.ops-workspace__checklist-item.is-warning {
-    border-color: #f0dfb0;
-    background: #fffaf0;
-}
-
-.ops-workspace__checklist-item.is-danger {
-    border-color: #f0c8c8;
-    background: #fff7f7;
-}
-
-.ops-workspace__checklist-label {
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__checklist-value {
-    margin-top: 4px;
-    font-size: 15px;
-    font-weight: 700;
-    color: var(--color-text-1);
-}
-
-.ops-workspace__checklist-desc {
-    margin-top: 4px;
-    font-size: 12px;
-    line-height: 1.55;
-    color: var(--color-text-3);
-}
-
-.ops-workspace__actions {
-    margin-top: 12px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-}
-
-.mode-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 12px 14px;
-    border: 1px solid var(--color-border-2);
-    border-radius: 12px;
-    background: var(--color-fill-1, #f7f8fa);
-}
-
-.mode-toolbar__label {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--color-text-1);
-}
-
-.mode-toolbar__tip {
-    font-size: 12px;
-    color: var(--color-text-3);
-}
-
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
+    border-radius: var(--uied-admin-radius);
 }
 
 .layout-group {
     border: 1px solid var(--color-border-2);
-    border-radius: 14px;
+    border-radius: var(--uied-admin-radius);
     padding: 16px;
-    background: #fff;
+    background: var(--color-bg-2);
 }
 
 .group-head {
@@ -1338,19 +716,15 @@ onBeforeUnmount(() => {
 }
 
 .catalog-error {
+    color: rgb(var(--red-6));
     margin-top: 12px;
     font-size: 13px;
     line-height: 1.7;
 }
 
 @media (max-width: 920px) {
-    .page-entry-grid,
-    .stats-grid,
     .link-row,
-    .menu-row,
-    .ops-workspace,
-    .ops-workspace__meta,
-    .mode-toolbar {
+    .menu-row {
         grid-template-columns: 1fr;
     }
 
@@ -1359,9 +733,8 @@ onBeforeUnmount(() => {
         align-items: stretch;
     }
 
-    .mode-toolbar {
-        align-items: flex-start;
-        flex-direction: column;
-    }
+}
+@media (max-width: 600px) {
+    .website-sidebar-settings :deep(button), .sidebar-section-tabs :deep(.arco-radio-button) { min-height: 44px; }
 }
 </style>

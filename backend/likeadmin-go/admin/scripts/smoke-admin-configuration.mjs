@@ -82,7 +82,7 @@ try {
     await page.getByRole('button', { name: '重新加载', exact: true }).click()
     await page.locator('.arco-modal').getByRole('button', { name: '取消', exact: true }).click()
     await page.getByText('有未保存的更改', { exact: true }).waitFor()
-    await page.getByRole('button', { name: /^保存(?:配置|批量更改)$/ }).click()
+    await page.locator('.config-edit-frame__actions button').click()
     await page.getByText('正在保存更改', { exact: true }).waitFor()
     assert.equal(await page.getByPlaceholder('搜索工具名称、用途、链接或标识').isEnabled(), false)
     await page.locator('.config-edit-frame[data-state="saved"]').waitFor()
@@ -113,14 +113,14 @@ try {
     await page.getByRole('textbox', { name: '工具名称', exact: true }).fill('视频压缩〔批量草稿〕')
     assert.equal(await page.locator('[data-admin-smoke="tools-catalog-tool-save"]').count(), 0, '已有批量草稿时不提供单工具直接发布，避免暗中一并保存')
     await applyToolDraft()
-    await page.getByRole('button', { name: /^保存(?:配置|批量更改)$/ }).click()
+    await page.locator('.config-edit-frame__actions button').click()
     await page.locator('.config-edit-frame[data-state="saved"]').waitFor()
 
     // 首次加载失败不允许把默认空配置保存到后端，重试后恢复。
     failLoad = true
     await openPage('/official_site/header')
     await page.getByText('加载失败，暂不能保存', { exact: true }).waitFor()
-    assert.equal(await page.getByRole('button', { name: /^保存(?:配置|批量更改)$/ }).isEnabled(), false)
+    assert.equal(await page.locator('.config-edit-frame__actions button').isEnabled(), false)
     const priorSaves = saveRequests
     failLoad = false
     await page.locator('.config-edit-frame__alert').getByRole('button', { name: '重新加载', exact: true }).click()
@@ -129,11 +129,23 @@ try {
 
     for (const route of ['sidebar', 'header', 'footer', 'seo']) {
         await openPage('/official_site/' + route)
-        assert.equal(await page.getByRole('button', { name: /^保存(?:配置|批量更改)$/ }).count(), 1)
+        assert.equal(await page.locator('.config-edit-frame__actions button').count(), 1)
         if (route === 'sidebar') {
             for (const label of ['推荐链接', '一级菜单', '底部入口', '品牌文案']) await page.locator('.sidebar-section-tabs').getByText(label, { exact: true }).click()
         }
-        const input = page.locator('.config-edit-frame__fields').locator('input:visible:not([readonly]):not([type="checkbox"]):not([type="radio"]),textarea:visible:not([readonly])').first()
+        // 各任务页默认分组可能没有链接，选择稳定文案字段验证草稿，避免编辑下拉搜索框。
+        let input
+        if (route === 'header') {
+            await page.getByRole('tab', { name: '搜索推荐', exact: true }).click()
+            input = page.getByRole('textbox', { name: '搜索服务方名称', exact: true })
+        } else if (route === 'footer') {
+            await page.getByRole('tab', { name: '文案与版权', exact: true }).click()
+            input = page.getByRole('textbox', { name: '页脚介绍文案', exact: true })
+        } else if (route === 'sidebar') {
+            input = page.getByPlaceholder('如：免费在线工具集')
+        } else {
+            input = page.locator('.config-edit-frame__fields').locator('input:visible:not([readonly]):not([type="checkbox"]):not([type="radio"]),textarea:visible:not([readonly])').first()
+        }
         const original = await input.inputValue()
         await input.fill(original + '测')
         await page.getByRole('button', { name: '重新加载', exact: true }).click()
@@ -174,7 +186,7 @@ try {
         await page.setViewportSize({ width, height: 1000 })
         await waitLayoutStable()
         await page.waitForFunction(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
-        const saveButton = page.getByRole('button', { name: /^保存(?:配置|批量更改)$/ })
+        const saveButton = page.locator('.config-edit-frame__actions button')
         assert.equal(await saveButton.evaluate(button => getComputedStyle(button).backgroundColor), 'rgb(108, 84, 255)', '草稿保存按钮采用品牌紫')
         if (width <= 600) assert.ok(await saveButton.evaluate(button => button.getBoundingClientRect().height) >= 44, '手机草稿保存按钮至少44px高')
         assert.equal(await saveButton.evaluate(button => {

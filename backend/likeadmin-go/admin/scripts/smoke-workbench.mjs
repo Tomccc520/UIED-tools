@@ -216,7 +216,11 @@ try {
     await page.locator('[data-admin-smoke="workbench-refresh"]').click()
     await waitForData(page)
     assert.deepEqual(await page.locator('.metric-value').allInnerTexts(), ['0', '0', '0', '¥0.00'])
+    const trend = page.locator('.visitor-trend')
+    assert.equal(await trend.getAttribute('open'), null, '趋势默认收起，不占用工作台首屏')
+    await trend.locator('summary').press('Enter')
     await page.getByText('最近 15 天暂无工具访问记录').waitFor()
+    assert.equal(await page.locator('.visitor-chart').count(), 0, '零访问只展示空状态，不挂载图表')
     await page.unroute(pattern)
     await page.route(pattern, async (route) => {
         await new Promise((resolve) => setTimeout(resolve, 14000))
