@@ -89,7 +89,25 @@ const axiosHooks: AxiosHooks = {
         if (!isTransformResponse) {
             return response.data
         }
-        const { code, data, show, msg } = response.data
+        // 普通业务请求必须收到标准响应包，代理返回的 HTML 或缺失错误码不能当作保存成功。
+        const body = response.data
+        if (
+            !body ||
+            typeof body !== 'object' ||
+            Array.isArray(body) ||
+            typeof body.code !== 'number' ||
+            !Number.isInteger(body.code)
+        ) {
+            const error = createBusinessRequestError(
+                RequestCodeEnum.SYSTEM_ERROR,
+                '接口响应格式异常，请重试',
+                null
+            )
+            feedback.msgError(error.message)
+            return Promise.reject(error)
+        }
+        const { code, data, show } = body
+        const msg = typeof body.msg === 'string' ? body.msg : ''
         switch (code) {
             case RequestCodeEnum.SUCCESS:
                 if (show) {
@@ -117,8 +135,12 @@ const axiosHooks: AxiosHooks = {
                 router.push(PageEnum.LOGIN)
                 return Promise.reject()
 
-            default:
-                return data
+            default: {
+                // 只有成功码可以完成业务；新增错误码和接口 404 也必须进入页面失败流程。
+                const error = createBusinessRequestError(code, msg, data)
+                feedback.msgError(error.message)
+                return Promise.reject(error)
+            }
         }
     },
     responseInterceptorsCatchHook(error) {

@@ -27,6 +27,7 @@
                 <a-input
                     v-model.trim="formData.account"
                     placeholder="请输入管理员账号"
+                    :input-attrs="{ 'aria-label': '管理员账号' }"
                     allow-clear
                     autocomplete="username"
                     @press-enter="handleEnter"
@@ -41,6 +42,7 @@
                     ref="passwordRef"
                     v-model="formData.password"
                     placeholder="请输入密码"
+                    :input-attrs="{ 'aria-label': '登录密码' }"
                     allow-clear
                     autocomplete="current-password"
                     @press-enter="handleLogin"
@@ -55,6 +57,7 @@
                     <a-input
                         v-model.trim="formData.captchaCode"
                         placeholder="请输入图形验证码"
+                        :input-attrs="{ 'aria-label': '图形验证码' }"
                         allow-clear
                         autocomplete="one-time-code"
                         @press-enter="handleLogin"
@@ -66,6 +69,7 @@
                     <button
                         class="captcha-image-btn"
                         type="button"
+                        aria-label="刷新图形验证码"
                         :disabled="isCaptchaLoading"
                         @click="loadLoginCaptcha"
                     >
@@ -399,6 +403,15 @@ onMounted(() => {
 }
 
 @media (max-width: 480px) {
+    .captcha-field-row {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .captcha-image-btn {
+        width: 132px;
+        max-width: 100%;
+    }
+
     .login-form-wrapper {
         padding: 24px;
         border: 0;

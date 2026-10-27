@@ -8,6 +8,7 @@ import (
 	"likeadmin/core/response"
 	"likeadmin/middleware"
 	"likeadmin/util"
+	"net/http"
 )
 
 var WebsiteGroup = core.Group("/setting", newWebsiteHandler, regWebsite, middleware.TokenAuth())
@@ -34,7 +35,7 @@ func (wh websiteHandler) detail(c *gin.Context) {
 	response.CheckAndRespWithData(c, res, err)
 }
 
-// save 保存网站信息
+// save 函数说明：保存网站配置并返回详情；写入成功后的回读失败只提示重新加载，不误报保存失败或诱导重复提交。
 func (wh websiteHandler) save(c *gin.Context) {
 	var wsReq req.SettingWebsiteReq
 	if response.IsFailWithResp(c, util.VerifyUtil.VerifyJSON(c, &wsReq)) {
@@ -44,6 +45,16 @@ func (wh websiteHandler) save(c *gin.Context) {
 		return
 	}
 	res, err := wh.srv.Detail()
+	if err != nil {
+		core.Logger.Warnf("Website config saved but detail reload failed: path=[%s], err=[%+v]", c.Request.URL.Path, err)
+		c.JSON(http.StatusOK, gin.H{
+			"code": response.Success.Code(),
+			"msg":  "配置已保存，请重新加载查看，无需重复提交",
+			"data": gin.H{"saved": true, "reloadRequired": true},
+			"show": true,
+		})
+		return
+	}
 	response.CheckAndRespWithData(c, res, err)
 }
 

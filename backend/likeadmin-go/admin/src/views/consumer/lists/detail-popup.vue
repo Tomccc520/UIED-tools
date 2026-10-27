@@ -14,10 +14,16 @@
         :confirm-button-text="false"
         :cancel-button-text="false"
         :click-modal-close="true"
-        @close="emit('close')"
+        @close="handlePopupClose"
     >
-        <a-spin :loading="detailLoading" tip="正在加载用户详情...">
-            <a-card class="!border-none pro-card" :bordered="false">
+        <a-alert v-if="detailError" type="error" :closable="false" class="mb-4" role="alert">
+            {{ detailError }}
+            <template #action>
+                <a-button :disabled="detailLoading || editLoading" @click="retryDetails">重试</a-button>
+            </template>
+        </a-alert>
+        <a-spin :loading="detailLoading || editLoading" :tip="editLoading ? '正在保存用户资料...' : '正在加载用户详情...'">
+            <a-card :key="currentUserId" class="!border-none pro-card" :bordered="false">
                 <div class="font-medium mb-6">基本资料</div>
 
                 <div class="detail-avatar-card">
@@ -43,11 +49,12 @@
                         <div class="detail-value">
                             {{ formData.username || '-' }}
                             <popover-input
+                                :disabled="!canEditUser"
                                 class="ml-[10px]"
                                 :limit="32"
                                 @confirm="handleEdit($event, 'username')"
                             >
-                                <a-button type="text" v-perms="['user:edit']">
+                                <a-button type="text" :disabled="!canEditUser" v-perms="['user:edit']">
                                     <template #icon>
                                         <icon-edit />
                                     </template>
@@ -61,11 +68,12 @@
                         <div class="detail-value">
                             {{ formData.realName || '-' }}
                             <popover-input
+                                :disabled="!canEditUser"
                                 class="ml-[10px]"
                                 :limit="32"
                                 @confirm="handleEdit($event, 'realName')"
                             >
-                                <a-button type="text" v-perms="['user:edit']">
+                                <a-button type="text" :disabled="!canEditUser" v-perms="['user:edit']">
                                     <template #icon>
                                         <icon-edit />
                                     </template>
@@ -79,12 +87,13 @@
                         <div class="detail-value">
                             {{ formData.sex || '-' }}
                             <popover-input
+                                :disabled="!canEditUser"
                                 class="ml-[10px]"
                                 type="select"
                                 :options="sexOptions"
                                 @confirm="handleEdit($event, 'sex')"
                             >
-                                <a-button type="text" v-perms="['user:edit']">
+                                <a-button type="text" :disabled="!canEditUser" v-perms="['user:edit']">
                                     <template #icon>
                                         <icon-edit />
                                     </template>
@@ -98,11 +107,12 @@
                         <div class="detail-value">
                             {{ formData.mobile || '-' }}
                             <popover-input
+                                :disabled="!canEditUser"
                                 class="ml-[10px]"
                                 type="number"
                                 @confirm="handleEdit($event, 'mobile')"
                             >
-                                <a-button type="text" v-perms="['user:edit']">
+                                <a-button type="text" :disabled="!canEditUser" v-perms="['user:edit']">
                                     <template #icon>
                                         <icon-edit />
                                     </template>
@@ -116,12 +126,13 @@
                         <div class="detail-value">
                             {{ formData.memberLevel || '-' }}
                             <popover-input
+                                :disabled="!canEditUser"
                                 class="ml-[10px]"
                                 type="select"
                                 :options="memberLevelOptions"
                                 @confirm="handleEdit($event, 'memberLevel')"
                             >
-                                <a-button type="text" v-perms="['user:edit']">
+                                <a-button type="text" :disabled="!canEditUser" v-perms="['user:edit']">
                                     <template #icon>
                                         <icon-edit />
                                     </template>
@@ -135,11 +146,12 @@
                         <div class="detail-value">
                             {{ formData.memberExpireTime || '-' }}
                             <popover-input
+                                :disabled="!canEditUser"
                                 class="ml-[10px]"
                                 type="number"
                                 @confirm="handleEdit($event, 'memberExpireDays')"
                             >
-                                <a-button type="text" v-perms="['user:edit']">设置天数</a-button>
+                                <a-button type="text" :disabled="!canEditUser" v-perms="['user:edit']">设置天数</a-button>
                             </popover-input>
                         </div>
                     </div>
@@ -182,9 +194,14 @@ const emit = defineEmits<{
 
 const popupRef = shallowRef<InstanceType<typeof Popup>>()
 const detailLoading = ref(false)
+const detailError = ref('')
+const editLoading = ref(false)
 const currentUserId = ref<string>('')
+const loadedUserId = ref('')
+let detailRequestSerial = 0
 
-const formData = reactive({
+/** 创建空用户资料；切换用户时清理上一用户内容，不复用其字段或编辑弹层。 */
+const createEmptyUserDetail = () => ({
     avatar: '',
     channel: '',
     createTime: '',
@@ -202,6 +219,13 @@ const formData = reactive({
     sn: '',
     username: ''
 })
+const formData = reactive(createEmptyUserDetail())
+
+/** 只允许编辑已成功读取的当前用户，加载、失败和保存期间均禁止提交。 */
+const canEditUser = computed(() => Boolean(
+    currentUserId.value && loadedUserId.value === currentUserId.value &&
+    !detailLoading.value && !detailError.value && !editLoading.value
+))
 
 const sexOptions = ref([
     {
@@ -253,45 +277,65 @@ const handleAvatarLoadError = (event: Event) => {
 }
 
 /**
- * 函数说明：按用户 ID 拉取详情并回填弹窗展示数据。
+ * 函数说明：按用户 ID 读取详情，只接收当前请求与当前用户的完整响应，返回读取是否成功。
  */
 const getDetails = async (userId: string) => {
-    if (!userId) {
-        return
+    if (!userId || userId !== currentUserId.value) {
+        return false
     }
+    const serial = ++detailRequestSerial
     detailLoading.value = true
+    detailError.value = ''
+    loadedUserId.value = ''
     try {
-        const data = await getUserDetail({
-            id: userId
-        })
-        Object.keys(formData).forEach((key) => {
-            // @ts-ignore
-            formData[key] = data[key]
-        })
+        const data = await getUserDetail({ id: userId })
+        if (serial !== detailRequestSerial || userId !== currentUserId.value) return false
+        if (!data || typeof data !== 'object' || Array.isArray(data) || String(data.id) !== userId)
+            throw new Error('invalid user detail response')
+        Object.assign(formData, Object.fromEntries(
+            Object.entries(createEmptyUserDetail()).map(([key, fallback]) => [key, data[key] ?? fallback])
+        ))
+        loadedUserId.value = userId
+        return true
     } catch (error) {
-        feedback.msgError('用户详情加载失败，请稍后重试')
+        if (serial !== detailRequestSerial || userId !== currentUserId.value) return false
+        detailError.value = '用户详情加载失败，请重试后再编辑。'
+        if (!(error as { notified?: boolean })?.notified) feedback.msgError(detailError.value)
+        return false
     } finally {
-        detailLoading.value = false
+        if (serial === detailRequestSerial) detailLoading.value = false
     }
 }
 
+/** 重试当前用户详情；保存进行中不发起额外读取或替换表单。 */
+const retryDetails = () => {
+    if (detailLoading.value || editLoading.value) return
+    return getDetails(currentUserId.value)
+}
+
 /**
- * 函数说明：编辑单字段并刷新当前用户详情，保持弹窗内数据一致。
+ * 函数说明：固定当前用户 ID 提交单字段，阻止重复写入；只有仍停留在该用户时才重新读取。
  */
 const handleEdit = async (value: string | number, field: string) => {
-    if (value === undefined || value === null || String(value) === '' || !currentUserId.value) {
-        return
+    if (!canEditUser.value || value === undefined || value === null || String(value) === '') {
+        return false
     }
+    const userId = currentUserId.value
+    editLoading.value = true
     try {
         await userEdit({
-            id: currentUserId.value,
+            id: userId,
             field,
             value
         })
         feedback.msgSuccess('编辑成功')
-        await getDetails(currentUserId.value)
+        if (currentUserId.value === userId) await getDetails(userId)
+        return true
     } catch (error) {
-        feedback.msgError('编辑失败，请稍后重试')
+        if (!(error as { notified?: boolean })?.notified) feedback.msgError('编辑失败，请稍后重试')
+        return false
+    } finally {
+        editLoading.value = false
     }
 }
 
@@ -299,15 +343,38 @@ const handleEdit = async (value: string | number, field: string) => {
  * 函数说明：对外暴露打开弹窗能力，支持列表页按 ID 直接拉起详情。
  */
 const open = async (id: string | number) => {
-    currentUserId.value = String(id || '').trim()
+    const userId = String(id || '').trim()
+    if (!userId) return false
+    if (editLoading.value && currentUserId.value === userId) return false
+    if (currentUserId.value !== userId) {
+        Object.assign(formData, createEmptyUserDetail())
+        loadedUserId.value = ''
+    }
+    currentUserId.value = userId
     popupRef.value?.open()
-    await getDetails(currentUserId.value)
+    return getDetails(userId)
+}
+
+/** 清理当前用户及加载状态，使关闭或卸载后的详情响应失效。 */
+const invalidateDetails = () => {
+    detailRequestSerial++
+    currentUserId.value = ''
+    loadedUserId.value = ''
+    detailLoading.value = false
+    detailError.value = ''
+}
+
+/** 接收弹窗关闭事件，清理详情并通知外层列表同步路由。 */
+const handlePopupClose = () => {
+    invalidateDetails()
+    emit('close')
 }
 
 /**
  * 函数说明：对外暴露关闭弹窗方法，便于外层统一控制。
  */
 const close = () => {
+    invalidateDetails()
     popupRef.value?.close()
 }
 

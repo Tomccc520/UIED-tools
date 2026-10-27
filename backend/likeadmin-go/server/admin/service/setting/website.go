@@ -171,7 +171,7 @@ func normalizeToolsLayoutArrayConfig(raw string, defaultJSON string) string {
 	return trimmed
 }
 
-// preserveNavigationEditorRawValues 函数说明：管理端编辑器读取已存原文，保留异常和空数组供修复；缺失配置继续展示默认值，不影响主站回退或数据库内容。
+// preserveNavigationEditorRawValues 函数说明：导航、目录和 SEO 管理端编辑器读取已存原文，保留异常和空数组供修复；缺失配置继续展示默认值，不影响主站回退或数据库内容。
 func preserveNavigationEditorRawValues(normalized, stored map[string]string) map[string]string {
 	fields := []string{
 		toolsHeaderLinksConfigName, toolsSearchQuickToolsConfigName, toolsAiChatHeaderLinksConfigName, toolsAiCommonHeaderLinksConfigName,
@@ -179,6 +179,7 @@ func preserveNavigationEditorRawValues(normalized, stored map[string]string) map
 		toolsSidebarBottomLinksConfigName, toolsAiToolboxSidebarMenusConfigName,
 		toolsFooterSupportLinksConfigName, toolsFooterRecordLinksConfigName, toolsOfficialMediaLinksConfigName,
 		toolsFooterQuickSectionsConfigName, toolsFooterFriendSectionsConfigName,
+		toolsCategoryTreeConfigName, toolsSeoPagesConfigName,
 	}
 	for _, field := range fields {
 		if raw, exists := stored[field]; exists {

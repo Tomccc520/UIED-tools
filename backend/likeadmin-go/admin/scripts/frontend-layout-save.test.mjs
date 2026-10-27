@@ -10,6 +10,7 @@ import vm from 'node:vm'
 import test from 'node:test'
 import ts from 'typescript'
 import { computed, reactive, ref, watch } from 'vue'
+import { readConfigObjectArray } from '../src/views/setting/website/composables/config-links.ts'
 
 const root = new URL('../src/views/setting/website/', import.meta.url)
 /** 编译真实源码，仅替换网络、提示和生命周期边界，不复写被测保存逻辑。 */
@@ -21,7 +22,7 @@ const execute = (source, bindings, names) => {
     vm.runInContext(compiled, context)
     return context.subject
 }
-const helpers = execute(fs.readFileSync(new URL('composables/frontend-content.ts', root), 'utf8'), {}, [
+const helpers = execute(fs.readFileSync(new URL('composables/frontend-content.ts', root), 'utf8'), { readConfigObjectArray }, [
     'frontendContentKeys', 'createFrontendContent', 'readFrontendContent', 'buildFrontendContentPatch',
     'readContentArray', 'updateContentItem', 'validateContentTimeline', 'validateFrontendContent'
 ])
@@ -31,14 +32,18 @@ const createPage = () => {
     const initial = { ...helpers.createFrontendContent(), otherPage: '不能写入', toolsChangelogTimeline: '[]' }
     const io = { read: async () => initial, save: async () => ({}), confirm: async () => {} }
     const feedback = { msgSuccess: text => calls.success.push(text), msgError: text => calls.errors.push(text), confirm: async () => { calls.confirms++; return io.confirm() } }
-    const composable = (file, name) => execute(fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback }, [name])[name]
+    const lifecycle = { onMounted() {}, onActivated() {}, onDeactivated() {}, onBeforeUnmount() {}, onBeforeRouteLeave() {} }
+    const composable = (file, name, bindings = {}) => execute(fs.readFileSync(new URL('../src/composables/' + file, import.meta.url), 'utf8'), { feedback, ...lifecycle, ...bindings }, [name])[name]
+    const useConfigLoad = composable('use-config-load.ts', 'useConfigLoad')
+    const useOperateSubmit = composable('use-operate-submit.ts', 'useOperateSubmit')
+    const useConfigEditor = composable('use-config-editor.ts', 'useConfigEditor', { useConfigLoad, useOperateSubmit })
     const source = fs.readFileSync(new URL('frontend_layout.vue', root), 'utf8').match(/<script\b[^>]*>([\s\S]*?)<\/script>/)[1]
     const page = execute(source, {
-        ...helpers, feedback, defaultChangelogTimelineSource: [],
+        ...helpers, readConfigObjectArray, feedback, defaultChangelogTimelineSource: [],
         localStorage: { getItem: () => null, setItem() {} },
         useAppStore: () => ({ config: {} }),
-        useConfigLoad: composable('use-config-load.ts', 'useConfigLoad'),
-        useOperateSubmit: composable('use-operate-submit.ts', 'useOperateSubmit'),
+        useConfigEditor,
+        useUserStore: () => ({ perms: ['*'] }),
         getWebsite: async () => { calls.reads++; return io.read() },
         setWebsite: async payload => { calls.saves.push(JSON.parse(JSON.stringify(payload))); return io.save(payload) },
         onMounted() {}, onBeforeUnmount() {}, onBeforeRouteLeave() {}

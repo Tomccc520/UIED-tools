@@ -10,7 +10,7 @@
     <div class="timeline-editor">
         <div class="timeline-editor__toolbar">
             <p>共 {{ parsed.items.length }} 个版本</p>
-            <a-button :disabled="Boolean(parsed.error)" @click="addVersion">新增版本</a-button>
+            <a-button :disabled="disabled || Boolean(parsed.error)" @click="addVersion">新增版本</a-button>
         </div>
         <a-alert v-if="parsed.error" type="error" :closable="false">{{ parsed.error }}，原内容已保留。</a-alert>
         <div v-else-if="parsed.items.length" class="timeline-editor__workspace">
@@ -26,46 +26,46 @@
                 </button>
             </nav>
             <section v-if="active" class="timeline-editor__form" aria-label="编辑版本">
-                <a-form :model="active" layout="vertical">
+                <a-form :disabled="disabled" :model="active" layout="vertical">
                     <div class="timeline-editor__pair">
                         <a-form-item label="版本号" required><a-input :model-value="String(active.version || '')" :input-attrs="{ 'aria-label': '版本号' }" placeholder="如：3.0.6" @update:model-value="updateVersion('version', $event)" /></a-form-item>
                         <a-form-item label="发布日期" required><a-input :model-value="String(active.date || '')" :input-attrs="{ 'aria-label': '发布日期' }" placeholder="YYYY-MM-DD" @update:model-value="updateVersion('date', $event)" /></a-form-item>
                     </div>
                     <a-form-item label="版本标题" required><a-input :model-value="String(active.title || '')" :input-attrs="{ 'aria-label': '版本标题' }" placeholder="说明这次更新的主要变化" @update:model-value="updateVersion('title', $event)" /></a-form-item>
                 </a-form>
-                <div class="timeline-editor__section-heading"><h3>更新内容</h3><a-button type="text" :disabled="Boolean(featureError)" @click="addFeature">添加内容分组</a-button></div>
+                <div class="timeline-editor__section-heading"><h3>更新内容</h3><a-button type="text" :disabled="disabled || Boolean(featureError)" @click="addFeature">添加内容分组</a-button></div>
                 <a-alert v-if="featureError" type="error" :closable="false">{{ featureError }}</a-alert>
                 <section v-for="(feature, index) in features" :key="index" class="timeline-editor__feature">
                     <div class="timeline-editor__feature-title">
-                        <a-input :model-value="String(feature.title || '')" :input-attrs="{ 'aria-label': '第' + (index + 1) + '组标题' }" placeholder="如：功能更新、问题修复" @update:model-value="updateFeature(index, 'title', $event)" />
-                        <a-button type="text" status="danger" :aria-label="'移除第' + (index + 1) + '组更新'" @click="removeFeature(index)">移除</a-button>
+                        <a-input :disabled="disabled" :model-value="String(feature.title || '')" :input-attrs="{ 'aria-label': '第' + (index + 1) + '组标题' }" placeholder="如：功能更新、问题修复" @update:model-value="updateFeature(index, 'title', $event)" />
+                        <a-button :disabled="disabled" type="text" status="danger" :aria-label="'移除第' + (index + 1) + '组更新'" @click="removeFeature(index)">移除</a-button>
                     </div>
-                    <a-textarea :model-value="Array.isArray(feature.points) ? feature.points.join('\n') : ''" :textarea-attrs="{ 'aria-label': '第' + (index + 1) + '组更新内容' }" :auto-size="{ minRows: 3, maxRows: 12 }" placeholder="每行一条更新内容" @update:model-value="updateFeature(index, 'points', String($event).split('\n'))" />
+                    <a-textarea :disabled="disabled" :model-value="Array.isArray(feature.points) ? feature.points.join('\n') : ''" :textarea-attrs="{ 'aria-label': '第' + (index + 1) + '组更新内容' }" :auto-size="{ minRows: 3, maxRows: 12 }" placeholder="每行一条更新内容" @update:model-value="updateFeature(index, 'points', String($event).split('\n'))" />
                     <p v-if="feature.points !== undefined && !Array.isArray(feature.points)" class="timeline-editor__error">原内容格式不是数组，请展开原始 JSON 检查。</p>
                 </section>
                 <details class="timeline-editor__optional">
                     <summary>标签与排序</summary>
-                    <a-form :model="active" layout="vertical">
+                    <a-form :disabled="disabled" :model="active" layout="vertical">
                         <div class="timeline-editor__pair">
                             <a-form-item label="标签文案"><a-input :model-value="String(active.badgeText || '')" @update:model-value="updateVersion('badgeText', $event)" /></a-form-item>
                             <a-form-item label="标签样式"><a-select :model-value="String(active.badgeType || 'info')" @update:model-value="updateVersion('badgeType', $event)"><a-option value="info">普通</a-option><a-option value="success">完成</a-option><a-option value="warning">提示</a-option><a-option value="danger">重要</a-option></a-select></a-form-item>
                         </div>
                     </a-form>
                     <a-space wrap>
-                        <a-button :disabled="selected === 0" @click="moveVersion(-1)">上移版本</a-button>
-                        <a-button :disabled="selected === parsed.items.length - 1" @click="moveVersion(1)">下移版本</a-button>
-                        <a-button status="danger" @click="removeVersion">移除此版本</a-button>
+                        <a-button :disabled="disabled || selected === 0" @click="moveVersion(-1)">上移版本</a-button>
+                        <a-button :disabled="disabled || selected === parsed.items.length - 1" @click="moveVersion(1)">下移版本</a-button>
+                        <a-button :disabled="disabled" status="danger" @click="removeVersion">移除此版本</a-button>
                     </a-space>
                 </details>
             </section>
         </div>
         <a-empty v-else description="尚未配置自定义更新记录">
-            <template #extra><a-button @click="loadDefaults">载入默认记录后编辑</a-button></template>
+            <template #extra><a-button :disabled="disabled" @click="loadDefaults">载入默认记录后编辑</a-button></template>
         </a-empty>
         <details class="timeline-editor__optional">
             <summary>高级维护：原始 JSON</summary>
             <p>用于批量导入或修正异常记录，编辑后统一保存。</p>
-            <a-textarea :model-value="modelValue" :auto-size="{ minRows: 6, maxRows: 18 }" :textarea-attrs="{ 'aria-label': '更新记录原始 JSON' }" @update:model-value="$emit('update:modelValue', String($event))" />
+            <a-textarea :readonly="disabled" :model-value="modelValue" :auto-size="{ minRows: 6, maxRows: 18 }" :textarea-attrs="{ 'aria-label': '更新记录原始 JSON' }" @update:model-value="replaceRaw($event)" />
         </details>
     </div>
 </template>
@@ -73,7 +73,7 @@
 import { computed, ref, watch } from 'vue'
 import { readContentArray, updateContentItem } from '../composables/frontend-content'
 import feedback from '@/utils/feedback'
-const props = defineProps<{ modelValue: string; defaultValue: string }>()
+const props = withDefaults(defineProps<{ modelValue: string; defaultValue: string; disabled?: boolean }>(), { disabled: false })
 const emit = defineEmits<{ (event: 'update:modelValue', value: string): void }>()
 const selected = ref(0)
 /** 只解析原始数组，不在显示时过滤、合并或重排用户已有记录。 */
@@ -93,7 +93,7 @@ const features = computed<Record<string, any>[]>(() => featureError.value ? [] :
 /** 数据重新加载或移除版本后，将选择位置限制在仍然存在的记录范围内。 */
 watch(() => parsed.value.items.length, length => { selected.value = Math.max(0, Math.min(selected.value, length - 1)) })
 /** 合并当前版本的一个字段，其他版本和扩展字段继续保留。 */
-const updateVersion = (key: string, value: unknown) => emit('update:modelValue', updateContentItem(props.modelValue, selected.value, key, value))
+const updateVersion = (key: string, value: unknown) => { if (!props.disabled && !parsed.value.error) emit('update:modelValue', updateContentItem(props.modelValue, selected.value, key, value)) }
 /** 合并一个更新分组的字段，未编辑分组保持原对象数据。 */
 const updateFeature = (index: number, key: string, value: unknown) => {
     const next = features.value.map((item, position) => position === index ? { ...item, [key]: value } : item)
@@ -105,6 +105,7 @@ const addFeature = () => updateVersion('features', [...features.value, { title: 
 const removeFeature = (index: number) => updateVersion('features', features.value.filter((_, position) => position !== index))
 /** 使用浏览器本地日期创建版本草稿，不因 UTC 日期跨天生成错误日期。 */
 const addVersion = () => {
+    if (props.disabled || parsed.value.error) return
     const items = readContentArray(props.modelValue)
     const now = new Date()
     const date = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-')
@@ -114,6 +115,7 @@ const addVersion = () => {
 }
 /** 在当前数组内调整版本顺序，随记录移动选择位置。 */
 const moveVersion = (step: number) => {
+    if (props.disabled || parsed.value.error) return
     const items = readContentArray(props.modelValue)
     const target = selected.value + step
     if (target < 0 || target >= items.length) return
@@ -124,13 +126,19 @@ const moveVersion = (step: number) => {
 }
 /** 删除版本前明确确认；只改草稿，保存前不会改动服务器记录。 */
 const removeVersion = async () => {
+    if (props.disabled || parsed.value.error || !active.value) return
+    const original = props.modelValue
+    const index = selected.value
     try { await feedback.confirm('确定从本次草稿中移除版本“' + String(active.value?.version || '新版本') + '”吗？保存后生效。') } catch { return }
-    const items = readContentArray(props.modelValue)
-    items.splice(selected.value, 1)
+    if (props.disabled || props.modelValue !== original || selected.value !== index) return
+    const items = readContentArray(original)
+    items.splice(index, 1)
     emit('update:modelValue', JSON.stringify(items, null, 2))
 }
 /** 将项目默认记录放入草稿，仍由用户编辑并显式保存。 */
-const loadDefaults = () => emit('update:modelValue', props.defaultValue)
+const loadDefaults = () => { if (!props.disabled) emit('update:modelValue', props.defaultValue) }
+/** 原始JSON修复也遵守只读权限，不接受禁用输入的组件事件。 */
+const replaceRaw = (value: unknown) => { if (!props.disabled) emit('update:modelValue', String(value)) }
 </script>
 <style scoped lang="scss">
 .timeline-editor__toolbar,.timeline-editor__section-heading,.timeline-editor__feature-title { display:flex;align-items:center;justify-content:space-between;gap:12px; }

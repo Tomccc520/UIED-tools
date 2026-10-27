@@ -28,6 +28,7 @@
         </admin-page-header>
 
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="reloadSeoData">
+        <a-alert v-if="hasLoadedData && !canEdit" type="info">当前账号仅可查看配置，不能编辑或保存。</a-alert>
         <a-card class="page-card pro-panel-card" :bordered="false">
             <config-overview-collapse
                 v-model="overviewCollapseKeys"
@@ -43,6 +44,7 @@
                 </a-space>
             </div>
 
+            <fieldset class="seo-edit-fields" :disabled="!canEdit" :inert="!canEdit ? '' : undefined">
             <div class="layout-group mt-5">
                 <div class="group-head">
                     <span>全站默认 SEO</span>
@@ -107,8 +109,8 @@
                 <div class="group-head">
                     <span>页面级 SEO</span>
                     <div class="group-actions">
-                        <a-button type="text" @click="applyRecommendedSeoPages">一键补齐常用页面</a-button>
-                        <a-button type="text" @click="addSeoPage">新增页面</a-button>
+                        <a-button type="text" :disabled="Boolean(seoPagesError)" @click="applyRecommendedSeoPages">一键补齐常用页面</a-button>
+                        <a-button type="text" :disabled="Boolean(seoPagesError)" @click="addSeoPage">新增页面</a-button>
                     </div>
                 </div>
                 <div class="form-tips mb-2">
@@ -116,6 +118,12 @@
                     <code>/changelog</code>。
                 </div>
 
+                <a-alert v-if="seoPagesError" type="error" :closable="false">{{ seoPagesError }}</a-alert>
+                <details v-if="seoPagesError" open class="seo-repair">
+                    <summary>修复页面 SEO 原始 JSON</summary>
+                    <a-textarea v-model="seoPagesRepairDraft" :auto-size="{ minRows: 5, maxRows: 14 }" :readonly="!canEdit" aria-label="页面 SEO 原始 JSON" />
+                    <a-space><a-button :disabled="!canEdit" @click="applySeoPagesRepair">应用修复到草稿</a-button><a-button :disabled="!canEdit" @click="resetSeoPagesRepair">恢复原文</a-button></a-space>
+                </details>
                 <div class="seo-template-strip">
                     <span class="seo-template-strip__label">推荐覆盖</span>
                     <span>关于我们、工具热榜、随机工具、图片压缩、JSON 格式化</span>
@@ -156,10 +164,11 @@
                     </div>
                 </div>
             </div>
+            </fieldset>
         </a-card>
 
             <template #actions>
-                <a-button v-perms="['setting:website:seo:save']" data-admin-smoke="website-seo-save" type="primary" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
+                <a-button v-perms="['setting:website:seo:save']" data-admin-smoke="website-seo-save" type="primary" :disabled="!canEdit || !hasUnsavedChanges" :loading="isSubmitting" @click="handleSubmit">保存配置</a-button>
             </template>
         </config-edit-frame>
     </div>
@@ -169,16 +178,16 @@
 import AdminPageHeader from '@/components/page-header/index.vue'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
+import useUserStore from '@/stores/modules/user'
 import feedback from '@/utils/feedback'
-import { onBeforeRouteLeave } from 'vue-router'
 import ConfigOverviewCollapse from './components/config-overview-collapse.vue'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
-import { useOperateSubmit } from '@/composables/use-operate-submit'
-import { useConfigLoad } from '@/composables/use-config-load'
+import { useConfigEditor } from '@/composables/use-config-editor'
+import { readConfigObjectArray, buildConfigFieldPatch } from './composables/config-links'
 import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
 import { OFFICIAL_SITE_DEFAULT_SEO } from './defaults/officialSite'
 
-interface ToolsSeoPageItem {
+interface ToolsSeoPageItem extends Record<string, unknown> {
     path: string
     title: string
     keywords: string
@@ -195,8 +204,13 @@ const defaultSeoPages: ToolsSeoPageItem[] = OFFICIAL_SITE_DEFAULT_SEO.pages.map(
 }))
 
 const appStore = useAppStore()
-const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('SEO配置已保存')
-const baselineSnapshot = ref('')
+const userStore = useUserStore()
+/** 根据当前账号权限控制全部编辑及保存入口，兼容超级管理员通配权限。 */
+const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:website:seo:save'))
+const baselineSeoPayload = ref<Record<string, string>>({})
+const rawSeoPages = ref('')
+const seoPagesError = ref('')
+const seoPagesRepairDraft = ref('')
 const simpleMode = ref(true)
 const overviewCollapseKeys = ref<(string | number)[]>([])
 
@@ -280,59 +294,17 @@ const isValidSeoImage = (value: string): boolean => {
     return text.startsWith('/') || /^https?:\/\//i.test(text)
 }
 
-/**
- * 函数说明：将历史版本中已失效的 logo.png 地址回退为实际存在的站点图标。
- */
-const normalizeLegacySeoImage = (value: unknown): string => {
-    const image = String(value || '').trim()
-    if (
-        !image ||
-        image === '/logo.png' ||
-        image === '/api/logo.png' ||
-        image === '/uploads/logo.png' ||
-        image === '/api/uploads/logo.png' ||
-        /\/api\/uploads\/logo\.png$/i.test(image)
-    ) {
-        return defaultToolsSeoDefaultImage
-    }
-    return image
-}
-
-/**
- * 函数说明：根据当前编辑态构建快照，便于判断是否存在未保存变更。
- */
-const buildSeoSnapshot = (): string => {
-    return JSON.stringify({
-        toolsSeoDefaultTitle: formData.toolsSeoDefaultTitle.trim(),
-        toolsSeoDefaultKeywords: formData.toolsSeoDefaultKeywords.trim(),
-        toolsSeoDefaultDescription: formData.toolsSeoDefaultDescription.trim(),
-        toolsSeoDefaultImage: formData.toolsSeoDefaultImage.trim(),
-        seoPages: seoPages.value.map((item) => ({
-            path: item.path.trim(),
-            title: item.title.trim(),
-            keywords: item.keywords.trim(),
-            description: item.description.trim(),
-            image: item.image.trim(),
-        })),
-    })
-}
-
-/**
- * 函数说明：更新基线快照，表示当前编辑状态已保存。
- */
-const updateBaselineSnapshot = () => {
-    baselineSnapshot.value = buildSeoSnapshot()
-}
-
-/**
- * 函数说明：判断页面是否存在未保存变更，减少运营误操作。
- */
-const hasUnsavedChanges = computed<boolean>(() => {
-    if (!baselineSnapshot.value) {
-        return false
-    }
-    return buildSeoSnapshot() !== baselineSnapshot.value
+/** 保留所有扩展字段，仅在真正提交已修改的页面配置时整理可编辑文字。 */
+const buildSeoPayload = (): Record<string, string> => ({
+    toolsSeoDefaultTitle: formData.toolsSeoDefaultTitle.trim(),
+    toolsSeoDefaultKeywords: formData.toolsSeoDefaultKeywords.trim(),
+    toolsSeoDefaultDescription: formData.toolsSeoDefaultDescription.trim(),
+    toolsSeoDefaultImage: formData.toolsSeoDefaultImage.trim(),
+    toolsSeoPages: seoPagesError.value ? rawSeoPages.value : JSON.stringify(seoPages.value.map(item => ({ ...item, path: item.path.trim(), title: item.title.trim(), keywords: item.keywords.trim(), description: item.description.trim(), image: item.image.trim() })))
 })
+/** 快照包含未应用的原始修复输入，离开页面时也保护尚未应用的修复草稿。 */
+const buildSeoSnapshot = (): string => JSON.stringify({ payload: buildSeoPayload(), pendingRepair: seoPagesError.value && seoPagesRepairDraft.value !== rawSeoPages.value ? seoPagesRepairDraft.value : '' })
+const { isLoadingData, hasLoadedData, loadErrorMessage, isSubmitting, lastSavedAt, submitError, hasUnsavedChanges, canOperate, loadConfiguration, reloadConfiguration, submitConfiguration } = useConfigEditor({ canEdit, snapshot: buildSeoSnapshot, successText: 'SEO配置已保存' })
 
 /**
  * 函数说明：统计已填写标题的页面数量，辅助运营判断完成度。
@@ -406,46 +378,12 @@ const seoFocusItems = computed(() => {
     ]
 })
 
-/**
- * 函数说明：清洗未知对象为页面 SEO 结构，非法数据返回 null。
- */
-const normalizeSeoPageItem = (source: unknown): ToolsSeoPageItem | null => {
-    if (!source || typeof source !== 'object') {
-        return null
-    }
-    const record = source as Record<string, unknown>
-    const path = String(record.path || '').trim()
-    const title = String(record.title || '').trim()
-    const keywords = String(record.keywords || '').trim()
-    const description = String(record.description || '').trim()
-    const image = normalizeLegacySeoImage(record.image)
-    if (!path && !title && !keywords && !description && !image) {
-        return null
-    }
-    return { path, title, keywords, description, image }
-}
-
-/**
- * 函数说明：解析页面 SEO JSON；为空或异常时回退到默认页面模板。
- */
-const parseSeoPages = (jsonText: string): ToolsSeoPageItem[] => {
-    const trimmed = String(jsonText || '').trim()
-    if (!trimmed) {
-        return cloneSeoPages(defaultSeoPages)
-    }
-    try {
-        const parsed = JSON.parse(trimmed)
-        if (!Array.isArray(parsed)) {
-            return cloneSeoPages(defaultSeoPages)
-        }
-        const normalized = parsed
-            .map((item) => normalizeSeoPageItem(item))
-            .filter((item): item is ToolsSeoPageItem => Boolean(item))
-        return normalized.length > 0 ? normalized : cloneSeoPages(defaultSeoPages)
-    } catch {
-        return cloneSeoPages(defaultSeoPages)
-    }
-}
+/** 严格读取页面数组，保留扩展字段、有效空值和数字精度；异常原文由页面独立修复。 */
+const parseSeoPages = (jsonText: string): ToolsSeoPageItem[] => readConfigObjectArray(jsonText, '页面 SEO').map((item, index) => {
+    const fields = ['path', 'title', 'keywords', 'description', 'image'] as const
+    if (fields.some(field => item[field] !== undefined && typeof item[field] !== 'string')) throw new Error(`第 ${index + 1} 项页面 SEO 的路径和文案应为文字，原始内容已保留。`)
+    return { ...item, ...Object.fromEntries(fields.map(field => [field, item[field] ?? ''])) } as ToolsSeoPageItem
+})
 
 /**
  * 函数说明：收集 SEO 配置校验提示，支持仅校验页面项或同时校验默认值。
@@ -506,48 +444,53 @@ const collectSeoValidationTips = (items: ToolsSeoPageItem[], includeDefaults = t
 
 const seoValidationTips = computed(() => collectSeoValidationTips(seoPages.value))
 
-/**
- * 函数说明：校验 SEO 配置并给出首条错误提示。
- */
+/** 校验本次修改的字段，未修改的异常原文不阻止其他配置保存；隐藏错误主动展开。 */
 const validateSeoConfig = (): boolean => {
-    const tips = collectSeoValidationTips(seoPages.value)
-    if (tips.length > 0) {
-        feedback.msgError(tips[0])
-        return false
-    }
-    return true
+    const patch = buildConfigFieldPatch(buildSeoPayload(), baselineSeoPayload.value)
+    let message = ''
+    if (seoPagesError.value && seoPagesRepairDraft.value !== rawSeoPages.value) message = '请先应用或恢复正在编辑的页面 SEO 原始数据。'
+    else if ('toolsSeoDefaultKeywords' in patch && !formData.toolsSeoDefaultKeywords.trim()) message = '默认 SEO 关键词不能为空。'
+    else if ('toolsSeoDefaultDescription' in patch && !formData.toolsSeoDefaultDescription.trim()) message = '默认 SEO 描述不能为空。'
+    else if ('toolsSeoDefaultImage' in patch && !isValidSeoImage(formData.toolsSeoDefaultImage)) message = '默认 SEO 分享图需为 / 或 http(s) 开头。'
+    else if ('toolsSeoPages' in patch) message = seoPagesError.value || collectSeoValidationTips(seoPages.value, false)[0] || ''
+    if (!message) return true
+    if (/分享图/.test(message)) simpleMode.value = false
+    feedback.msgError(message)
+    return false
 }
-
-/**
- * 函数说明：读取网站配置并回填 SEO 编辑区。
- */
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
-
-/** 读取并回填已成功返回的配置，失败时保留原编辑内容。 */
-const getData = async () => loadConfiguration(async () => {
+/** 原子回填完整响应，坏数组保持原文并允许其他字段独立保存，不生成默认列表。 */
+const getData = () => loadConfiguration(async () => {
     const data = await getWebsite()
-    formData.toolsSeoDefaultTitle = String(data.toolsSeoDefaultTitle || defaultToolsSeoDefaultTitle)
-    formData.toolsSeoDefaultKeywords = String(data.toolsSeoDefaultKeywords || defaultToolsSeoDefaultKeywords)
-    formData.toolsSeoDefaultDescription = String(data.toolsSeoDefaultDescription || defaultToolsSeoDefaultDescription)
-    formData.toolsSeoDefaultImage = normalizeLegacySeoImage(data.toolsSeoDefaultImage)
-    formData.toolsSeoPages = String(data.toolsSeoPages || JSON.stringify(defaultSeoPages))
-    seoPages.value = parseSeoPages(formData.toolsSeoPages)
-    updateBaselineSnapshot()
+    if (!data || Object.keys(formData).some(key => typeof data[key] !== 'string')) throw new Error('SEO 配置响应不完整')
+    const values = data as Record<string, string>
+    let items: ToolsSeoPageItem[] = []
+    let error = ''
+    try { items = parseSeoPages(values.toolsSeoPages) } catch (cause) { error = cause instanceof Error ? cause.message : '页面 SEO 数据无效，原始内容已保留。' }
+    for (const key of Object.keys(formData)) formData[key] = values[key]
+    rawSeoPages.value = values.toolsSeoPages
+    seoPagesRepairDraft.value = values.toolsSeoPages
+    seoPages.value = items
+    seoPagesError.value = error
+    baselineSeoPayload.value = buildSeoPayload()
 })
-
-/**
- * 函数说明：重新读取后台 SEO 配置，方便脚本导入或多人协作后立即回显最新数据。
- */
+/** 确认后重新加载；公共控制器在确认完成时再次检查保存状态。 */
 const reloadSeoData = async () => {
-    if (isSubmitting.value) return
-    if (!await reloadConfiguration(getData)) return
-    feedback.msgSuccess('已重新加载后台 SEO 配置')
+    if (await reloadConfiguration(getData)) feedback.msgSuccess('已重新加载后台 SEO 配置')
 }
+/** 明确应用有效修复；错误原文不被解析失败静默替换。 */
+const applySeoPagesRepair = () => {
+    if (!canOperate()) return
+    try { seoPages.value = parseSeoPages(seoPagesRepairDraft.value); seoPagesError.value = '' }
+    catch (error) { seoPagesError.value = error instanceof Error ? error.message : '页面 SEO 数据无效，原始内容已保留。' }
+}
+/** 放弃未应用的修复输入，保留其他字段的编辑。 */
+const resetSeoPagesRepair = () => { if (canOperate()) seoPagesRepairDraft.value = rawSeoPages.value }
 
 /**
  * 函数说明：新增页面 SEO 条目。
  */
 const addSeoPage = () => {
+    if (!canOperate() || seoPagesError.value) return
     seoPages.value.push(createEmptySeoPage())
 }
 
@@ -555,6 +498,7 @@ const addSeoPage = () => {
  * 函数说明：追加缺失的推荐页面 SEO 模板，避免重复路径并保留运营已有配置。
  */
 const applyRecommendedSeoPages = () => {
+    if (!canOperate() || seoPagesError.value) return
     const existingPaths = new Set(seoPages.value.map((item) => item.path.trim().toLowerCase()))
     const missingPages = recommendedSeoPages
         .filter((item) => !existingPaths.has(item.path.toLowerCase()))
@@ -573,6 +517,7 @@ const applyRecommendedSeoPages = () => {
  * 函数说明：删除页面 SEO 条目。
  */
 const removeSeoPage = (index: number) => {
+    if (!canOperate() || !Number.isInteger(index) || index < 0 || index >= seoPages.value.length) return
     seoPages.value.splice(index, 1)
 }
 
@@ -580,6 +525,7 @@ const removeSeoPage = (index: number) => {
  * 函数说明：调整页面 SEO 顺序，支持上移和下移。
  */
 const moveSeoPage = (index: number, step: -1 | 1) => {
+    if (!canOperate() || !Number.isInteger(index) || index < 0 || index >= seoPages.value.length) return
     const targetIndex = index + step
     if (targetIndex < 0 || targetIndex >= seoPages.value.length) {
         return
@@ -592,7 +538,11 @@ const moveSeoPage = (index: number, step: -1 | 1) => {
 /**
  * 函数说明：恢复 SEO 默认模板，便于快速回退到推荐配置。
  */
-const restoreDefaultSeo = () => {
+const restoreDefaultSeo = async () => {
+    if (!canOperate()) return
+    try { await feedback.confirm('确定将默认 SEO 模板放入草稿吗？当前 SEO 修改将被替换，检查后再保存。') } catch { return }
+    if (!canOperate()) return
+    seoPagesError.value = ''
     formData.toolsSeoDefaultTitle = defaultToolsSeoDefaultTitle
     formData.toolsSeoDefaultKeywords = defaultToolsSeoDefaultKeywords
     formData.toolsSeoDefaultDescription = defaultToolsSeoDefaultDescription
@@ -605,15 +555,16 @@ const restoreDefaultSeo = () => {
  * 函数说明：打开 tools 前端首页预览，便于运营保存后立即回归。
  */
 const openToolsPreview = () => {
-    window.open(resolveToolsPreviewUrl(appStore.config), '_blank')
+    window.open(resolveToolsPreviewUrl(appStore.config), '_blank', 'noopener,noreferrer')
 }
 
 /**
  * 函数说明：执行 SEO 配置体检，统一输出首条异常或成功反馈。
  */
 const runSeoHealthCheck = () => {
-    const tips = collectSeoValidationTips(seoPages.value)
+    const tips = seoPagesError.value ? [seoPagesError.value] : collectSeoValidationTips(seoPages.value)
     if (tips.length > 0) {
+        if (/分享图/.test(tips[0])) simpleMode.value = false
         feedback.alertWarning(`配置体检未通过：${tips[0]}`)
         return
     }
@@ -623,70 +574,23 @@ const runSeoHealthCheck = () => {
 /**
  * 函数说明：保存 SEO 配置到网站配置项，仅提交当前页面相关字段。
  */
-const handleSubmit = async () => {
-    if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
-    if (!validateSeoConfig()) {
-        return
-    }
-    const submittedSnapshot = buildSeoSnapshot()
-    const success = await runSubmit(async () => {
-        await setWebsite({
-            toolsSeoDefaultTitle: formData.toolsSeoDefaultTitle.trim(),
-            toolsSeoDefaultKeywords: formData.toolsSeoDefaultKeywords.trim(),
-            toolsSeoDefaultDescription: formData.toolsSeoDefaultDescription.trim(),
-            toolsSeoDefaultImage: formData.toolsSeoDefaultImage.trim(),
-            toolsSeoPages: JSON.stringify(
-                seoPages.value.map((item) => ({
-                    path: item.path.trim(),
-                    title: item.title.trim(),
-                    keywords: item.keywords.trim(),
-                    description: item.description.trim(),
-                    image: item.image.trim(),
-                }))
-            ),
-        })
-    })
-    // 保存接口确认后提交本次快照；不通过重复读取来判断写入成功，保留提交期间的新编辑。
-    if (success) baselineSnapshot.value = submittedSnapshot
+const handleSubmit = async (): Promise<boolean> => {
+    if (!canOperate() || !hasUnsavedChanges.value || !validateSeoConfig()) return false
+    const submittedPayload = buildSeoPayload()
+    const patch = buildConfigFieldPatch(submittedPayload, baselineSeoPayload.value)
+    if (!Object.keys(patch).length) return false
+    const saved = await submitConfiguration(() => setWebsite(patch), buildSeoSnapshot())
+    if (saved) baselineSeoPayload.value = submittedPayload
+    return saved
 }
 
-/**
- * 函数说明：浏览器刷新或关闭前提醒未保存变更，减少运营误操作。
- */
-const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-    if (!hasUnsavedChanges.value) {
-        return
-    }
-    event.preventDefault()
-    event.returnValue = ''
-}
-
-/**
- * 函数说明：路由切换前提示未保存变更，防止编辑中断。
- */
-onBeforeRouteLeave(async () => {
-    if (!hasUnsavedChanges.value) {
-        return true
-    }
-    try {
-        await feedback.confirm('当前页面存在未保存变更，确定离开吗？')
-        return true
-    } catch {
-        return false
-    }
-})
-
-onMounted(() => {
-    void getData()
-    window.addEventListener('beforeunload', handleBeforeUnload)
-})
-
-onBeforeUnmount(() => {
-    window.removeEventListener('beforeunload', handleBeforeUnload)
-})
+onMounted(() => { void getData() })
 </script>
 
 <style lang="scss" scoped>
+.seo-edit-fields { border: 0; padding: 0; margin: 0; min-width: 0; }
+.seo-repair { margin: 16px 0; }
+.seo-repair summary { cursor: pointer; margin-bottom: 12px; }
 .pro-page-shell {
     padding-bottom: 24px;
 }

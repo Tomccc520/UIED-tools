@@ -502,7 +502,7 @@ PY
     return
   fi
 
-  list_response="$(http_request "GET" "${api_base_url}/api/channel/oaReplyKeyword/list?pageNo=1&pageSize=100" "${token}")"
+  list_response="$(http_request "GET" "${api_base_url}/api/channel/oaReplyKeyword/list?pageNo=1&pageSize=60" "${token}")"
   list_http="$(printf '%s\n' "${list_response}" | sed -n '1p')"
   list_body="$(printf '%s\n' "${list_response}" | sed '1d')"
   list_code="$(printf '%s' "${list_body}" | json_field "code")"

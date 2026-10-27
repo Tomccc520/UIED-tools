@@ -99,6 +99,7 @@ import {
     type AiMattingProviderConfig,
     type AiImageAbilityConfig,
     type AiProviderConfig,
+    type AiModelDetail,
     type AiModelSavePayload,
 } from '@/api/setting/ai_model'
 import feedback from '@/utils/feedback'
@@ -555,6 +556,35 @@ const handleFetchProviderModels = async () => {
  */
 const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } =
     useConfigLoad(hasUnsavedChanges)
+
+/** 检查配置列表及其唯一标识字段，缺失或畸形列表不能被当作合法空配置。 */
+const isAiConfigList = (value: unknown, identifier: string) =>
+    Array.isArray(value) && value.every((item) =>
+        item && typeof item === 'object' && !Array.isArray(item) &&
+        typeof item[identifier] === 'string' && Boolean(item[identifier].trim())
+    )
+
+/** 校验完整详情后构造独立草稿，任一模块错误均在回填前失败，保留原表单与基线。 */
+const createDraftFromAiDetail = (data: AiModelDetail) => {
+    if (
+        !data || typeof data !== 'object' || Array.isArray(data) ||
+        typeof data.currentModelId !== 'string' ||
+        !isAiConfigList(data.mattingProviders, 'provider') ||
+        !isAiConfigList(data.providers, 'provider') ||
+        !isAiConfigList(data.imageAbilities, 'ability') ||
+        !data.providers.every((item) => item.models == null || isAiConfigList(item.models, 'value'))
+    ) throw new Error('invalid AI configuration response')
+    return {
+        modelId: data.currentModelId,
+        mattingProviders: data.mattingProviders.map((item) => ({ ...item })),
+        providers: data.providers.map((item) => ({
+            ...item,
+            models: (item.models || []).map((model) => ({ ...model })),
+        })),
+        imageAbilities: data.imageAbilities.map((item) => ({ ...item })),
+    }
+}
+
 /** 读取完整详情供当前模块编辑，接口失败时保留原草稿与基线。 */
 const getData = async () => {
     if (!isPageActive || isPageDisposed || isSubmitting.value || fetchingProviderKey.value)
@@ -562,13 +592,8 @@ const getData = async () => {
     return loadConfiguration(async () => {
         const data = await getAiModelDetail()
         if (isPageDisposed) return
-        formData.modelId = data.currentModelId || ''
-        formData.mattingProviders = (data.mattingProviders || []).map((item) => ({ ...item }))
-        formData.providers = (data.providers || []).map((item) => ({
-            ...item,
-            models: item.models || [],
-        }))
-        formData.imageAbilities = (data.imageAbilities || []).map((item) => ({ ...item }))
+        const nextDraft = createDraftFromAiDetail(data)
+        Object.assign(formData, nextDraft)
         selectedProviderKey.value = formData.providers[0]?.provider || ''
         selectedAbilityKey.value = formData.imageAbilities[0]?.ability || ''
         baselineSnapshot.value = buildSnapshot()

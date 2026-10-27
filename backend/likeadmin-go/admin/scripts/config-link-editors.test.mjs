@@ -11,7 +11,16 @@ import test from 'node:test'
 import ts from 'typescript'
 import { computed, effectScope, nextTick, reactive, ref, watch } from 'vue'
 import * as links from '../src/views/setting/website/composables/config-links.ts'
-import { readContentArray, updateContentItem } from '../src/views/setting/website/composables/frontend-content.ts'
+/** 编译真实内容模块并注入独立JSON解析依赖，兼容Node原生TS不能解析扩展名省略的限制。 */
+const readContentHelpers = () => {
+    const source = fs.readFileSync(new URL('../src/views/setting/website/composables/frontend-content.ts', import.meta.url), 'utf8')
+    const parsed = ts.createSourceFile('content.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS)
+    const code = parsed.statements.filter(item => !ts.isImportDeclaration(item)).map(item => item.getText(parsed)).join('\n')
+    const context = vm.createContext({ exports: {}, readConfigObjectArray: links.readConfigObjectArray })
+    vm.runInContext(ts.transpileModule(code + '\nthis.subject={readContentArray,updateContentItem};', { compilerOptions: { target: ts.ScriptTarget.ES2020, module: ts.ModuleKind.CommonJS } }).outputText, context)
+    return context.subject
+}
+const { readContentArray, updateContentItem } = readContentHelpers()
 const root = new URL('../src/views/setting/website/components/', import.meta.url)
 /** 创建包含组级和链接级未知字段的真实形态样本。 */
 const fixture = () => JSON.stringify([{ title: '设计', status: 0, extra: { keep: true }, items: [{ name: 'A', link: '/a', nofollow: true }, { name: 'B', link: '/b', extra: ['keep'] }] }, { title: '图片', isOpen: false, items: [] }])

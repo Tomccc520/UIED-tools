@@ -5,6 +5,8 @@
  * @createDate 2026-10-26
  */
 
+import { readConfigObjectArray } from './config-links'
+
 export const frontendContentKeys = [
     'toolsHomepageLearningEnabled', 'toolsHomepageLearningTitle', 'toolsHomepageLearningRssUrl',
     'toolsHomepageLearningFilterType', 'toolsHomepageLearningCategorySlug',
@@ -49,13 +51,7 @@ export const buildFrontendContentPatch = (form: FrontendContentForm, baseline: F
 }
 
 /** 解析原始对象数组，拒绝无效数据而不静默丢弃条目或未识别扩展字段。 */
-export const readContentArray = (value: string): Record<string, any>[] => {
-    const parsed = JSON.parse(value.trim() || '[]')
-    if (!Array.isArray(parsed) || parsed.some(item => !item || typeof item !== 'object' || Array.isArray(item))) {
-        throw new Error('内容必须是对象数组，请检查导入内容')
-    }
-    return parsed
-}
+export const readContentArray = (value: string): Record<string, any>[] => readConfigObjectArray(value, '内容')
 
 /** 只修改一个条目的一个字段，保留其他版本、链接与扩展数据。 */
 export const updateContentItem = (value: string, index: number, field: string, next: unknown): string => {

@@ -17,15 +17,16 @@
         </admin-page-header>
 
         <config-edit-frame :loading="isLoadingData" :ready="hasLoadedData" :error="loadErrorMessage" :save-error="submitError" :dirty="hasUnsavedChanges" :saving="isSubmitting" :saved-at="lastSavedAt" @retry="retryLoadData">
+            <a-alert v-if="hasLoadedData && !canEdit" type="info" class="content-message">当前账号仅可查看配置，不能编辑或保存。</a-alert>
             <a-alert v-if="validationMessage" class="content-message" type="warning" :closable="false" role="alert">{{ validationMessage }}</a-alert>
             <section class="content-panel">
                 <a-tabs v-model:active-key="activeTab" class="layout-tabs" aria-label="内容模块" lazy-load>
                     <a-tab-pane key="homepageLearning" title="每日学习">
                         <div class="content-section-heading">
                             <div><h2>栏目显示</h2><p>在首页展示 UIED 文章。</p></div>
-                            <label class="content-display-toggle"><span>在首页显示</span><a-switch v-model="homepageLearningEnabled" data-admin-smoke="frontend-layout-learning-enabled" aria-label="启用每日学习栏目" /></label>
+                            <label class="content-display-toggle"><span>在首页显示</span><a-switch :disabled="!canEdit" v-model="homepageLearningEnabled" data-admin-smoke="frontend-layout-learning-enabled" aria-label="启用每日学习栏目" /></label>
                         </div>
-                        <a-form :model="formData" layout="vertical" class="content-form compact-form">
+                        <a-form :disabled="!canEdit" :model="formData" layout="vertical" class="content-form compact-form">
                             <div class="content-form__pair">
                                 <a-form-item label="栏目标题" required><a-input v-model="formData.toolsHomepageLearningTitle" placeholder="每日学习" :max-length="20" :input-attrs="{ 'aria-label': '栏目标题' }" /></a-form-item>
                                 <a-form-item label="展示条数"><a-input-number v-model="homepageLearningLimit" :min="1" :max="50" :precision="0" aria-label="展示条数" /><template #extra>当前文章来源每次最多返回 20 条。</template></a-form-item>
@@ -33,7 +34,7 @@
                         </a-form>
                         <details class="content-optional content-source-settings" :open="learningSourceExpanded" @toggle="syncLearningSourceExpanded">
                             <summary><span>文章来源与筛选</span><small>{{ formData.toolsHomepageLearningFilterType === 'all' ? 'UIED · 全部文章' : 'UIED · 已设置分类筛选' }}</small></summary>
-                            <a-form :model="formData" layout="vertical" class="content-form compact-form">
+                            <a-form :disabled="!canEdit" :model="formData" layout="vertical" class="content-form compact-form">
                                 <a-form-item label="文章来源（RSS）" required><a-input v-model="formData.toolsHomepageLearningRssUrl" placeholder="https://www.uied.cn/api/open/v1/rss.xml" :input-attrs="{ 'aria-label': '文章来源' }" /><template #extra>支持 uied.cn 与 www.uied.cn 的 HTTPS RSS 地址。</template></a-form-item>
                                 <a-form-item label="显示内容"><a-radio-group v-model="formData.toolsHomepageLearningFilterType" type="button" aria-label="文章筛选方式"><a-radio value="all">全部文章</a-radio><a-radio value="category_slug">按分类别名</a-radio><a-radio value="categories">按分类 ID</a-radio></a-radio-group></a-form-item>
                                 <a-form-item v-if="formData.toolsHomepageLearningFilterType === 'category_slug'" label="分类别名" required><a-input v-model="formData.toolsHomepageLearningCategorySlug" placeholder="如：ai" /></a-form-item>
@@ -43,16 +44,16 @@
                     </a-tab-pane>
                     <a-tab-pane key="pageOps" title="更新记录">
                         <div class="content-section-heading"><div><h2>版本记录</h2><p>新增版本或选择已有版本编辑。</p></div><a-button @click="openChangelogPreview">预览更新记录</a-button></div>
-                        <content-timeline-editor v-model="formData.toolsChangelogTimeline" :default-value="defaultTimeline" />
+                        <content-timeline-editor v-model="formData.toolsChangelogTimeline" :default-value="defaultTimeline" :disabled="!canEdit" />
                         <details class="content-optional" :open="pageOptionsExpanded" @toggle="syncPageOptionsExpanded">
                             <summary>页面文案、链接与开源说明</summary>
-                            <a-form :model="formData" layout="vertical" class="content-form compact-form">
+                            <a-form :disabled="!canEdit" :model="formData" layout="vertical" class="content-form compact-form">
                                 <a-form-item label="页面介绍"><a-textarea v-model="formData.toolsChangelogIntroText" :auto-size="{ minRows: 2, maxRows: 6 }" :textarea-attrs="{ 'aria-label': '更新记录页面介绍' }" /></a-form-item>
                                 <a-form-item label="版本摘要"><a-input v-model="formData.toolsChangelogStatsText" :input-attrs="{ 'aria-label': '更新记录版本摘要' }" placeholder="如：当前版本与更新日期，可留空" /></a-form-item>
                             </a-form>
-                            <h3>顶部链接</h3><content-links-editor v-model="formData.toolsChangelogHeaderLinks" label="顶部链接" />
-                            <h3>资料链接</h3><content-links-editor v-model="formData.toolsChangelogMetaLinks" label="资料链接" />
-                            <a-form :model="formData" layout="vertical" class="content-form compact-form">
+                            <h3>顶部链接</h3><content-links-editor :disabled="!canEdit" v-model="formData.toolsChangelogHeaderLinks" label="顶部链接" />
+                            <h3>资料链接</h3><content-links-editor :disabled="!canEdit" v-model="formData.toolsChangelogMetaLinks" label="资料链接" />
+                            <a-form :disabled="!canEdit" :model="formData" layout="vertical" class="content-form compact-form">
                                 <a-form-item label="开源说明标题"><a-input v-model="formData.toolsChangelogSplitTitle" /></a-form-item>
                                 <a-form-item label="开源说明"><a-textarea v-model="formData.toolsChangelogSplitDesc" :auto-size="{ minRows: 2, maxRows: 6 }" /></a-form-item>
                                 <a-form-item label="开源链接"><a-input v-model="formData.toolsChangelogSplitLink" placeholder="站内路径或 https:// 地址" /></a-form-item>
@@ -65,36 +66,39 @@
             <details class="content-transfer">
                 <summary>高级维护：导入与导出</summary>
                 <p>仅包含文章栏目与更新记录；其他页面配置不参与导入或保存。</p>
-                <a-space wrap><a-button @click="openImport">导入配置</a-button><a-button @click="exportContent">导出本页</a-button></a-space>
+                <a-space wrap><a-button :disabled="!canEdit" @click="openImport">导入配置</a-button><a-button @click="exportContent">导出本页</a-button></a-space>
             </details>
-            <template #actions><a-button v-perms="['setting:website:frontendLayout:save']" data-admin-smoke="frontend-layout-save-top" type="primary" :loading="isSubmitting" :disabled="isLoadingData || !hasLoadedData || Boolean(loadErrorMessage) || !hasUnsavedChanges" @click="handleSubmit">保存网站内容</a-button></template>
+            <template #actions><a-button v-perms="['setting:website:frontendLayout:save']" data-admin-smoke="frontend-layout-save-top" type="primary" :loading="isSubmitting" :disabled="!canEdit || isLoadingData || !hasLoadedData || Boolean(loadErrorMessage) || !hasUnsavedChanges" @click="handleSubmit">保存网站内容</a-button></template>
         </config-edit-frame>
         <a-modal v-model:visible="importVisible" title="导入本页配置" :footer="false" unmount-on-close>
             <p>导入会替换文件中包含的本页字段。检查无误后再保存生效。</p>
-            <a-textarea v-model="importSource" :rows="12" :textarea-attrs="{ 'aria-label': '导入配置 JSON' }" />
+            <a-textarea :readonly="!canEdit" v-model="importSource" :rows="12" :textarea-attrs="{ 'aria-label': '导入配置 JSON' }" />
             <a-alert v-if="importError" class="content-message" type="error" :closable="false">{{ importError }}</a-alert>
-            <div class="content-import-actions"><a-button @click="importVisible = false">取消</a-button><a-button type="primary" @click="applyImport">应用到草稿</a-button></div>
+            <div class="content-import-actions"><a-button @click="importVisible = false">取消</a-button><a-button :disabled="!canEdit" type="primary" @click="applyImport">应用到草稿</a-button></div>
         </a-modal>
     </div>
 </template>
 
 <script setup lang="ts" name="websiteFrontendLayout">
-import { computed, reactive, ref, watch, onMounted, onBeforeUnmount } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { computed, reactive, ref, watch, onMounted } from 'vue'
 import { getWebsite, setWebsite } from '@/api/setting/website'
 import useAppStore from '@/stores/modules/app'
+import useUserStore from '@/stores/modules/user'
 import feedback from '@/utils/feedback'
 import AdminPageHeader from '@/components/page-header/index.vue'
 import ConfigEditFrame from '@/components/config-edit-frame/index.vue'
 import ContentTimelineEditor from './components/content-timeline-editor.vue'
 import ContentLinksEditor from './components/content-links-editor.vue'
-import { useConfigLoad } from '@/composables/use-config-load'
-import { useOperateSubmit } from '@/composables/use-operate-submit'
+import { useConfigEditor } from '@/composables/use-config-editor'
 import { resolveToolsPreviewUrl } from './composables/use-preview-url'
 import { createFrontendContent, readFrontendContent, buildFrontendContentPatch, validateFrontendContent, frontendContentKeys, type FrontendContentForm } from './composables/frontend-content'
+import { readConfigObjectArray } from './composables/config-links'
 import defaultChangelogTimelineSource from './defaults/changelogTimeline'
 
 const appStore = useAppStore()
+const userStore = useUserStore()
+/** 读取当前账号保存权限，控制输入、导入及提交，兼容超级管理员。 */
+const canEdit = computed(() => userStore.perms.some(permission => permission === '*' || permission === 'setting:website:frontendLayout:save'))
 const formData = reactive(createFrontendContent())
 const baselineLayoutSnapshot = ref('')
 const validationMessage = ref('')
@@ -123,13 +127,13 @@ const homepageLearningLimit = computed({ get: () => Number(formData.toolsHomepag
 const buildLayoutSnapshot = (): string => JSON.stringify(formData)
 /** 仅在读取成功或持久化确认后更新服务器基线。 */
 const updateBaselineLayoutSnapshot = () => { baselineLayoutSnapshot.value = buildLayoutSnapshot() }
-const hasUnsavedChanges = computed(() => Boolean(baselineLayoutSnapshot.value) && baselineLayoutSnapshot.value !== buildLayoutSnapshot())
-const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
-const { isSubmitting, lastSavedAt, submitError, runSubmit } = useOperateSubmit('网站内容已保存')
+const { isLoadingData, hasLoadedData, loadErrorMessage, isSubmitting, lastSavedAt, submitError, hasUnsavedChanges, canOperate, loadConfiguration, reloadConfiguration, submitConfiguration } = useConfigEditor({ canEdit, snapshot: buildLayoutSnapshot, successText: '网站内容已保存' })
 
 /** 读取成功后一次回填；失败保留原草稿并由公共框架禁止提交。 */
 const getData = () => loadConfiguration(async () => {
-    const next = readFrontendContent(await getWebsite())
+    const data = await getWebsite()
+    if (!data || frontendContentKeys.some(key => typeof data[key] !== 'string')) throw new Error('网站内容配置响应不完整')
+    const next = readFrontendContent(data)
     Object.assign(formData, next)
     updateBaselineLayoutSnapshot()
     validationMessage.value = ''
@@ -137,14 +141,13 @@ const getData = () => loadConfiguration(async () => {
 })
 /** 重新加载前确认未保存修改；保存过程中不启动并行读取。 */
 const retryLoadData = async () => {
-    if (isSubmitting.value) return
     await reloadConfiguration(getData)
 }
 /** 与服务器基线比较，只提交本页真正改变的字段。 */
 const buildFrontendLayoutPayload = () => buildFrontendContentPatch(formData, JSON.parse(baselineLayoutSnapshot.value || '{}') as FrontendContentForm)
 /** 校验本次修改范围并提交快照；失败保留草稿，保存后不重读整页覆盖新编辑。 */
 const handleSubmit = async () => {
-    if (isSubmitting.value || isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value) return
+    if (!canOperate()) return
     const payload = buildFrontendLayoutPayload()
     if (!Object.keys(payload).length) { feedback.msgSuccess('当前没有未保存更改'); return }
     const learningPatch = Object.fromEntries(Object.entries(payload).filter(([key]) => key.startsWith('toolsHomepageLearning')))
@@ -161,21 +164,22 @@ const handleSubmit = async () => {
         return
     }
     const submittedSnapshot = buildLayoutSnapshot()
-    await runSubmit(async () => {
+    await submitConfiguration(async () => {
         await setWebsite(payload)
         baselineLayoutSnapshot.value = submittedSnapshot
-    })
+    }, submittedSnapshot)
 }
 /** 打开主站预览，沿用环境和站点配置中的安全预览地址。 */
 const openToolsHomePreview = () => window.open(resolveToolsPreviewUrl(appStore.config), '_blank', 'noopener,noreferrer')
 /** 打开更新记录页预览，与主站其他预览使用同一地址解析规则。 */
 const openChangelogPreview = () => window.open(resolveToolsPreviewUrl(appStore.config, '/changelog'), '_blank', 'noopener,noreferrer')
 /** 打开导入面板，导入内容只进入草稿，不触发真实保存。 */
-const openImport = () => { importSource.value = ''; importError.value = ''; importVisible.value = true }
+const openImport = () => { if (!canOperate()) return; importSource.value = ''; importError.value = ''; importVisible.value = true }
 /** 先完整解析导入数据，再只合并其中明确包含的本页字段，失败不改变草稿。 */
 const applyImport = () => {
+    if (!canOperate()) return
     try {
-        const source = JSON.parse(importSource.value)
+        const source = readConfigObjectArray('[' + importSource.value + ']', '导入配置')[0]
         const next = readFrontendContent(source)
         const keys = frontendContentKeys.filter(key => Object.prototype.hasOwnProperty.call(source, key))
         if (!keys.length) throw new Error('没有找到本页可导入的配置字段')
@@ -192,14 +196,7 @@ const exportContent = () => {
     anchor.click()
     URL.revokeObjectURL(url)
 }
-/** 关闭或刷新页面前保护草稿；普通模块切换继续保留内存编辑。 */
-const handleBeforeUnload = (event: BeforeUnloadEvent) => { if (hasUnsavedChanges.value) { event.preventDefault(); event.returnValue = '' } }
-onBeforeRouteLeave(async () => {
-    if (!hasUnsavedChanges.value) return true
-    try { await feedback.confirm('本页有未保存修改，确定离开吗？'); return true } catch { return false }
-})
-onMounted(() => { void getData(); window.addEventListener('beforeunload', handleBeforeUnload) })
-onBeforeUnmount(() => window.removeEventListener('beforeunload', handleBeforeUnload))
+onMounted(() => { void getData() })
 </script>
 
 <style scoped lang="scss">
