@@ -97,15 +97,15 @@ const writePendingCoreToolRunSettlements = (list: PendingCoreToolRunSettlement[]
 const queuePendingCoreToolRunSettlement = (
   requestId: string,
   outcome: CoreToolRunOutcome,
-  reason: string
+  reason: string,
+  ownerUid = String(getFrontendUserProfile()?.uid || '').trim()
 ) => {
-  const userUid = String(getFrontendUserProfile()?.uid || '').trim()
   const currentList = readPendingCoreToolRunSettlements().filter((item) => item.requestId !== requestId)
   currentList.push({
     requestId,
     outcome,
     reason: String(reason || '').trim().slice(0, 200),
-    userUid,
+    userUid: ownerUid,
     createTime: Date.now()
   })
   writePendingCoreToolRunSettlements(currentList)
@@ -222,11 +222,13 @@ export const useCoreToolManualConsume = () => {
 
   /**
    * 函数说明：结算一次核心工具运行；成功确认消费，失败触发幂等退款，短暂网络错误会自动重试。
+   * @param ownerUid 原消费账号，切换账号后将结算保留到原账号恢复登录再重放。
    */
   const resolveCoreToolRun = async (
     requestId: string,
     outcome: CoreToolRunOutcome,
-    reason = ''
+    reason = '',
+    ownerUid = String(getFrontendUserProfile()?.uid || '').trim()
   ): Promise<boolean> => {
     const normalizedRequestId = String(requestId || '').trim()
     if (!normalizedRequestId) {
@@ -236,7 +238,9 @@ export const useCoreToolManualConsume = () => {
       removePendingCoreToolRunSettlement(normalizedRequestId)
       return true
     }
-    queuePendingCoreToolRunSettlement(normalizedRequestId, outcome, reason)
+    queuePendingCoreToolRunSettlement(normalizedRequestId, outcome, reason, ownerUid)
+    // 账号切换后只保留原账号的补偿队列，不能使用新账号结算旧任务。
+    if (ownerUid && ownerUid !== String(getFrontendUserProfile()?.uid || '').trim()) return false
     const retryDelays = [0, 250, 700]
     for (const delay of retryDelays) {
       if (delay > 0) {

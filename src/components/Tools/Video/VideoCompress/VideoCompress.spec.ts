@@ -11,8 +11,16 @@ import MobileToolActions from '@/components/Common/MobileToolActions.vue'
 import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
 import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
 
-const services = vi.hoisted(() => ({ consume: vi.fn(), config: vi.fn(), compress: vi.fn() }))
+const services = vi.hoisted(() => ({ consume: vi.fn(), settle: vi.fn(), config: vi.fn(), compress: vi.fn(), userUid: '1001' }))
 vi.mock('@/composables/useToolConsume', () => ({ useToolConsume: () => ({ ensureToolConsume: services.consume }) }))
+vi.mock('@/composables/useCoreToolManualConsume', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/composables/useCoreToolManualConsume')>(),
+  useCoreToolManualConsume: () => ({ resolveCoreToolRun: services.settle })
+}))
+vi.mock('@/services/frontendUser', async (importOriginal) => ({
+  ...await importOriginal<typeof import('@/services/frontendUser')>(),
+  getFrontendUserProfile: () => ({ uid: services.userUid })
+}))
 vi.mock('@/services/videoCompress', () => ({
   getVideoCompressServerConfig: services.config,
   compressVideoWithServer: services.compress
@@ -30,7 +38,7 @@ function deferred<T>() {
 }
 
 /** 挂载视频工具并上传浏览器无法解码的测试文件，确保专业模式不依赖浏览器元数据。 */
-async function mountVideo() {
+async function mountVideo(sizeMB?: number) {
   wrapper = shallowMount(VideoCompress, {
     global: {
       stubs: {
@@ -46,13 +54,15 @@ async function mountVideo() {
     }
   })
   const input = wrapper.get('input[type="file"]')
-  Object.defineProperty(input.element, 'files', { configurable: true, value: [new File(['not-a-decodable-video'], 'sample.avi', { type: 'video/x-msvideo' })] })
+  const file = new File(['not-a-decodable-video'], 'sample.avi', { type: 'video/x-msvideo' })
+  if (sizeMB) Object.defineProperty(file, 'size', { value: sizeMB * 1024 * 1024 })
+  Object.defineProperty(input.element, 'files', { configurable: true, value: [file] })
   await input.trigger('change')
   return wrapper
 }
 
 /** 用可控录制器与时钟推进长视频尾部，验证不截断、不因文件较大自动重播。 */
-async function prepareLocalRecording(view: VueWrapper, duration = 600) {
+async function prepareLocalRecording(view: VueWrapper, duration = 600, start = true) {
   const frames: FrameRequestCallback[] = []
   const recorders: any[] = []
   const stream = { getTracks: () => [], getVideoTracks: () => [], getAudioTracks: () => [] }
@@ -88,14 +98,19 @@ async function prepareLocalRecording(view: VueWrapper, duration = 600) {
     ended: { configurable: true, value: false, writable: true }
   })
   await video.trigger('loadedmetadata')
-  view.findAllComponents({ name: 'ElRadioGroup' })[0].vm.$emit('update:modelValue', 'browser')
-  await view.get('.video-compress-primary').trigger('click')
-  await flushPromises()
+  if (start) {
+    view.findAllComponents({ name: 'ElRadioGroup' })[0].vm.$emit('update:modelValue', 'browser')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+  }
   return { video: video.element as HTMLVideoElement, frames, recorders }
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.useRealTimers()
+  services.userUid = '1001'
+  services.settle.mockReset().mockResolvedValue(true)
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
   URL.createObjectURL = vi.fn(() => 'blob:video-test')
   URL.revokeObjectURL = vi.fn()
@@ -110,6 +125,195 @@ afterEach(() => {
 })
 
 describe('视频压缩任务的取消和重试', () => {
+  /** 模拟后端按 requestId 预扣、结算及退款，积分余额不使用固定的成功桩。 */
+  function installPointsLedger(initialBalance: number) {
+    const ledger = new Map<string, { status: string; points: number }>()
+    let balance = initialBalance
+    let legacyCalls = 0
+    services.consume.mockImplementation(async (options) => {
+      if (options.mode === 'check-login') return true
+      const requestId = options.requestId || `legacy_${++legacyCalls}`
+      if (!ledger.has(requestId)) {
+        if (balance < 5) return false
+        balance -= 5
+        ledger.set(requestId, { status: options.requestId ? 'reserved' : 'committed', points: 5 })
+      }
+      const entry = ledger.get(requestId)!
+      options.onConsumed?.({ requestId, status: entry.status, consumePoints: entry.points,
+        profile: { uid: services.userUid }, remainPoints: balance })
+      return true
+    })
+    services.settle.mockImplementation(async (requestId, outcome) => {
+      const entry = ledger.get(requestId)
+      if (!entry) return false
+      if (entry.status === 'reserved') {
+        entry.status = outcome === 'success' ? 'committed' : 'refunded'
+        if (outcome === 'failed') balance += entry.points
+      }
+      return true
+    })
+    return { ledger, balance: () => balance }
+  }
+
+  it.each([
+    ['服务不可用', 5], ['服务不可用', 10], ['服务处理失败', 5], ['服务处理失败', 10]
+  ] as const)('%s且余额为%s时，本地兜底沿用一次预扣并在成功后结算', async (failure, balance) => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const points = installPointsLedger(balance)
+    if (failure === '服务不可用') services.config.mockResolvedValueOnce({ available: false })
+    else services.compress.mockRejectedValueOnce(new Error('压缩处理失败'))
+    const view = await mountVideo(221)
+    const { video, recorders } = await prepareLocalRecording(view, 3, false)
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.consume.mock.calls[0][0].toolKey).toBe('video-compress-large')
+    await view.get('[data-test="use-local-compression"]').trigger('click')
+    await view.get('.video-compress-primary').trigger('click')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.consume).toHaveBeenCalledOnce()
+    expect(recorders).toHaveLength(1)
+    expect(points.balance()).toBe(balance - 5)
+    recorders[0].ondataavailable({ data: new Blob(['compressed-video']) })
+    video.onended!(new Event('ended'))
+    await flushPromises()
+    expect(view.find('.video-result-panel').exists()).toBe(true)
+    expect(services.settle).toHaveBeenCalledOnce()
+    expect(services.settle.mock.calls[0].slice(0, 2)).toEqual([services.consume.mock.calls[0][0].requestId, 'success'])
+    expect([...points.ledger.values()].map(entry => entry.status)).toEqual(['committed'])
+    expect(points.balance()).toBe(balance - 5)
+  })
+
+  it('服务端重复重试不再扣费，用户放弃任务时只退款一次', async () => {
+    const points = installPointsLedger(5)
+    services.config.mockResolvedValue({ available: false })
+    const view = await mountVideo(221)
+    await prepareLocalRecording(view, 3, false)
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.config).toHaveBeenCalledTimes(2)
+    expect(services.consume).toHaveBeenCalledOnce()
+    await view.get('[data-test="end-compression-task"]').trigger('click')
+    await flushPromises()
+    wrapper!.unmount()
+    wrapper = undefined
+    await flushPromises()
+    expect(services.settle).toHaveBeenCalledOnce()
+    expect(points.balance()).toBe(5)
+  })
+
+  it('本地兜底和两次兼容重试均失败时退回预扣，重新开始使用新任务', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const points = installPointsLedger(5)
+    services.config.mockResolvedValue({ available: false })
+    const view = await mountVideo(221)
+    const { recorders } = await prepareLocalRecording(view, 3, false)
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    await view.get('[data-test="use-local-compression"]').trigger('click')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    for (let index = 0; index < 3; index++) {
+      recorders[index].onerror({ error: new Error('record failed') })
+      await vi.advanceTimersByTimeAsync(80)
+    }
+    await flushPromises()
+    expect(services.consume).toHaveBeenCalledOnce()
+    expect(services.settle.mock.calls[0][1]).toBe('failed')
+    expect(points.balance()).toBe(5)
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.consume).toHaveBeenCalledTimes(2)
+    expect(services.consume.mock.calls[1][0].requestId).not.toBe(services.consume.mock.calls[0][0].requestId)
+    expect(points.balance()).toBe(0)
+  })
+
+  it('取消迟到的预扣后立即重试，先完成退款再授权，余额只有一次费用也可继续', async () => {
+    const points = installPointsLedger(5)
+    const consume = services.consume.getMockImplementation()!
+    const delayed = deferred<void>()
+    services.consume.mockImplementationOnce(async (options) => {
+      const allowed = await consume(options)
+      await delayed.promise
+      return allowed
+    })
+    services.config.mockResolvedValue({ available: false })
+    const view = await mountVideo(221)
+    await prepareLocalRecording(view, 3, false)
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    await view.get('[data-test="cancel"]').trigger('click')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.consume).toHaveBeenCalledOnce()
+    delayed.resolve()
+    await flushPromises()
+    expect(services.consume).toHaveBeenCalledTimes(2)
+    expect(services.settle).toHaveBeenCalledOnce()
+    expect(points.balance()).toBe(0)
+    expect([...points.ledger.values()].map(entry => entry.status)).toEqual(['refunded', 'reserved'])
+    expect(view.find('[data-test="use-local-compression"]').exists()).toBe(true)
+  })
+
+  it('更换视频会退回未完成任务预扣，新视频不能复用旧授权', async () => {
+    const points = installPointsLedger(5)
+    services.config.mockResolvedValue({ available: false })
+    const view = await mountVideo(221)
+    await prepareLocalRecording(view, 3, false)
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    const nextFile = new File(['new-file'], 'other.mp4', { type: 'video/mp4' })
+    Object.defineProperty(nextFile, 'size', { value: 221 * 1024 * 1024 })
+    Object.defineProperty(view.get('input[type="file"]').element, 'files', { configurable: true, value: [nextFile] })
+    await view.get('input[type="file"]').trigger('change')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.consume).toHaveBeenCalledTimes(2)
+    expect(services.consume.mock.calls[1][0].requestId).not.toBe(services.consume.mock.calls[0][0].requestId)
+    expect(points.balance()).toBe(5)
+    expect([...points.ledger.values()].every(entry => entry.status === 'refunded')).toBe(true)
+  })
+
+  it('服务端与浏览器都无法处理视频时立即退款，不保留不可用的授权', async () => {
+    const points = installPointsLedger(5)
+    services.config.mockResolvedValue({ available: false })
+    const view = await mountVideo(221)
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.settle).toHaveBeenCalledOnce()
+    expect(points.balance()).toBe(5)
+    expect(view.find('[data-test="end-compression-task"]').exists()).toBe(false)
+  })
+
+  it('免费放行没有消费回执，失败或离开时不得申请不存在的退款', async () => {
+    services.config.mockResolvedValue({ available: false })
+    const view = await mountVideo()
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    wrapper!.unmount()
+    wrapper = undefined
+    await flushPromises()
+    expect(services.settle).not.toHaveBeenCalled()
+  })
+
+  it('成功后再次压缩属于新任务，不能永久复用同一视频的历史授权', async () => {
+    const points = installPointsLedger(10)
+    services.compress.mockResolvedValue({ blob: new Blob(['video']), outputSize: 5,
+      fileName: 'result.mp4', compressed: true, elapsedMs: 10 })
+    const view = await mountVideo(221)
+    for (let run = 0; run < 2; run++) {
+      await view.get('.video-compress-primary').trigger('click')
+      await flushPromises()
+    }
+    expect(services.consume).toHaveBeenCalledTimes(2)
+    expect(new Set(services.consume.mock.calls.map(([options]) => options.requestId)).size).toBe(2)
+    expect(points.balance()).toBe(0)
+    expect([...points.ledger.values()].every(entry => entry.status === 'committed')).toBe(true)
+  })
+
   it('WebM 未提供有限时长时明确说明，不能把 Infinity 展示成零秒', async () => {
     services.compress.mockResolvedValueOnce({
       blob: new Blob(['video']), outputSize: 5, fileName: 'result.webm', compressed: false, elapsedMs: 10

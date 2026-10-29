@@ -11,7 +11,8 @@ const mocks = vi.hoisted(() => ({
   ensureToolConsume: vi.fn(),
   getRequiredSitePublicConfig: vi.fn(),
   resolveFrontendUserPointsConsume: vi.fn(),
-  warning: vi.fn()
+  warning: vi.fn(),
+  userUid: '1001'
 }))
 
 vi.mock('element-plus', () => ({
@@ -26,7 +27,7 @@ vi.mock('@/composables/useToolConsume', () => ({
 
 vi.mock('@/services/frontendUser', () => ({
   FRONTEND_USER_AUTH_EVENT: 'uiedtool:frontend-user-auth-changed',
-  getFrontendUserProfile: () => ({ uid: 1001 }),
+  getFrontendUserProfile: () => ({ uid: mocks.userUid }),
   resolveFrontendUserPointsConsume: mocks.resolveFrontendUserPointsConsume
 }))
 
@@ -55,12 +56,27 @@ const createDeferredBoolean = () => {
 describe('useCoreToolManualConsume', () => {
   beforeEach(() => {
     window.localStorage.clear()
+    mocks.userUid = '1001'
     mocks.ensureToolConsume.mockReset()
     mocks.getRequiredSitePublicConfig.mockReset()
     mocks.getRequiredSitePublicConfig.mockResolvedValue({ loginEnabled: true })
     mocks.resolveFrontendUserPointsConsume.mockReset()
     mocks.warning.mockReset()
     vi.useRealTimers()
+  })
+
+  it('切换账号后保留原账号结算队列，原账号再次登录才重放', async () => {
+    const { resolveCoreToolRun } = useCoreToolManualConsume()
+    await expect(resolveCoreToolRun('request_owner_0001', 'failed', '任务已结束', '1002')).resolves.toBe(false)
+    expect(mocks.resolveFrontendUserPointsConsume).not.toHaveBeenCalled()
+    expect(JSON.parse(window.localStorage.getItem(SETTLEMENT_STORAGE_KEY)!)[0].userUid).toBe('1002')
+    await flushPendingCoreToolRunSettlements()
+    expect(mocks.resolveFrontendUserPointsConsume).not.toHaveBeenCalled()
+    mocks.userUid = '1002'
+    mocks.resolveFrontendUserPointsConsume.mockResolvedValue({ status: 'refunded' })
+    await flushPendingCoreToolRunSettlements()
+    expect(mocks.resolveFrontendUserPointsConsume).toHaveBeenCalledWith('request_owner_0001', 'failed', '任务已结束')
+    expect(window.localStorage.getItem(SETTLEMENT_STORAGE_KEY)).toBeNull()
   })
 
   it('预扣请求未返回时阻止第二次运行', async () => {

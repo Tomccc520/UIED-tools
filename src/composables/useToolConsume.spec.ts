@@ -61,15 +61,44 @@ describe('useToolConsume', () => {
   beforeEach(() => {
     Object.values(mocks).forEach((mock) => mock.mockReset())
     mocks.isFrontendUserLoggedIn.mockReturnValue(false)
+    mocks.trackToolRankingEvent.mockResolvedValue(undefined)
   })
 
   it('前台登录关闭时应跳过登录弹窗和积分扣减并直接放行', async () => {
     mocks.getRequiredSitePublicConfig.mockResolvedValue(createSiteConfig(false))
     const { ensureToolConsume } = useToolConsume()
 
-    await expect(ensureToolConsume({ toolKey: 'ai-ocr', action: 'run' })).resolves.toBe(true)
+    const onConsumed = vi.fn()
+    await expect(ensureToolConsume({ toolKey: 'ai-ocr', action: 'run', onConsumed })).resolves.toBe(true)
+    expect(onConsumed).not.toHaveBeenCalled()
     expect(mocks.dispatchFrontendUserLoginPrompt).not.toHaveBeenCalled()
     expect(mocks.consumeFrontendUserPoints).not.toHaveBeenCalled()
+  })
+
+  it('只有消费 API 的真实回执通知调用方，并透传幂等 requestId', async () => {
+    mocks.getRequiredSitePublicConfig.mockResolvedValue(createSiteConfig(true))
+    mocks.isFrontendUserLoggedIn.mockReturnValue(true)
+    const receipt = { requestId: 'video_task_0001', status: 'reserved', consumePoints: 5,
+      remainPoints: 0, profile: { uid: '1001' }, dailyGiftApplied: false }
+    mocks.consumeFrontendUserPoints.mockResolvedValue(receipt)
+    const onConsumed = vi.fn()
+    const { ensureToolConsume } = useToolConsume()
+    await expect(ensureToolConsume({ toolKey: 'video-compress-large', action: 'compress', requestId: receipt.requestId, onConsumed })).resolves.toBe(true)
+    expect(mocks.consumeFrontendUserPoints).toHaveBeenCalledWith('video-compress-large', 'compress', receipt.requestId)
+    expect(onConsumed).toHaveBeenCalledExactlyOnceWith(receipt)
+  })
+
+  it('免费策略和下载登录校验不创建可退款的消费回执', async () => {
+    mocks.getRequiredSitePublicConfig.mockResolvedValue({ ...createSiteConfig(true), loginToolConsumeRules: [
+      { toolKey: 'video-compress', needLogin: false, consumePoints: 0, memberFree: true, status: 1 }
+    ] })
+    mocks.isFrontendUserLoggedIn.mockReturnValue(true)
+    const onConsumed = vi.fn()
+    const { ensureToolConsume } = useToolConsume()
+    await expect(ensureToolConsume({ toolKey: 'video-compress', action: 'compress', onConsumed })).resolves.toBe(true)
+    await expect(ensureToolConsume({ toolKey: 'video-compress-large', mode: 'check-login', onConsumed })).resolves.toBe(true)
+    expect(mocks.consumeFrontendUserPoints).not.toHaveBeenCalled()
+    expect(onConsumed).not.toHaveBeenCalled()
   })
 
   it('前台登录开启且用户未登录时应继续拉起登录提示', async () => {

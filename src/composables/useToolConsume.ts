@@ -14,7 +14,8 @@ import {
   consumeFrontendUserPoints,
   getFrontendUserProfile,
   isFrontendUserLoggedIn,
-  type FrontendUserProfile
+  type FrontendUserProfile,
+  type FrontendUserPointsConsumeResult
 } from '@/services/frontendUser'
 import {
   getRequiredSitePublicConfig,
@@ -44,6 +45,8 @@ export interface ToolConsumeOptions {
   showConsumeSuccessToast?: boolean
   insufficientPointsRedirect?: string
   skipConsumeWhen?: (profile: FrontendUserProfile | null) => boolean | Promise<boolean>
+  /** 仅在消费 API 返回有效回执后通知调用方，免费放行和登录校验不产生消费回执。 */
+  onConsumed?: (result: FrontendUserPointsConsumeResult) => void
 }
 
 export interface RuntimeToolConsumePolicy {
@@ -372,6 +375,8 @@ export const useToolConsume = () => {
         )
         return false
       }
+
+      options.onConsumed?.(consumeResult)
 
       if (consumeResult.dailyGiftApplied) {
         ElMessage.success(`已自动发放今日积分 +${consumeResult.profile.pointsDailyGiftPoints}`)

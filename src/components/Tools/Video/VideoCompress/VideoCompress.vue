@@ -29,6 +29,7 @@ import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
 import { estimateRemainingSeconds, formatEtaText, getFriendlyVideoError } from '@/utils/videoToolFeedback'
 import { seekVideoForCompression } from '@/utils/videoCompressionLifecycle'
 import { useToolConsume } from '@/composables/useToolConsume'
+import { useVideoCompressionBilling } from './useVideoCompressionBilling'
 import {
   compressVideoWithServer,
   getVideoCompressServerConfig,
@@ -82,6 +83,8 @@ interface CompressRuntimeOverrides {
 
 const route = useRoute()
 const { ensureToolConsume } = useToolConsume()
+const billing = useVideoCompressionBilling()
+const { canResumeTask } = billing
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const previewVideoRef = ref<HTMLVideoElement | null>(null)
@@ -504,6 +507,7 @@ const handleFinalizeTimeout = () => {
   }
 
   isFinalizingOutput = false
+  billing.finish('failed', '本地视频封装超时')
   isProcessing.value = false
   statusText.value = '压缩失败'
   etaText.value = ''
@@ -562,6 +566,7 @@ const finalizeOutputFromChunks = (isTimeoutFallback = false) => {
     }
 
     isFinalizingOutput = false
+    billing.finish('failed', '本地输出文件为空')
     isProcessing.value = false
     statusText.value = '压缩失败'
     etaText.value = ''
@@ -579,6 +584,7 @@ const finalizeOutputFromChunks = (isTimeoutFallback = false) => {
     }
 
     isFinalizingOutput = false
+    billing.finish('failed', '本地输出文件为空')
     isProcessing.value = false
     statusText.value = '压缩失败'
     etaText.value = ''
@@ -605,6 +611,7 @@ const finalizeOutputFromChunks = (isTimeoutFallback = false) => {
   progress.value = 100
   statusText.value = keepOriginal ? '原视频体积更优，已保留原文件' : '压缩完成'
   etaText.value = '预计剩余时间：约 0 秒'
+  billing.finish('success')
   isProcessing.value = false
   isFinalizingOutput = false
   compatRetryCount = 0
@@ -648,6 +655,7 @@ const scheduleFinalizeMonitor = () => {
  * 停止当前压缩任务
  */
 const stopCurrentProcessing = () => {
+  billing.finish('failed', '压缩任务取消、换文件或离开页面')
   processingRunId += 1
   serverPhase.value = 'idle'
   clearElapsedTimer()
@@ -898,6 +906,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
   }
 
   if (!hasLocalVideoMetadata.value) {
+    billing.finish('failed', '浏览器无法读取视频')
     isProcessing.value = false
     errorText.value = '浏览器尚无法读取此视频，请等待加载完成，或使用专业 H.264 模式重试'
     ElMessage.warning(errorText.value)
@@ -1030,6 +1039,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
       sourceVideo.onended = null
       clearCaptureStreams()
 
+      billing.finish('failed', '本地视频编码失败')
       isProcessing.value = false
       statusText.value = '压缩失败'
       etaText.value = ''
@@ -1064,6 +1074,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
       if (stalledMs >= PLAYBACK_STALL_TIMEOUT_MS) {
         if (triggerCompatibilityRetry('playback-stalled')) return
         forceCleanupForRetry()
+        billing.finish('failed', '本地视频播放中断')
         isProcessing.value = false
         statusText.value = '压缩失败'
         etaText.value = ''
@@ -1101,6 +1112,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
     console.error(error)
     clearFinalizeFallbackTimer()
     clearCaptureStreams()
+    billing.finish('failed', '本地压缩失败，兼容重试已结束')
     isProcessing.value = false
     statusText.value = '压缩失败'
     etaText.value = ''
@@ -1130,12 +1142,14 @@ const runServerCompressProcess = async (runId: number) => {
   serverConfig.value = config
   if (!config.available) {
     if (!hasLocalVideoMetadata.value) {
+      billing.finish('failed', '专业服务不可用且浏览器无法读取视频')
       isProcessing.value = false
       statusText.value = '压缩服务暂不可用'
       errorText.value = '专业压缩服务暂不可用，浏览器也无法读取此视频，请稍后重试或更换为 MP4 视频'
       ElMessage.error(errorText.value)
       return true
     }
+    billing.retainForRetry()
     isProcessing.value = false
     statusText.value = '压缩服务暂不可用'
     errorText.value = '专业压缩服务暂不可用，请稍后重试，或改用浏览器本地压缩'
@@ -1187,6 +1201,7 @@ const runServerCompressProcess = async (runId: number) => {
     progress.value = 100
     statusText.value = result.compressed ? 'H.264 视频压缩完成' : '原视频体积更优，已保留原文件'
     etaText.value = '预计剩余时间：约 0 秒'
+    billing.finish('success')
     isProcessing.value = false
 
     if (result.compressed) {
@@ -1198,6 +1213,7 @@ const runServerCompressProcess = async (runId: number) => {
   } catch (error) {
     if (!isCurrentRun(runId)) return true
     if (controller.signal.aborted) {
+      billing.finish('failed', '用户取消专业压缩')
       isProcessing.value = false
       progress.value = 0
       etaText.value = ''
@@ -1210,11 +1226,13 @@ const runServerCompressProcess = async (runId: number) => {
     progress.value = 0
     etaText.value = ''
     if (!hasLocalVideoMetadata.value) {
+      billing.finish('failed', '专业压缩失败且浏览器无法读取视频')
       statusText.value = '压缩失败'
       errorText.value = '专业压缩失败，浏览器也无法读取此视频，请检查文件是否损坏或稍后重试'
       ElMessage.error(errorText.value)
       return true
     }
+    billing.retainForRetry()
     statusText.value = '压缩失败'
     errorText.value = getFriendlyVideoError(error, '专业压缩失败，请稍后重试')
     ElMessage.error(errorText.value)
@@ -1228,6 +1246,15 @@ const switchToLocalCompression = () => {
   settings.engine = 'browser'
   serverPhase.value = 'idle'
   errorText.value = ''
+}
+
+/** 放弃服务失败后的重试机会，并退回本次任务的预扣积分。 */
+const endCompressionTask = () => {
+  if (isProcessing.value) return
+  billing.finish('failed', '用户结束压缩任务')
+  statusText.value = '本次压缩任务已结束'
+  errorText.value = ''
+  ElMessage.info('本次任务已结束，预扣积分将按后台规则退回')
 }
 
 /**
@@ -1255,14 +1282,10 @@ const compressVideo = async () => {
   progress.value = 0
   etaText.value = ''
   try {
-    const canConsume = await ensureToolConsume({
-      toolKey: getVideoCompressConsumeToolKey(),
-      action: 'compress',
-      loginWarningText: '请先登录后再使用视频压缩',
-      showConsumeSuccessToast: true
-    })
+    const canConsume = await billing.authorize(videoFile.value, getVideoCompressConsumeToolKey())
     if (!isCurrentRun(runId)) return
     if (!canConsume) {
+      billing.finish('failed', '未取得本次压缩授权')
       isProcessing.value = false
       return
     }
@@ -1278,6 +1301,8 @@ const compressVideo = async () => {
     await runCompressProcess(null, false, runId)
   } catch (error) {
     if (!isCurrentRun(runId)) return
+    if (engine === 'server' && hasLocalVideoMetadata.value) billing.retainForRetry()
+    else billing.finish('failed', '本次压缩失败')
     isProcessing.value = false
     errorText.value = getFriendlyVideoError(error, '压缩失败，请稍后重试')
     statusText.value = '压缩失败'
@@ -1575,6 +1600,12 @@ onBeforeRouteLeave((to, from, next) => {
                   <button v-if="settings.engine === 'server' && hasLocalVideoMetadata && !isProcessing"
                     type="button" data-test="use-local-compression" class="mt-2 underline underline-offset-4"
                     @click="switchToLocalCompression">改用浏览器本地压缩</button>
+                </div>
+
+                <div v-if="canResumeTask && !isProcessing" class="text-sm text-gray-600" role="status">
+                  <p>重试或改用本地压缩会沿用本次授权，不会重复扣费。</p>
+                  <button type="button" data-test="end-compression-task" class="mt-2 underline underline-offset-4"
+                    @click="endCompressionTask">结束本次任务</button>
                 </div>
 
                 <button
