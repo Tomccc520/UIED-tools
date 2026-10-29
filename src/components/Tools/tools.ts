@@ -1968,7 +1968,7 @@ const toolsCategories: ToolCategory[] = [
               id: 617,
               title: 'PDF压缩',
               logo: { type: 'svg', name: 'pdfCompress' },
-              desc: '在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传',
+              desc: '本地批量压缩 PDF，默认保留文字、链接和表单；扫描件可选有损压缩，支持预览与下载。',
               url: '/tools/pdf-compress',
               cate: 'PDF工具'
             },

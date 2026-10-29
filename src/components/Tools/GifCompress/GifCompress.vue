@@ -7,6 +7,7 @@
 <template>
   <div class="gif-mobile-page min-h-screen">
     <div class="mx-auto">
+      <input type="file" ref="fileInput" class="hidden" accept="image/gif" :disabled="isProcessing" @change="handleFileChange" />
       <!-- 主要内容区域 -->
       <div class="gif-mobile-workspace bg-white rounded-xl p-6 md:p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
@@ -29,7 +30,6 @@
               @click="triggerFileInput" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false"
               @drop.prevent="handleDrop" role="button" tabindex="0" aria-label="上传GIF文件区域，点击或拖拽文件至此"
               @keydown.enter="triggerFileInput" @keydown.space.prevent="triggerFileInput">
-              <input type="file" ref="fileInput" class="hidden" accept="image/gif" @change="handleFileChange" />
               <div class="text-center px-4 transform transition-transform duration-300 group-hover:scale-105">
                 <div
                   class="w-24 h-24 mb-6 mx-auto bg-white rounded-full shadow-sm flex items-center justify-center text-brand group-hover:text-brand-hover transition-colors">
@@ -54,8 +54,8 @@
               <div
                 class="gif-toolbar flex flex-wrap items-center justify-between gap-4 p-4 md:p-6 border-b border-gray-100 bg-gray-50/80 backdrop-blur-sm sticky top-0 z-10">
                 <div class="gif-toolbar__source flex items-center gap-4 flex-1 min-w-0">
-                  <el-button @click="reset" :disabled="isProcessing" size="large"
-                    class="!h-10 !px-4 md:!px-6 hover:!scale-105 transition-transform" icon="ArrowLeft"
+                  <el-button @click="triggerFileInput" :disabled="isProcessing" size="large"
+                    class="!h-10 !px-4 md:!px-6 hover:!scale-105 transition-transform"
                     plain>重新上传</el-button>
                   <div
                     class="gif-toolbar__file flex items-center gap-2 text-sm text-gray-600 bg-white px-3 py-1.5 rounded-md border border-gray-200 shadow-sm hidden md:flex">
@@ -224,11 +224,11 @@
                       <!-- 质量参数 -->
                       <div class="gif-settings-group mb-2">
                         <div class="flex justify-between items-center mb-2">
-                          <span class="text-gray-700 font-medium">压缩质量 (Quality)</span>
-                          <span class="text-brand font-bold">{{ options.quality }}</span>
+                          <span class="text-gray-700 font-medium">颜色分析精度</span>
+                          <span class="text-brand font-bold">{{ options.colors < 256 ? '固定色板' : options.quality }}</span>
                         </div>
-                        <el-slider v-model="options.quality" :min="1" :max="30" :step="1" :disabled="preserveQuality || isProcessing" />
-                        <div class="text-xs text-gray-400 mt-1">1 (最佳画质/最慢) - 30 (最低画质/最快)</div>
+                        <el-slider v-model="options.quality" :min="1" :max="30" :step="1" :disabled="preserveQuality || isProcessing || options.colors < 256" />
+                        <div class="text-xs text-gray-400 mt-1">{{ options.colors < 256 ? '减色模式使用固定色板，画质由色彩数量与抖动决定。' : '1（细致、较慢）至 30（粗略、较快），用于自适应色板分析。' }}</div>
                       </div>
                       <p class="gif-settings-note">修改参数后需要重新压缩。透明背景 GIF 暂保留原图，不应用自定义参数。</p>
                       </div>
@@ -406,8 +406,9 @@ import {
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MobileToolActions from '@/components/Common/MobileToolActions.vue'
 import { ensureGifRuntime } from '@/utils/toolRuntimeLoaders'
+import gifWorkerUrl from 'gif.js/dist/gif.worker.js?url'
 import {
-  appendGifTimelineFrame, createGifFrameComposer, disposeGifEncoder, getGifRepeat,
+  appendGifTimelineFrame, createGifFrameComposer, createGifUniformPalette, disposeGifEncoder, getGifRepeat,
   renderGifWithTimeout, splitGifTimelineDelays, validateGifMemoryBudget,
   GIF_ENCODING_TIMEOUT_MS, type GifFrame, type GifMetadata, type GifTimelineFrame
 } from '@/utils/gifCompression'
@@ -485,7 +486,7 @@ const compressionPresets = {
     colors: 128,
     fpsReduction: 1,
     quality: 8,
-    dither: 'FalseFloydSteinberg' as boolean | string,
+    dither: false as boolean | string,
     preserveQuality: false
   },
   strong: {
@@ -634,64 +635,6 @@ const getGifFileError = (inputFile: File) => {
 const getGifWorkerCount = () => {
   const concurrency = navigator.hardwareConcurrency || 4
   return Math.min(4, Math.max(2, Math.floor(concurrency / 2)))
-}
-
-/**
- * 计算 RGB 三通道的量化位数
- * @description 将目标颜色数映射为 r/g/b 位深组合，确保总颜色数不超过用户设置
- * @param maxColors 目标最大颜色数
- * @returns RGB 三通道量化位数
- */
-const getRgbQuantizeBits = (maxColors: number) => {
-  const safeColors = Math.min(256, Math.max(8, Math.round(maxColors)))
-  const totalBits = Math.max(3, Math.floor(Math.log2(safeColors)))
-  const baseBits = Math.floor(totalBits / 3)
-  const remainder = totalBits % 3
-  return {
-    rBits: baseBits + (remainder > 0 ? 1 : 0),
-    gBits: baseBits + (remainder > 1 ? 1 : 0),
-    bBits: baseBits
-  }
-}
-
-/**
- * 将单通道值映射到指定位深
- * @description 通过均匀量化压缩颜色空间，降低编码复杂度与最终体积
- * @param value 原始通道值
- * @param bits 通道位深
- * @returns 量化后的通道值
- */
-const quantizeColorChannel = (value: number, bits: number) => {
-  if (bits >= 8) return value
-  const levels = (1 << bits) - 1
-  const normalized = Math.round((value / 255) * levels)
-  return Math.round((normalized / levels) * 255)
-}
-
-/**
- * 对当前画布进行颜色量化
- * @description 真正消费“色彩数量”参数，按帧降色后再进入 GIF 编码
- * @param ctx 目标画布上下文
- * @param width 画布宽度
- * @param height 画布高度
- * @param maxColors 目标最大颜色数
- */
-const applyColorQuantization = (
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  maxColors: number
-) => {
-  if (maxColors >= 256 || width <= 0 || height <= 0) return
-  const imageData = ctx.getImageData(0, 0, width, height)
-  const data = imageData.data
-  const { rBits, gBits, bBits } = getRgbQuantizeBits(maxColors)
-  for (let i = 0; i < data.length; i += 4) {
-    data[i] = quantizeColorChannel(data[i], rBits)
-    data[i + 1] = quantizeColorChannel(data[i + 1], gBits)
-    data[i + 2] = quantizeColorChannel(data[i + 2], bBits)
-  }
-  ctx.putImageData(imageData, 0, 0)
 }
 
 /**
@@ -1016,7 +959,6 @@ const startCompression = async () => {
         ctx.putImageData(new ImageData(new Uint8ClampedArray(pixels), canvas.width, canvas.height), 0, 0)
         scaleCtx.clearRect(0, 0, scaleCanvas.width, scaleCanvas.height)
         scaleCtx.drawImage(canvas, 0, 0, scaleCanvas.width, scaleCanvas.height)
-        if (!settings.preserveQuality) applyColorQuantization(scaleCtx, scaleCanvas.width, scaleCanvas.height, settings.colors)
         const outputPixels = scaleCtx.getImageData(0, 0, scaleCanvas.width, scaleCanvas.height).data
         if (appendGifTimelineFrame(timeline, new Uint8ClampedArray(outputPixels), frame.delay, settings.preserveQuality)) mergedFrameCount++
       } else {
@@ -1030,7 +972,8 @@ const startCompression = async () => {
     if (!outputFrames.length) throw new Error('没有可编码的 GIF 帧，请重新上传')
     const encoderOptions = {
       workers: getGifWorkerCount(), quality: settings.quality, width: settings.width, height: settings.height,
-      workerScript: '/workers/gif.worker.js', dither: settings.dither, repeat: getGifRepeat(gif)
+      workerScript: gifWorkerUrl, dither: settings.dither, repeat: getGifRepeat(gif),
+      globalPalette: !settings.preserveQuality && settings.colors < 256 ? createGifUniformPalette(settings.colors) : false
     }
     const encoder = new GIFEncoder(encoderOptions)
     gifEncoder = encoder

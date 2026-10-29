@@ -62,6 +62,75 @@ const compress = async () => {
 }
 
 describe('图片压缩批量与打包', () => {
+  it('参数修改后撤下旧下载，打包时使用新参数重新处理全部图片', async () => {
+    const view = mountCompressor()
+    await addFiles([image('settings.jpg')])
+    await compress()
+    expect(view.findAll('a[download]')).toHaveLength(1)
+    await view.get('input[type="checkbox"]').setValue(false)
+    expect(view.findAll('a[download]')).toHaveLength(0)
+    expect(view.text()).toContain('参数已修改')
+    expect(view.text()).toContain('已完成: 0')
+    await view.get('[data-smoke="image-compress-download"]').trigger('click')
+    await flushPromises()
+    expect(mocks.compress).toHaveBeenCalledTimes(2)
+    expect(mocks.compress.mock.calls[1][1].maxWidth).toBe(4096)
+    expect(mocks.download).toHaveBeenCalledOnce()
+  })
+
+  it('PNG 模式修改不会继续下载旧无损结果', async () => {
+    const view = mountCompressor()
+    await addFiles([image('settings.png', 'image/png')])
+    await compress()
+    await view.get('input[value="quantized"]').setValue(true)
+    expect(view.findAll('a[download]')).toHaveLength(0)
+    await view.get('[data-smoke="image-compress-download"]').trigger('click')
+    await flushPromises()
+    expect(mocks.compressPng.mock.calls[1][1].mode).toBe('quantized')
+  })
+
+  it('停止批次保留已完成图片，忽略迟到回调，之后可继续处理剩余图片', async () => {
+    const view = mountCompressor()
+    let lateSuccess!: (blob: Blob) => void
+    mocks.compress.mockImplementationOnce((_file, options) => options.success(new Blob(['small'], { type: 'image/jpeg' })))
+      .mockImplementationOnce((_file, options) => { lateSuccess = options.success })
+    await addFiles([image('done.jpg'), image('cancel.jpg'), image('pending.jpg')])
+    await view.get('[data-smoke="image-compress-start"]').trigger('click')
+    await flushPromises()
+    expect(mocks.compress).toHaveBeenCalledTimes(2)
+    await view.get('[data-smoke="image-compress-cancel"]').trigger('click')
+    await flushPromises()
+    expect(view.text()).toContain('已停止')
+    expect(view.text()).toContain('已完成: 1')
+    expect(view.text()).toContain('待处理: 2')
+    expect(view.findAll('[role="alert"]')).toHaveLength(0)
+    lateSuccess(new Blob(['late'], { type: 'image/jpeg' }))
+    await flushPromises()
+    expect(view.findAll('a[download]')).toHaveLength(1)
+    await view.get('[data-smoke="image-compress-download"]').trigger('click')
+    await flushPromises()
+    expect(mocks.compress).toHaveBeenCalledTimes(4)
+    expect(mocks.addToZip.mock.calls.map((call) => call[0])).toEqual(['uied_done.jpg', 'uied_cancel.jpg', 'uied_pending.jpg'])
+  })
+
+  it('压缩并下载期间主动停止，不自动打包不完整批次，PNG 任务收到取消信号', async () => {
+    const view = mountCompressor()
+    mocks.compressPng.mockImplementationOnce((_file, options) => new Promise((_resolve, reject) => {
+      options.signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true })
+    }))
+    await addFiles([image('cancel.png', 'image/png'), image('pending.png', 'image/png')])
+    await view.get('[data-smoke="image-compress-download"]').trigger('click')
+    expect(mocks.compressPng).toHaveBeenCalledOnce()
+    const signal = mocks.compressPng.mock.calls[0][1].signal as AbortSignal
+    await view.get('[data-smoke="image-compress-cancel"]').trigger('click')
+    await flushPromises()
+    expect(signal.aborted).toBe(true)
+    expect(mocks.generateZip).not.toHaveBeenCalled()
+    expect(mocks.download).not.toHaveBeenCalled()
+    expect(view.get('[data-smoke="image-compress-download"]').attributes('disabled')).toBeUndefined()
+    expect(view.findAll('[role="alert"]')).toHaveLength(0)
+  })
+
   it('窄屏大图对比切换跟随当前文件结果，新增未处理图片不会沿用旧结果', async () => {
     const view = mountCompressor()
     await addFiles([image('first.jpg')])

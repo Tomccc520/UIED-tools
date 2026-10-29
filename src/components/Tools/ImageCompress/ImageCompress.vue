@@ -110,6 +110,8 @@
         </section>
 
         <div class="image-output">
+          <p v-if="settingsChanged" class="image-settings-feedback" role="status">参数已修改，旧结果已撤下；开始压缩或下载时会按新参数重新处理。</p>
+          <p v-if="batchCancelled && !isBusy" class="image-settings-feedback" role="status">已停止本次处理，已完成图片会保留，剩余图片可继续压缩。</p>
           <section v-if="activePreviewFile" ref="previewSection" class="image-preview" aria-labelledby="image-preview-title">
             <div class="image-preview__heading"><h2 id="image-preview-title">效果预览</h2><span :title="activePreviewFile.name">{{ activePreviewFile.name }}</span></div>
             <div class="image-preview__mobile-tabs" role="group" aria-label="预览对比">
@@ -135,11 +137,12 @@
         <div v-if="isBusy" class="image-batch-progress" data-smoke="image-compress-progress" role="status" aria-live="polite" aria-atomic="true">
           <template v-if="isCompressing">
             <div class="image-batch-progress__label">
-              <strong>批量压缩中</strong>
+              <strong>{{ batchCancelled ? '正在停止压缩…' : '批量压缩中' }}</strong>
               <span>已处理 {{ batchProgress.completed }} / {{ batchProgress.total }} 张</span>
             </div>
             <progress :value="batchProgress.completed" :max="batchProgress.total || 1" aria-label="批量压缩进度"></progress>
             <p v-if="processingIndex >= 0">正在处理：{{ fileList[processingIndex]?.name }}</p>
+            <button type="button" data-smoke="image-compress-cancel" class="image-text-action" :disabled="batchCancelled" @click="cancelCompression">停止压缩</button>
           </template>
           <template v-else>
             <div class="image-batch-progress__label">
@@ -267,7 +270,7 @@
           </div>
           <div class="image-help__notes">
             <p><strong>尺寸与格式：</strong>JPG / WebP 默认保持原尺寸，取消勾选后最长边限制为 4096 像素，不放大小图。PNG 始终保持原尺寸，单张最多 {{ PNG_COMPRESSION_MAX_PIXELS / 10000 }} 万像素，暂不支持动画 PNG；16 位、低位灰度及交错 PNG 在无损模式下保留原文件。</p>
-            <p><strong>处理与重试：</strong>PNG 在后台线程处理，不支持的浏览器会明确提示。每张图片处理超时会显示错误，可单独重试；修改设置后，点击“重新压缩”按当前全部参数处理。</p>
+            <p><strong>处理与重试：</strong>PNG 在后台线程处理，不支持的浏览器会明确提示。每张图片处理超时会显示错误，可单独重试；修改参数会撤下旧结果，可点击“开始压缩”或“压缩并下载”。停止批次后，已完成的图片会保留。</p>
           </div>
         </details>
       </template>
@@ -386,7 +389,16 @@ const quality = ref(80)
 const preserveDimensions = ref(true)
 const pngMode = ref<PngCompressionMode>('lossless')
 const pngColors = ref<32 | 64 | 128 | 256>(256)
-const compressionController = new AbortController()
+let compressionController: AbortController | null = null
+const settingsChanged = ref(false)
+const batchCancelled = ref(false)
+
+/** 参数变更后移除旧结果，避免单张和 ZIP 下载仍使用上一次设置生成的文件。 */
+watch([quality, preserveDimensions, pngMode, pngColors], () => {
+  if (isBusy.value) return
+  if (fileList.value.some(file => file.compressedBlob)) settingsChanged.value = true
+  fileList.value.forEach(clearCompressedResult)
+}, { flush: 'sync' })
 
 /** 固定一批图片使用的全部设置，避免异步任务读取到下一次修改的配置。 */
 interface BatchCompressionSettings {
@@ -474,6 +486,10 @@ const handleUpload = (file: UploadRawFile) => {
   }
 
   try {
+    if (!fileList.value.length) {
+      settingsChanged.value = false
+      batchCancelled.value = false
+    }
     // 使用普通响应式条目保存状态，File 的自定义属性不会被 Vue 追踪。
     fileList.value.push({ source: file, name: file.name, type: file.type, size: file.size, previewUrl: createObjectURL(file) })
     return false
@@ -534,12 +550,14 @@ const clearFiles = () => {
   })
   fileList.value = []
   selectedPreviewSource.value = null
+  settingsChanged.value = false
+  batchCancelled.value = false
 }
 
 /**
  * 压缩单个文件
  */
-const compressFile = async (file: CompressedFile, settings: BatchCompressionSettings): Promise<boolean> => {
+const compressFile = async (file: CompressedFile, settings: BatchCompressionSettings, signal: AbortSignal): Promise<boolean> => {
   const fileIndex = fileList.value.indexOf(file)
   if (fileIndex < 0) return false
   processingIndex.value = fileIndex
@@ -558,7 +576,7 @@ const compressFile = async (file: CompressedFile, settings: BatchCompressionSett
         result = await compressPngInWorker(file.source, {
           mode: settings.pngMode,
           colors: settings.pngColors,
-          signal: compressionController.signal
+          signal
         })
         break
       case 'image/jpeg':
@@ -566,14 +584,14 @@ const compressFile = async (file: CompressedFile, settings: BatchCompressionSett
         result = await compressBrowserImage(file.source, mimeType, {
           quality: settings.quality,
           preserveDimensions: settings.preserveDimensions,
-          signal: compressionController.signal
+          signal
         })
         break
       default:
         throw new Error('不支持的图片格式')
     }
 
-    if (disposed) return false
+    if (disposed || signal.aborted) return false
 
     // PNG 不缩小尺寸，结果增大时可安全保留原图；JPG/WebP 交由编码器区分缩小尺寸与原图回退。
     if (mimeType === 'image/png' && result.size >= file.size) result = file.source
@@ -599,7 +617,7 @@ const compressFile = async (file: CompressedFile, settings: BatchCompressionSett
     compressedFile.compressedUrl = createObjectURL(result)
     return true
   } catch (error) {
-    if (disposed) return false
+    if (disposed || signal.aborted) return false
     console.error('[图片压缩] 文件处理失败', error instanceof Error ? error.message : '未知错误')
     clearCompressedResult(file)
     file.error = error instanceof PngCompressionError || error instanceof BrowserImageCompressionError
@@ -624,6 +642,10 @@ const clearCompressedResult = (file: CompressedFile) => {
 
 /** 按顺序压缩给定图片并快照全部设置，避免同批输出使用不同的尺寸或 PNG 模式。 */
 const compressBatch = async (files: CompressedFile[]) => {
+  const controller = new AbortController()
+  compressionController = controller
+  batchCancelled.value = false
+  settingsChanged.value = false
   batchProgress.value = { completed: 0, total: files.length }
   isCompressing.value = true
   const settings: BatchCompressionSettings = {
@@ -635,15 +657,26 @@ const compressBatch = async (files: CompressedFile[]) => {
   let failedCount = 0
   try {
     for (const file of files) {
-      if (disposed) break
-      if (!(await compressFile(file, settings))) failedCount += 1
-      if (!disposed) batchProgress.value.completed += 1
+      if (disposed || controller.signal.aborted) break
+      const succeeded = await compressFile(file, settings, controller.signal)
+      if (disposed || controller.signal.aborted) break
+      if (!succeeded) failedCount += 1
+      batchProgress.value.completed += 1
     }
   } finally {
     isCompressing.value = false
     processingIndex.value = -1
+    if (compressionController === controller) compressionController = null
   }
   return failedCount
+}
+
+/** 停止当前编码并保留已完成结果；中止后的迟到结果不得写回或触发自动打包。 */
+const cancelCompression = () => {
+  if (!isCompressing.value || batchCancelled.value) return
+  batchCancelled.value = true
+  compressionController?.abort()
+  ElMessage.info('已停止本次压缩，已完成图片会保留')
 }
 
 /** 只重试当前失败图片，沿用当前质量，保留其他成功结果及其下载地址；返回重试结束的异步任务。 */
@@ -652,7 +685,7 @@ const retryFailed = async () => {
   const failedFiles = fileList.value.filter((file) => file.error)
   if (!failedFiles.length) return
   const remainingFailures = await compressBatch(failedFiles)
-  if (disposed) return
+  if (disposed || batchCancelled.value) return
   if (remainingFailures) ElMessage.warning(`重试完成，仍有 ${remainingFailures} 张图片失败，请检查文件`)
   else ElMessage.success(`已重新压缩 ${failedFiles.length} 张图片，其他成功结果保持不变`)
 }
@@ -671,7 +704,7 @@ const compressAll = async () => {
     return
   }
   const failedCount = await compressBatch([...fileList.value])
-  if (disposed) return
+  if (disposed || batchCancelled.value) return
   if (failedCount > 0) ElMessage.warning(`压缩完成，${failedCount} 个文件失败，请重试`)
   else ElMessage.success('所有图片压缩完成')
 }
@@ -684,11 +717,12 @@ const downloadAll = async () => {
     return
   }
   packagingProgress.value = 0
+  batchCancelled.value = false
   isPackaging.value = true
   try {
     const pendingFiles = fileList.value.filter((file) => !file.compressedBlob)
     if (pendingFiles.length > 0) await compressBatch(pendingFiles)
-    if (disposed) return
+    if (disposed || batchCancelled.value) return
     const compressedFiles = fileList.value.filter((file) => file.compressedBlob)
     if (compressedFiles.length === 0) {
       ElMessage.warning('没有可下载的压缩文件，请检查图片后重试')
@@ -699,7 +733,8 @@ const downloadAll = async () => {
       zip.file(entry.name, entry.blob)
     }
     const content = await zip.generateAsync(
-      { type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } },
+      // 图片已经独立压缩，ZIP 只打包，避免再次 DEFLATE 消耗时间和主线程资源。
+      { type: 'blob', compression: 'STORE' },
       updatePackagingProgress
     )
     if (disposed) return
@@ -773,7 +808,7 @@ const recompress = async () => {
 /** 页面卸载时释放预览及结果地址，并阻止未完成任务回写和继续处理下一张。 */
 onBeforeUnmount(() => {
   disposed = true
-  compressionController.abort()
+  compressionController?.abort()
   for (const file of fileList.value) {
     if (file.previewUrl) revokeObjectURL(file.previewUrl)
     clearCompressedResult(file)
@@ -785,6 +820,8 @@ const route = useRoute()
 
 <style scoped>
 .image-compress-page { min-width: 0; container: image-compress / inline-size; }
+.image-settings-feedback { margin: 0 0 16px; padding: 12px; border: 1px solid var(--uied-color-primary-border); border-radius: 6px; background: var(--uied-color-primary-soft); color: var(--uied-color-text-secondary); font-size: 13px; line-height: 1.6; }
+.image-batch-progress .image-text-action { min-height: 44px; }
 .image-compress-page :deep(.standard-tool-header) { padding: 32px 32px 28px; text-align: center; border-color: var(--uied-color-border); }
 .image-compress-page :deep(.standard-tool-header h1) { font-size: 36px; font-weight: 700; letter-spacing: -.03em; }
 .image-compress-page :deep(.standard-tool-header__description) { margin: 16px auto 0; font-size: 14px; }

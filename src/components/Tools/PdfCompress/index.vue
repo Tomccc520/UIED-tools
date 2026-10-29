@@ -19,6 +19,8 @@ import UsageGuide from '@/components/Common/UsageGuide.vue'
 import MobileToolActions from '@/components/Common/MobileToolActions.vue'
 import { getPdfFileError, ensurePdfjsRuntime } from '@/utils/pdf'
 import { ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
+import { createPdfCompressionTask, type PdfCompressionTask } from './pdfCompressionTask'
+import { compressPdfStructure } from './pdfCompressionWorker'
 
 // 类型定义
 interface UploadFile {
@@ -33,25 +35,26 @@ interface UploadFile {
   startTime?: number;
   endTime?: number;
   logs?: string[];
+  errorMessage?: string;
 }
 
 interface ProcessedFile {
   blob: Blob;
   url: string;
   size: number;
+  fileName: string;
 }
 
 interface AdvancedConfig {
   dpi: number; // 72, 96, 150, 300
   imageQuality: number; // 0-100
   colorMode: 'color' | 'grayscale';
-  removeMetadata: boolean;
   filenamePattern: string;
 }
 
 const info = reactive({
   title: "PDF压缩",
-  subtitle: "在线压缩PDF文件大小，参考 PDF24 压缩算法，支持 DPI 与图片质量精细调节"
+  subtitle: "默认保留文字、链接与表单；扫描件可选择有损压缩，调节画质与文件大小。"
 })
 
 const route = useRoute()
@@ -59,6 +62,7 @@ const route = useRoute()
 // 状态管理
 const fileList = ref<UploadFile[]>([])
 const isProcessing = ref(false)
+const compressionMode = ref<'preserve' | 'scan'>('preserve')
 const isDragging = ref(false)
 const dataFileRef = ref()
 const processedFiles = ref<Map<string, ProcessedFile>>(new Map())
@@ -76,17 +80,27 @@ const mobileActionLabel = computed(() => {
   return successfulFiles.value.length === 1 ? '下载 PDF' : `下载全部 (${successfulFiles.value.length})`
 })
 let disposed = false
+let activeCompressionTask: PdfCompressionTask | null = null
+let compressionCancelled = false
+const compressionMessage = ref('')
+
+/** 停止当前文件，未开始的队列保留为待处理，已完成的文件仍可下载。 */
+const cancelCompression = () => {
+  if (!isProcessing.value || compressionCancelled) return
+  compressionCancelled = true
+  activeCompressionTask?.cancel()
+}
 
 const guideSteps = [
   { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，支持批量上传。' },
-  { title: '选择压缩模式', description: '根据需求选择低、中、高三种压缩质量，或自定义DPI和图片质量。' },
+  { title: '选择压缩模式', description: '默认保留文档文字、链接和表单；扫描件可选择有损压缩，调节分辨率和图片质量。' },
   { title: '开始压缩', description: '点击“开始压缩”按钮，系统将自动处理文件。' },
   { title: '下载文件', description: '压缩完成后，可预览效果并下载单个文件或打包下载所有文件。' }
 ]
 
 const guideNotes = [
-  '压缩效果取决于原文件内容，图片较多的PDF文件压缩效果最明显。',
-  '建议先尝试“中等质量”模式，如果体积仍过大可尝试“低质量”模式。'
+  '压缩效果取决于原文件内容；扫描件有损模式适合图片较多的 PDF。',
+  '默认模式不降低图片质量，已压缩的扫描件可能没有明显收益；需要更小体积时可选择扫描件压缩。'
 ]
 
 // 预设配置
@@ -98,7 +112,6 @@ const presets = {
       dpi: 144,
       imageQuality: 50,
       colorMode: 'color',
-      removeMetadata: true,
       filenamePattern: 'low_{name}'
     }
   },
@@ -109,7 +122,6 @@ const presets = {
       dpi: 150,
       imageQuality: 75,
       colorMode: 'color',
-      removeMetadata: true,
       filenamePattern: 'medium_{name}'
     }
   },
@@ -120,7 +132,6 @@ const presets = {
       dpi: 300,
       imageQuality: 90,
       colorMode: 'color',
-      removeMetadata: true,
       filenamePattern: 'high_{name}'
     }
   }
@@ -130,6 +141,25 @@ const currentPreset = ref<keyof typeof presets>('medium')
 
 // 当前配置（响应式，初始化为默认预设）
 const config = reactive<AdvancedConfig>({ ...presets.medium.config } as AdvancedConfig)
+
+/** 参数改变后撤销旧产物，恢复待处理状态，防止新设置与旧下载混淆。 */
+watch([config, compressionMode], () => {
+  if (isProcessing.value || disposed) return
+  let invalidated = false
+  for (const file of fileList.value) {
+    if (file.status !== 'success') continue
+    const result = processedFiles.value.get(file.uid)
+    if (result) URL.revokeObjectURL(result.url)
+    processedFiles.value.delete(file.uid)
+    file.status = 'ready'
+    file.progress = 0
+    invalidated = true
+  }
+  if (invalidated) {
+    previewDialogVisible.value = false
+    compressionMessage.value = '参数已修改，请重新压缩后下载。'
+  }
+}, { deep: true })
 
 type JsPdfImageCompression = 'NONE' | 'FAST' | 'MEDIUM' | 'SLOW'
 
@@ -283,8 +313,8 @@ watch([previewDialogVisible, previewFile, previewType, isMobileViewport], () => 
 const features = [
   {
     icon: 'Compress',
-    title: 'DPI 智能重绘',
-    desc: '基于 DPI (72-600) 的智能光栅化重绘技术，精准控制文件清晰度与体积的平衡'
+    title: '默认保留文档结构',
+    desc: '压缩对象和数据流，保留文字、链接与表单；扫描件另提供有损重绘模式'
   },
   {
     icon: 'Quality',
@@ -299,7 +329,7 @@ const features = [
   {
     icon: 'Lock',
     title: '安全隐私',
-    desc: '基于浏览器本地计算（WASM/JS），文件无需上传服务器，绝对保障文档安全'
+    desc: '文件只在当前浏览器中处理，无需上传服务器；完成后可下载和清空'
   }
 ]
 
@@ -307,15 +337,15 @@ const features = [
 const faqs = [
   {
     question: 'DPI 参数如何选择？',
-    answer: 'DPI 决定了文档的分辨率。72 DPI 适合屏幕阅读（体积较小）；150 DPI 适合办公文档（清晰度适中）；300 DPI 以上适合打印输出（清晰度较高）。此工具会重新绘制页面，并非无损压缩。'
+    answer: 'DPI 仅用于“扫描件压缩（有损）”，决定重新绘制页面的目标分辨率，实际尺寸还受大页面保护上限限制。默认“保留文档”模式不重绘页面，也不改变图片分辨率。'
   },
   {
     question: '灰度模式有什么用？',
     answer: '灰度模式会将文档中的彩色信息移除，转为黑白灰显示。对于合同、发票、书籍扫描件等不依赖颜色的文档，开启灰度模式可以显著减小文件体积。'
   },
   {
-    question: '为什么压缩后文本无法复制了？',
-    answer: '本工具采用类似于“虚拟打印”的技术（光栅化），将 PDF 页面重新绘制为高压缩率的图片。这能最大程度减小体积，但副作用是文本会变为图像内容。'
+    question: '压缩后文字和表单还在吗？',
+    answer: '默认“保留文档”模式保留文字、链接和表单。只有主动选择“扫描件压缩”时才会将页面转为图片，文字不可复制或搜索，表单和链接不再交互。两种模式体积不降时都会保留原文件。'
   }
 ]
 
@@ -354,9 +384,10 @@ const normalizeJpegQuality = (quality: number) => {
 const getAdaptiveScale = (
   viewport: { width: number; height: number },
   baseScale: number,
-  pageCount: number
+  pageCount: number,
+  preset: keyof typeof presets
 ) => {
-  const presetLimit = PRESET_MAX_RENDER_LONG_EDGE[currentPreset.value]
+  const presetLimit = PRESET_MAX_RENDER_LONG_EDGE[preset]
   const longEdge = Math.max(viewport.width, viewport.height)
 
   // 页数越多，适度降低上限，减少超大文档内存压力
@@ -374,8 +405,8 @@ const getAdaptiveScale = (
  * @description 传递给 jsPDF.addImage 的压缩参数
  * @returns 压缩档位
  */
-const getCurrentJpegCompression = (): JsPdfImageCompression => {
-  return PRESET_JPEG_COMPRESSION_LEVEL[currentPreset.value]
+const getCurrentJpegCompression = (preset: keyof typeof presets): JsPdfImageCompression => {
+  return PRESET_JPEG_COMPRESSION_LEVEL[preset]
 }
 
 /**
@@ -436,7 +467,7 @@ const handleChange = async (uploadFile: any, _uploadFiles: any[]) => {
  * @param uid 外部传入的唯一标识
  */
 const addFileToQueue = async (file: File, uid?: string) => {
-  if (disposed || isProcessing.value) return
+  if (disposed || isProcessing.value || isDownloadingAll.value) return
   if (!validateFile(file)) {
     return
   }
@@ -492,7 +523,7 @@ const handleDrop = (e: DragEvent) => {
 
 /** 删除队列项，同时释放源文件与处理结果地址，处理中禁止删除。 */
 const handleRemove = (file: UploadFile) => {
-  if (isProcessing.value) return
+  if (isProcessing.value || isDownloadingAll.value) return
   const index = fileList.value.findIndex(item => item.uid === file.uid)
   if (index !== -1) {
     const processed = processedFiles.value.get(file.uid)
@@ -518,36 +549,55 @@ const validateFile = (file: File): boolean => {
 /**
  * 核心压缩逻辑
  */
-const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
+const compressFile = async (file: UploadFile, snapshot: AdvancedConfig, preset: keyof typeof presets, mode: 'preserve' | 'scan', task: PdfCompressionTask): Promise<ProcessedFile> => {
   file.startTime = Date.now()
   file.logs = []
   file.logs.push(`[${new Date().toLocaleTimeString()}] 开始处理文件: ${file.name}`)
   file.progress = 10
 
   const rawFile = file.raw!
-  const arrayBuffer = await rawFile.arrayBuffer()
-  const pdfjsLib = await ensurePdfjsRuntime()
+  if (mode === 'preserve') {
+    file.logs.push('策略: 结构压缩，保留文字、链接、表单和原始图片编码')
+    file.progress = 20
+    const output = await task.wait(compressPdfStructure(rawFile, task.signal))
+    task.assertActive()
+    const keepOriginal = output.size >= file.size
+    const blob = keepOriginal ? rawFile : output
+    file.progress = 100
+    file.endTime = Date.now()
+    file.logs.push(keepOriginal ? '结构优化没有减少体积，保留原文件' : `结构压缩完成，耗时 ${((file.endTime - file.startTime!) / 1000).toFixed(1)}s`)
+    return { blob, url: URL.createObjectURL(blob), size: blob.size, fileName: keepOriginal ? file.name : getOutputFilename(file.name, 'compressed_{name}') }
+  }
+  const arrayBuffer = await task.wait(rawFile.arrayBuffer())
+  const pdfjsLib = await task.wait(ensurePdfjsRuntime())
 
   // 72 DPI 为 PDF 基础分辨率，最终缩放比由 DPI 和自适应策略共同决定
-  const baseScaleFactor = config.dpi / 72
-  const jpegQuality = normalizeJpegQuality(config.imageQuality)
-  const jpegCompression = getCurrentJpegCompression()
+  const baseScaleFactor = snapshot.dpi / 72
+  const jpegQuality = normalizeJpegQuality(snapshot.imageQuality)
+  const jpegCompression = getCurrentJpegCompression(preset)
 
   file.logs.push(
-    `策略: DPI 光栅化 + 自适应缩放 (DPI: ${config.dpi}, Quality: ${(jpegQuality * 100).toFixed(0)}%, JPEG: ${jpegCompression})`
+    `策略: DPI 光栅化 + 自适应缩放 (DPI: ${snapshot.dpi}, Quality: ${(jpegQuality * 100).toFixed(0)}%, JPEG: ${jpegCompression})`
   )
 
   const loadingTask = pdfjsLib.getDocument({
     data: arrayBuffer,
     useSystemFonts: true
   } as any)
+  let activeRender: import('pdfjs-dist').RenderTask | null = null
+  /** 中断 PDF.js 当前绘制和解析，避免取消后仍占用资源。 */
+  const stopPdfTask = () => {
+    activeRender?.cancel()
+    void loadingTask.destroy().catch(() => undefined)
+  }
+  task.signal.addEventListener('abort', stopPdfTask, { once: true })
   try {
-    const pdf = await loadingTask.promise
+    const pdf = await task.wait(loadingTask.promise)
     const totalPages = pdf.numPages
 
-    const firstPage = await pdf.getPage(1)
+    const firstPage = await task.wait(pdf.getPage(1))
     const firstViewport = firstPage.getViewport({ scale: 1.0 })
-    const { jsPDF } = await ensureJsPdfRuntime()
+    const { jsPDF } = await task.wait(ensureJsPdfRuntime())
 
     const doc = new jsPDF({
       orientation: firstViewport.width > firstViewport.height ? 'l' : 'p',
@@ -558,24 +608,16 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
       precision: 2
     })
 
-    // 可选移除元数据，降低信息暴露并减少少量冗余字节
-    if (config.removeMetadata) {
-      doc.setProperties({
-        title: '',
-        subject: '',
-        author: '',
-        keywords: '',
-        creator: ''
-      })
-    }
+    // 扫描件模式重新生成页面，不复制源文档的元数据。
+    doc.setProperties({ title: '', subject: '', author: '', keywords: '', creator: '' })
 
     for (let i = 1; i <= totalPages; i++) {
-      if (disposed) throw new Error('处理已取消')
+      task.assertActive()
       file.progress = 10 + Math.floor((i / totalPages) * 80)
 
-      const page = await pdf.getPage(i)
+      const page = await task.wait(pdf.getPage(i))
       const originalViewport = page.getViewport({ scale: 1.0 })
-      const adaptiveScale = getAdaptiveScale(originalViewport, baseScaleFactor, totalPages)
+      const adaptiveScale = getAdaptiveScale(originalViewport, baseScaleFactor, totalPages, preset)
       const viewport = page.getViewport({ scale: adaptiveScale })
 
       if (adaptiveScale < baseScaleFactor && (i === 1 || i % 10 === 0)) {
@@ -594,11 +636,14 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
       }
 
       // 灰度模式下直接在渲染阶段应用滤镜
-      if (config.colorMode === 'grayscale') {
+      if (snapshot.colorMode === 'grayscale') {
         ctx.filter = 'grayscale(100%)'
       }
 
-      await page.render({ canvasContext: ctx, viewport }).promise
+      activeRender = page.render({ canvasContext: ctx, viewport })
+      await task.wait(activeRender.promise)
+      activeRender = null
+      task.assertActive()
 
       const imgData = canvas.toDataURL('image/jpeg', jpegQuality)
 
@@ -628,7 +673,7 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
 
       // 每处理数页让出主线程，缓解长文档卡顿
       if (i % 6 === 0) {
-        await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+        await task.wait(new Promise<void>(resolve => window.setTimeout(resolve, 0)))
       }
     }
 
@@ -636,7 +681,7 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
     file.endTime = Date.now()
     file.logs.push(`处理完成，耗时 ${((file.endTime - file.startTime!) / 1000).toFixed(1)}s`)
 
-    if (disposed) throw new Error('处理已取消')
+    task.assertActive()
     // 体积检查
     if (blob.size >= file.size) {
       file.logs.push('警告: 压缩后体积未减小，回退至原文件')
@@ -645,105 +690,98 @@ const compressFile = async (file: UploadFile): Promise<ProcessedFile> => {
       return {
         blob: file.raw!,
         url: URL.createObjectURL(file.raw!),
-        size: file.size
+        size: file.size,
+        fileName: file.name
       }
     }
 
     file.progress = 100
-    return { blob, url: URL.createObjectURL(blob), size: blob.size }
+    return { blob, url: URL.createObjectURL(blob), size: blob.size, fileName: getOutputFilename(file.name, snapshot.filenamePattern) }
   } finally {
-    await loadingTask.destroy().catch(() => undefined)
+    task.signal.removeEventListener('abort', stopPdfTask)
+    if (!task.signal.aborted) void loadingTask.destroy().catch(() => undefined)
   }
 }
 
 /**
  * 批量压缩
  */
-const compressPDF = async () => {
-  if (isProcessing.value || disposed) return
+const compressPDF = async (selectedFiles = pendingFiles.value) => {
+  if (isProcessing.value || isDownloadingAll.value || disposed) return
   if (fileList.value.length === 0) {
     ElMessage.warning('请先上传PDF文件')
     return
   }
-
-  isProcessing.value = true
-  const filesToProcess = fileList.value.filter(f => f.status === 'ready' || f.status === 'error')
-
-  if (filesToProcess.length === 0) {
-    ElMessage.warning('没有待处理的文件')
-    isProcessing.value = false
+  const filesToProcess = [...selectedFiles]
+  if (!filesToProcess.length) {
+    ElMessage.warning('没有待处理的文件，修改参数后可重新压缩')
     return
   }
-
-  filesToProcess.forEach(f => {
-    f.status = 'processing'
-    f.progress = 0
-  })
-
-  let failedCount = 0
-  for (const file of filesToProcess) {
-    if (disposed) break
-    try {
-      const result = await compressFile(file)
-      if (disposed) { URL.revokeObjectURL(result.url); break }
-      processedFiles.value.set(file.uid, result)
-      file.status = 'success'
-    } catch (error) {
-      if (disposed) break
-      failedCount += 1
-      console.error('[pdf-compress] 文档压缩失败')
-      file.status = 'error'
-      file.progress = 0
-      file.logs?.push('压缩失败，请确认文件未损坏且没有打开密码后重试')
-      ElMessage.error(`文件 ${file.name} 压缩失败`)
-    }
-  }
-
-  isProcessing.value = false
-  if (!disposed) {
-    if (failedCount === 0) ElMessage.success('处理完成')
-    else ElMessage.warning(`${filesToProcess.length - failedCount} 个文件处理成功，${failedCount} 个文件失败，请重试`)
-  }
-}
-
-/**
- * 重新压缩
- */
-const recompressFile = async (file: UploadFile) => {
-  if (isProcessing.value || disposed) return
+  const snapshot: AdvancedConfig = { ...config }
+  const preset = currentPreset.value
+  const mode = compressionMode.value
+  compressionCancelled = false
+  compressionMessage.value = ''
   isProcessing.value = true
-  const previousResult = processedFiles.value.get(file.uid)
-  if (previousResult) URL.revokeObjectURL(previousResult.url)
-
-  file.status = 'processing'
-  file.progress = 0
-  processedFiles.value.delete(file.uid)
-
+  filesToProcess.forEach(file => { file.status = 'ready'; file.progress = 0; file.errorMessage = '' })
+  let failedCount = 0
   try {
-    const result = await compressFile(file)
-    if (disposed) { URL.revokeObjectURL(result.url); return }
-    processedFiles.value.set(file.uid, result)
-    file.status = 'success'
-    if (!disposed) ElMessage.success(`文件 ${file.name} 重新压缩完成`)
-  } catch (error) {
-    if (disposed) return
-    console.error('[pdf-compress] 文档重新压缩失败')
-    file.status = 'error'
-    file.progress = 0
-    ElMessage.error(`文件 ${file.name} 重新压缩失败`)
+    for (const file of filesToProcess) {
+      if (disposed || compressionCancelled) break
+      file.status = 'processing'
+      const task = createPdfCompressionTask()
+      activeCompressionTask = task
+      try {
+        const result = await compressFile(file, snapshot, preset, mode, task)
+        if (disposed || compressionCancelled) { URL.revokeObjectURL(result.url); break }
+        const previous = processedFiles.value.get(file.uid)
+        if (previous) URL.revokeObjectURL(previous.url)
+        processedFiles.value.set(file.uid, result)
+        file.status = 'success'
+      } catch (error) {
+        if (disposed || compressionCancelled) break
+        failedCount += 1
+        console.error('[pdf-compress] 文档压缩失败')
+        file.status = 'error'
+        file.progress = 0
+        file.errorMessage = task.signal.reason === 'timeout'
+          ? 'PDF 压缩超时，请降低分辨率或拆分文件后重试'
+          : '压缩失败，请确认文件未损坏且没有打开密码后重试'
+        file.logs?.push(file.errorMessage)
+        ElMessage.error(`文件 ${file.name} ${file.errorMessage}`)
+      } finally {
+        task.dispose()
+        if (activeCompressionTask === task) activeCompressionTask = null
+      }
+    }
   } finally {
+    filesToProcess.filter(file => file.status === 'processing').forEach(file => { file.status = 'ready'; file.progress = 0 })
     isProcessing.value = false
   }
+  if (disposed) return
+  if (compressionCancelled) compressionMessage.value = '已取消压缩，未完成的文件可继续处理。'
+  else if (failedCount === 0) ElMessage.success('处理完成')
+  else ElMessage.warning(`${filesToProcess.length - failedCount} 个文件处理成功，${failedCount} 个文件失败，请重试`)
+}
+
+/** 单文件重新压缩复用批量任务，统一取消、参数快照、失败和资源释放。 */
+const recompressFile = async (file: UploadFile) => {
+  if (isProcessing.value || isDownloadingAll.value || disposed) return
+  const previous = processedFiles.value.get(file.uid)
+  if (previous) URL.revokeObjectURL(previous.url)
+  processedFiles.value.delete(file.uid)
+  file.status = 'ready'
+  await compressPDF([file])
 }
 
 /**
  * 获取输出文件名
  */
-const getOutputFilename = (originalName: string) => {
+const getOutputFilename = (originalName: string, filenamePattern = config.filenamePattern) => {
   const nameWithoutExt = originalName.replace(/\.pdf$/i, '')
   const date = new Date().toISOString().split('T')[0]
 
-  let pattern = config.filenamePattern || 'compressed_{name}'
+  let pattern = filenamePattern || 'compressed_{name}'
   let finalName = pattern
     .replace('{name}', nameWithoutExt)
     .replace('{date}', date)
@@ -763,7 +801,7 @@ const downloadFile = (file: UploadFile) => {
 
   const link = document.createElement('a')
   link.href = processed.url
-  link.download = getOutputFilename(file.name)
+  link.download = processed.fileName
   document.body.appendChild(link)
   link.click()
   document.body.removeChild(link)
@@ -788,7 +826,7 @@ const downloadAllFiles = async () => {
   successFiles.forEach((file, index) => {
     const processed = processedFiles.value.get(file.uid)
     if (processed && folder) {
-      const originalName = getOutputFilename(file.name)
+      const originalName = processed.fileName
       let filename = originalName
       let suffix = index + 1
       while (usedNames.has(filename)) filename = `${suffix++}_${originalName}`
@@ -798,6 +836,7 @@ const downloadAllFiles = async () => {
   })
 
   const content = await zip.generateAsync({ type: 'blob' })
+  if (disposed) return
   const link = document.createElement('a')
   const zipUrl = URL.createObjectURL(content)
   link.href = zipUrl
@@ -810,11 +849,12 @@ const downloadAllFiles = async () => {
 
 /** 复用原打包下载流程，提供防重复触发和可恢复的失败反馈。 */
 const downloadAllWithFeedback = async () => {
-  if (isDownloadingAll.value || isProcessing.value) return
+  if (disposed || isDownloadingAll.value || isProcessing.value) return
   isDownloadingAll.value = true
   try {
     await downloadAllFiles()
   } catch {
+    if (disposed) return
     console.error('[pdf-compress] 文件打包失败')
     ElMessage.error('下载文件准备失败，请重试')
   } finally {
@@ -830,6 +870,9 @@ const handleMobileAction = async () => {
 
 /** 释放本页队列及输出文件的 Blob 地址。 */
 const clearAll = () => {
+  if (!disposed && (isProcessing.value || isDownloadingAll.value)) return
+  previewDialogVisible.value = false
+  compressionMessage.value = ''
   fileList.value.forEach(f => {
     if (f.url) URL.revokeObjectURL(f.url)
   })
@@ -889,6 +932,8 @@ const showLogs = (file: UploadFile) => {
 /** 离开页面后停止后续处理并释放已生成的文件地址。 */
 onUnmounted(() => {
   disposed = true
+  compressionCancelled = true
+  activeCompressionTask?.cancel()
   releaseMobilePreview()
   clearAll()
 })
@@ -910,7 +955,7 @@ onUnmounted(() => {
           :data-has-files="fileList.length > 0"
           :class="isDragging ? 'border-brand bg-brand-soft scale-[1.02]' : 'border-gray-200 hover:border-brand hover:bg-gray-50'"
           @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
-          <el-upload :disabled="isProcessing" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
+          <el-upload :disabled="isProcessing || isDownloadingAll" class="upload-area w-full h-full absolute inset-0" ref="dataFileRef"
             accept="application/pdf" :auto-upload="false" :on-change="handleChange" :show-file-list="false" multiple
             drag>
             <div class="flex flex-col items-center justify-center h-full py-10 pdf-compress-upload-content">
@@ -930,8 +975,9 @@ onUnmounted(() => {
         </div>
 
         <aside v-if="fileList.length > 0" class="pdf-raster-notice" role="note" aria-label="PDF 压缩方式说明">
-          <strong>压缩前请注意</strong>
-          <p>此方式会把页面转为图片，文字将无法选中、复制或搜索，表单、超链接等交互信息也不会保留。请保留原文件，下载后先检查内容。</p>
+          <strong>{{ compressionMode === 'preserve' ? '保留文档结构' : '扫描件压缩前请注意' }}</strong>
+          <p v-if="compressionMode === 'preserve'">默认保留文字、链接和表单，不降低图片质量。体积没有减少时保留原文件；扫描件可改用有损压缩。</p>
+          <p v-else>此方式会把页面转为图片，文字将无法选中、复制或搜索，表单、超链接等交互信息也不会保留。请保留原文件，下载后先检查内容。</p>
         </aside>
 
         <!-- 手机默认只展示参数摘要，重要压缩影响始终放在折叠区外。 -->
@@ -939,16 +985,23 @@ onUnmounted(() => {
           class="mt-8 bg-gray-50 rounded-xl p-6 border border-gray-100 pdf-settings-panel pdf-compress-parameters">
           <summary class="pdf-compress-settings-summary">
             <span>压缩参数</span>
-            <span>{{ presets[currentPreset].name }} · 图片质量 {{ config.imageQuality }}%</span>
+            <span>{{ compressionMode === 'preserve' ? '保留文字、链接和表单' : `${presets[currentPreset].name} · 图片质量 ${config.imageQuality}%` }}</span>
           </summary>
           <div class="flex flex-col gap-6">
 
+            <div role="group" aria-label="PDF 压缩方式" class="flex flex-wrap gap-2">
+              <button type="button" :aria-pressed="compressionMode === 'preserve'" :disabled="isProcessing || isDownloadingAll"
+                @click="compressionMode = 'preserve'" class="px-4 py-2 rounded-lg border" :class="compressionMode === 'preserve' ? 'border-brand bg-brand-soft text-brand' : 'border-gray-200'">保留文档（推荐）</button>
+              <button type="button" :aria-pressed="compressionMode === 'scan'" :disabled="isProcessing || isDownloadingAll"
+                @click="compressionMode = 'scan'" class="px-4 py-2 rounded-lg border" :class="compressionMode === 'scan' ? 'border-brand bg-brand-soft text-brand' : 'border-gray-200'">扫描件压缩（有损）</button>
+            </div>
+            <template v-if="compressionMode === 'scan'">
             <!-- 预设选择 -->
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div class="flex flex-wrap items-center gap-2 min-w-0">
                 <span class="text-sm font-bold text-gray-700">压缩模式：</span>
                 <div class="flex flex-wrap bg-gray-100 rounded-lg p-1">
-                  <button v-for="(preset, key) in presets" :key="key" @click="currentPreset = key" :disabled="isProcessing"
+                  <button v-for="(preset, key) in presets" :key="key" @click="currentPreset = key" :disabled="isProcessing || isDownloadingAll"
                     class="px-4 py-1.5 rounded-md text-sm font-medium transition-all"
                     :class="currentPreset === key ? 'bg-white text-brand' : 'text-gray-500 hover:text-gray-700'">
                     {{ preset.name }}
@@ -968,8 +1021,8 @@ onUnmounted(() => {
                   DPI (分辨率)
                   <span class="text-brand">{{ config.dpi }}</span>
                 </label>
-                <el-input-number :disabled="isProcessing" v-model="config.dpi" :min="72" :max="600" :step="10" class="w-full" />
-                <p class="text-xs text-gray-400">屏幕72，Web 150，打印300+</p>
+                <el-input-number :disabled="isProcessing || isDownloadingAll" v-model="config.dpi" :min="72" :max="600" :step="10" class="w-full" />
+                <p class="text-xs text-gray-400">DPI 为目标值；页面过大或页数较多时会限制实际渲染尺寸。</p>
               </div>
 
               <!-- 图片质量 -->
@@ -978,14 +1031,14 @@ onUnmounted(() => {
                   图片质量
                   <span class="text-brand">{{ config.imageQuality }}%</span>
                 </label>
-                <el-slider :disabled="isProcessing" v-model="config.imageQuality" :min="10" :max="100" :step="5" />
+                <el-slider :disabled="isProcessing || isDownloadingAll" v-model="config.imageQuality" :min="10" :max="100" :step="5" />
                 <p class="text-xs text-gray-400">数值越低体积越小，建议 50-85</p>
               </div>
 
               <!-- 颜色模式 -->
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700">颜色模式</label>
-                <el-select :disabled="isProcessing" v-model="config.colorMode" class="w-full">
+                <el-select :disabled="isProcessing || isDownloadingAll" v-model="config.colorMode" class="w-full">
                   <el-option label="彩色 (Color)" value="color" />
                   <el-option label="灰度 (Grayscale)" value="grayscale" />
                 </el-select>
@@ -995,28 +1048,30 @@ onUnmounted(() => {
               <!-- 文件命名 -->
               <div class="space-y-2">
                 <label class="text-sm font-medium text-gray-700">输出文件名规则</label>
-                <el-input :disabled="isProcessing" v-model="config.filenamePattern" placeholder="例如: compressed_{name}" />
+                <el-input :disabled="isProcessing || isDownloadingAll" v-model="config.filenamePattern" placeholder="例如: compressed_{name}" />
                 <p class="text-xs text-gray-400">支持变量: {name}, {date}</p>
               </div>
 
               <!-- 元数据处理 -->
               <div class="space-y-2">
-                <label class="text-sm font-medium text-gray-700">移除元数据</label>
+                <label class="text-sm font-medium text-gray-700">文档属性</label>
                 <div class="h-[32px] flex items-center">
-                  <el-switch :disabled="isProcessing" v-model="config.removeMetadata" />
+                  <span class="text-sm text-gray-500">扫描件模式重新生成文档，不保留原元数据</span>
                 </div>
-                <p class="text-xs text-gray-400">开启后将清空作者、主题等文档属性</p>
+                <p class="text-xs text-gray-400">需要保留原属性时请选择“保留文档”模式。</p>
               </div>
             </div>
             </details>
+            </template>
 
             <!-- 操作按钮 -->
             <div class="flex gap-4 justify-end border-t border-gray-100 pt-4 pdf-actions">
-              <button @click="clearAll" :disabled="isProcessing"
+              <button @click="clearAll" :disabled="isProcessing || isDownloadingAll"
                 class="px-6 py-2.5 rounded-lg text-gray-600 hover:text-red-600 hover:bg-red-50 font-medium transition-colors disabled:opacity-50">
                 清空列表
               </button>
-              <button @click="compressPDF" :disabled="isProcessing"
+              <button v-if="isProcessing" type="button" @click="cancelCompression" class="px-6 py-2.5 rounded-lg border border-gray-300">取消压缩</button>
+              <button @click="compressPDF()" :disabled="isProcessing || isDownloadingAll || !pendingFiles.length"
                 class="px-8 py-2.5 bg-brand hover:bg-brand-hover text-white rounded-lg font-medium transition-all flex items-center disabled:opacity-60 disabled:cursor-not-allowed pdf-compress-inline-start">
                 <svg v-if="isProcessing" class="animate-spin -ml-1 mr-2 h-5 w-5 text-white" fill="none"
                   viewBox="0 0 24 24">
@@ -1030,6 +1085,8 @@ onUnmounted(() => {
             </div>
           </div>
         </details>
+
+        <p v-if="compressionMessage" class="mt-4 text-sm text-gray-600" role="status">{{ compressionMessage }}</p>
 
         <!-- 文件列表 -->
         <div v-if="fileList.length > 0" class="mt-6 space-y-4">
@@ -1093,11 +1150,15 @@ onUnmounted(() => {
                 </div>
               </div>
 
+              <p v-if="file.errorMessage" class="mb-2 text-xs text-red-600" role="alert">{{ file.errorMessage }}</p>
               <!-- 进度条 -->
-              <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+              <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden" role="progressbar"
+                :aria-label="`${file.name} 压缩进度`" aria-valuemin="0" aria-valuemax="100"
+                :aria-valuenow="file.status === 'processing' && compressionMode === 'preserve' ? undefined : file.progress"
+                :aria-valuetext="file.status === 'processing' && compressionMode === 'preserve' ? '正在优化文档结构，暂无法估算百分比' : undefined">
                 <div class="h-full bg-brand transition-all duration-300 rounded-full"
-                  :style="{ width: `${file.progress}%` }"
-                  :class="{ 'bg-green-500': file.status === 'success', 'bg-red-500': file.status === 'error' }"></div>
+                  :style="{ width: file.status === 'processing' && compressionMode === 'preserve' ? '40%' : `${file.progress}%` }"
+                  :class="{ 'bg-green-500': file.status === 'success', 'bg-red-500': file.status === 'error', 'pdf-structure-progress': file.status === 'processing' && compressionMode === 'preserve' }"></div>
               </div>
             </div>
 
@@ -1116,7 +1177,7 @@ onUnmounted(() => {
                 </svg>
                 <span class="pdf-compress-action-label">预览</span>
               </button>
-              <button v-if="file.status === 'success'" @click="recompressFile(file)" :disabled="isProcessing"
+              <button v-if="file.status === 'success'" @click="recompressFile(file)" :disabled="isProcessing || isDownloadingAll"
                 :aria-label="`重新压缩 ${file.name}`"
                 class="p-2 text-gray-500 hover:text-brand hover:bg-brand-soft rounded-lg transition-colors"
                 title="重新压缩">
@@ -1136,7 +1197,7 @@ onUnmounted(() => {
                 </svg>
                 <span class="pdf-compress-action-label">下载</span>
               </button>
-              <button @click="handleRemove(file)" :disabled="isProcessing"
+              <button @click="handleRemove(file)" :disabled="isProcessing || isDownloadingAll"
                 :aria-label="`移除 ${file.name}`"
                 class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="删除">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1226,9 +1287,10 @@ onUnmounted(() => {
     <!-- 预览对话框 -->
     <MobileToolActions v-if="fileList.length > 0"
       :title="isProcessing ? '正在压缩 PDF' : `已选择 ${fileList.length} 个 PDF`"
-      :description="pendingFiles.length ? '页面将转为图片，文字不可复制或搜索' : `已完成 ${successfulFiles.length} 个文件`"
+      :description="pendingFiles.length ? (compressionMode === 'preserve' ? '保留文字、链接和表单' : '页面将转为图片，文字不可复制或搜索') : `已完成 ${successfulFiles.length} 个文件`"
       :action-label="mobileActionLabel"
       :busy="isProcessing || isDownloadingAll"
+      :cancel-label="isProcessing ? '取消' : ''" @cancel="cancelCompression"
       :disabled="!pendingFiles.length && !successfulFiles.length"
       :hidden="previewDialogVisible"
       aria-label="PDF 压缩操作" @action="handleMobileAction" />
@@ -1393,6 +1455,10 @@ onUnmounted(() => {
 .hide-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+.pdf-structure-progress { animation: pdf-progress-slide 1.5s ease-in-out infinite alternate; }
+@keyframes pdf-progress-slide { from { transform: translateX(0); } to { transform: translateX(150%); } }
+@media (prefers-reduced-motion: reduce) { .pdf-structure-progress { animation: none; } }
 
 .hide-scrollbar {
   -ms-overflow-style: none;

@@ -5,6 +5,7 @@
  * @createDate 2026-10-19
  */
 import Compressor from 'compressorjs'
+import { getStaticImageAnimationError } from './browserImageCompressionFormat'
 
 export interface BrowserImageCompressionOptions {
   quality: number
@@ -12,7 +13,7 @@ export interface BrowserImageCompressionOptions {
   signal?: AbortSignal
 }
 
-type BrowserImageCompressionErrorCode = 'unsupported' | 'decode' | 'timeout' | 'aborted' | 'invalid-options'
+type BrowserImageCompressionErrorCode = 'unsupported' | 'decode' | 'timeout' | 'aborted' | 'invalid-options' | 'animated'
 type BrowserImageMimeType = 'image/jpeg' | 'image/webp'
 
 export class BrowserImageCompressionError extends Error {
@@ -60,11 +61,18 @@ export function compressBrowserImage(
     let settled = false
     let abortRequested = false
     let timeout: ReturnType<typeof setTimeout> | undefined
+    let headerReader: FileReader | undefined
 
     /** 清除当前任务的超时与取消监听，避免批量任务累积监听或处理已完成的图片。 */
     const cleanup = () => {
       if (timeout !== undefined) clearTimeout(timeout)
       signal?.removeEventListener('abort', handleAbort)
+      if (headerReader) {
+        headerReader.onload = null
+        headerReader.onerror = null
+        headerReader.onabort = null
+        if (headerReader.readyState === 1) headerReader.abort()
+      }
     }
 
     /** 中止底层读取/编码；构造函数同步回调期间尚无实例时延后执行。 */
@@ -97,36 +105,62 @@ export function compressBrowserImage(
     }, COMPRESSION_TIMEOUT_MS)
     signal?.addEventListener('abort', handleAbort, { once: true })
 
+    /** 动画检查通过后再创建编码器，不能把 WebP 的第一帧当作完整压缩结果。 */
+    const startCompression = () => {
+      if (settled) return
+      try {
+        compressor = new Compressor(source, {
+          strict: true,
+          quality,
+          mimeType,
+          convertSize: Infinity,
+          ...(preserveDimensions ? {} : { maxWidth: RESIZED_MAX_EDGE, maxHeight: RESIZED_MAX_EDGE }),
+          /** 验证格式与文件非空，拒绝浏览器不支持目标格式时产生的 PNG 回退。 */
+          success(result) {
+            if (settled) return
+            if (!result || result.size === 0) {
+              fail(new BrowserImageCompressionError('decode', '压缩失败，未生成有效图片，请重试或更换图片'))
+              return
+            }
+            if (result.type !== mimeType) {
+              fail(new BrowserImageCompressionError('unsupported', `当前浏览器不支持导出 ${formatLabel}，请更换浏览器后重试`))
+              return
+            }
+            settled = true
+            cleanup()
+            resolve(result)
+          },
+          /** 将底层读取/解码错误转换为中文反馈，避免向用户暴露内部错误信息。 */
+          error() {
+            fail(new BrowserImageCompressionError('decode', '压缩失败，图片可能已损坏，请移除后重新选择或重试'))
+          }
+        })
+        if (abortRequested) abortCompressor()
+      } catch {
+        fail(new BrowserImageCompressionError('decode', '压缩失败，图片可能已损坏或浏览器无法处理，请重试'))
+      }
+    }
+
+    if (mimeType !== 'image/webp' || file.size < 30) {
+      startCompression()
+      return
+    }
     try {
-      compressor = new Compressor(source, {
-        strict: true,
-        quality,
-        mimeType,
-        convertSize: Infinity,
-        ...(preserveDimensions ? {} : { maxWidth: RESIZED_MAX_EDGE, maxHeight: RESIZED_MAX_EDGE }),
-        /** 验证格式与文件非空，拒绝浏览器不支持目标格式时产生的 PNG 回退。 */
-        success(result) {
-          if (settled) return
-          if (!result || result.size === 0) {
-            fail(new BrowserImageCompressionError('decode', '压缩失败，未生成有效图片，请重试或更换图片'))
-            return
-          }
-          if (result.type !== mimeType) {
-            fail(new BrowserImageCompressionError('unsupported', `当前浏览器不支持导出 ${formatLabel}，请更换浏览器后重试`))
-            return
-          }
-          settled = true
-          cleanup()
-          resolve(result)
-        },
-        /** 将底层读取/解码错误转换为中文反馈，避免向用户暴露内部错误信息。 */
-        error() {
-          fail(new BrowserImageCompressionError('decode', '压缩失败，图片可能已损坏，请移除后重新选择或重试'))
+      headerReader = new FileReader()
+      headerReader.onload = () => {
+        if (settled) return
+        if (!(headerReader?.result instanceof ArrayBuffer)) {
+          fail(new BrowserImageCompressionError('decode', '图片头部读取失败，请重新选择后重试'))
+          return
         }
-      })
-      if (abortRequested) abortCompressor()
+        const message = getStaticImageAnimationError(headerReader.result, mimeType)
+        if (message) fail(new BrowserImageCompressionError('animated', message))
+        else startCompression()
+      }
+      headerReader.onerror = () => fail(new BrowserImageCompressionError('decode', '图片头部读取失败，请重新选择后重试'))
+      headerReader.readAsArrayBuffer(file.slice(0, 30))
     } catch {
-      fail(new BrowserImageCompressionError('decode', '压缩失败，图片可能已损坏或浏览器无法处理，请重试'))
+      fail(new BrowserImageCompressionError('decode', '图片头部读取失败，请重新选择后重试'))
     }
   })
 }

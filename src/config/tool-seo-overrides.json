@@ -22,10 +22,10 @@
     "keywords": "GIF压缩,动图压缩,在线GIF压缩,GIF尺寸调整,GIF帧率,GIF减色"
   },
   "/tools/pdf-compress": {
-    "legacyDescriptions": ["在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传"],
+    "legacyDescriptions": ["在线压缩PDF文件大小，支持批量处理，本地压缩更安全，适合邮件发送和文件上传", "在浏览器本地批量压缩 PDF，可调整 DPI、图片质量和色彩模式，预览后单个或打包下载。采用页面栅格化方式，文字搜索、复制和表单交互不会保留，请保留原文件。"],
     "title": "免费在线 PDF 压缩工具",
-    "description": "在浏览器本地批量压缩 PDF，可调整 DPI、图片质量和色彩模式，预览后单个或打包下载。采用页面栅格化方式，文字搜索、复制和表单交互不会保留，请保留原文件。",
-    "keywords": "PDF压缩,批量PDF压缩,PDF体积优化,PDF图片质量,PDF栅格化,在线PDF工具"
+    "description": "在浏览器本地批量压缩 PDF，默认保留文字、链接与表单；扫描件另提供有损压缩，可调整分辨率和图片质量，预览后单个或打包下载。体积未减少时保留原文件。",
+    "keywords": "PDF压缩,批量PDF压缩,PDF无损压缩,PDF体积优化,扫描件压缩,在线PDF工具"
   },
   "/tools/video/compress": {
     "legacyDescriptions": ["在线压缩 MP4、AVI、MOV、MKV 等视频格式，在不改变分辨率前提下减小体积"],

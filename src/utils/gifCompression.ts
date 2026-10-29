@@ -33,6 +33,30 @@ export const GIF_ENCODING_TIMEOUT_MS = 120_000
 const MAX_GIF_DELAY_MS = 655_350
 
 /**
+ * 按 RGB 均匀量化生成确定色板，交给编码器索引和抖动，避免再次训练色板突破颜色上限。
+ * @param maxColors 目标颜色数，支持 8 至 256，非二次幂向下取整
+ * @returns 扁平 RGB 色板，每个颜色占三个元素
+ */
+export const createGifUniformPalette = (maxColors: number): number[] => {
+  const safeColors = Number.isFinite(maxColors) ? Math.min(256, Math.max(8, Math.floor(maxColors))) : 256
+  const totalBits = Math.floor(Math.log2(safeColors))
+  const baseBits = Math.floor(totalBits / 3)
+  const remainder = totalBits % 3
+  const redLevels = (1 << (baseBits + (remainder > 0 ? 1 : 0))) - 1
+  const greenLevels = (1 << (baseBits + (remainder > 1 ? 1 : 0))) - 1
+  const blueLevels = (1 << baseBits) - 1
+  const palette: number[] = []
+  for (let red = 0; red <= redLevels; red++) {
+    for (let green = 0; green <= greenLevels; green++) {
+      for (let blue = 0; blue <= blueLevels; blue++) {
+        palette.push(Math.round(red / redLevels * 255), Math.round(green / greenLevels * 255), Math.round(blue / blueLevels * 255))
+      }
+    }
+  }
+  return palette
+}
+
+/**
  * 在解码前检查 GIF 画布和全帧内存预算，避免小体积文件展开后耗尽浏览器内存。
  * @param gif GIF 解析头和帧描述信息
  */

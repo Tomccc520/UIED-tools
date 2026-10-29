@@ -3,12 +3,13 @@
     <div class="mx-auto">
       <div class="bg-white rounded-xl p-4 md:p-8 mb-4 shadow-sm">
         <div class="text-center mb-8 relative">
-          <h2 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
+          <h1 class="text-4xl font-bold mb-3 relative inline-flex flex-col items-center">
             <div class="relative px-12">
               <span class="text-gray-800 hover:text-gray-600 transition-colors duration-300">在线图片压缩</span>
             </div>
-          </h2>
-          <p class="text-gray-500 text-sm mt-6">Image Compressor</p>
+          </h1>
+          <p class="text-gray-500 text-sm mt-6">单张图片质量、尺寸与格式调整</p>
+          <a href="/tools/image-compress" class="inline-block mt-3 text-sm text-brand underline underline-offset-4">需要批量压缩或 PNG 无损压缩？打开图片压缩工具</a>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -28,7 +29,7 @@
                   </svg>
                 </div>
                 <p class="text-gray-600 font-medium group-hover:text-blue-600 transition-colors">点击或拖拽图片到这里</p>
-                <p class="text-xs text-gray-400 mt-2">支持 JPG, PNG, WEBP 格式</p>
+                <p class="text-xs text-gray-400 mt-2">支持静态 JPG、PNG、WebP，单张 {{ IMAGE_COMPRESS_MAX_FILE_SIZE_MB }}MB 以内</p>
               </div>
             </div>
 
@@ -39,12 +40,14 @@
               <div class="space-y-6">
                 <div>
                   <label class="flex justify-between text-sm text-gray-600 mb-2">
-                    <span>压缩质量</span>
-                    <span class="text-blue-600 font-medium">{{ Math.round(quality * 100) }}%</span>
+                    <span>{{ format === 'png' ? 'PNG 不支持质量调节' : '压缩质量' }}</span>
+                    <span v-if="format !== 'png'" class="text-blue-600 font-medium">{{ Math.round(quality * 100) }}%</span>
                   </label>
                   <input type="range" v-model.number="quality" min="0.1" max="1" step="0.01"
+                    :disabled="format === 'png'"
                     class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
                     @input="compressImage" />
+                  <p v-if="format === 'png'" class="text-xs text-gray-500 mt-2">PNG 可调整缩放比例；质量参数仅适用于 JPG / WebP。</p>
                 </div>
 
                 <div>
@@ -82,10 +85,12 @@
                   <span class="text-gray-500">压缩后大小</span>
                   <span class="font-mono text-blue-600 font-bold">{{ formatSize(compressedSize) }}</span>
                 </div>
-                <div class="flex justify-between items-center p-2 bg-green-100 rounded">
-                  <span class="text-green-700">压缩率</span>
-                  <span class="font-bold text-green-700">-{{ compressionRate }}%</span>
+                <div class="flex justify-between items-center p-2 rounded" :class="compressionRate >= 0 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-800'">
+                  <span>体积变化</span>
+                  <span class="font-bold">{{ keptOriginal ? '已保留原图' : `${compressionRate >= 0 ? '减小' : '增加'} ${Math.abs(compressionRate)}%` }}</span>
                 </div>
+                <p v-if="keptOriginal" class="text-xs text-gray-500" role="status">原图体积更优，已保留原图。需要更小文件时，可降低质量或缩放比例。</p>
+                <p v-if="resultFormat !== format" class="text-xs text-amber-800" role="status">当前浏览器未按所选格式编码，实际结果为 {{ resultFormat.toUpperCase() }}，下载后缀与真实格式一致。</p>
               </div>
 
               <button @click="downloadImage"
@@ -180,11 +185,15 @@
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { getStaticImageAnimationError } from '@/utils/browserImageCompressionFormat'
+import { IMAGE_COMPRESS_MAX_FILE_SIZE_MB } from '@/constants/imageCompress'
 
 const fileInput = ref<HTMLInputElement | null>(null)
 const originalImage = ref<string>('')
 const compressedUrl = ref<string>('')
 const resultFormat = ref('jpeg')
+const originalMimeType = ref('')
+const keptOriginal = ref(false)
 const isProcessing = ref(false)
 const errorMessage = ref('')
 let fileRevision = 0
@@ -228,6 +237,7 @@ const showImageError = (message: string) => {
   originalImage.value = ''
   compressedUrl.value = ''
   compressedSize.value = 0
+  keptOriginal.value = false
   isProcessing.value = false
   errorMessage.value = message
 }
@@ -241,13 +251,34 @@ const processFile = (file: File) => {
     showImageError('请选择 JPG、PNG 或 WebP 格式的图片')
     return
   }
+  if (file.size === 0 || file.size > IMAGE_COMPRESS_MAX_FILE_SIZE_MB * 1024 * 1024) {
+    showImageError(`请选择 ${IMAGE_COMPRESS_MAX_FILE_SIZE_MB}MB 以内的有效图片`)
+    return
+  }
+  originalMimeType.value = file.type
   originalSize.value = file.size
   isProcessing.value = true
   const reader = new FileReader()
   reader.onload = () => {
     if (revision !== fileRevision) return
-    originalImage.value = reader.result as string
-    compressImage()
+    try {
+      const source = String(reader.result || '')
+      if (file.type !== 'image/jpeg') {
+        const base64 = source.slice(source.indexOf(',') + 1)
+        // WebP 的动画位只需 30 字节；PNG 按块遍历，不能对数据文本做全局匹配。
+        const binary = atob(file.type === 'image/webp' ? base64.slice(0, 40) : base64)
+        const buffer = Uint8Array.from(binary, character => character.charCodeAt(0)).buffer
+        const animationError = getStaticImageAnimationError(buffer, file.type)
+        if (animationError) {
+          showImageError(animationError)
+          return
+        }
+      }
+      originalImage.value = source
+      compressImage()
+    } catch {
+      showImageError('图片读取失败，请重新选择')
+    }
   }
   reader.onerror = () => {
     if (revision === fileRevision) showImageError('图片读取失败，请重新选择')
@@ -265,6 +296,7 @@ const compressImage = () => {
   const outputScale = scale.value
   compressedUrl.value = ''
   compressedSize.value = 0
+  keptOriginal.value = false
   isProcessing.value = true
   errorMessage.value = ''
   const img = new Image()
@@ -288,10 +320,14 @@ const compressImage = () => {
       const actualMime = dataUrl.match(/^data:image\/(png|jpeg|webp);base64,/)?.[1]
       if (!actualMime) throw new Error('图片编码失败')
       resultFormat.value = actualMime
-      compressedUrl.value = dataUrl
       const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
       const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0
-      compressedSize.value = base64.length * 0.75 - padding
+      const resultSize = base64.length * 0.75 - padding
+      const keepOriginal = outputScale === 1 && originalMimeType.value === `image/${outputFormat}`
+        && actualMime === outputFormat && resultSize >= originalSize.value
+      keptOriginal.value = keepOriginal
+      compressedUrl.value = keepOriginal ? source : dataUrl
+      compressedSize.value = keepOriginal ? originalSize.value : resultSize
       isProcessing.value = false
     } catch (error) {
       console.error('[图片压缩] 编码失败', error instanceof Error ? error.message : '未知错误')
@@ -331,15 +367,31 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-/** 下载最新编码结果，后缀与实际图片数据一致。 */
+/** 将当前结果同步转换成实际 MIME 的 Blob 下载，延迟回收地址以兼容内嵌浏览器。 */
 const downloadImage = () => {
   if (isProcessing.value || !compressedUrl.value) return
-  const link = document.createElement('a')
-  link.download = `compressed_${Date.now()}.${resultFormat.value}`
-  link.href = compressedUrl.value
-  document.body.appendChild(link)
-  link.click()
-  link.remove()
+  let link: HTMLAnchorElement | null = null
+  let downloadUrl = ''
+  try {
+    const match = compressedUrl.value.match(/^data:(image\/(?:jpeg|png|webp));base64,/)
+    if (!match) throw new Error('图片结果格式无效')
+    const mimeType = match[1]
+    const binary = atob(compressedUrl.value.slice(match[0].length))
+    const bytes = new Uint8Array(binary.length)
+    for (let index = 0; index < binary.length; index++) bytes[index] = binary.charCodeAt(index)
+    downloadUrl = URL.createObjectURL(new Blob([bytes], { type: mimeType }))
+    link = document.createElement('a')
+    link.download = `compressed_${Date.now()}.${mimeType.slice(6)}`
+    link.href = downloadUrl
+    document.body.appendChild(link)
+    link.click()
+  } catch (error) {
+    console.error('[图片压缩] 下载失败', error instanceof Error ? error.message : '未知错误')
+    ElMessage.error('图片下载失败，请重试或重新处理图片')
+  } finally {
+    link?.remove()
+    if (downloadUrl) window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000)
+  }
 }
 
 /** 页面离开后废弃未完成的文件读取和图片加载回调。 */

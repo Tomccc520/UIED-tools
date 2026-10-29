@@ -26,9 +26,95 @@ beforeEach(() => {
     options.success?.(new Blob(['compressed'], { type: options.mimeType }))
   })
 })
-afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
+
+/** 构造符合 WebP 扩展头布局的文件，动画标记位置来自容器规范。 */
+function webpImage(animated = true): File {
+  const bytes = new Uint8Array(30)
+  bytes.set(new TextEncoder().encode('RIFF'), 0)
+  new DataView(bytes.buffer).setUint32(4, 22, true)
+  bytes.set(new TextEncoder().encode('WEBPVP8X'), 8)
+  new DataView(bytes.buffer).setUint32(16, 10, true)
+  bytes[20] = animated ? 2 : 16
+  return new File([bytes], 'animation.webp', { type: 'image/webp' })
+}
+
+/** 手动控制头部读取，覆盖文件读完之前取消和超时的情况。 */
+function mockHeaderReader() {
+  const readers: any[] = []
+  vi.stubGlobal('FileReader', class {
+    result: ArrayBuffer | null = null
+    readyState = 1
+    onload: (() => void) | null = null
+    onerror: (() => void) | null = null
+    onabort: (() => void) | null = null
+    abort = vi.fn()
+    readAsArrayBuffer = vi.fn()
+    /** 记录读取器，供测试显式控制读取完成顺序。 */
+    constructor() { readers.push(this) }
+  })
+  return readers
+}
+
+/** 创建扩展头中的能力标记，避免依赖图片解码器。 */
+function webpHeader(flags: number): ArrayBuffer {
+  const bytes = new Uint8Array(30)
+  bytes.set(new TextEncoder().encode('RIFF'), 0)
+  bytes.set(new TextEncoder().encode('WEBPVP8X'), 8)
+  new DataView(bytes.buffer).setUint32(16, 10, true)
+  bytes[20] = flags
+  return bytes.buffer
+}
 
 describe('浏览器 JPEG/WebP 压缩', () => {
+  it('动态 WebP 在编码前明确拒绝，不能静默变成静态单帧', async () => {
+    const readers = mockHeaderReader()
+    const pending = compressBrowserImage(webpImage(), 'image/webp', { quality: 80, preserveDimensions: true })
+    const assertion = expect(pending).rejects.toMatchObject({ code: 'animated', message: expect.stringContaining('动画帧') })
+    expect(mocks.construct).not.toHaveBeenCalled()
+    readers[0].result = webpHeader(2)
+    readers[0].onload()
+    await assertion
+    expect(mocks.construct).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('静态透明 WebP 只读取固定长度头部，再按原配置编码', async () => {
+    const readers = mockHeaderReader()
+    const pending = compressBrowserImage(webpImage(false), 'image/webp', { quality: 70, preserveDimensions: true })
+    expect(readers[0].readAsArrayBuffer.mock.calls[0][0].size).toBe(30)
+    readers[0].result = webpHeader(16)
+    readers[0].onload()
+    expect((await pending).type).toBe('image/webp')
+    expect(mocks.construct.mock.calls[0][1].quality).toBe(0.7)
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('头部读取期间取消立即释放读取器，迟到读取不会开始编码', async () => {
+    const readers = mockHeaderReader()
+    const controller = new AbortController()
+    const pending = compressBrowserImage(webpImage(), 'image/webp', { quality: 80, preserveDimensions: true, signal: controller.signal })
+    const assertion = expect(pending).rejects.toMatchObject({ code: 'aborted' })
+    const oldLoad = readers[0].onload
+    controller.abort()
+    await assertion
+    expect(readers[0].abort).toHaveBeenCalledOnce()
+    readers[0].result = webpHeader(16)
+    oldLoad()
+    expect(mocks.construct).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
+
+  it('WebP 头部读取同样受总任务超时限制，超时后释放读取器且不开始编码', async () => {
+    const readers = mockHeaderReader()
+    const pending = compressBrowserImage(webpImage(), 'image/webp', { quality: 80, preserveDimensions: true })
+    const assertion = expect(pending).rejects.toMatchObject({ code: 'timeout' })
+    await vi.advanceTimersByTimeAsync(90_000)
+    await assertion
+    expect(readers[0].abort).toHaveBeenCalledOnce()
+    expect(mocks.construct).not.toHaveBeenCalled()
+    expect(vi.getTimerCount()).toBe(0)
+  })
   it('默认保持原图尺寸，质量转换为 0–1，并避免引入隐式 4096 限制', async () => {
     const result = await compressBrowserImage(image(), 'image/jpeg', { quality: 80, preserveDimensions: true })
     const options = mocks.construct.mock.calls[0][1]

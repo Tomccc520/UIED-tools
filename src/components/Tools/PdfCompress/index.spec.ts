@@ -1,12 +1,20 @@
+/**
+ * @copyright Tomda (https://www.tomda.top)
+ * @copyright UIED技术团队 (https://fsuied.com)
+ * @author UIED技术团队
+ * @createDate 2026-10-29
+ */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { defineComponent } from 'vue'
 import { mount, flushPromises, type VueWrapper } from '@vue/test-utils'
 import JSZip from 'jszip'
 import PdfCompress from './index.vue'
+import { PDF_COMPRESSION_TIMEOUT_MS } from './pdfCompressionTask'
 
 const messages = vi.hoisted(() => ({ error: vi.fn(), warning: vi.fn(), success: vi.fn() }))
 const media = vi.hoisted(() => ({ mobile: false }))
-const pdfRuntime = vi.hoisted(() => ({ enabled: false, outputSize: 3, getDocument: vi.fn(), getPage: vi.fn(), render: vi.fn(), cleanup: vi.fn(), destroy: vi.fn(), addImage: vi.fn() }))
+const pdfRuntime = vi.hoisted(() => ({ enabled: false, outputSize: 3, getDocument: vi.fn(), getPage: vi.fn(), render: vi.fn(), cleanup: vi.fn(), destroy: vi.fn(), addImage: vi.fn(), structureCompress: vi.fn() }))
+vi.mock('./pdfCompressionWorker', () => ({ compressPdfStructure: pdfRuntime.structureCompress }))
 vi.mock('@vueuse/core', async () => {
   const { ref } = await import('vue')
   return { useMediaQuery: () => ref(media.mobile) }
@@ -47,9 +55,9 @@ const UploadStub = defineComponent({
   template: '<input type="file" @change="upload" />'
 })
 const MobileActionsStub = defineComponent({
-  props: ['title', 'description', 'actionLabel', 'disabled', 'busy', 'hidden'],
-  emits: ['action'],
-  template: '<section v-if="!hidden" aria-label="PDF 压缩操作"><span>{{description}}</span><button :disabled="disabled || busy" @click="$emit(\'action\')">{{actionLabel}}</button></section>',
+  props: ['title', 'description', 'actionLabel', 'disabled', 'busy', 'hidden', 'cancelLabel'],
+  emits: ['action', 'cancel'],
+  template: '<section v-if="!hidden" aria-label="PDF 压缩操作"><span>{{description}}</span><button data-test="mobile-action" :disabled="disabled || busy" @click="$emit(\'action\')">{{actionLabel}}</button><button v-if="busy && cancelLabel" data-test="mobile-cancel" @click="$emit(\'cancel\')">{{cancelLabel}}</button></section>',
 })
 const DialogStub = defineComponent({
   props: ['modelValue', 'fullscreen', 'title'],
@@ -63,6 +71,12 @@ beforeEach(() => {
   media.mobile = false
   pdfRuntime.enabled = false
   pdfRuntime.outputSize = 3
+  pdfRuntime.structureCompress.mockImplementation(() => {
+    if (!pdfRuntime.enabled) return new Promise(() => undefined)
+    const blob = new Blob(['x'.repeat(pdfRuntime.outputSize)], { type: 'application/pdf' })
+    Object.defineProperty(blob, 'arrayBuffer', { value: async () => new ArrayBuffer(pdfRuntime.outputSize) })
+    return Promise.resolve(blob)
+  })
 })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
@@ -86,6 +100,11 @@ async function uploadPdf(name: string) {
   return file
 }
 
+/** 扫描件操作必须显式选择有损模式，不把旧测试默认为结构压缩。 */
+async function selectScanCompression() {
+  await wrapper!.get('button[aria-pressed="false"]').trigger('click')
+}
+
 /** 模拟一页 PDF 的本地渲染，测试手机入口复用真实队列与下载状态。 */
 function enablePdfRuntime() {
   pdfRuntime.enabled = true
@@ -101,6 +120,139 @@ function enablePdfRuntime() {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ clearRect: vi.fn() } as unknown as CanvasRenderingContext2D)
   vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,cGRm')
 }
+
+/** 延迟返回引擎结果，复现取消、超时和旧任务晚到。 */
+function deferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>(done => { resolve = done })
+  return { promise, resolve }
+}
+
+describe('PDF 默认结构压缩和任务生命周期', () => {
+  it('离开页面后迟到的 ZIP 不会继续触发下载', async () => {
+    enablePdfRuntime()
+    const view = mountTool()
+    await uploadPdf('one.pdf')
+    await uploadPdf('two.pdf')
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    const pending = deferred<Blob>()
+    vi.spyOn(JSZip.prototype, 'generateAsync').mockReturnValueOnce(pending.promise as any)
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {})
+    await view.get('.pdf-compress-inline-download button').trigger('click')
+    view.unmount()
+    wrapper = undefined
+    pending.resolve(new Blob(['zip']))
+    await flushPromises()
+    expect(click).not.toHaveBeenCalled()
+  })
+
+  it('结构压缩不伪造百分比，后续文件保持排队状态', async () => {
+    enablePdfRuntime()
+    pdfRuntime.structureCompress.mockReturnValueOnce(deferred<Blob>().promise)
+    const view = mountTool()
+    await uploadPdf('current.pdf')
+    await uploadPdf('queued.pdf')
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    expect(view.get('[aria-label="current.pdf 压缩进度"]').attributes('aria-valuenow')).toBeUndefined()
+    expect(view.get('[aria-label="current.pdf 压缩进度"]').attributes('aria-valuetext')).toContain('暂无法估算')
+    expect(view.get('[aria-label="queued.pdf 压缩进度"]').attributes('aria-valuenow')).toBe('0')
+    expect(view.text()).toContain('待处理')
+    expect(pdfRuntime.structureCompress).toHaveBeenCalledOnce()
+  })
+
+  it('默认调用结构引擎，不把整页绘制成 JPEG', async () => {
+    enablePdfRuntime()
+    const view = mountTool()
+    await uploadPdf('structured.pdf')
+    const sourcePreviewRenders = pdfRuntime.render.mock.calls.length
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    expect(pdfRuntime.structureCompress).toHaveBeenCalledOnce()
+    expect(pdfRuntime.render).toHaveBeenCalledTimes(sourcePreviewRenders)
+    expect(pdfRuntime.addImage).not.toHaveBeenCalled()
+    expect(view.find('button[aria-label="下载 structured.pdf"]').exists()).toBe(true)
+  })
+
+  it('处理中防重复开始，取消后旧结构压缩结果不能重新出现', async () => {
+    enablePdfRuntime()
+    const pending = deferred<Blob>()
+    pdfRuntime.structureCompress.mockReturnValueOnce(pending.promise)
+    const view = mountTool()
+    await uploadPdf('cancel.pdf')
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    expect(pdfRuntime.structureCompress).toHaveBeenCalledOnce()
+    const signal = pdfRuntime.structureCompress.mock.calls[0][1] as AbortSignal
+    await view.get('[data-test="mobile-cancel"]').trigger('click')
+    await flushPromises()
+    expect(signal.aborted).toBe(true)
+    expect(view.get('.pdf-compress-inline-start').attributes('disabled')).toBeUndefined()
+    expect(view.text()).toContain('已取消压缩')
+    const createdUrls = vi.mocked(URL.createObjectURL).mock.calls.length
+    pending.resolve(new Blob(['old output']))
+    await flushPromises()
+    expect(URL.createObjectURL).toHaveBeenCalledTimes(createdUrls)
+    expect(view.find('button[aria-label="下载 cancel.pdf"]').exists()).toBe(false)
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    expect(view.find('button[aria-label="下载 cancel.pdf"]').exists()).toBe(true)
+  })
+
+  it('扫描件依赖加载也受总超时约束，失败后可以重试', async () => {
+    enablePdfRuntime()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const view = mountTool()
+    await uploadPdf('timeout.pdf')
+    await selectScanCompression()
+    pdfRuntime.enabled = false
+    vi.useFakeTimers()
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    await vi.advanceTimersByTimeAsync(PDF_COMPRESSION_TIMEOUT_MS)
+    await flushPromises()
+    expect(view.get('[role="alert"]').text()).toContain('PDF 压缩超时')
+    expect(view.get('.pdf-compress-inline-start').attributes('disabled')).toBeUndefined()
+    expect(view.find('button[aria-label="下载 timeout.pdf"]').exists()).toBe(false)
+    expect(messages.success).not.toHaveBeenCalled()
+  })
+
+  it('取消扫描件绘制时释放当前任务，迟到绘制不再写入 PDF', async () => {
+    enablePdfRuntime()
+    const view = mountTool()
+    await uploadPdf('render.pdf')
+    await selectScanCompression()
+    const rendering = deferred<void>()
+    const cancel = vi.fn()
+    pdfRuntime.render.mockReturnValueOnce({ promise: rendering.promise, cancel })
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    await view.get('[data-test="mobile-cancel"]').trigger('click')
+    await flushPromises()
+    expect(cancel).toHaveBeenCalledOnce()
+    expect(pdfRuntime.destroy).toHaveBeenCalled()
+    rendering.resolve()
+    await flushPromises()
+    expect(pdfRuntime.addImage).not.toHaveBeenCalled()
+    expect(view.get('.pdf-compress-inline-start').attributes('disabled')).toBeUndefined()
+  })
+
+  it('切换压缩方式撤销旧产物，恢复待压缩并阻止下载旧设置结果', async () => {
+    enablePdfRuntime()
+    const view = mountTool()
+    await uploadPdf('settings.pdf')
+    await view.get('.pdf-compress-inline-start').trigger('click')
+    await flushPromises()
+    expect(view.find('button[aria-label="下载 settings.pdf"]').exists()).toBe(true)
+    await selectScanCompression()
+    expect(view.find('button[aria-label="下载 settings.pdf"]').exists()).toBe(false)
+    expect(view.getComponent(MobileActionsStub).props('actionLabel')).toBe('开始压缩 (1)')
+    expect(view.text()).toContain('参数已修改，请重新压缩后下载')
+    expect(URL.revokeObjectURL).toHaveBeenCalled()
+  })
+})
 
 describe('PDF 压缩上传队列', () => {
   it('无效文件校验失败后不会进入可压缩队列', async () => {
@@ -123,11 +275,14 @@ describe('PDF 压缩上传队列', () => {
 })
 
 describe('PDF 压缩手机工作区', () => {
-  it('手机参数默认折叠，光栅化影响在操作前始终可见', async () => {
+  it('手机默认保留文档，扫描件模式显式选择后将光栅化影响始终显示', async () => {
     media.mobile = true
     mountTool()
     await uploadPdf('mobile.pdf')
     expect((wrapper!.get('details.pdf-compress-parameters').element as HTMLDetailsElement).open).toBe(false)
+    expect(wrapper!.get('[role=note]').text()).toContain('默认保留文字、链接和表单')
+    expect(wrapper!.find('details.pdf-compress-advanced').exists()).toBe(false)
+    await selectScanCompression()
     expect((wrapper!.get('details.pdf-compress-advanced').element as HTMLDetailsElement).open).toBe(false)
     const notice = wrapper!.get('[role=note]')
     expect(notice.text()).toContain('文字将无法选中、复制或搜索')
@@ -159,6 +314,7 @@ describe('PDF 压缩手机工作区', () => {
     mountTool()
     await uploadPdf('first.pdf')
     await uploadPdf('second.pdf')
+    await selectScanCompression()
     const mobileBar = wrapper!.getComponent(MobileActionsStub)
     expect(mobileBar.props('actionLabel')).toBe('开始压缩 (2)')
     await mobileBar.get('button').trigger('click')
@@ -188,6 +344,7 @@ describe('PDF 压缩手机工作区', () => {
   it('桌面参数保持展开且预览不切全屏', async () => {
     mountTool()
     await uploadPdf('desktop.pdf')
+    await selectScanCompression()
     expect((wrapper!.get('details.pdf-compress-parameters').element as HTMLDetailsElement).open).toBe(true)
     expect((wrapper!.get('details.pdf-compress-advanced').element as HTMLDetailsElement).open).toBe(true)
     await wrapper!.get('button[aria-label="预览 desktop.pdf"]').trigger('click')

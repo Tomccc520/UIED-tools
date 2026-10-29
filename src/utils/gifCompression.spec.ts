@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { decompressFrames, parseGIF } from 'gifuct-js'
+import workerSource from 'gif.js/dist/gif.worker.js?raw'
 import {
-  appendGifTimelineFrame, createGifFrameComposer, getGifRepeat, normalizeGifDelay,
+  appendGifTimelineFrame, createGifFrameComposer, createGifUniformPalette, getGifRepeat, normalizeGifDelay,
   renderGifWithTimeout, splitGifTimelineDelays, validateGifMemoryBudget,
   type GifFrame, type GifMetadata, type GifTimelineFrame
 } from './gifCompression'
@@ -37,6 +39,42 @@ const makeEncoder = () => {
     on: vi.fn((name: string, callback: (...args: any[]) => void) => listeners.set(name, callback)),
     emit: (name: string, ...args: any[]) => listeners.get(name)?.(...args)
   }
+}
+
+/** 生成包含细腻渐变的原始帧，用真实 Worker 检查减色与抖动，而非只核对参数。 */
+const makeGradientPixels = (width: number, height: number, reverse = false) => {
+  const pixels = new Uint8Array(width * height * 4)
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const offset = (y * width + x) * 4
+      pixels[offset] = Math.round(x / (width - 1) * 255)
+      pixels[offset + 1] = Math.round(y / (height - 1) * 255)
+      pixels[offset + 2] = reverse ? 255 : Math.round((x + y) / (width + height - 2) * 255)
+      pixels[offset + 3] = 255
+    }
+  }
+  return pixels
+}
+
+/** 隔离执行已安装的真实 gif.js Worker，按帧拼接产物供独立 GIF 解码器验收。 */
+const encodeWithActualWorker = (palette: number[] | false, dither: string | false, delays = [100]) => {
+  const rendered: Array<{ data: Uint8Array[]; cursor: number }> = []
+  const self = { postMessage: (frame: (typeof rendered)[number]) => rendered.push(frame), onmessage: (_event: any) => {} }
+  // 仅执行项目锁定依赖中的 Worker 源码，通过注入 self 捕获编码产物，不启动浏览器或网络。
+  new Function('self', 'Uint8Array', 'ArrayBuffer', workerSource)(self, Uint8Array, ArrayBuffer)
+  const chunks: Buffer[] = []
+  for (let index = 0; index < delays.length; index++) {
+    self.onmessage({ data: {
+      index, last: index === delays.length - 1, width: 64, height: 64,
+      data: makeGradientPixels(64, 64, index > 0), quality: 8, globalPalette: palette,
+      dither, repeat: 3, delay: delays[index], transparent: null, canTransfer: false
+    } })
+    const result = rendered.pop()
+    if (!result) throw new Error('测试 Worker 未生成 GIF 帧')
+    chunks.push(...result.data.map((page, pageIndex) => Buffer.from(page).subarray(0,
+      pageIndex === result!.data.length - 1 ? result!.cursor : undefined)))
+  }
+  return new Uint8Array(Buffer.concat(chunks)).buffer
 }
 
 afterEach(() => vi.useRealTimers())
@@ -121,6 +159,37 @@ describe('GIF 帧合成与时间轴', () => {
     const invalid = makeGif()
     invalid.frames[0].image!.descriptor.left = 1
     expect(() => validateGifMemoryBudget(invalid)).toThrow('帧尺寸无效')
+  })
+})
+
+describe('GIF 真实编码参数', () => {
+  it.each([8, 16, 32, 64, 128])('减色和抖动同时开启时，实际产物最多使用 %i 色', (colors) => {
+    const palette = createGifUniformPalette(colors)
+    expect(palette).toHaveLength(colors * 3)
+    const gif = parseGIF(encodeWithActualWorker(palette, 'FloydSteinberg'))
+    const frame = decompressFrames(gif, true)[0]
+    const usedColors = new Set<string>()
+    for (let offset = 0; offset < frame.patch.length; offset += 4) {
+      usedColors.add(frame.patch.subarray(offset, offset + 3).join(','))
+      expect(frame.patch[offset + 3]).toBe(255)
+    }
+    expect(usedColors.size).toBeGreaterThan(1)
+    expect(usedColors.size).toBeLessThanOrEqual(colors)
+    expect(frame.dims).toMatchObject({ width: 64, height: 64 })
+  })
+
+  it('真实 Worker 开启抖动后改变像素分布，帧序、总时长与有限循环保留', () => {
+    const palette = createGifUniformPalette(32)
+    const none = parseGIF(encodeWithActualWorker(palette, false, [150, 250]))
+    const dither = parseGIF(encodeWithActualWorker(palette, 'FloydSteinberg', [150, 250]))
+    const noneFrames = decompressFrames(none, true)
+    const ditherFrames = decompressFrames(dither, true)
+    expect(noneFrames[0].patch).not.toEqual(ditherFrames[0].patch)
+    expect(ditherFrames).toHaveLength(2)
+    expect(ditherFrames.map((frame) => frame.delay)).toEqual([150, 250])
+    expect(ditherFrames[1].patch[2]).toBe(255)
+    expect(ditherFrames[0].patch[2]).toBeLessThan(255)
+    expect(getGifRepeat(dither as unknown as GifMetadata)).toBe(3)
   })
 })
 

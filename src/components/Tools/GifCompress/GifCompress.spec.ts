@@ -113,6 +113,23 @@ describe('GifCompress.vue', () => {
     expect(wrapper.find('input[type="file"]').exists()).toBe(true)
   })
 
+  it('重新上传直接打开选择器，取消选择时保留当前文件与结果', async () => {
+    const vm = prepareFile()
+    await flushPromises()
+    vm.compressedSrc = 'blob:compressed'
+    vm.compressedSize = 20
+    await flushPromises()
+    const input = wrapper.get('input[type="file"]')
+    const click = vi.spyOn(input.element as HTMLInputElement, 'click').mockImplementation(() => {})
+    await wrapper.findAll('button').find(button => button.text() === '重新上传')!.trigger('click')
+    expect(click).toHaveBeenCalledOnce()
+    expect(vm.file.name).toBe('test.gif')
+    expect(vm.compressedSrc).toBe('blob:compressed')
+    await input.trigger('change')
+    expect(vm.file.name).toBe('test.gif')
+    expect(vm.compressedSrc).toBe('blob:compressed')
+  })
+
   it('编码使用源 loop，成功后显示真实结果且释放繁忙锁', async () => {
     const vm = prepareFile()
     // 等待编码器实际启动事件，避免并行运行下组件渲染耗时超过轮询的默认一秒。
@@ -127,6 +144,22 @@ describe('GifCompress.vue', () => {
     expect(vm.compressedSrc).toBe('blob:gif-1')
     expect(vm.isProcessing).toBe(false)
     expect(wrapper.text()).toContain('已保留原动画总时长和循环次数')
+  })
+
+  it('使用与运行时匹配的 Worker，并为减色模式传入确定色板及抖动选项', async () => {
+    const vm = prepareFile()
+    vm.applyCompressionPreset('balanced')
+    expect(vm.options.dither).toBe(false)
+    vm.options.dither = 'FalseFloydSteinberg'
+    const rendered = new Promise<void>((resolve) => mocks.render.mockImplementationOnce(() => resolve()))
+    const job = vm.startCompression()
+    await rendered
+    const encoded = mocks.encoderOptions.mock.calls[0][0] as any
+    expect(encoded.workerScript).not.toBe('/workers/gif.worker.js')
+    expect(encoded.dither).toBe('FalseFloydSteinberg')
+    expect(encoded.globalPalette).toHaveLength(128 * 3)
+    vm.cancelCompression()
+    await job
   })
 
   it('压缩过程中锁定重新上传和全部参数，直接调用重置也不会删除正在处理的文件', async () => {
