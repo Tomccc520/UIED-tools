@@ -15,6 +15,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -22,7 +23,8 @@ import (
 )
 
 type videoAttachmentTestService struct {
-	result serviceCommon.VideoCompressResult
+	result          serviceCommon.VideoCompressResult
+	receivedOptions *[]serviceCommon.VideoCompressOptions
 }
 
 // Config 返回附件回归所需的固定能力，不依赖数据库或 FFmpeg。
@@ -31,8 +33,55 @@ func (srv videoAttachmentTestService) Config() serviceCommon.VideoCompressConfig
 }
 
 // Compress 返回本地测试视频，验证真实处理器的响应头和文件发送流程。
-func (srv videoAttachmentTestService) Compress(context.Context, *multipart.FileHeader) (serviceCommon.VideoCompressResult, error) {
+func (srv videoAttachmentTestService) Compress(_ context.Context, _ *multipart.FileHeader, options ...serviceCommon.VideoCompressOptions) (serviceCommon.VideoCompressResult, error) {
+	if srv.receivedOptions != nil {
+		*srv.receivedOptions = options
+	}
 	return srv.result, nil
+}
+
+// TestVideoCompressSpeedForwarding 验证真实 multipart 接口透传速度，省略选项仍允许旧客户端请求。
+func TestVideoCompressSpeedForwarding(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	for _, speed := range []string{"", "fast", "balanced"} {
+		t.Run("speed="+speed, func(t *testing.T) {
+			filePath := filepath.Join(t.TempDir(), "result.mp4")
+			if err := os.WriteFile(filePath, []byte("output"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			var received []serviceCommon.VideoCompressOptions
+			handler := videoCompressHandler{srv: videoAttachmentTestService{
+				receivedOptions: &received,
+				result:          serviceCommon.VideoCompressResult{Path: filePath, FileName: "result.mp4", ContentType: "video/mp4"},
+			}}
+			router := gin.New()
+			router.POST("/compress", handler.compress)
+			var body bytes.Buffer
+			writer := multipart.NewWriter(&body)
+			part, err := writer.CreateFormFile("file", "input.mp4")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = part.Write([]byte("source")); err != nil {
+				t.Fatal(err)
+			}
+			if speed != "" {
+				if err = writer.WriteField("speed", speed); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err = writer.Close(); err != nil {
+				t.Fatal(err)
+			}
+			request := httptest.NewRequest(http.MethodPost, "/compress", &body)
+			request.Header.Set("Content-Type", writer.FormDataContentType())
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+			if recorder.Body.String() != "output" || !reflect.DeepEqual(received, []serviceCommon.VideoCompressOptions{{Speed: speed}}) {
+				t.Fatalf("速度没有正确透传或旧请求不兼容: options=%+v body=%q", received, recorder.Body.String())
+			}
+		})
+	}
 }
 
 // TestVideoCompressAttachmentFilename 验证中文空格、加号、分号和引号能按标准响应头无损往返。

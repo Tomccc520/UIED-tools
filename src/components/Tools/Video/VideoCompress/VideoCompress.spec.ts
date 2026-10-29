@@ -8,6 +8,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { flushPromises, shallowMount, type VueWrapper } from '@vue/test-utils'
 import VideoCompress from './VideoCompress.vue'
 import MobileToolActions from '@/components/Common/MobileToolActions.vue'
+import VideoProcessStatus from '@/components/Tools/Video/Shared/VideoProcessStatus.vue'
+import VideoResultComparison from '@/components/Tools/Video/Shared/VideoResultComparison.vue'
 
 const services = vi.hoisted(() => ({ consume: vi.fn(), config: vi.fn(), compress: vi.fn() }))
 vi.mock('@/composables/useToolConsume', () => ({ useToolConsume: () => ({ ensureToolConsume: services.consume }) }))
@@ -32,8 +34,8 @@ async function mountVideo() {
   wrapper = shallowMount(VideoCompress, {
     global: {
       stubs: {
-        VideoProcessStatus: { template: '<button data-test="cancel" @click="$emit(\'cancel\')">取消处理</button>' },
-        ElRadioGroup: { name: 'ElRadioGroup', template: '<div><slot /></div>' },
+        VideoProcessStatus: { props: ['indeterminate', 'progressLabel'], template: '<button data-test="cancel" @click="$emit(\'cancel\')">取消处理</button>' },
+        ElRadioGroup: { name: 'ElRadioGroup', props: ['modelValue', 'disabled'], template: '<div><slot /></div>' },
         ElRadioButton: { template: '<span><slot /></span>' },
         ElSlider: true,
         ElInputNumber: true,
@@ -49,6 +51,49 @@ async function mountVideo() {
   return wrapper
 }
 
+/** 用可控录制器与时钟推进长视频尾部，验证不截断、不因文件较大自动重播。 */
+async function prepareLocalRecording(view: VueWrapper, duration = 600) {
+  const frames: FrameRequestCallback[] = []
+  const recorders: any[] = []
+  const stream = { getTracks: () => [], getVideoTracks: () => [], getAudioTracks: () => [] }
+  const createElement = document.createElement.bind(document)
+  vi.spyOn(document, 'createElement').mockImplementation((tag: string, options?: ElementCreationOptions) => {
+    if (tag === 'canvas') return { getContext: () => ({ drawImage: vi.fn() }), captureStream: () => stream } as any
+    return createElement(tag, options)
+  })
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { frames.push(callback); return frames.length })
+  vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  vi.stubGlobal('MediaRecorder', class {
+    state = 'inactive'
+    ondataavailable: ((event: { data: Blob }) => void) | null = null
+    onstop: (() => void) | null = null
+    /** 记录实例次数以发现隐蔽的重复编码。 */
+    constructor() { recorders.push(this) }
+    /** 模拟浏览器已支持所请求的输出编码。 */
+    static isTypeSupported() { return true }
+    /** 开始一次录制。 */
+    start() { this.state = 'recording' }
+    /** 请求分片由测试通过 ondataavailable 手动完成。 */
+    requestData() {}
+    /** 停止录制并通知工具组装真实 Blob。 */
+    stop() { this.state = 'inactive'; this.onstop?.() }
+  })
+  vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+  const video = view.get('video[aria-label="原视频预览"]')
+  Object.defineProperties(video.element, {
+    duration: { configurable: true, value: duration },
+    videoWidth: { configurable: true, value: 320 },
+    videoHeight: { configurable: true, value: 180 },
+    currentTime: { configurable: true, value: 0, writable: true },
+    ended: { configurable: true, value: false, writable: true }
+  })
+  await video.trigger('loadedmetadata')
+  view.findAllComponents({ name: 'ElRadioGroup' })[0].vm.$emit('update:modelValue', 'browser')
+  await view.get('.video-compress-primary').trigger('click')
+  await flushPromises()
+  return { video: video.element as HTMLVideoElement, frames, recorders }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {})
@@ -61,9 +106,98 @@ beforeEach(() => {
 afterEach(() => {
   wrapper?.unmount()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 describe('视频压缩任务的取消和重试', () => {
+  it('WebM 未提供有限时长时明确说明，不能把 Infinity 展示成零秒', async () => {
+    services.compress.mockResolvedValueOnce({
+      blob: new Blob(['video']), outputSize: 5, fileName: 'result.webm', compressed: false, elapsedMs: 10
+    })
+    const view = await mountVideo()
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    const resultVideo = view.get('video[aria-label="压缩视频预览"]')
+    Object.defineProperty(resultVideo.element, 'duration', { configurable: true, value: Infinity })
+    await resultVideo.trigger('loadedmetadata')
+    expect(view.findComponent(VideoResultComparison).props('metrics').find((metric: any) => metric.label === '时长').after)
+      .toBe('容器未提供时长')
+  })
+
+  it('十分钟视频到 99% 不能提前封装，必须保留最后几秒', async () => {
+    const { video, frames, recorders } = await prepareLocalRecording(await mountVideo())
+    expect(recorders).toHaveLength(1)
+    video.currentTime = 595
+    frames.shift()!(0)
+    expect(recorders[0].state).toBe('recording')
+    expect(video.onended).toBeTypeOf('function')
+    expect(frames).toHaveLength(1)
+  })
+
+  it('本地结果没有缩小时直接保留原视频，不自动再编码两遍', async () => {
+    const view = await mountVideo()
+    const { video, recorders } = await prepareLocalRecording(view, 3)
+    recorders[0].ondataavailable({ data: new Blob(['larger-than-the-original-test-file'.repeat(3)]) })
+    video.onended!(new Event('ended'))
+    await flushPromises()
+    expect(view.find('.video-result-panel').exists()).toBe(true)
+    expect(view.text()).toContain('已保留原视频')
+    expect(view.get('.video-compress-primary').attributes('disabled')).toBeUndefined()
+    expect(recorders).toHaveLength(1)
+    expect(services.consume).toHaveBeenCalledOnce()
+  })
+
+  it('默认使用快速档，标准档选择传给服务器；处理中切换参数不改变已提交任务', async () => {
+    const pending = deferred<any>()
+    services.compress.mockReturnValue(pending.promise)
+    const view = await mountVideo()
+    const speed = view.findAllComponents({ name: 'ElRadioGroup' }).find((group) => group.props('modelValue') === 'fast')!
+    expect(speed).toBeDefined()
+    speed.vm.$emit('update:modelValue', 'balanced')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(services.compress.mock.calls[0][1].speed).toBe('balanced')
+    expect(speed.props('disabled')).toBe(true)
+  })
+
+  it('上传完成后不伪造转码百分比，下载开始后切换到接收结果阶段', async () => {
+    services.compress.mockReturnValue(deferred<any>().promise)
+    const view = await mountVideo()
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    const callbacks = services.compress.mock.calls[0][1]
+    callbacks.onUploadProgress(100)
+    await flushPromises()
+    expect(view.findComponent(VideoProcessStatus).props('indeterminate')).toBe(true)
+    expect(view.findComponent(VideoProcessStatus).props('progressLabel')).toBe('服务端处理中')
+    expect(view.findComponent(MobileToolActions).props('description')).not.toContain('45%')
+    callbacks.onDownloadProgress(30)
+    await flushPromises()
+    expect(view.findComponent(VideoProcessStatus).props('progressLabel')).toBe('接收 30%')
+    expect(view.findComponent(VideoProcessStatus).props('indeterminate')).toBe(false)
+  })
+
+  it('专业模式失败后停止，用户决定是否改用需要完整播放的本地模式', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    services.compress.mockRejectedValueOnce(new Error('压缩服务繁忙，请稍后重试'))
+    const view = await mountVideo()
+    const video = view.get('video[aria-label="原视频预览"]')
+    Object.defineProperties(video.element, {
+      duration: { configurable: true, value: 120 },
+      videoWidth: { configurable: true, value: 1920 },
+      videoHeight: { configurable: true, value: 1080 }
+    })
+    await video.trigger('loadedmetadata')
+    await view.get('.video-compress-primary').trigger('click')
+    await flushPromises()
+    expect(view.get('.video-compress-primary').attributes('disabled')).toBeUndefined()
+    expect(view.text()).toContain('压缩服务繁忙')
+    expect(view.find('[data-test="cancel"]').exists()).toBe(false)
+    await view.get('[data-test="use-local-compression"]').trigger('click')
+    expect(view.text()).toContain('至少需要约 02:00')
+    expect(services.compress).toHaveBeenCalledOnce()
+    expect(services.consume).toHaveBeenCalledOnce()
+  })
   it('手机主操作复用压缩流程，完成后切换结果，预览切换不卸载原视频', async () => {
     services.compress.mockResolvedValueOnce({
       blob: new Blob(['video']), outputSize: 5, fileName: 'result.mp4', compressed: true, elapsedMs: 10

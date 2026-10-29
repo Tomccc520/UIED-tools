@@ -32,7 +32,8 @@ import { useToolConsume } from '@/composables/useToolConsume'
 import {
   compressVideoWithServer,
   getVideoCompressServerConfig,
-  type VideoCompressServerConfig
+  type VideoCompressServerConfig,
+  type VideoCompressSpeed
 } from '@/services/videoCompress'
 
 /**
@@ -113,6 +114,39 @@ const statusText = ref('')
 const etaText = ref('')
 const errorText = ref('')
 const processStartedAt = ref(0)
+const taskElapsedSeconds = ref(0)
+const serverPhase = ref<'idle' | 'checking' | 'uploading' | 'processing' | 'downloading'>('idle')
+let elapsedTimer: number | null = null
+
+/** 停止耗时刷新，取消、完成和卸载后都不留下后台定时器。 */
+const clearElapsedTimer = () => {
+  if (elapsedTimer !== null) window.clearInterval(elapsedTimer)
+  elapsedTimer = null
+}
+
+/** 展示真实经过时间；服务端未提供转码进度时不根据耗时伪造百分比。 */
+watch(isProcessing, (processing) => {
+  clearElapsedTimer()
+  if (!processing) return
+  const startedAt = Date.now()
+  taskElapsedSeconds.value = 0
+  elapsedTimer = window.setInterval(() => {
+    taskElapsedSeconds.value = Math.floor((Date.now() - startedAt) / 1000)
+  }, 1000)
+}, { flush: 'sync' })
+
+/** 返回当前阶段的真实进度标签，服务端编码阶段仅显示状态。 */
+const serverProgressLabel = computed(() => {
+  if (serverPhase.value === 'checking') return '正在准备'
+  if (serverPhase.value === 'processing') return '服务端处理中'
+  if (serverPhase.value === 'downloading') return progress.value < 0 ? '正在接收结果' : `接收 ${progress.value}%`
+  return `上传 ${progress.value}%`
+})
+/** 能力检查、编码或未知响应长度均不显示伪造百分比。 */
+const progressIndeterminate = computed(() => serverPhase.value === 'checking'
+  || serverPhase.value === 'processing' || (serverPhase.value === 'downloading' && progress.value < 0))
+/** 将阶段说明与实际等待时长合并，便于识别仍在运行的任务。 */
+const processingHint = computed(() => `${etaText.value || '正在处理'} · 已用时 ${formatTime(taskElapsedSeconds.value)}`)
 const isCancelRequested = ref(false)
 
 const sourceMeta = reactive<VideoMeta>({
@@ -129,6 +163,7 @@ const resultMeta = reactive<VideoMeta>({
 
 const settings = reactive({
   engine: 'server' as CompressionEngine,
+  serverSpeed: 'fast' as VideoCompressSpeed,
   mode: 'ratio' as CompressMode,
   compressionRatio: 35,
   targetSizeMB: 8,
@@ -150,7 +185,7 @@ watch(videoFile, () => { mobileSettingsChanged.value = false })
 const toolFeatures = [
   '支持多种格式：兼容 MP4、AVI、MOV、MKV、WMV、WebM 等常见视频格式。',
   '专业压缩策略：服务端统一输出 H.264 MP4、AAC 128K，并限制最大 1920 与最高 30fps。',
-  '可靠回退：服务端不可用时自动切换浏览器本地压缩，体积无明显下降时保留原视频。',
+  '按需选择：默认快速压缩，也可选择标准档争取更小体积；本地模式无需上传。',
   '适配多场景：适用于社交媒体上传、视频存储优化、工作演示、邮件附件分享等场景。'
 ]
 
@@ -168,7 +203,7 @@ const videoCompressExperienceTips = [
   },
   {
     label: '失败兜底',
-    text: '服务端不可用时自动切换浏览器模式；本地内存不足时请降低帧率或提高压缩比例。'
+    text: '服务端失败后可重试或手动改用本地模式；本地模式需完整播放视频，请保持页面在前台。'
   },
   {
     label: '会员价值',
@@ -188,6 +223,10 @@ const faqList: FaqItem[] = [
   {
     question: '在线压缩视频是否安全？',
     answer: '专业模式会将视频临时上传到本站服务器完成 FFmpeg 转码，任务结束后立即清理临时文件；也可切换浏览器本地模式。'
+  },
+  {
+    question: '为什么视频压缩需要等待？',
+    answer: '专业模式耗时包括上传、等待和转码，默认快速档优先节省时间，标准档可能得到更小文件。浏览器本地模式需要完整播放视频，通常至少与视频时长相当；体积没有明显下降时直接保留原文件，不会自动重复压缩。'
   },
   {
     question: '是否有文件大小限制？',
@@ -213,10 +252,6 @@ let compatRetryCount = 0
 let outputCompleted = false
 let latestOutputMimeType = 'video/webm'
 let latestRecordedChunks: Blob[] = []
-let activeVideoBitrateKbps = 0
-let activeAudioBitrateKbps = 0
-let activeKeepAudio = true
-let activeFrameRate = 24
 let serverAbortController: AbortController | null = null
 let processingRunId = 0
 let compatibilityRetryTimer: number | null = null
@@ -422,48 +457,22 @@ const buildCompatibilityOverrides = (): CompressRuntimeOverrides => {
 }
 
 /**
- * 构建体积未下降时的二次压缩参数
- * @returns 更激进的压缩参数
- */
-const buildSmallerSizeRetryOverrides = (): CompressRuntimeOverrides => {
-  const estimatedSourceTotal = sourceBitrateKbps.value || activeVideoBitrateKbps + (activeKeepAudio ? activeAudioBitrateKbps : 0)
-  const estimatedSourceVideo = Math.max(180, estimatedSourceTotal - (activeKeepAudio ? activeAudioBitrateKbps : 0))
-  const reducedVideoBitrate = Math.max(160, Math.floor(Math.min(activeVideoBitrateKbps * 0.58, estimatedSourceVideo * 0.62)))
-  const reducedAudioBitrate = Math.min(activeAudioBitrateKbps || settings.audioBitrateKbps, 96)
-
-  return {
-    keepAudio: activeKeepAudio,
-    frameRate: Math.min(activeFrameRate || settings.frameRate, 24),
-    outputFormat: 'webm',
-    videoBitrateKbps: reducedVideoBitrate,
-    audioBitrateKbps: reducedAudioBitrate,
-    preferDirectCapture: false
-  }
-}
-
-/**
  * 触发兼容模式自动重试
  * @param reason 触发重试的原因
  * @returns 是否已触发重试
  */
-const triggerCompatibilityRetry = (reason: string, customOverrides?: CompressRuntimeOverrides) => {
+const triggerCompatibilityRetry = (reason: string) => {
   if (isCancelRequested.value || compatRetryCount >= MAX_COMPAT_RETRY_COUNT || !videoFile.value) {
     return false
   }
 
   compatRetryCount += 1
-  const retryOverrides = customOverrides || buildCompatibilityOverrides()
+  const retryOverrides = buildCompatibilityOverrides()
 
-  statusText.value = reason === 'output-size-not-reduced'
-    ? '检测到体积未下降，正在自动优化压缩参数重试...'
-    : '检测到封装异常，正在切换兼容模式自动重试...'
+  statusText.value = '检测到录制异常，正在切换兼容模式重试...'
   etaText.value = '预计剩余时间：正在重试...'
   errorText.value = ''
-  ElMessage.warning(
-    reason === 'output-size-not-reduced'
-      ? '检测到压缩后体积未下降，已自动优化参数重试'
-      : '检测到封装异常，已自动切换兼容模式重试'
-  )
+  ElMessage.warning('录制异常，正在重试；本地模式需要重新播放视频')
   console.warn(`[VideoCompress] 触发兼容重试：${reason}`, retryOverrides)
 
   forceCleanupForRetry()
@@ -582,10 +591,6 @@ const finalizeOutputFromChunks = (isTimeoutFallback = false) => {
 
   const keepOriginal = Boolean(videoFile.value && blob.size >= videoFile.value.size * OUTPUT_SIZE_GUARD_RATIO)
   if (keepOriginal) {
-    if (triggerCompatibilityRetry('output-size-not-reduced', buildSmallerSizeRetryOverrides())) {
-      return
-    }
-
     ElMessage.warning('压缩后体积没有明显下降，已自动保留原视频')
   }
 
@@ -644,6 +649,8 @@ const scheduleFinalizeMonitor = () => {
  */
 const stopCurrentProcessing = () => {
   processingRunId += 1
+  serverPhase.value = 'idle'
+  clearElapsedTimer()
   clearCompatibilityRetryTimer()
   if (serverAbortController) {
     serverAbortController.abort()
@@ -797,7 +804,7 @@ const onResultVideoLoaded = () => {
   const video = resultVideoRef.value
   if (!video) return
 
-  resultMeta.duration = video.duration || 0
+  resultMeta.duration = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0
   resultMeta.width = video.videoWidth || 0
   resultMeta.height = video.videoHeight || 0
 }
@@ -914,6 +921,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
     clearResultUrl()
 
     sourceVideo.pause()
+    sourceVideo.playbackRate = 1
     const controller = serverAbortController
     if (!controller) return
     await seekVideoForCompression(sourceVideo, 0, controller.signal)
@@ -934,10 +942,6 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
           })
       )
     )
-    activeVideoBitrateKbps = runtimeVideoBitrateKbps
-    activeAudioBitrateKbps = runtimeAudioBitrateKbps
-    activeKeepAudio = runtimeKeepAudio
-    activeFrameRate = runtimeFrameRate
 
     const sourceCapture = (sourceVideo as any).captureStream?.() || (sourceVideo as any).mozCaptureStream?.()
     activeSourceCaptureStream = sourceCapture || null
@@ -1068,11 +1072,8 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
         return
       }
 
-      const reachedTailByProgress = currentProgress >= 99
-      const reachedTailByTime = sourceMeta.duration > 0 && current >= sourceMeta.duration - 0.08
-      const severeTailStall = currentProgress >= 98 && stalledMs >= 12000
-
-      if (reachedTailByProgress || reachedTailByTime || severeTailStall) {
+      // 进度四舍五入为 99% 不代表已结束，长视频必须等 ended 才能保留最后几秒。
+      if (previewVideoRef.value.ended) {
         finalizeRecording()
         return
       }
@@ -1082,7 +1083,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
       }
     }
 
-    statusText.value = `正在压缩视频（${renderModeLabel}模式，${activeVideoBitrateKbps}kbps）...`
+    statusText.value = `正在压缩视频（${renderModeLabel}模式，${runtimeVideoBitrateKbps}kbps）...`
     mediaRecorder.start(500)
 
     drawRafId = requestAnimationFrame(drawFrame)
@@ -1112,7 +1113,7 @@ const runCompressProcess = async (runtimeOverrides: CompressRuntimeOverrides | n
 }
 
 /**
- * 函数说明：调用服务端 FFmpeg 执行标准 H.264 MP4 压缩，失败时允许回退浏览器引擎。
+ * 函数说明：调用服务端 H.264 压缩，失败后停止并让用户选择是否切换本地。
  * @returns 是否已在服务端完成或被用户取消
  */
 const runServerCompressProcess = async (runId: number) => {
@@ -1121,6 +1122,7 @@ const runServerCompressProcess = async (runId: number) => {
   }
 
   const currentFile = videoFile.value
+  const speed = settings.serverSpeed
   const controller = serverAbortController
   if (!controller) return true
   const config = await getVideoCompressServerConfig(controller.signal)
@@ -1134,15 +1136,18 @@ const runServerCompressProcess = async (runId: number) => {
       ElMessage.error(errorText.value)
       return true
     }
-    ElMessage.warning('服务端 FFmpeg 暂不可用，已自动切换浏览器本地压缩')
-    return false
+    isProcessing.value = false
+    statusText.value = '压缩服务暂不可用'
+    errorText.value = '专业压缩服务暂不可用，请稍后重试，或改用浏览器本地压缩'
+    return true
   }
 
   isCancelRequested.value = false
   isProcessing.value = true
-  progress.value = 2
+  progress.value = 0
+  serverPhase.value = 'uploading'
   processStartedAt.value = Date.now()
-  statusText.value = '正在上传视频到压缩队列...'
+  statusText.value = '正在上传视频...'
   etaText.value = '上传完成后将自动进行 H.264 转码'
   errorText.value = ''
   clearResultUrl()
@@ -1150,15 +1155,24 @@ const runServerCompressProcess = async (runId: number) => {
   try {
     const result = await compressVideoWithServer(currentFile, {
       signal: controller.signal,
+      speed,
       onUploadProgress: (uploadProgress) => {
-        if (!isCurrentRun(runId)) return
-        progress.value = Math.max(progress.value, Math.min(45, Math.round(uploadProgress * 0.45)))
+        if (!isCurrentRun(runId) || !isProcessing.value || serverPhase.value === 'downloading') return
+        progress.value = uploadProgress
         if (uploadProgress >= 100) {
-          statusText.value = '上传完成，正在排队并压缩视频...'
-          etaText.value = `服务端按 H.264 / CRF ${config.crf || 26} / AAC 128K 处理`
+          serverPhase.value = 'processing'
+          statusText.value = '上传完成，服务端正在处理视频...'
+          etaText.value = `${speed === 'balanced' ? '标准压缩' : '快速压缩'} · 等待与转码耗时取决于视频长度及服务器负载`
         } else {
           statusText.value = `正在上传视频（${uploadProgress}%）...`
         }
+      },
+      onDownloadProgress: (downloadProgress) => {
+        if (!isCurrentRun(runId) || !isProcessing.value) return
+        serverPhase.value = 'downloading'
+        progress.value = downloadProgress ?? -1
+        statusText.value = '转码完成，正在接收视频...'
+        etaText.value = '接收完成后即可预览和下载'
       }
     })
 
@@ -1191,7 +1205,7 @@ const runServerCompressProcess = async (runId: number) => {
       return true
     }
 
-    console.warn('[VideoCompress] 服务端压缩失败，准备回退浏览器引擎', error)
+    console.warn('[VideoCompress] 服务端压缩失败', error)
     isProcessing.value = false
     progress.value = 0
     etaText.value = ''
@@ -1201,10 +1215,19 @@ const runServerCompressProcess = async (runId: number) => {
       ElMessage.error(errorText.value)
       return true
     }
-    statusText.value = '服务端压缩失败，正在切换浏览器本地模式...'
-    ElMessage.warning('服务端压缩失败，已自动切换浏览器本地压缩')
-    return false
+    statusText.value = '压缩失败'
+    errorText.value = getFriendlyVideoError(error, '专业压缩失败，请稍后重试')
+    ElMessage.error(errorText.value)
+    return true
   }
+}
+
+/** 切换到本地参数，由用户再次开始任务，避免服务失败后无提示地追加整段播放。 */
+const switchToLocalCompression = () => {
+  if (isProcessing.value || !hasLocalVideoMetadata.value) return
+  settings.engine = 'browser'
+  serverPhase.value = 'idle'
+  errorText.value = ''
 }
 
 /**
@@ -1225,6 +1248,7 @@ const compressVideo = async () => {
   const runId = ++processingRunId
   isCancelRequested.value = false
   serverAbortController = new AbortController()
+  serverPhase.value = engine === 'server' ? 'checking' : 'idle'
   isProcessing.value = true
   statusText.value = '正在检查压缩任务...'
   errorText.value = ''
@@ -1331,7 +1355,7 @@ const resultComparisonMetrics = computed(() => {
     {
       label: '时长',
       before: formatTime(sourceMeta.duration),
-      after: resultMeta.duration ? formatTime(resultMeta.duration) : '-'
+      after: resultMeta.duration ? formatTime(resultMeta.duration) : resultVideoUrl.value ? '容器未提供时长' : '-'
     },
     {
       label: '输出编码',
@@ -1392,7 +1416,7 @@ onBeforeRouteLeave((to, from, next) => {
           title="视频压缩"
           description="自动输出兼容性更好的 H.264 MP4，压缩后可直接预览并下载。"
           :specs="[`最大 ${serverConfig?.maxSizeMB || DEFAULT_MAX_FILE_SIZE_MB}MB`, 'H.264 + AAC', '最高 30fps']"
-          :notices="['专业模式仅临时上传转码，完成后立即清理', '服务不可用时自动切换浏览器本地处理']"
+          :notices="['默认快速压缩，标准档可争取更小体积', '专业模式临时上传转码，本地模式无需上传']"
         />
 
         <template v-if="!videoUrl">
@@ -1450,6 +1474,11 @@ onBeforeRouteLeave((to, from, next) => {
                     <span>专业输出参数</span>
                     <span>串行处理</span>
                   </div>
+                  <el-radio-group v-model="settings.serverSpeed" :disabled="isProcessing" aria-label="专业压缩速度" class="mt-3 mb-3">
+                    <el-radio-button value="fast">快速压缩</el-radio-button>
+                    <el-radio-button value="balanced">标准压缩</el-radio-button>
+                  </el-radio-group>
+                  <p class="mb-3 text-xs leading-5">{{ settings.serverSpeed === 'fast' ? '优先节省处理时间，文件可能略大。' : '沿用原标准编码，处理更慢，文件可能更小。' }}</p>
                   <div class="video-server-specs__list">
                     <span>H.264 MP4 · CRF {{ serverConfig?.crf || 26 }}</span>
                     <span>最长边 1920 · 最高 30fps</span>
@@ -1458,6 +1487,7 @@ onBeforeRouteLeave((to, from, next) => {
                 </div>
 
                 <template v-if="settings.engine === 'browser'">
+                <p class="text-xs leading-5 text-slate-600" role="note">本地模式需要完整播放视频{{ hasLocalVideoMetadata ? `，至少需要约 ${formatTime(sourceMeta.duration)}` : '' }}。请保持页面在前台；体积未下降时直接保留原文件，不自动重压。</p>
                 <div>
                   <label class="block text-sm font-medium text-gray-700 mb-2">压缩模式</label>
                   <el-radio-group v-model="settings.mode" :disabled="isProcessing" class="w-full">
@@ -1534,12 +1564,17 @@ onBeforeRouteLeave((to, from, next) => {
                   v-if="isProcessing"
                   :progress="progress"
                   :status-text="statusText"
-                  :eta-text="etaText"
+                  :eta-text="processingHint"
+                  :indeterminate="progressIndeterminate"
+                  :progress-label="serverPhase !== 'idle' ? serverProgressLabel : undefined"
                   @cancel="cancelProcessing"
                 />
 
                 <div v-if="errorText" class="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">
-                  {{ errorText }}
+                  <p>{{ errorText }}</p>
+                  <button v-if="settings.engine === 'server' && hasLocalVideoMetadata && !isProcessing"
+                    type="button" data-test="use-local-compression" class="mt-2 underline underline-offset-4"
+                    @click="switchToLocalCompression">改用浏览器本地压缩</button>
                 </div>
 
                 <button
@@ -1564,7 +1599,7 @@ onBeforeRouteLeave((to, from, next) => {
               <video
                 ref="previewVideoRef"
                 :src="videoUrl"
-                controls
+                :controls="!isProcessing"
                 playsinline
                 aria-label="原视频预览"
                 class="w-full max-h-[500px]"
@@ -1663,7 +1698,7 @@ onBeforeRouteLeave((to, from, next) => {
       <MobileToolActions v-if="videoFile"
         aria-label="视频压缩操作"
         :title="isProcessing ? '正在压缩视频' : mobileSettingsChanged && resultVideoUrl ? '参数已修改' : resultVideoUrl ? '压缩已完成' : '已选择视频'"
-        :description="isProcessing ? `${Math.round(progress)}% · ${statusText}` : resultVideoUrl && !mobileSettingsChanged ? getCompressionText() : '可展开参数调整，预览保留原视频'"
+        :description="isProcessing ? `${serverPhase !== 'idle' ? serverProgressLabel : `${Math.round(progress)}%`} · ${statusText}` : resultVideoUrl && !mobileSettingsChanged ? getCompressionText() : '可展开参数调整，预览保留原视频'"
         :action-label="isProcessing ? '压缩中…' : resultVideoUrl && !mobileSettingsChanged ? '下载视频' : mobileSettingsChanged ? '重新压缩' : '开始压缩'"
         :busy="isProcessing" cancel-label="取消"
         @action="resultVideoUrl && !mobileSettingsChanged ? downloadResult() : compressVideo()"

@@ -25,6 +25,7 @@ const (
 	VideoCompressMaxFileSize      int64   = 500 * 1024 * 1024
 	videoCompressKeepOriginalRate float64 = 0.98
 	videoCompressTaskTimeout              = 9*time.Minute + 30*time.Second
+	videoCompressQueueTimeout             = 30 * time.Second
 )
 
 var videoCompressSemaphore = make(chan struct{}, 1)
@@ -53,12 +54,19 @@ type VideoCompressConfig struct {
 	CRF           int    `json:"crf"`
 	AudioBitrate  string `json:"audioBitrate"`
 	Concurrency   int    `json:"concurrency"`
+	DefaultSpeed  string `json:"defaultSpeed"`
+	Preset        string `json:"preset"`
+}
+
+// VideoCompressOptions 定义单次转码的速度；只允许 fast 和 balanced，不接受任意 FFmpeg 参数。
+type VideoCompressOptions struct {
+	Speed string
 }
 
 // IVideoCompressService 定义前台视频压缩服务能力。
 type IVideoCompressService interface {
 	Config() VideoCompressConfig
-	Compress(ctx context.Context, file *multipart.FileHeader) (VideoCompressResult, error)
+	Compress(ctx context.Context, file *multipart.FileHeader, options ...VideoCompressOptions) (VideoCompressResult, error)
 }
 
 type videoCompressService struct{}
@@ -82,26 +90,31 @@ func (videoCompressService) Config() VideoCompressConfig {
 		CRF:           26,
 		AudioBitrate:  "128K",
 		Concurrency:   1,
+		DefaultSpeed:  "fast",
+		Preset:        "veryfast",
 	}
 }
 
 // Compress 将上传视频串行转码为 H.264 MP4；体积无明显下降时返回原视频。
-func (videoCompressService) Compress(ctx context.Context, file *multipart.FileHeader) (VideoCompressResult, error) {
+func (videoCompressService) Compress(ctx context.Context, file *multipart.FileHeader, options ...VideoCompressOptions) (VideoCompressResult, error) {
 	if err := validateVideoCompressFile(file); err != nil {
+		return VideoCompressResult{}, err
+	}
+	option, err := resolveVideoCompressOptions(options...)
+	if err != nil {
 		return VideoCompressResult{}, err
 	}
 	if _, err := exec.LookPath("ffmpeg"); err != nil {
 		return VideoCompressResult{}, response.SystemError.Make("服务器未安装 FFmpeg，请先执行依赖安装脚本")
 	}
+	// 排队、临时文件复制和编码共享总预算，为 HTTP 十分钟超时保留收尾时间。
 	compressCtx, cancel := context.WithTimeout(ctx, videoCompressTaskTimeout)
 	defer cancel()
-
-	select {
-	case videoCompressSemaphore <- struct{}{}:
-		defer func() { <-videoCompressSemaphore }()
-	case <-compressCtx.Done():
-		return VideoCompressResult{}, response.SystemError.Make("视频压缩任务已取消")
+	releaseSlot, err := acquireVideoCompressSlot(compressCtx, videoCompressSemaphore, videoCompressQueueTimeout)
+	if err != nil {
+		return VideoCompressResult{}, err
 	}
+	defer releaseSlot()
 
 	tempDir, err := os.MkdirTemp("", "uied-video-compress-*")
 	if err != nil {
@@ -118,7 +131,7 @@ func (videoCompressService) Compress(ctx context.Context, file *multipart.FileHe
 
 	outputPath := filepath.Join(tempDir, "compressed.mp4")
 	startedAt := time.Now()
-	command := exec.CommandContext(compressCtx, "ffmpeg", buildVideoCompressArgs(inputPath, outputPath)...)
+	command := exec.CommandContext(compressCtx, "ffmpeg", buildVideoCompressArgs(inputPath, outputPath, option)...)
 	var commandLog bytes.Buffer
 	command.Stdout = &commandLog
 	command.Stderr = &commandLog
@@ -159,6 +172,39 @@ func (videoCompressService) Compress(ctx context.Context, file *multipart.FileHe
 	return result, nil
 }
 
+// resolveVideoCompressOptions 校验用户速度选项并补充默认值，返回白名单配置或可读参数错误。
+func resolveVideoCompressOptions(options ...VideoCompressOptions) (VideoCompressOptions, error) {
+	option := VideoCompressOptions{Speed: "fast"}
+	if len(options) > 0 && strings.TrimSpace(options[0].Speed) != "" {
+		option.Speed = strings.TrimSpace(options[0].Speed)
+	}
+	if option.Speed != "fast" && option.Speed != "balanced" {
+		return VideoCompressOptions{}, response.AssertArgumentError.Make("请选择快速压缩或均衡压缩模式")
+	}
+	return option, nil
+}
+
+// acquireVideoCompressSlot 在有限时间内取得串行转码名额，调用方必须在任务结束时执行返回的释放函数。
+func acquireVideoCompressSlot(ctx context.Context, slots chan struct{}, timeout time.Duration) (func(), error) {
+	if ctx.Err() != nil {
+		return nil, response.SystemError.Make("视频压缩任务已取消")
+	}
+	timer := time.NewTimer(timeout)
+	defer timer.Stop()
+	select {
+	case slots <- struct{}{}:
+		if ctx.Err() != nil {
+			<-slots
+			return nil, response.SystemError.Make("视频压缩任务已取消")
+		}
+		return func() { <-slots }, nil
+	case <-timer.C:
+		return nil, response.SystemError.Make("视频压缩服务繁忙，请稍后重试")
+	case <-ctx.Done():
+		return nil, response.SystemError.Make("视频压缩任务已取消")
+	}
+}
+
 // validateVideoCompressFile 校验视频格式和 500MB 上传限制。
 func validateVideoCompressFile(file *multipart.FileHeader) error {
 	if file == nil || file.Size <= 0 {
@@ -195,15 +241,19 @@ func copyMultipartFile(file *multipart.FileHeader, targetPath string) error {
 	return err
 }
 
-// buildVideoCompressArgs 构建固定的 FFmpeg H.264 压缩参数。
-func buildVideoCompressArgs(inputPath string, outputPath string) []string {
+// buildVideoCompressArgs 根据已校验的速度选项构建 H.264 参数，快速和均衡模式保持相同的 CRF 与尺寸上限。
+func buildVideoCompressArgs(inputPath string, outputPath string, options ...VideoCompressOptions) []string {
+	preset := "veryfast"
+	if len(options) > 0 && options[0].Speed == "balanced" {
+		preset = "medium"
+	}
 	return []string{
 		"-hide_banner", "-loglevel", "error", "-y",
 		"-i", inputPath,
 		"-map", "0:v:0", "-map", "0:a?", "-map_metadata", "-1",
 		"-vf", "scale=w='min(1920,iw)':h='min(1920,ih)':force_original_aspect_ratio=decrease:force_divisible_by=2",
 		"-fpsmax", "30",
-		"-c:v", "libx264", "-preset", "medium", "-crf", "26", "-pix_fmt", "yuv420p",
+		"-c:v", "libx264", "-preset", preset, "-crf", "26", "-pix_fmt", "yuv420p",
 		"-c:a", "aac", "-b:a", "128k",
 		"-movflags", "+faststart",
 		outputPath,

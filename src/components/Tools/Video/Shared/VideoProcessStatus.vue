@@ -20,11 +20,15 @@ interface Props {
   statusText: string
   etaText?: string
   showCancel?: boolean
+  indeterminate?: boolean
+  progressLabel?: string
 }
 
 withDefaults(defineProps<Props>(), {
   etaText: '',
-  showCancel: true
+  showCancel: true,
+  indeterminate: false,
+  progressLabel: ''
 })
 
 const emit = defineEmits<{
@@ -43,13 +47,16 @@ const handleCancel = () => {
   <section class="rounded-xl border border-slate-200 bg-white p-4" role="status" aria-live="polite">
     <div class="mb-2 flex items-center justify-between gap-3 text-xs sm:text-sm">
       <span class="min-w-0 break-words font-medium text-slate-700">{{ statusText || '处理中...' }}</span>
-      <span class="shrink-0 font-semibold text-sky-700">{{ Math.max(0, Math.min(100, Math.round(progress))) }}%</span>
+      <span class="shrink-0 font-semibold text-brand">{{ progressLabel || `${Math.max(0, Math.min(100, Math.round(progress)))}%` }}</span>
     </div>
 
-    <div class="mb-2 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+    <div class="mb-2 h-2 w-full overflow-hidden rounded-full bg-slate-100" role="progressbar"
+      aria-label="处理进度" :aria-valuenow="indeterminate ? undefined : Math.max(0, Math.min(100, Math.round(progress)))"
+      :aria-valuetext="progressLabel || undefined" aria-valuemin="0" aria-valuemax="100">
       <div
-        class="h-2 rounded-full bg-gradient-to-r from-sky-500 to-emerald-500 transition-all duration-300"
-        :style="{ width: `${Math.max(0, Math.min(100, progress))}%` }"
+        class="h-2 rounded-full bg-brand transition-all duration-300"
+        :class="{ 'video-progress-indeterminate': indeterminate }"
+        :style="{ width: indeterminate ? '40%' : `${Math.max(0, Math.min(100, progress))}%` }"
       />
     </div>
 
@@ -66,3 +73,9 @@ const handleCancel = () => {
     </div>
   </section>
 </template>
+
+<style scoped>
+.video-progress-indeterminate { animation: video-progress-slide 1.5s ease-in-out infinite alternate; }
+@keyframes video-progress-slide { from { transform: translateX(0); } to { transform: translateX(150%); } }
+@media (prefers-reduced-motion: reduce) { .video-progress-indeterminate { animation: none; } }
+</style>

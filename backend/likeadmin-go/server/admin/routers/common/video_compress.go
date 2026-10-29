@@ -40,7 +40,7 @@ type videoCompressHandler struct {
 	srv serviceCommon.IVideoCompressService
 }
 
-// config 返回服务端视频压缩能力和固定参数。
+// config 返回服务端视频压缩能力、默认速度和固定画质参数。
 func (h videoCompressHandler) config(c *gin.Context) {
 	response.OkWithData(c, h.srv.Config())
 }
@@ -55,7 +55,7 @@ func (h videoCompressHandler) compress(c *gin.Context) {
 		return
 	}
 
-	result, err := h.srv.Compress(c.Request.Context(), file)
+	result, err := h.srv.Compress(c.Request.Context(), file, serviceCommon.VideoCompressOptions{Speed: c.PostForm("speed")})
 	if response.IsFailWithResp(c, err) {
 		return
 	}

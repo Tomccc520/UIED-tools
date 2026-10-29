@@ -52,6 +52,33 @@ describe('视频压缩接口响应解析', () => {
     expect(VIDEO_COMPRESS_REQUEST_TIMEOUT_MS).toBeLessThanOrEqual(11 * 60 * 1000)
   })
 
+  it('上传所选速度档位，并分别通知上传与下载进度', async () => {
+    const post = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: new Blob(['video']), headers: { 'content-type': 'video/mp4', 'x-video-compressed': 'true' }
+    })
+    const upload = vi.fn()
+    const download = vi.fn()
+    await compressVideoWithServer(new File(['source'], 'sample.mp4'), {
+      speed: 'balanced', onUploadProgress: upload, onDownloadProgress: download
+    })
+    const [, form, config] = post.mock.calls[0]
+    expect((form as FormData).get('speed')).toBe('balanced')
+    config!.onUploadProgress!({ loaded: 10, total: 20 } as any)
+    config!.onDownloadProgress!({ loaded: 10, total: 40 } as any)
+    expect(upload).toHaveBeenCalledWith(50)
+    expect(download).toHaveBeenCalledWith(25)
+    config!.onDownloadProgress!({ loaded: 10 } as any)
+    expect(download).toHaveBeenLastCalledWith(null)
+  })
+
+  it('默认上传快速档，非 2xx JSON 错误也显示后端的可读提示', async () => {
+    const post = vi.spyOn(axios, 'post').mockRejectedValue({
+      response: { data: new Blob([JSON.stringify({ msg: '压缩服务繁忙，请稍后重试' })], { type: 'application/json' }) }
+    })
+    await expect(compressVideoWithServer(new File(['source'], 'sample.mp4'))).rejects.toThrow('压缩服务繁忙')
+    expect((post.mock.calls[0][1] as FormData).get('speed')).toBe('fast')
+  })
+
   it.each([
     { blob: new Blob([]), type: 'video/mp4' },
     { blob: new Blob(['<html>gateway error</html>']), type: 'text/html' }
