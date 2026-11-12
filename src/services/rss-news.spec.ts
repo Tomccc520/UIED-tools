@@ -64,14 +64,14 @@ describe('RSS 多源结果与超时边界', () => {
   it('获取响应头后仍要限制响应体读取时间，不能提前清除超时', async () => {
     vi.stubGlobal('fetch', vi.fn((_url, options) => Promise.resolve({
       ok: true,
-      text: () => new Promise((_resolve, reject) => {
+      json: () => new Promise((_resolve, reject) => {
         options.signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')), { once: true })
       }),
     })))
     let error: Error | undefined
-    const request = service.fetchWithRetry('/test-feed', {}, 1).catch((value: Error) => { error = value })
+    const request = service.fetchFeed('ithome').catch((value: Error) => { error = value })
     await flushPromises()
-    await vi.advanceTimersByTimeAsync(15_000)
+    await vi.advanceTimersByTimeAsync(9_000)
     expect(error?.message).toBe('请求超时')
     await request
     expect(vi.getTimerCount()).toBe(0)
@@ -80,7 +80,34 @@ describe('RSS 多源结果与超时边界', () => {
   it('网络立即失败后也会清理超时计时器', async () => {
     const timersBefore = vi.getTimerCount()
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
-    await expect(service.fetchWithRetry('/test-feed', {}, 1)).rejects.toThrow('offline')
+    await expect(service.fetchFeed('ithome')).rejects.toThrow('offline')
     expect(vi.getTimerCount()).toBe(timersBefore)
+  })
+
+  it('UIED 分类走同域 RSS，保留原始发布时间并拒绝伪造链接', async () => {
+    const request = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: 200,
+        data: {
+          items: [
+            { title: 'UIED 资讯', url: 'https://www.uied.cn/article/1', publishedAt: '2026-10-21T09:30:00+08:00' },
+            { title: '异常链接', url: 'javascript:alert(1)', publishedAt: '2026-10-21T09:30:00+08:00' }
+          ]
+        }
+      })
+    })
+    vi.stubGlobal('fetch', request)
+    const result = await rssNewsService.getNews('UIED')
+    expect(request).toHaveBeenCalledWith('/api/common/index/news-rss?source=uied', expect.any(Object))
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ title: 'UIED 资讯', source: 'UIED', date: Date.parse('2026-10-21T01:30:00Z') })
+  })
+
+  it('机器之心未接入时不发出旧 RSS 请求', async () => {
+    const request = vi.fn()
+    vi.stubGlobal('fetch', request)
+    await expect(rssNewsService.getNews('机器之心')).rejects.toThrow('尚未接入')
+    expect(request).not.toHaveBeenCalled()
   })
 })

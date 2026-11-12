@@ -136,9 +136,8 @@ import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
-import { requestMattingImage } from '@/services/matting'
-import { useToolConsume } from '@/composables/useToolConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
+import { usePhotoMatting } from './usePhotoMatting'
 
 const info = reactive({
   title: '证件照透明背景工具',
@@ -165,7 +164,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const processedObjectUrl = ref('')
 const route = useRoute()
-const { ensureToolConsume } = useToolConsume()
+const { ensureToolConsume, runPhotoMatting } = usePhotoMatting()
 const {
   currentMemberCoreExperience,
   memberCoreTipsTitle,
@@ -263,32 +262,30 @@ const selectType = (typeId: number) => {
 }
 
 /**
- * 函数说明：调用后端 AI 抠图接口并更新透明图预览
+ * 函数说明：获取并交付当前照片的透明图，交付失败时释放本次预扣积分。
  */
 const processImage = async () => {
-  if (!selectedFile.value) {
+  if (isProcessing.value) return
+  const file = selectedFile.value
+  if (!file) {
     ElMessage.warning('请先上传照片')
     return
   }
-  const canConsume = await ensureToolConsume({
-    toolKey: 'photo-transparent',
-    action: 'matting',
-    loginWarningText: '请先登录后再使用透明背景抠图',
-    showConsumeSuccessToast: true
-  })
-  if (!canConsume) {
-    return
-  }
-
   isProcessing.value = true
   try {
-    const resultBlob = await requestMattingImage(selectedFile.value)
-    cleanupProcessedObjectUrl()
-    const objectUrl = URL.createObjectURL(resultBlob)
-    processedObjectUrl.value = objectUrl
-    processedImageUrl.value = objectUrl
-    ElMessage.success('AI 抠图完成')
+    const completed = await runPhotoMatting(file, {
+      toolKey: 'photo-transparent',
+      loginWarningText: '请先登录后再使用透明背景抠图'
+    }, (resultBlob) => {
+      if (selectedFile.value !== file) throw new Error('照片已更换，请重新处理')
+      cleanupProcessedObjectUrl()
+      const objectUrl = URL.createObjectURL(resultBlob)
+      processedObjectUrl.value = objectUrl
+      processedImageUrl.value = objectUrl
+    })
+    if (completed && selectedFile.value === file) ElMessage.success('AI 抠图完成')
   } catch (error) {
+    if (selectedFile.value !== file) return
     const message = error instanceof Error ? error.message : '抠图失败，请稍后重试'
     ElMessage.error(message)
   } finally {
@@ -319,7 +316,9 @@ const downloadImage = async () => {
   link.click()
 }
 
+/** 离开页面时使旧照片请求失效并释放预览地址。 */
 onBeforeUnmount(() => {
+  selectedFile.value = null
   if (currentImage.value.startsWith('blob:')) {
     URL.revokeObjectURL(currentImage.value)
   }

@@ -38,22 +38,23 @@
         <!-- 壁纸展示区域 -->
         <div class="bg-gray-50 rounded-lg p-6 mb-6" style="min-height: 400px;">
           <div class="wallpaper-display" v-if="wallpaperUrl">
-            <img :src="wallpaperUrl" alt="随机动漫壁纸" @load="handleImageLoad"
+            <img :src="wallpaperUrl" alt="随机动漫壁纸" @error="handleImageError"
               class="w-full h-auto rounded-lg shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02]" />
           </div>
-          <div class="loading flex justify-center items-center h-full" v-else>
+          <div v-else-if="loading" class="loading flex justify-center items-center h-full">
             <el-skeleton :rows="10" animated />
           </div>
+          <p v-else class="py-12 text-center text-sm text-gray-600" role="status">{{ previewError }}</p>
         </div>
 
         <!-- 操作按钮区域 -->
         <div class="flex justify-center gap-4">
-          <button @click="getNewWallpaper"
+          <button @click="getNewWallpaper" :disabled="loading"
             class="inline-flex items-center px-8 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg text-base transition-colors">
             <div ref="refreshContainer" class="w-6 h-6 mr-2"></div>
             换一张
           </button>
-          <button @click="downloadWallpaper"
+          <button @click="downloadWallpaper" :disabled="!wallpaperUrl || downloading"
             class="inline-flex items-center px-8 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-base transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none"
               stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -163,8 +164,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from '@vue/runtime-core'
 import { useRoute } from 'vue-router'
-import { ElMessage } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
+import { validateEncodedImageBlob } from '@/utils/imageFormatConversion'
 
 // 声明 lottie 类型，用于处理刷新按钮动画
 declare const lottie: any
@@ -172,6 +173,13 @@ declare const lottie: any
 // 状态变量
 const wallpaperUrl = ref('')
 const loading = ref(false)
+const downloading = ref(false)
+const previewError = ref('')
+const wallpaperExtensions: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp'
+}
 const route = useRoute()
 const showToast = ref(false)
 const toastMessage = ref('')
@@ -210,63 +218,69 @@ const showMessage = (message: string, type: 'success' | 'error') => {
   }, 2000)
 }
 
-// 获取新壁纸
+/** 兼容上游旧 HTTP 地址，在已确认支持 HTTPS 的素材域升级协议。 */
+const normalizeWallpaperUrl = (raw: unknown): string => {
+  if (typeof raw !== 'string' || !raw.trim()) throw new Error('壁纸地址缺失')
+  const image = new URL(raw)
+  if (image.protocol === 'http:' && image.host === 'www.wudada.online') image.protocol = 'https:'
+  if (image.protocol !== 'https:' || image.username || image.password) throw new Error('壁纸地址不可用')
+  return image.href
+}
+
+/** 请求新壁纸并校验响应，失败时保留仍可下载的上一张图片。 */
 const getNewWallpaper = async () => {
+  if (loading.value) return
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 8000)
   try {
     loading.value = true
+    previewError.value = ''
     // 播放刷新动画
     if (refreshAnimation) {
       refreshAnimation.goToAndPlay(0, true)
     }
 
-    const response = await fetch('https://www.wudada.online/Api/ScTp', {
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-
+    const response = await fetch('https://www.wudada.online/Api/ScTp', { cache: 'no-store', signal: controller.signal })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const data = await response.json()
-    console.log('API Response:', data)
-
-    if (typeof data === 'string' && data.startsWith('http')) {
-      wallpaperUrl.value = data
-    } else if (data && (data.imgurl || data.url || data.data)) {
-      wallpaperUrl.value = data.imgurl || data.url || data.data
-    } else {
-      console.error('Unexpected API response format:', data)
-      throw new Error('获取壁纸失败：无效的响应格式')
+    if (data?.code != null && Number(data.code) !== 200) {
+      throw new Error('壁纸接口返回业务错误')
     }
+    wallpaperUrl.value = normalizeWallpaperUrl(typeof data === 'string' ? data : data?.imgurl || data?.url || data?.data)
   } catch (error) {
-    showMessage(error instanceof Error ? error.message : '获取壁纸失败，请稍后重试', 'error')
+    previewError.value = controller.signal.aborted ? '获取壁纸超时，请点击换一张' : '获取壁纸失败，请点击换一张'
+    if (wallpaperUrl.value) showMessage(previewError.value, 'error')
     console.error('获取壁纸错误:', error)
   } finally {
+    window.clearTimeout(timer)
     loading.value = false
   }
 }
 
-// 处理图片加载完成
-const handleImageLoad = () => {
-  loading.value = false
+/** 素材加载失败时提供重试指引，避免保留无法下载的地址。 */
+const handleImageError = () => {
+  wallpaperUrl.value = ''
+  previewError.value = '这张壁纸暂时无法加载，请点击换一张'
 }
 
-// 下载壁纸
+/** 下载 HTTPS 图片，并按实际编码设置文件扩展名。 */
 const downloadWallpaper = async () => {
-  if (!wallpaperUrl.value) return
-
+  if (!wallpaperUrl.value || downloading.value) return
+  const controller = new AbortController()
+  const timer = window.setTimeout(() => controller.abort(), 20_000)
+  downloading.value = true
   try {
-    const response = await fetch(wallpaperUrl.value)
+    const response = await fetch(wallpaperUrl.value, { signal: controller.signal })
+    if (!response.ok) throw new Error(`HTTP ${response.status}`)
     const blob = await response.blob()
+    const extension = wallpaperExtensions[blob.type]
+    if (!extension) throw new Error('壁纸未返回可下载的图片')
+    await validateEncodedImageBlob(blob, extension)
     const url = window.URL.createObjectURL(blob)
 
     const a = document.createElement('a')
     a.href = url
-    a.download = '动漫壁纸_' + new Date().getTime() + '.jpg'
+    a.download = '动漫壁纸_' + Date.now() + '.' + extension
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -276,6 +290,9 @@ const downloadWallpaper = async () => {
   } catch (error) {
     showMessage('下载失败，请稍后重试', 'error')
     console.error('下载错误:', error)
+  } finally {
+    window.clearTimeout(timer)
+    downloading.value = false
   }
 }
 

@@ -1,80 +1,29 @@
-import Parser from 'rss-parser';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 
-// 代理服务配置
-const PROXY_SERVICES = [] as const; // 移除外部代理，使用本地代理
-
-// RSS源配置类型定义
 interface RSSSourceConfig {
-  url: string;
+  id: string;
   name: string;
   category: string;
-  useProxy: boolean;
-  retryCount: number;
-  retryDelay: number;
-  isWordPress?: boolean;
-  isAI?: boolean;  // 添加AI资讯标识
+  isAI?: boolean;
 }
 
-// RSS源配置
-const RSS_SOURCES: Record<string, RSSSourceConfig> = {
-  KR36: {
-    url: '/36kr-proxy/feed',  // 36氪RSS地址
-    name: '36氪',
-    category: '36氪',
-    useProxy: false,
-    retryCount: 3,
-    retryDelay: 1000,
-    isAI: false
-  },
-  ITHOME: {
-    url: '/rss-proxy/rss',  // IT之家RSS地址
-    name: 'IT之家',
-    category: 'IT之家',
-    useProxy: false,
-    retryCount: 3,
-    retryDelay: 1000,
-    isAI: false
-  },
-  SSPAI: {
-    url: '/sspai-proxy/feed',  // 少数派RSS地址
-    name: '少数派',
-    category: '少数派',
-    useProxy: false,
-    retryCount: 3,
-    retryDelay: 1000,
-    isAI: false
-  },
-  JIQIZHIXIN: {
-    url: '/jqzx-proxy/rss',  // 使用官方 RSS 地址
-    name: '机器之心',
-    category: '机器之心',
-    useProxy: false,
-    retryCount: 3,
-    retryDelay: 1000,
-    isAI: true  // 机器之心是AI资讯
-  },
-  UIED: {
-    url: '/uied-proxy/wp-json/wp/v2/posts?per_page=10&_embed=true',
-    name: 'UIED',
-    category: 'UIED',
-    useProxy: false,
-    retryCount: 2,
-    retryDelay: 1500,
-    isWordPress: true,
-    isAI: true
-  },
-  QUANTUMU: {
-    url: '/quantumu-proxy/feed',  // 量子位RSS地址
-    name: '量子位',
-    category: '量子位',
-    useProxy: false,
-    retryCount: 3,
-    retryDelay: 1000,
-    isAI: true  // 量子位是AI资讯
-  }
-};
+interface NewsFeedItem {
+  title: string;
+  url: string;
+  publishedAt: string;
+  description?: string;
+}
+
+const RSS_SOURCES: RSSSourceConfig[] = [
+  { id: '36kr', name: '36氪', category: '36氪' },
+  { id: 'ithome', name: 'IT之家', category: 'IT之家' },
+  { id: 'sspai', name: '少数派', category: '少数派' },
+  { id: 'uied', name: 'UIED', category: 'UIED', isAI: true },
+  { id: 'qbitai', name: '量子位', category: '量子位', isAI: true }
+];
+
+const NEWS_FEED_TIMEOUT = 9_000;
 
 // 新闻分类 - 使用数组直接定义避免Set的类型错误
 export const NEWS_CATEGORIES = ['全部', 'AI资讯', '36氪', 'IT之家', '少数派', '机器之心', 'UIED', '量子位'] as const;
@@ -98,7 +47,6 @@ interface RSSCacheEntry {
 }
 
 class RSSNewsService {
-  private parser: Parser;
   private cache: Map<string, RSSCacheEntry>;
   private CACHE_DURATION = 15 * 60 * 1000; // 15分钟缓存，降低频繁拉取
   private FORCE_REFRESH_COOLDOWN = 30 * 1000; // 手动强刷冷却30秒
@@ -110,16 +58,6 @@ class RSSNewsService {
   private lastError: Error | null = null;
 
   constructor() {
-    this.parser = new Parser({
-      customFields: {
-        item: [
-          ['media:content', 'media'],
-          ['description', 'description'],
-          ['category', 'categories'],
-          ['pubDate', 'pubDate']
-        ]
-      }
-    });
     this.cache = new Map();
     this.restoreCacheFromStorage();
     this.setupAutoRefresh();
@@ -275,117 +213,53 @@ class RSSNewsService {
     }
   }
 
-  /** 按次数重试请求，15 秒截止覆盖响应头与正文读取，并在每次尝试结束时清理计时器。 */
-  private async fetchWithRetry(url: string, options: any = {}, retries = 3, delay = 1000): Promise<string> {
-    let lastError: Error | null = null;
-
-    for (let i = 0; i < retries; i++) {
-      try {
-        // 添加超时控制
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          controller.abort();
-        }, 15000); // 增加超时时间到15秒
-
-        try {
-          const response = await fetch(url, {
-            ...options,
-            mode: 'cors',
-            credentials: 'omit',
-            signal: controller.signal,
-            // 添加额外的请求头
-            headers: {
-              ...options.headers,
-              'Connection': 'keep-alive',
-              'Pragma': 'no-cache',
-              'Cache-Control': 'no-cache',
-              'Accept': 'application/json, application/xml, text/xml, application/rss+xml, */*',
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            }
-          });
-
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}, statusText: ${response.statusText}`);
-          }
-
-          const text = await response.text();
-          if (!text || text.trim().length === 0) {
-            throw new Error('空响应');
-          }
-
-          return text;
-        } catch (error) {
-          lastError = controller.signal.aborted
-            ? new Error('请求超时')
-            : error instanceof Error ? error : new Error('请求失败');
-          throw lastError;
-        } finally {
-          clearTimeout(timeoutId);
-        }
-      } catch (error) {
-        if (i === retries - 1) {
-          throw lastError || error;
-        }
-        await new Promise(resolve => setTimeout(resolve, delay * (i + 1)));
-      }
-    }
-
-    throw lastError || new Error('请求失败');
-  }
-
-  private async fetchRSS(source: typeof RSS_SOURCES[keyof typeof RSS_SOURCES]): Promise<NewsItem[]> {
+  /** 读取同域资讯接口，超时覆盖响应头和 JSON 正文。 */
+  private async fetchFeed(sourceId: string): Promise<NewsFeedItem[]> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), NEWS_FEED_TIMEOUT);
     try {
-      const content = await this.fetchWithRetry(
-        source.url,
-        {
-          headers: {
-            'Accept': 'application/xml, text/xml, application/rss+xml, application/json, */*',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-          }
-        },
-        source.retryCount,
-        source.retryDelay
-      );
-
-      let items: any[] = [];
-
-      if (source.isWordPress) {
-        const data = JSON.parse(content);
-        items = data.map((post: any) => ({
-          title: post.title.rendered,
-          link: post.link,
-          pubDate: post.date,
-          content: post.content.rendered,
-          description: post.excerpt.rendered,
-          categories: post.categories
-        }));
-      } else {
-        const feed = await this.parser.parseString(content);
-        items = feed.items;
+      const endpoint = '/api/common/index/news-rss?source=' + encodeURIComponent(sourceId);
+      const response = await fetch(endpoint, {
+        credentials: 'omit',
+        headers: { Accept: 'application/json' },
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error('资讯请求失败');
+      const payload = await response.json();
+      if (payload?.code !== 200 || !Array.isArray(payload.data?.items)) {
+        throw new Error('资讯来源暂时不可用');
       }
-
-      const processedItems = this.processFeedItems(items, source);
-      return processedItems;
+      return payload.data.items;
     } catch (error) {
-      if (import.meta.env.DEV) {
-        console.error(`获取 ${source.name} 的内容失败:`, error);
-      }
+      if (controller.signal.aborted) throw new Error('请求超时');
       throw error;
+    } finally {
+      clearTimeout(timer);
     }
   }
 
-  private processFeedItems(items: any[], source: typeof RSS_SOURCES[keyof typeof RSS_SOURCES]): NewsItem[] {
-    return items.map(item => ({
-      title: item.title,
-      description: this.cleanDescription(item.description || ''),
-      url: item.link,
-      date: new Date(item.pubDate || item.updated || Date.now()).getTime(),
-      source: source.name,
-      category: source.category,
-      time: dayjs(item.pubDate || item.updated).format('HH:mm')
-    }));
+  /** 将标准化条目转换为时间线数据，跳过缺少原文地址或有效发布时间的条目。 */
+  private async fetchRSS(source: RSSSourceConfig): Promise<NewsItem[]> {
+    const items = await this.fetchFeed(source.id);
+    const news: NewsItem[] = [];
+    for (const item of items) {
+      if (!item?.title || typeof item.url !== 'string' || !/^https?:\/\//i.test(item.url)) continue;
+      const date = Date.parse(item.publishedAt);
+      if (!Number.isFinite(date)) continue;
+      news.push({
+        title: item.title,
+        description: this.cleanDescription(typeof item.description === 'string' ? item.description : ''),
+        url: item.url,
+        date,
+        source: source.name,
+        category: source.category,
+        time: dayjs(date).format('HH:mm')
+      });
+    }
+    return news;
   }
 
+  /** 清理资讯摘要中的 HTML，并保留时间线所需的简短预览。 */
   private cleanDescription(description: string): string {
     // 优化描述清理
     const cleanText = description
@@ -397,11 +271,7 @@ class RSSNewsService {
       .trim();
 
     // 如果文本太短，尝试保留更多内容
-    if (cleanText.length < 50) {
-      return cleanText;
-    }
-
-    return cleanText.slice(0, 150) + '...';  // 增加描述长度到150字符
+    return cleanText.length > 150 ? cleanText.slice(0, 150) + '…' : cleanText;
   }
 
   /** 汇总分类来源，允许部分成功及真实空列表；全部来源失败时保留缓存并抛出明确错误。 */
@@ -422,7 +292,7 @@ class RSSNewsService {
     }
 
     try {
-      let sources = Object.values(RSS_SOURCES);
+      let sources = RSS_SOURCES;
       if (category && category !== '全部') {
         if (category === 'AI资讯') {
           sources = sources.filter(source => source.isAI);
@@ -431,6 +301,7 @@ class RSSNewsService {
         }
       }
 
+      if (sources.length === 0) throw new Error('该资讯源尚未接入');
       const newsPromises = sources.map(source => this.fetchRSS(source));
       const results = await Promise.allSettled(newsPromises);
 

@@ -74,10 +74,12 @@ type homepageLearningFeedItem struct {
 	Title       string `json:"title"`
 	URL         string `json:"url"`
 	PublishedAt string `json:"publishedAt"`
+	Description string `json:"description,omitempty"`
 }
 
 // homepageLearningRSSDocument 函数说明：兼容 RSS 2.0 与 Atom feed 的最小解析结构。
 type homepageLearningRSSDocument struct {
+	XMLName xml.Name
 	Channel homepageLearningRSSChannel  `xml:"channel"`
 	Feed    homepageLearningAtomFeed    `xml:"feed"`
 	Entries []homepageLearningAtomEntry `xml:"entry"`
@@ -94,6 +96,7 @@ type homepageLearningRSSItem struct {
 	URL         string `xml:"link"`
 	PublishedAt string `xml:"pubDate"`
 	Date        string `xml:"date"`
+	Description string `xml:"description"`
 }
 
 // homepageLearningAtomFeed 函数说明：Atom feed 的文章列表。
@@ -107,6 +110,7 @@ type homepageLearningAtomEntry struct {
 	Links       []homepageLearningAtomLink `xml:"link"`
 	PublishedAt string                     `xml:"published"`
 	UpdatedAt   string                     `xml:"updated"`
+	Summary     string                     `xml:"summary"`
 }
 
 // homepageLearningAtomLink 函数说明：Atom link 节点的 href 属性。
@@ -260,12 +264,17 @@ func fetchHomepageLearningSource(ctx context.Context, sourceURL string, client *
 	if err := servicedefaults.ValidateHomepageLearningRSSURL(sourceURL); err != nil {
 		return nil, err
 	}
+	return fetchRSSSource(ctx, sourceURL, client, accept)
+}
+
+// fetchRSSSource 请求调用方校验过的 RSS 地址，限制响应状态与最大正文大小。
+func fetchRSSSource(ctx context.Context, sourceURL string, client *http.Client, accept string) ([]byte, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, sourceURL, nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Accept", accept)
-	request.Header.Set("User-Agent", "UIED-Tools Homepage Learning Proxy/1.0")
+	request.Header.Set("User-Agent", "UIED-Tools RSS/1.0")
 	responseBody, err := client.Do(request)
 	if err != nil {
 		return nil, err
@@ -321,13 +330,24 @@ func buildHomepageLearningRSSURL(cfg servicedefaults.HomepageLearningConfig) (st
 
 // parseHomepageLearningRSS 函数说明：解析 RSS/Atom XML，并过滤缺失标题或安全链接的条目。
 func parseHomepageLearningRSS(body []byte, limit int) ([]homepageLearningFeedItem, error) {
+	return parseRSSFeed(body, limit, false)
+}
+
+// parseRSSFeed 解析 RSS 2.0 或 Atom，按展示需求选择是否返回摘要并过滤不安全链接。
+func parseRSSFeed(body []byte, limit int, includeDescription bool) ([]homepageLearningFeedItem, error) {
 	var document homepageLearningRSSDocument
 	if err := xml.Unmarshal(body, &document); err != nil {
 		return nil, err
 	}
+	if document.XMLName.Local != "rss" && document.XMLName.Local != "feed" {
+		return nil, errors.New("upstream response is not RSS or Atom")
+	}
 	items := make([]homepageLearningFeedItem, 0, limit)
 	for _, item := range document.Channel.Items {
 		if normalized, ok := normalizeHomepageLearningRSSItem(item.Title, item.URL, firstHomepageLearningString(item.PublishedAt, item.Date)); ok {
+			if includeDescription {
+				normalized.Description = strings.TrimSpace(item.Description)
+			}
 			items = append(items, normalized)
 		}
 		if len(items) >= limit {
@@ -337,6 +357,9 @@ func parseHomepageLearningRSS(body []byte, limit int) ([]homepageLearningFeedIte
 	atomEntries := append(document.Feed.Entries, document.Entries...)
 	for _, entry := range atomEntries {
 		if normalized, ok := normalizeHomepageLearningRSSItem(entry.Title, atomEntryURL(entry.Links), firstHomepageLearningString(entry.PublishedAt, entry.UpdatedAt)); ok {
+			if includeDescription {
+				normalized.Description = strings.TrimSpace(entry.Summary)
+			}
 			items = append(items, normalized)
 		}
 		if len(items) >= limit {
@@ -393,6 +416,7 @@ func normalizeHomepageLearningPublishedAt(raw string) string {
 		time.RFC1123,
 		time.RFC822Z,
 		time.RFC822,
+		"2006-01-02 15:04:05 -0700",
 		"2006-01-02 15:04:05",
 		"2006-01-02",
 	} {

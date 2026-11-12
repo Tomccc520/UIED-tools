@@ -32,6 +32,12 @@ const fetchNews = async (forceRefresh = false) => {
   if (disposed) return
   const version = ++requestVersion
   const category = currentCategory.value === '全部' ? undefined : currentCategory.value
+  if (category === '机器之心') {
+    loading.value = false
+    refreshing.value = false
+    lastError.value = null
+    return
+  }
   let timeoutId: ReturnType<typeof setTimeout> | undefined
   loading.value = true
   refreshing.value = true
@@ -193,7 +199,7 @@ onMounted(async () => {
     <!-- SEO优化 -->
     <div v-once class="hidden">
       <h1>AI科技快讯 - 实时掌握AI发展动态</h1>
-      <meta name="description" content="精选全球AI技术创新、产品发布、行业动态，涵盖36氪、IT之家、少数派、机器之心等权威媒体的最新AI资讯。">
+      <meta name="description" content="精选全球AI技术创新、产品发布、行业动态，汇集36氪、IT之家、少数派、UIED、量子位等来源。">
       <meta name="keywords" content="AI新闻,科技快讯,人工智能,技术创新,AI发展,科技资讯">
     </div>
 
@@ -284,7 +290,12 @@ onMounted(async () => {
       <!-- 新闻列表 -->
       <div class="flex-1 overflow-hidden">
         <div class="h-full overflow-auto px-4 sm:px-8">
-          <div v-if="loading" role="status" aria-live="polite" class="py-8 sm:py-16">
+          <div v-if="currentCategory === '机器之心'" role="status" class="py-8 text-center sm:py-16">
+            <p class="text-sm text-gray-600">机器之心已迁移到新版 RSS 订阅服务，本站暂未接入。</p>
+            <a href="https://www.jiqizhixin.com/data-service" target="_blank" rel="noopener noreferrer"
+              class="mt-3 inline-block text-sm font-medium text-brand underline">查看机器之心订阅</a>
+          </div>
+          <div v-else-if="loading" role="status" aria-live="polite" class="py-8 sm:py-16">
             <span class="sr-only">资讯加载中…</span>
             <div v-for="i in 3" :key="i" class="mb-8 animate-pulse">
               <div class="flex items-start gap-4">
@@ -465,7 +476,7 @@ onMounted(async () => {
           </div>
 
           <!-- 空状态 -->
-          <div v-if="!loading && !lastError && newsList.length === 0" role="status" class="py-8 sm:py-16">
+          <div v-if="currentCategory !== '机器之心' && !loading && !lastError && newsList.length === 0" role="status" class="py-8 sm:py-16">
             <div class="text-center">
               <div
                 class="mx-auto w-24 h-24 rounded-full bg-brand/10 flex items-center justify-center relative group">

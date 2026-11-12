@@ -1,6 +1,8 @@
 package common
 
 import (
+	"errors"
+
 	"github.com/gin-gonic/gin"
 	"likeadmin/admin/service/common"
 	"likeadmin/core"
@@ -19,11 +21,29 @@ func regIndex(rg *gin.RouterGroup, group *core.GroupBase) error {
 		rg.GET("/index/console", handle.console)
 		rg.GET("/index/config", handle.config)
 		rg.GET("/index/learning-rss", handle.learningRSS)
+		rg.GET("/index/news-rss", handle.newsRSS)
 	})
 }
 
 type indexHandler struct {
 	srv common.IIndexService
+}
+
+// newsRSS 返回指定资讯源的标准数据，失败时保留可重试的业务错误。
+func (ih indexHandler) newsRSS(c *gin.Context) {
+	source := c.Query("source")
+	items, err := common.NewsRSS(c.Request.Context(), source)
+	if errors.Is(err, common.ErrUnknownNewsRSSSource) {
+		response.FailWithMsg(c, response.AssertArgumentError, "该资讯源尚未接入")
+		return
+	}
+	if err != nil {
+		core.Logger.Warnf("资讯源 %s 读取失败: %v", source, err)
+		response.FailWithMsg(c, response.SystemError, "该资讯源暂时不可用，请稍后重试")
+		return
+	}
+	c.Header("Cache-Control", "public, max-age=120")
+	response.OkWithData(c, gin.H{"items": items})
 }
 
 // console 控制台

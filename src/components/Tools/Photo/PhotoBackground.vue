@@ -150,9 +150,8 @@ import { ElMessage } from 'element-plus'
 import { useRoute } from 'vue-router'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import MemberCoreToolTips from '@/components/Common/MemberCoreToolTips.vue'
-import { requestMattingImage } from '@/services/matting'
-import { useToolConsume } from '@/composables/useToolConsume'
 import { useMemberCoreToolExperienceTips } from '@/composables/useMemberCoreToolExperienceTips'
+import { usePhotoMatting } from './usePhotoMatting'
 
 const info = reactive({
   title: '免费AI证件照换底色工具',
@@ -177,7 +176,7 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedFile = ref<File | null>(null)
 const hasForegroundPng = computed(() => Boolean(foregroundPngUrl.value))
 const route = useRoute()
-const { ensureToolConsume } = useToolConsume()
+const { ensureToolConsume, runPhotoMatting } = usePhotoMatting()
 const {
   currentMemberCoreExperience,
   memberCoreTipsTitle,
@@ -236,11 +235,13 @@ const resetForegroundPng = () => {
  * 函数说明：根据当前选色和透明前景图生成最终证件照
  */
 const renderPhotoWithBackground = async () => {
-  if (!foregroundPngUrl.value) {
+  const foregroundUrl = foregroundPngUrl.value
+  if (!foregroundUrl) {
     throw new Error('透明前景图不存在，请先执行抠图')
   }
 
-  const foregroundImage = await loadImage(foregroundPngUrl.value)
+  const foregroundImage = await loadImage(foregroundUrl)
+  if (foregroundPngUrl.value !== foregroundUrl) throw new Error('照片已更换，请重新处理')
   const canvas = document.createElement('canvas')
   canvas.width = foregroundImage.width
   canvas.height = foregroundImage.height
@@ -254,22 +255,6 @@ const renderPhotoWithBackground = async () => {
   ctx.fillRect(0, 0, canvas.width, canvas.height)
   ctx.drawImage(foregroundImage, 0, 0)
   processedImageUrl.value = canvas.toDataURL('image/jpeg', 0.95)
-}
-
-/**
- * 函数说明：确保透明 PNG 已生成；若已存在则直接复用避免重复抠图
- */
-const ensureForegroundPng = async () => {
-  if (foregroundPngUrl.value) {
-    return
-  }
-  if (!selectedFile.value) {
-    throw new Error('请先上传照片')
-  }
-
-  const transparentBlob = await requestMattingImage(selectedFile.value)
-  resetForegroundPng()
-  foregroundPngUrl.value = URL.createObjectURL(transparentBlob)
 }
 
 /**
@@ -341,33 +326,40 @@ const selectColor = (color: string) => {
 }
 
 /**
- * 函数说明：首次点击时执行抠图并缓存透明图，后续仅本地换色合成
+ * 函数说明：首次抠图并交付换底成品后确认消费，后续复用透明图本地换色。
  */
 const processImage = async () => {
-  if (!selectedFile.value) {
+  if (isProcessing.value) return
+  const file = selectedFile.value
+  if (!file) {
     ElMessage.warning('请先上传照片')
     return
   }
 
-  const needMatting = !foregroundPngUrl.value
-  if (needMatting) {
-    const canConsume = await ensureToolConsume({
-      toolKey: 'photo-background',
-      action: 'matting',
-      loginWarningText: '请先登录后再使用 AI 抠图功能',
-      showConsumeSuccessToast: true
-    })
-    if (!canConsume) {
-      return
-    }
-  }
-
   isProcessing.value = true
   try {
-    await ensureForegroundPng()
-    await renderPhotoWithBackground()
-    ElMessage.success(needMatting ? '抠图完成，后续切换颜色无需再次抠图' : '底色已更新')
+    if (foregroundPngUrl.value) {
+      await renderPhotoWithBackground()
+      ElMessage.success('底色已更新')
+      return
+    }
+    const completed = await runPhotoMatting(file, {
+      toolKey: 'photo-background',
+      loginWarningText: '请先登录后再使用 AI 抠图功能'
+    }, async (resultBlob) => {
+      if (selectedFile.value !== file) throw new Error('照片已更换，请重新处理')
+      const foregroundUrl = URL.createObjectURL(resultBlob)
+      foregroundPngUrl.value = foregroundUrl
+      try {
+        await renderPhotoWithBackground()
+      } catch (error) {
+        if (foregroundPngUrl.value === foregroundUrl) resetForegroundPng()
+        throw error
+      }
+    })
+    if (completed && selectedFile.value === file) ElMessage.success('抠图完成，后续切换颜色无需再次抠图')
   } catch (error) {
+    if (selectedFile.value !== file) return
     const message = error instanceof Error ? error.message : '换底色失败，请稍后重试'
     ElMessage.error(message)
   } finally {
@@ -397,7 +389,9 @@ const downloadImage = async () => {
   link.click()
 }
 
+/** 离开页面时使旧照片请求失效并释放预览地址。 */
 onBeforeUnmount(() => {
+  selectedFile.value = null
   revokeBlobUrl(currentImage.value)
   resetForegroundPng()
 })

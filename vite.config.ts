@@ -384,11 +384,6 @@ export default defineConfig({
         changeOrigin: true,
         secure: false
       },
-      '/api/countdownday': {
-        target: 'https://api.pearktrue.cn',
-        changeOrigin: true,
-        secure: false
-      },
       // 抖音视频接口代理
       '/api/video/douyin': {
         target: 'https://api.pearktrue.cn',

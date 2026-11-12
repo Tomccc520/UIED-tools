@@ -7,6 +7,8 @@
  * @createDate 2026-03-21
  */
 
+import { validateEncodedImageBlob } from '@/utils/imageFormatConversion'
+
 export type MattingProviderId = 'aliyun' | 'koukoutu'
 
 export interface RequestMattingOptions {
@@ -84,26 +86,19 @@ const extractProviderIdFromPayload = (payload: unknown): MattingProviderId | '' 
  * 函数说明：解析接口错误响应，优先展示服务端返回的可读说明。
  */
 const parseApiErrorMessage = async (response: Response): Promise<string> => {
+  if (response.status === 404) return '抠图服务暂未接通，请联系管理员'
   try {
-    const data = await response.clone().json()
+    const data = await response.json()
+    if (String(data?.code) === '404') return '抠图服务暂未接通，请联系管理员'
     const detail = data?.detail || data?.msg || data?.message
     if (typeof detail === 'string' && detail.trim()) {
-      return detail
+      return detail.trim().slice(0, 120)
     }
   } catch {
-    // 忽略 JSON 解析错误，继续尝试文本响应
+    // HTML 或无正文的错误由下方的通用说明处理。
   }
 
-  try {
-    const text = await response.text()
-    const trimmed = text.trim()
-    if (trimmed && !trimmed.includes('<html') && !trimmed.includes('<!doctype html')) {
-      return `抠图服务异常（HTTP ${response.status}）：${trimmed.slice(0, 120)}`
-    }
-  } catch {
-    // 忽略文本解析错误，使用状态码兜底
-  }
-
+  if (response.ok) return '抠图服务未返回有效图片，请稍后重试'
   if (response.status === 503) {
     return '抠图 API 尚未配置，请联系管理员完成服务商配置'
   }
@@ -219,10 +214,17 @@ export const requestMattingImage = async (
       signal: controller.signal
     })
 
-    if (!response.ok) {
+    const mimeType = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase()
+    if (!response.ok || mimeType !== 'image/png') {
       throw new Error(await parseApiErrorMessage(response))
     }
-    return await response.blob()
+    const image = await response.blob()
+    try {
+      await validateEncodedImageBlob(image, 'png')
+    } catch {
+      throw new Error('抠图服务未返回有效图片，请稍后重试')
+    }
+    return image
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') {
       throw new Error('抠图请求超时，请稍后重试或更换更小的图片')

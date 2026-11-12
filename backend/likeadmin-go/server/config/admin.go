@@ -19,6 +19,7 @@ var AdminConfig = adminConfig{
 		"system:captcha",                    // 登录验证码
 		"common:index:config",               // 配置接口
 		"common:index:learning-rss",         // 首页每日学习 RSS 代理
+		"common:index:news-rss",             // 实时快讯 RSS 代理
 		"common:tool-ranking:list",          // 工具排行榜列表（前台读取）
 		"common:tool-ranking:track",         // 工具排行榜埋点（前台写入）
 		"common:ai:model:current",           // AI模型当前配置（前台读取）
