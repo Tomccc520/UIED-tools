@@ -87,12 +87,12 @@ func TestCopywritingRandomFallback(t *testing.T) {
 			return nil, errors.New("模拟扩展文案上游不可用")
 		})},
 	}
-	result, err := service.Random(context.Background(), "daily-poem")
+	result, err := service.Random(context.Background(), "funny")
 	if err != nil {
 		t.Fatalf("扩展文案降级不应返回错误: %v", err)
 	}
-	if result.Source != "fallback" || result.Text == "" || result.Title == "" || result.Author == "" {
-		t.Fatalf("诗词降级结果不符合预期: %+v", result)
+	if result.Source != "fallback" || result.Text == "" {
+		t.Fatalf("随机搞笑文案降级结果不符合预期: %+v", result)
 	}
 }
 

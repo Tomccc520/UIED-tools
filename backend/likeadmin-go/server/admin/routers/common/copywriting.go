@@ -16,7 +16,7 @@ import (
 	"likeadmin/core/response"
 )
 
-// CopywritingGroup 函数说明：注册免登录的文案与翻译接口，统一承接前台跨域风险较高的第三方请求。
+// CopywritingGroup 函数说明：注册免登录的站内文案库、随机文案与翻译接口。
 var CopywritingGroup = core.Group("/common", newCopywritingHandler, regCopywriting)
 
 // newCopywritingHandler 函数说明：初始化随机文案处理器。
@@ -24,12 +24,13 @@ func newCopywritingHandler(srv serviceCommon.ICopywritingService) *copywritingHa
 	return &copywritingHandler{srv: srv}
 }
 
-// regCopywriting 函数说明：注册一言、肯德基文案和翻译的同域读取路由。
+// regCopywriting 函数说明：注册站内文案库及兼容旧页面的同域读取路由。
 func regCopywriting(rg *gin.RouterGroup, group *core.GroupBase) error {
 	return group.Reg(func(handle *copywritingHandler) {
 		rg.GET("/copywriting/yiyan", handle.yiyan)
 		rg.GET("/copywriting/kfc", handle.kfc)
 		rg.GET("/copywriting/random/:kind", handle.random)
+		rg.GET("/copywriting/library/:kind", handle.library)
 		rg.GET("/copywriting/translate", handle.translate)
 	})
 }
@@ -44,7 +45,7 @@ func (h copywritingHandler) yiyan(c *gin.Context) {
 	response.CheckAndRespWithData(c, result, err)
 }
 
-// kfc 函数说明：返回肯德基疯狂星期四文案，服务端自动处理上游异常和本地兜底。
+// kfc 函数说明：返回一条站内疯狂星期四原创文案。
 func (h copywritingHandler) kfc(c *gin.Context) {
 	result, err := h.srv.KFC(c.Request.Context())
 	response.CheckAndRespWithData(c, result, err)
@@ -53,6 +54,15 @@ func (h copywritingHandler) kfc(c *gin.Context) {
 // random 函数说明：按路径中的白名单类型返回随机文案，屏蔽各第三方接口差异。
 func (h copywritingHandler) random(c *gin.Context) {
 	result, err := h.srv.Random(c.Request.Context(), c.Param("kind"))
+	response.CheckAndRespWithData(c, result, err)
+}
+
+// library 函数说明：一次返回指定工具的站内文案，浏览器可在当前内容库内直接换一条。
+func (h copywritingHandler) library(c *gin.Context) {
+	result, err := h.srv.Library(c.Param("kind"))
+	if err == nil {
+		c.Header("Cache-Control", "public, max-age=300")
+	}
 	response.CheckAndRespWithData(c, result, err)
 }
 

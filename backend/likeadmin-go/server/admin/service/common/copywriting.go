@@ -44,11 +44,6 @@ var (
 		"https://v1.hitokoto.cn/?encode=json",
 		"https://api.52vmy.cn/api/wl/yan/yiyan",
 	}
-	copywritingKFCUpstreams = []string{
-		"https://api.pearktrue.cn/api/kfc?type=json",
-		"https://api.pearktrue.cn/api/v1/get/kfc",
-		"https://tools.mgtv100.com/external/v1/pear/kfc",
-	}
 	copywritingTranslateUpstreams = []string{
 		"https://suapi.net/api/text/translate",
 		"https://api.mymemory.translated.net/get",
@@ -65,26 +60,12 @@ var (
 		"每一个优秀的人，都有一段沉默的时光。",
 		"人生没有白走的路，每一步都算数。",
 	}
-	copywritingKFCFallbacks = []string{
-		"V我50，请我吃肯德基疯狂星期四。",
-		"今天是肯德基疯狂星期四，谁请我吃？",
-		"小时候妈妈说我吃饭不专心，吃得不多，长不高。现在KFC疯狂星期四，我更加专心，吃得更多，个子也长得更高了。",
-		"如果生活有开关，那肯德基疯狂星期四就是快乐启动键。",
-		"今天不谈工作，只谈肯德基疯狂星期四。",
-	}
 	copywritingRandomConfigs = map[string]copywritingRandomConfig{
 		"poison-soup": {
 			upstreams: []string{"https://v.api.aa1.cn/api/api-wenan-dujitang/index.php?aa1=json"},
 			fallbacks: []CopywritingTextResult{
 				{Text: "你以为有钱人很快乐吗？他们的快乐你根本想象不到。"},
 				{Text: "条条大路通罗马，而有些人就生在罗马。"},
-			},
-		},
-		"daily-poem": {
-			upstreams: []string{"https://v1.jinrishici.com/all.json"},
-			fallbacks: []CopywritingTextResult{
-				{Text: "海内存知己，天涯若比邻。", Title: "送杜少府之任蜀州", Author: "王勃"},
-				{Text: "长风破浪会有时，直挂云帆济沧海。", Title: "行路难", Author: "李白"},
 			},
 		},
 		"funny": {
@@ -101,25 +82,11 @@ var (
 				{Text: "不要等待机会，而要创造机会。"},
 			},
 		},
-		"moments": {
-			upstreams: []string{"https://v.api.aa1.cn/api/pyq/index.php?aa1=json"},
-			fallbacks: []CopywritingTextResult{
-				{Text: "生活不在别处，当下即是全部。"},
-				{Text: "愿你遍历山河，仍觉人间值得。"},
-			},
-		},
 		"comfort": {
 			upstreams: []string{"https://v.api.aa1.cn/api/api-wenan-anwei/index.php?type=json"},
 			fallbacks: []CopywritingTextResult{
 				{Text: "每个人都有自己的节奏，慢一点也没关系。"},
 				{Text: "记住，你比自己想象的要坚强得多。"},
-			},
-		},
-		"dog-diary": {
-			upstreams: []string{"https://api.pearktrue.cn/api/jdyl/tiangou.php"},
-			fallbacks: []CopywritingTextResult{
-				{Text: "今天你终于回了我一个字，我截图保存了下来，因为这是我们今天全部的故事。"},
-				{Text: "今天你又很忙，没关系，我把想说的话都存在了草稿箱里。"},
 			},
 		},
 		"cloud-music": {
@@ -151,6 +118,7 @@ type ICopywritingService interface {
 	Yiyan(ctx context.Context) (CopywritingTextResult, error)
 	KFC(ctx context.Context) (CopywritingTextResult, error)
 	Random(ctx context.Context, kind string) (CopywritingTextResult, error)
+	Library(kind string) (CopywritingLibraryResult, error)
 	Translate(ctx context.Context, text string) (CopywritingTranslationResult, error)
 }
 
@@ -176,18 +144,19 @@ func (s *copywritingService) Yiyan(ctx context.Context) (CopywritingTextResult, 
 	return CopywritingTextResult{Text: randomCopywritingFallback(copywritingYiyanFallbacks), Source: "fallback"}, nil
 }
 
-// KFC 函数说明：获取肯德基疯狂星期四文案，上游不可用时自动返回本地精选文案。
-func (s *copywritingService) KFC(ctx context.Context) (CopywritingTextResult, error) {
-	text, err := s.fetchText(ctx, copywritingKFCUpstreams)
-	if err == nil && text != "" {
-		return CopywritingTextResult{Text: text, Source: "upstream"}, nil
-	}
-	return CopywritingTextResult{Text: randomCopywritingFallback(copywritingKFCFallbacks), Source: "fallback"}, nil
+// KFC 函数说明：从站内库获取一条疯狂星期四原创文案。
+func (s *copywritingService) KFC(_ context.Context) (CopywritingTextResult, error) {
+	return s.libraryRandomText("kfc")
 }
 
-// Random 函数说明：按白名单类型获取随机文案，并在上游故障时返回对应的本地降级内容。
+// Random 函数说明：优先从站内内容库获取文案，其余白名单工具继续使用原接口与兜底。
 func (s *copywritingService) Random(ctx context.Context, kind string) (CopywritingTextResult, error) {
-	config, ok := copywritingRandomConfigs[strings.TrimSpace(kind)]
+	kind = strings.TrimSpace(kind)
+	switch kind {
+	case "daily-poem", "dog-diary", "moments":
+		return s.libraryRandomText(kind)
+	}
+	config, ok := copywritingRandomConfigs[kind]
 	if !ok {
 		return CopywritingTextResult{}, errors.New("不支持的文案类型")
 	}
@@ -210,6 +179,9 @@ func (s *copywritingService) Translate(ctx context.Context, text string) (Copywr
 	}
 	if len([]rune(text)) > copywritingMaxTranslateChars {
 		return CopywritingTranslationResult{}, fmt.Errorf("翻译文案不能超过 %d 个字符", copywritingMaxTranslateChars)
+	}
+	if english := libraryKFCTranslation(text); english != "" {
+		return CopywritingTranslationResult{Text: english}, nil
 	}
 
 	primaryQuery := url.Values{}

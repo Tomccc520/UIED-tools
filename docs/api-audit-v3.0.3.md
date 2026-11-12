@@ -19,6 +19,8 @@ Vite `server.proxy` 只解决本地开发请求，不等同于生产后台 API�
 
 统一入口位于 `/api/common/copywriting`，前端通过 `src/services/copywriting.ts` 调用：
 
+> 2026-11-12 更新：疯狂星期四、今日诗词、舔狗日记和朋友圈文案已切换到[站内内容库](./editorial-copywriting-2026-11-12.md)。下表保留为 3.0.3 的历史审计记录。
+
 | 能力 | 同域接口 | 故障策略 |
 | --- | --- | --- |
 | 随机一言 | `/yiyan` | 多上游 + 本地精选兜底 |
