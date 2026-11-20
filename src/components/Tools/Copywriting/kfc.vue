@@ -6,9 +6,10 @@
 -->
 
 <script setup lang="ts">
+import bundledLibrary from '../../../../backend/likeadmin-go/server/admin/service/common/copywriting_library/kfc.json'
 import EditorialCopywritingTool from './EditorialCopywritingTool.vue'
 </script>
 
 <template>
-  <EditorialCopywritingTool kind="kfc" />
+  <EditorialCopywritingTool kind="kfc" :bundled-library="bundledLibrary" />
 </template>

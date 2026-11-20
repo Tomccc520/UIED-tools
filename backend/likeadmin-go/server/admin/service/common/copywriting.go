@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"gorm.io/gorm"
 )
@@ -125,6 +126,7 @@ type ICopywritingService interface {
 // copywritingService 函数说明：通过固定上游白名单请求随机文案，并在上游异常时返回本地内容。
 type copywritingService struct {
 	client *http.Client
+	kfc    kfcRotation
 }
 
 // NewCopywritingService 函数说明：初始化随机文案服务，避免前台直接暴露第三方请求和跨域依赖。
@@ -144,16 +146,13 @@ func (s *copywritingService) Yiyan(ctx context.Context) (CopywritingTextResult, 
 	return CopywritingTextResult{Text: randomCopywritingFallback(copywritingYiyanFallbacks), Source: "fallback"}, nil
 }
 
-// KFC 函数说明：从站内库获取一条疯狂星期四原创文案。
-func (s *copywritingService) KFC(_ context.Context) (CopywritingTextResult, error) {
-	return s.libraryRandomText("kfc")
-}
-
-// Random 函数说明：优先从站内内容库获取文案，其余白名单工具继续使用原接口与兜底。
+// Random 函数说明：按文案类型选择站内库或指定上游，失败时返回对应兜底内容。
 func (s *copywritingService) Random(ctx context.Context, kind string) (CopywritingTextResult, error) {
 	kind = strings.TrimSpace(kind)
 	switch kind {
-	case "daily-poem", "dog-diary", "moments":
+	case "dog-diary":
+		return s.dogDiary(ctx)
+	case "daily-poem", "moments":
 		return s.libraryRandomText(kind)
 	}
 	config, ok := copywritingRandomConfigs[kind]
@@ -225,30 +224,11 @@ func (s *copywritingService) fetchResultWithTimeout(ctx context.Context, upstrea
 
 	var lastErr error
 	for _, upstream := range upstreams {
-		request, err := http.NewRequestWithContext(requestCtx, http.MethodGet, upstream, nil)
+		body, err := fetchCopywritingBody(requestCtx, s.client, upstream)
 		if err != nil {
 			lastErr = err
 			continue
 		}
-		request.Header.Set("Accept", "application/json, text/plain;q=0.9, */*;q=0.1")
-		request.Header.Set("User-Agent", "UIED-Tools/3.0 (+https://uiedtool.com)")
-
-		resp, err := s.client.Do(request)
-		if err != nil {
-			lastErr = err
-			continue
-		}
-		body, readErr := io.ReadAll(io.LimitReader(resp.Body, copywritingMaxBodyBytes))
-		_ = resp.Body.Close()
-		if readErr != nil {
-			lastErr = readErr
-			continue
-		}
-		if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-			lastErr = fmt.Errorf("上游状态码 %d", resp.StatusCode)
-			continue
-		}
-
 		if result := parseCopywritingResult(body); result.Text != "" {
 			return result, nil
 		}
@@ -258,6 +238,58 @@ func (s *copywritingService) fetchResultWithTimeout(ctx context.Context, upstrea
 		lastErr = errors.New("没有可用的文案上游")
 	}
 	return CopywritingTextResult{}, lastErr
+}
+
+// fetchFixedCopywritingBody 限时读取固定的第三方地址，禁止重定向到其他地址。
+func (s *copywritingService) fetchFixedCopywritingBody(ctx context.Context, upstream string) ([]byte, error) {
+	if s == nil || s.client == nil {
+		return nil, errors.New("文案服务 HTTP 客户端未初始化")
+	}
+	client := *s.client
+	// 重定向交给上游状态检查处理，避免继续请求跳转目标。
+	client.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	requestCtx, cancel := context.WithTimeout(ctx, copywritingRequestTimeout)
+	defer cancel()
+	return fetchCopywritingBody(requestCtx, &client, upstream)
+}
+
+// fetchCopywritingBody 请求给定文案源，校验 HTTP 状态并限制响应体大小。
+func fetchCopywritingBody(ctx context.Context, client *http.Client, upstream string) ([]byte, error) {
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, upstream, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Accept", "application/json, text/plain;q=0.9, */*;q=0.1")
+	request.Header.Set("User-Agent", "UIED-Tools/3.0 (+https://uiedtool.com)")
+
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, fmt.Errorf("上游状态码 %d", resp.StatusCode)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, copywritingMaxBodyBytes+1))
+	if err != nil {
+		return nil, err
+	}
+	if len(body) > copywritingMaxBodyBytes {
+		return nil, errors.New("文案响应超过大小限制")
+	}
+	return body, nil
+}
+
+// parsePlainCopywritingText 读取 UTF-8 文案正文，过滤空内容、状态消息和网页错误内容。
+func parsePlainCopywritingText(body []byte) string {
+	text := normalizeCopywritingText(string(body))
+	first, _ := utf8.DecodeRuneInString(text)
+	if text == "" || !utf8.Valid(body) || strings.ContainsRune("<{[", first) || isCopywritingStatusText(text) {
+		return ""
+	}
+	return text
 }
 
 // parseCopywritingResult 函数说明：将上游响应解析为统一文案结果，并保留常用的顶层元数据。

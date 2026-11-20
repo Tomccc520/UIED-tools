@@ -96,6 +96,49 @@ func TestCopywritingRandomFallback(t *testing.T) {
 	}
 }
 
+// TestCopywritingDogDiary 校验夏柔 API 的两种返回格式，以及错误响应和超时的站内兜底。
+func TestCopywritingDogDiary(t *testing.T) {
+	tests := []struct {
+		name string
+		body string
+		want string
+		err  error
+	}{
+		{name: "实测格式", body: `{"msg":"测试日记第一篇\n第二段"}`, want: "测试日记第一篇\n第二段"},
+		{name: "文档格式", body: `{"code":200,"msg":"success","newslist":[{"content":"测试日记第二篇"}]}`, want: "测试日记第二篇"},
+		{name: "业务错误", body: `{"code":503,"msg":"接口维护中","newslist":[{"content":"不应显示"}]}`},
+		{name: "缺少正文", body: `{"code":200,"msg":"获取成功","newslist":null}`},
+		{name: "返回网页", body: `<!doctype html><html><body>错误页</body></html>`},
+		{name: "请求超时", err: context.DeadlineExceeded},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service := &copywritingService{client: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.Method != http.MethodGet || req.URL.String() != dogDiaryUpstream || req.URL.Query().Get("aa1") != "json" {
+					t.Fatalf("未使用指定的夏柔 JSON 接口: %s %s", req.Method, req.URL)
+				}
+				if test.err != nil {
+					return nil, test.err
+				}
+				return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(test.body))}, nil
+			})}}
+			result, err := service.Random(context.Background(), "dog-diary")
+			if err != nil || result.Text == "" {
+				t.Fatalf("随机日记应返回正文: %+v (%v)", result, err)
+			}
+			if test.want == "" {
+				if result.Source != "editorial" || result.From != "" {
+					t.Fatalf("上游异常时应使用站内日记: %+v", result)
+				}
+				return
+			}
+			if result.Text != test.want || result.Source != "upstream" || result.From != "夏柔 API" {
+				t.Fatalf("未返回指定来源的日记: %+v", result)
+			}
+		})
+	}
+}
+
 // TestCopywritingRandomRejectsUnknownKind 函数说明：校验动态路由只允许预置文案类型。
 func TestCopywritingRandomRejectsUnknownKind(t *testing.T) {
 	service := &copywritingService{client: &http.Client{}}

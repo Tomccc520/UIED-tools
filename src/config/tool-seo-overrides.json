@@ -9,6 +9,11 @@
     "description": "在线校验、格式化和压缩 JSON，支持 2 空格、4 空格与 Tab 缩进，保留大整数和小数原值，结果可一键复制；数据在浏览器本地处理。",
     "keywords": "JSON格式化,JSON压缩,JSON校验,JSON缩进,JSON大整数,在线JSON工具"
   },
+  "/tools/json": {
+    "title": "JSON 在线转换、转义与格式化",
+    "description": "在带语法高亮的编辑器中校验、格式化、压缩 JSON，并对 JSON 字符串执行转义或还原一层转义。数字原值和类型保持不变。",
+    "keywords": "JSON在线转换,JSON转义,JSON去转义,JSON格式化,JSON语法高亮"
+  },
   "/tools/image-compress": {
     "legacyDescriptions": ["支持JPG、PNG、GIF等格式图片压缩，最大支持10MB"],
     "title": "免费在线图片压缩工具",
@@ -32,5 +37,68 @@
     "title": "免费视频压缩工具",
     "description": "在线视频压缩，专业模式输出 H.264 MP4；浏览器本地模式可按比例、目标大小或码率调整，输出格式取决于浏览器支持。支持预览对比与下载，压缩效果取决于源视频。",
     "keywords": "视频压缩,MP4压缩,H264压缩,视频目标大小,视频码率,视频分辨率"
+  },
+  "/tools/copywriting/kfc": {
+    "title": "疯狂星期四文案生成器",
+    "description": "随机浏览疯狂星期四段子，支持一键换条、复制中文和查看英文版。包含站内原创文案，适合分享给朋友或发群聊。",
+    "keywords": "疯狂星期四文案,星期四段子,星期四文案生成器,疯狂星期四英文"
+  },
+  "/tools/copywriting/daily-poem": {
+    "title": "今日诗词 · 每日古诗词",
+    "description": "按北京时间每天更新一首古诗词，阅读完整原文及篇名、作者和出处。支持换一首，复制时保留诗词和出处。",
+    "keywords": "今日诗词,每日一诗,每日古诗词,古诗词原文,唐诗宋词"
+  },
+  "/tools/copywriting/dog-diary": {
+    "title": "舔狗日记 · 随机日记文案",
+    "description": "在线随机查看轻松自嘲的舔狗日记，支持换篇和一键复制。收录站内原创虚构短文，适合聊天分享。",
+    "keywords": "舔狗日记,随机舔狗日记,舔狗日记文案,自嘲文案"
+  },
+  "/tools/copywriting/moments": {
+    "title": "朋友圈文案 · 按场景选原创短句",
+    "description": "从日常、出游、工作和松弛四个场景挑选原创朋友圈文案，支持连续换条和一键复制，适合给照片配一句话。",
+    "keywords": "朋友圈文案,配图短句,旅游文案,日常文案,松弛感文案"
+  },
+  "/tools/emoji/random": {
+    "title": "随机表情包 · 在线抽取与下载",
+    "description": "随机抽取聊天表情包，支持预览静态图和 GIF 动图，点击换一张继续浏览，也可按原图格式下载。",
+    "keywords": "随机表情包,随机动图,GIF表情包,聊天表情,表情包下载"
+  },
+  "/tools/img-format": {
+    "title": "在线图片格式转换与 ZIP 下载",
+    "description": "在浏览器中转换图片格式，支持批量选择图片，转换完成后可单张下载或打包下载 ZIP。",
+    "keywords": "图片格式转换,批量图片转换,图片ZIP下载,在线图片工具"
+  },
+  "/tools/ai-perler/focus": {
+    "title": "专心拼豆 · 图纸制作模式",
+    "description": "进入拼豆图纸生成器的专心拼豆模式，集中查看图纸和色号，按图完成拼豆。",
+    "keywords": "专心拼豆,拼豆模式,拼豆图纸,拼豆色号"
+  },
+  "/tools/ai/student/resume-creation": {
+    "title": "学生简历生成器",
+    "description": "按教育背景、实习经历和校园活动整理学生简历，生成可继续编辑的求职文案。"
+  },
+  "/tools/ai/student/research-report": {
+    "title": "学生研究报告生成器",
+    "description": "围绕研究主题和资料，整理研究背景、方法、结果和结论，生成学生研究报告草稿。"
+  },
+  "/tools/ai/student/analysis-report": {
+    "title": "学生分析报告生成器",
+    "description": "输入选题和需要分析的问题，整理成因、现状与趋势，生成适用于课程作业的分析报告草稿。"
+  },
+  "/tools/ai/student/activity-plan": {
+    "title": "校园活动方案生成器",
+    "description": "按校园活动的目标和要求整理主题、流程、预算与宣传计划，生成可继续编辑的策划方案。"
+  },
+  "/tools/word-count": {
+    "title": "在线字数统计与阅读时长估算",
+    "description": "粘贴文本后实时统计字符数、单词数、行数和段落数，并估算阅读时长。"
+  },
+  "/tools/dev/timestamp-converter": {
+    "title": "Unix 时间戳与北京时间互转",
+    "description": "在秒或毫秒格式的 Unix 时间戳和北京时间之间双向转换，可复制转换结果。"
+  },
+  "/tools/daily/decision-maker": {
+    "title": "自定义选项随机决策器",
+    "description": "输入多个自定义选项并随机抽取一个结果，适合在用餐、出行或日常安排中快速抽签。"
   }
 }

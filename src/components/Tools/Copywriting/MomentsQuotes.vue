@@ -6,9 +6,10 @@
 -->
 
 <script setup lang="ts">
+import bundledLibrary from '../../../../backend/likeadmin-go/server/admin/service/common/copywriting_library/moments.json'
 import EditorialCopywritingTool from './EditorialCopywritingTool.vue'
 </script>
 
 <template>
-  <EditorialCopywritingTool kind="moments" />
+  <EditorialCopywritingTool kind="moments" :bundled-library="bundledLibrary" />
 </template>

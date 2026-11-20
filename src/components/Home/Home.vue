@@ -28,7 +28,7 @@ import {
   type SitePublicConfig,
   type SiteSidebarCategoryMenu
 } from '@/services/siteConfig'
-import { useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
+import { normalizeToolRuntimeUrl, resolveToolRuntimeLinkKind, useToolRuntimeGate } from '@/composables/useToolRuntimeGate'
 import type { Tool, ToolCategory, ToolSubCategory } from '@/types/tools'
 
 // 初始化 store 和路由
@@ -125,6 +125,15 @@ const homeCategorySections = computed<HomeCategorySection[]>(() => {
     }))
     .filter((section) => section.list.length > 0)
 })
+
+/** 函数说明：为可用卡片提供真实链接，支持键盘和无需脚本的工具导航。 */
+const resolveToolHref = (item: Tool): string | undefined => {
+  if (isToolDisabled(item)) return undefined
+  const url = normalizeToolRuntimeUrl(item.url)
+  const linkKind = resolveToolRuntimeLinkKind(url)
+  if (linkKind === 'unsafe' || /[\u0000-\u001f\u007f\\]/.test(url)) return undefined
+  return url
+}
 
 /**
  * 函数说明：处理工具点击事件，外链新开页，站内工具保留当前“新窗口使用”的原有行为
@@ -276,13 +285,17 @@ watch(
               @mousemove="handleMouseMove"
               @mouseleave="handleMouseLeave"
             >
-              <div
+              <component
+                :is="resolveToolHref(item) ? 'a' : 'div'"
+                :href="resolveToolHref(item)"
+                target="_blank"
+                rel="noopener noreferrer"
                 :class="[
                   'tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer',
                   { 'tool-card--disabled': isToolDisabled(item) }
                 ]"
                 :style="getCardStyle"
-                @click="handleToolClick(item)"
+                @click.prevent="handleToolClick(item)"
               >
                 <div v-if="isToolDisabled(item)" class="tool-disabled-tag">已停用</div>
                 <div class="flex items-center border-b pb-2 relative z-10">
@@ -308,7 +321,7 @@ watch(
                       stroke-linejoin="round" />
                   </svg>
                 </div>
-              </div>
+              </component>
             </div>
           </div>
         </div>
@@ -341,13 +354,17 @@ watch(
                 @mousemove="handleMouseMove"
                 @mouseleave="handleMouseLeave"
               >
-                <div
+                <component
+                  :is="resolveToolHref(item) ? 'a' : 'div'"
+                  :href="resolveToolHref(item)"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   :class="[
                     'tool-card flex flex-col border-solid rounded-2xl border-gray p-5 bg-white hover:shadow-md hover:-translate-y-2 duration-300 cursor-pointer',
                     { 'tool-card--disabled': isToolDisabled(item) }
                   ]"
                   :style="getCardStyle"
-                  @click="handleToolClick(item)"
+                  @click.prevent="handleToolClick(item)"
                 >
                   <div v-if="isToolDisabled(item)" class="tool-disabled-tag">已停用</div>
                   <div class="flex items-center border-b pb-2 relative z-10">
@@ -371,7 +388,7 @@ watch(
                         stroke-linejoin="round" />
                     </svg>
                   </div>
-                </div>
+                </component>
               </div>
             </div>
           </div>
@@ -390,6 +407,9 @@ watch(
 }
 
 .tool-card {
+  display: flex;
+  color: inherit;
+  text-decoration: none;
   position: relative;
   background: white;
   border: 1px solid #e5e7eb;
@@ -400,6 +420,11 @@ watch(
   flex-direction: column;
   padding: 20px;
   border-radius: 1rem;
+}
+
+a.tool-card:focus-visible {
+  outline: 2px solid var(--uied-color-primary);
+  outline-offset: 2px;
 }
 
 .tool-card:hover {

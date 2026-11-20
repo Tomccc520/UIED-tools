@@ -19,6 +19,7 @@ var InitRouters = []*core.GroupBase{
 	common.CopywritingGroup,
 	common.FrontendUserGroup,
 	common.IndexGroup,
+	common.RandomEmojiGroup,
 	common.ToolRankingGroup,
 	common.UiedLicenseClientGroup,
 	common.UploadGroup,

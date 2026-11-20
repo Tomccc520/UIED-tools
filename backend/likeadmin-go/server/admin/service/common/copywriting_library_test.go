@@ -14,17 +14,18 @@ import (
 	"time"
 )
 
-// TestCopywritingLibraryOffline 校验四个新旧入口及站内英文均不会访问第三方，随机结果保留旧接口字段。
+// TestCopywritingLibraryOffline 校验站内库、站内英文及随机兜底结果可在离线时使用。
 func TestCopywritingLibraryOffline(t *testing.T) {
 	service := &copywritingService{client: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
 		t.Fatalf("站内文案不应发起网络请求: %s", request.URL)
 		return nil, nil
 	})}}
 	ctx := context.Background()
+	minimumByKind := map[string]int{"kfc": 100, "daily-poem": 366, "dog-diary": 100, "moments": 200}
 	for _, kind := range []string{"kfc", "daily-poem", "dog-diary", "moments"} {
 		t.Run(kind, func(t *testing.T) {
 			catalog, err := service.Library(kind)
-			if err != nil || len(catalog.Items) < 2 {
+			if err != nil || len(catalog.Items) < minimumByKind[kind] {
 				t.Fatalf("站内库缺少可切换内容: count=%d err=%v", len(catalog.Items), err)
 			}
 			if _, err := time.Parse("2006-01-02", catalog.UpdatedAt); err != nil {
@@ -58,9 +59,16 @@ func TestCopywritingLibraryOffline(t *testing.T) {
 					t.Fatalf("场景内缺少可切换内容: %s", topic)
 				}
 			}
+			if kind == "moments" {
+				for _, topic := range []string{"日常", "出游", "工作", "松弛"} {
+					if topics[topic] < 50 {
+						t.Fatalf("朋友圈场景 %s 少于 50 条: %d", topic, topics[topic])
+					}
+				}
+			}
 			var result CopywritingTextResult
-			if kind == "kfc" {
-				result, err = service.KFC(ctx)
+			if kind == "kfc" || kind == "dog-diary" {
+				result, err = service.libraryRandomText(kind)
 			} else {
 				result, err = service.Random(ctx, kind)
 			}

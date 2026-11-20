@@ -33,18 +33,8 @@ interface LocalToolSeo {
   url: string
 }
 
-interface RouteStructuredDataPayload {
-  title: string
-  description: string
-  image: string
-  siteName: string
-  siteUrl: string
-  url: string
-  geoSummary: string
-  geoQuestions: string
-}
-
 let seoRequestSerial = 0
+const defaultPageSeo = getDefaultSitePublicConfig().seoPages
 
 /**
  * 函数说明：统一规范路由路径，去掉 hash 与末尾斜杠，便于匹配后台 SEO 配置。
@@ -112,8 +102,8 @@ let localToolList: Tool[] | null = null
 /** 函数说明：从本地工具注册表读取页面专属文案，接口不可用或目录为空时仍保留当前工具身份。 */
 const findLocalToolSeo = (route: RouteLike): LocalToolSeo | null => {
   const path = normalizeSeoPath(route.path || '').split('?')[0]
-  const override = (toolSeoOverrides as Record<string, Omit<LocalToolSeo, 'url'>>)[path]
-  if (override) return { ...override, url: path }
+  const override = (toolSeoOverrides as Record<string, Omit<LocalToolSeo, 'url' | 'keywords'> & { keywords?: string }>)[path]
+  if (override) return { keywords: override.title, ...override, url: path }
   if (!localToolList) localToolList = flattenToolCategories(getToolsCate())
   for (const candidate of buildRouteMatchCandidates(route)) {
     const tool = localToolList.find((item) => normalizeSeoPath(item.url) === candidate)
@@ -132,14 +122,14 @@ const findLocalToolSeo = (route: RouteLike): LocalToolSeo | null => {
 /**
  * 函数说明：按当前路由匹配后台页面 SEO 配置，适用于首页、更新页、登录页等非工具页。
  */
-const findPageSeoSource = (siteConfig: SitePublicConfig, route: RouteLike): SiteSeoPageItem | null => {
+const findPageSeoSource = (pages: SiteSeoPageItem[], route: RouteLike): SiteSeoPageItem | null => {
   const candidateList = buildRouteMatchCandidates(route)
-  if (!candidateList.length || !siteConfig.seoPages.length) {
+  if (!candidateList.length || !pages.length) {
     return null
   }
 
   for (const candidate of candidateList) {
-    const page = siteConfig.seoPages.find((item) => normalizeSeoPath(item.path) === candidate)
+    const page = pages.find((item) => normalizeSeoPath(item.path) === candidate)
     if (page) return page
   }
   return null
@@ -217,7 +207,8 @@ const buildDocumentTitle = (rawTitle: string, webName: string): string => {
 const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig): ResolvedSeoPayload => {
   const routeMeta = route.meta || {}
   const toolSource = findToolSeoSource(siteConfig, route)
-  const pageSource = findPageSeoSource(siteConfig, route)
+  const pageSource = findPageSeoSource(siteConfig.seoPages, route)
+  const defaultPage = findPageSeoSource(defaultPageSeo, route)
   const localSource = findLocalToolSeo(route)
   const isToolPage = String(route.path || '').startsWith('/tools/')
   const webName = siteConfig.webName || import.meta.env.VITE_APP_TITLE || 'UIED Tools'
@@ -227,12 +218,14 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     toolSource?.seoTitle,
     routeMeta.title,
     localSource?.title,
+    defaultPage?.title,
     toolSource?.title
   ) || webName : pickFirstText(
     pageSource?.title,
     toolSource?.seoTitle,
     routeMeta.title,
     toolSource?.title,
+    defaultPage?.title,
     siteConfig.seoDefaultTitle,
     webName
   )
@@ -241,6 +234,7 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     pageSource?.keywords,
     routeMeta.keywords,
     localSource?.keywords,
+    defaultPage?.keywords,
     siteConfig.seoDefaultKeywords
   )
   const fallbackDescription = isToolPage ? pickToolSpecificText(
@@ -249,12 +243,14 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     pageSource?.description,
     routeMeta.description,
     localSource?.description,
+    defaultPage?.description,
     toolSource?.desc
   ) : pickFirstText(
     toolSource?.seoDescription,
     pageSource?.description,
     routeMeta.description,
     toolSource?.desc,
+    defaultPage?.description,
     siteConfig.seoDefaultDescription,
     import.meta.env.VITE_APP_DESC,
     'UIED免费在线工具大全'
@@ -263,6 +259,7 @@ const resolveRouteSeoPayload = (route: RouteLike, siteConfig: SitePublicConfig):
     toolSource?.seoImage,
     pageSource?.image,
     routeMeta.image,
+    defaultPage?.image,
     siteConfig.seoDefaultImage,
     '/favicon.ico'
   )
@@ -298,79 +295,71 @@ const upsertMetaTag = (selector: string, attrName: string, attrValue: string): v
   metaElement.setAttribute('content', attrValue)
 }
 
-/**
- * 函数说明：为当前路由写入唯一的 WebPage/AboutPage 结构化数据，提升搜索引擎对页面语义的理解。
- */
-const upsertRouteStructuredData = (route: RouteLike, payload: RouteStructuredDataPayload): void => {
-  let scriptElement = document.querySelector<HTMLScriptElement>('script#site-route-seo-schema')
-  if (!scriptElement) {
-    scriptElement = document.createElement('script')
-    scriptElement.id = 'site-route-seo-schema'
-    scriptElement.type = 'application/ld+json'
-    document.head.appendChild(scriptElement)
-  }
-
-  const pageType = normalizeSeoPath(route.path || '') === '/about' ? 'AboutPage' : 'WebPage'
-  scriptElement.textContent = JSON.stringify({
+/** 函数说明：生成当前路由的元数据与结构化数据，供构建和浏览器共用。 */
+export const getRouteSeoDocument = (route: RouteLike, origin: string, siteConfig = getDefaultSitePublicConfig()) => {
+  const seo = resolveRouteSeoPayload(route, siteConfig)
+  const siteUrl = origin.replace(/\/+$/, '')
+  const canonical = new URL(seo.canonicalPath, siteUrl + '/').href
+  const image = /^https?:\/\//i.test(seo.image) ? seo.image : siteUrl + '/' + seo.image.replace(/^\/+/, '')
+  const siteName = siteConfig.webName || import.meta.env.VITE_APP_TITLE || 'UIED Tools'
+  const schema = {
     '@context': 'https://schema.org',
-    '@type': pageType,
-    name: payload.title,
-    description: payload.description,
-    url: payload.url,
+    '@type': normalizeSeoPath(route.path || '') === '/about' ? 'AboutPage' : 'WebPage',
+    name: seo.title,
+    description: seo.description,
+    url: canonical,
     inLanguage: 'zh-CN',
-    primaryImageOfPage: {
-      '@type': 'ImageObject',
-      url: payload.image
-    },
-    isPartOf: {
-      '@type': 'WebSite',
-      name: payload.siteName,
-      url: payload.siteUrl
-    },
-    ...(payload.geoSummary ? { abstract: payload.geoSummary } : {}),
-    ...(payload.geoQuestions
+    primaryImageOfPage: { '@type': 'ImageObject', url: image },
+    isPartOf: { '@type': 'WebSite', name: siteName, url: siteUrl + '/' },
+    ...(seo.geoSummary ? { abstract: seo.geoSummary } : {}),
+    ...(seo.geoQuestions
       ? {
           mainEntity: {
             '@type': 'Question',
-            name: payload.geoQuestions.split(/[；;\n]/).map((item) => item.trim()).filter(Boolean)[0] || payload.title,
-            acceptedAnswer: {
-              '@type': 'Answer',
-              text: payload.geoSummary || payload.description
-            }
+            name: seo.geoQuestions.split(/[；;\n]/).map((item) => item.trim()).filter(Boolean)[0] || seo.title,
+            acceptedAnswer: { '@type': 'Answer', text: seo.geoSummary || seo.description }
           }
         }
       : {})
-  })
+  }
+  return {
+    title: seo.title,
+    canonical,
+    schema,
+    meta: {
+      name: {
+        keywords: seo.keywords,
+        description: seo.description,
+        robots: String(route.meta?.robots || '').trim() || 'index,follow,max-image-preview:large',
+        'twitter:card': 'summary_large_image',
+        'twitter:title': seo.title,
+        'twitter:description': seo.description,
+        'twitter:image': image
+      },
+      property: {
+        'og:title': seo.title,
+        'og:site_name': siteName,
+        'og:description': seo.description,
+        'og:type': 'website',
+        'og:locale': 'zh_CN',
+        'og:url': canonical,
+        'og:image': image
+      }
+    }
+  }
 }
 
-/**
- * 函数说明：将解析出的 SEO 结果写入 document，统一维护 title、meta、OG、Twitter 与 canonical。
- */
-const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConfig, resolvedSeo: ResolvedSeoPayload): void => {
-  const siteUrl = String(import.meta.env.VITE_APP_URL || window.location.origin).replace(/\/+$/, '')
-  const canonicalPath = resolvedSeo.canonicalPath
-  const currentUrl = new URL(canonicalPath, `${siteUrl}/`).toString()
-  const absoluteImageUrl = /^https?:\/\//i.test(resolvedSeo.image)
-    ? resolvedSeo.image
-    : `${siteUrl}${resolvedSeo.image.startsWith('/') ? resolvedSeo.image : `/${resolvedSeo.image}`}`
-  const siteName = siteConfig.webName || import.meta.env.VITE_APP_TITLE || 'UIED Tools'
-
-  document.title = resolvedSeo.title
-  upsertMetaTag('meta[name="keywords"]', 'name', resolvedSeo.keywords)
-  upsertMetaTag('meta[name="description"]', 'name', resolvedSeo.description)
-  const robotsDirective = String(route.meta?.robots || '').trim() || 'index,follow,max-image-preview:large'
-  upsertMetaTag('meta[name="robots"]', 'name', robotsDirective)
-  upsertMetaTag('meta[property="og:title"]', 'property', resolvedSeo.title)
-  upsertMetaTag('meta[property="og:site_name"]', 'property', siteName)
-  upsertMetaTag('meta[property="og:description"]', 'property', resolvedSeo.description)
-  upsertMetaTag('meta[property="og:type"]', 'property', 'website')
-  upsertMetaTag('meta[property="og:locale"]', 'property', 'zh_CN')
-  upsertMetaTag('meta[property="og:url"]', 'property', currentUrl)
-  upsertMetaTag('meta[property="og:image"]', 'property', absoluteImageUrl)
-  upsertMetaTag('meta[name="twitter:card"]', 'name', 'summary_large_image')
-  upsertMetaTag('meta[name="twitter:title"]', 'name', resolvedSeo.title)
-  upsertMetaTag('meta[name="twitter:description"]', 'name', resolvedSeo.description)
-  upsertMetaTag('meta[name="twitter:image"]', 'name', absoluteImageUrl)
+/** 函数说明：把当前路由的 SEO 数据写入浏览器文档。 */
+const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConfig): void => {
+  const origin = import.meta.env.VITE_APP_URL || window.location.origin
+  const { title, canonical, schema, meta } = getRouteSeoDocument(route, origin, siteConfig)
+  document.title = title
+  for (const [key, value] of Object.entries(meta.name)) {
+    upsertMetaTag('meta[name="' + key + '"]', 'name', value)
+  }
+  for (const [key, value] of Object.entries(meta.property)) {
+    upsertMetaTag('meta[property="' + key + '"]', 'property', value)
+  }
 
   let canonicalElement = document.querySelector('link[rel="canonical"]')
   if (!canonicalElement) {
@@ -378,18 +367,16 @@ const applyResolvedSeoToDocument = (route: RouteLike, siteConfig: SitePublicConf
     canonicalElement.setAttribute('rel', 'canonical')
     document.head.appendChild(canonicalElement)
   }
-  canonicalElement.setAttribute('href', currentUrl)
+  canonicalElement.setAttribute('href', canonical)
 
-  upsertRouteStructuredData(route, {
-    title: resolvedSeo.title,
-    description: resolvedSeo.description,
-    image: absoluteImageUrl,
-    siteName,
-    siteUrl: `${siteUrl}/`,
-    url: currentUrl,
-    geoSummary: resolvedSeo.geoSummary,
-    geoQuestions: resolvedSeo.geoQuestions
-  })
+  let schemaElement = document.querySelector<HTMLScriptElement>('script#site-route-seo-schema')
+  if (!schemaElement) {
+    schemaElement = document.createElement('script')
+    schemaElement.id = 'site-route-seo-schema'
+    schemaElement.type = 'application/ld+json'
+    document.head.appendChild(schemaElement)
+  }
+  schemaElement.textContent = JSON.stringify(schema)
 }
 
 /**
@@ -400,9 +387,7 @@ export const applyRouteSeoFallback = (route: RouteLike): void => {
   if (typeof document === 'undefined') {
     return
   }
-  const siteConfig = getDefaultSitePublicConfig()
-  const resolvedSeo = resolveRouteSeoPayload(route, siteConfig)
-  applyResolvedSeoToDocument(route, siteConfig, resolvedSeo)
+  applyResolvedSeoToDocument(route, getDefaultSitePublicConfig())
 }
 
 /**
@@ -413,8 +398,7 @@ export const applyRouteSeo = async (route: RouteLike): Promise<void> => {
     return
   }
   const requestSerial = ++seoRequestSerial
-  const fallbackConfig = getDefaultSitePublicConfig()
-  applyResolvedSeoToDocument(route, fallbackConfig, resolveRouteSeoPayload(route, fallbackConfig))
+  applyResolvedSeoToDocument(route, getDefaultSitePublicConfig())
   let siteConfig: SitePublicConfig
   try {
     siteConfig = await getSitePublicConfig()
@@ -425,6 +409,5 @@ export const applyRouteSeo = async (route: RouteLike): Promise<void> => {
   if (requestSerial !== seoRequestSerial) {
     return
   }
-  const resolvedSeo = resolveRouteSeoPayload(route, siteConfig)
-  applyResolvedSeoToDocument(route, siteConfig, resolvedSeo)
+  applyResolvedSeoToDocument(route, siteConfig)
 }

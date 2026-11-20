@@ -26,7 +26,7 @@ UIED Tools 是面向设计师、开发者和 AI 使用者的免费在线工具�
 - 工具页增加首个 HTML 预渲染内容，为直接抓取提供工具正文、独立标题描述与自身 canonical。
 - 二维码、JSON 格式化等工具在后台配置失败或仍使用全站通用 SEO 时保留路由独立兜底，继续验证真实 404 与旧地址跳转。
 - 站点配置增加业务结果校验、在途请求合并、有限重试与分类错误提示，失败时保留登录和积分门禁。
-- 当前仅进行修复与验证，**尚未打包或部署 3.0.6**；发布范围见 [3.0.6 待发布说明](docs/release-3.0.6.md)，等待明确打包指令后再交付部署包。
+- 11 月更新覆盖 321 个可索引页面的专属元信息、14 页首屏正文、766 条站内文案和随机表情包网关。详见 [3.0.6 发布说明](docs/release-3.0.6.md)。
 
 ### 3.0.5 文件处理与配置稳定性更新（2026-10-21）
 
@@ -141,7 +141,7 @@ go build .
 
 完整生产部署包含主站静态资源、管理端静态资源、Go API、MySQL 与 Redis。宝塔环境请参考：
 
-- [`docs/uiedtool-3.0.5-baota-deploy.md`](docs/uiedtool-3.0.5-baota-deploy.md)
+- [3.0.6 宝塔全栈部署](docs/uiedtool-3.0.6-baota-deploy.md)
 - [`scripts/release/package-fullstack.sh`](scripts/release/package-fullstack.sh)
 
 ```bash
@@ -151,7 +151,7 @@ npm --prefix backend/likeadmin-go/admin run build
 npm run release:production
 ```
 
-3.0.6 当前仅进行修复与验证，尚未生成部署包；确认发布后再补齐当版部署说明并执行打包。已发布的 3.0.5 部署文档保留供参考。后续正式发布文件统一生成到 `output/production/uiedtool-3.0.6/`。不要把示例数据库密码或第三方 API 密钥直接用于生产环境。
+正式发布文件生成到 `output/production/uiedtool-3.0.6/`。不要把示例数据库密码或第三方 API 密钥直接用于生产环境。
 
 ## 项目结构说明
 

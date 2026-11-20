@@ -7,16 +7,17 @@
 package common
 
 import (
-	_ "embed"
+	"embed"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"strings"
 
 	"likeadmin/core/response"
 )
 
-//go:embed copywriting_library.json
-var copywritingLibraryJSON []byte
+//go:embed copywriting_library/*.json
+var copywritingLibraryFiles embed.FS
 
 // CopywritingLibraryEntry 定义可在浏览器内切换、复制和展示出处的一条站内内容。
 type CopywritingLibraryEntry struct {
@@ -36,18 +37,24 @@ type CopywritingLibraryResult struct {
 	Items     []CopywritingLibraryEntry `json:"items"`
 }
 
-type copywritingLibraryCatalog struct {
-	UpdatedAt string                               `json:"updatedAt"`
-	Entries   map[string][]CopywritingLibraryEntry `json:"entries"`
-}
+var copywritingCatalog, copywritingCatalogErr = loadCopywritingLibrary()
 
-var copywritingCatalog, copywritingCatalogErr = loadCopywritingLibrary(copywritingLibraryJSON)
-
-// loadCopywritingLibrary 解析随构建发布的同一份内容库，避免每次请求重复读取文件。
-func loadCopywritingLibrary(body []byte) (copywritingLibraryCatalog, error) {
-	var catalog copywritingLibraryCatalog
-	err := json.Unmarshal(body, &catalog)
-	return catalog, err
+// loadCopywritingLibrary 在启动时解析各工具与浏览器共用的内容文件。
+func loadCopywritingLibrary() (map[string]CopywritingLibraryResult, error) {
+	kinds := []string{"kfc", "daily-poem", "dog-diary", "moments"}
+	catalog := make(map[string]CopywritingLibraryResult, len(kinds))
+	for _, kind := range kinds {
+		body, err := copywritingLibraryFiles.ReadFile("copywriting_library/" + kind + ".json")
+		if err != nil {
+			return nil, fmt.Errorf("读取站内内容库 %s 失败: %w", kind, err)
+		}
+		var library CopywritingLibraryResult
+		if err := json.Unmarshal(body, &library); err != nil {
+			return nil, fmt.Errorf("解析站内内容库 %s 失败: %w", kind, err)
+		}
+		catalog[kind] = library
+	}
+	return catalog, nil
 }
 
 // Library 返回指定工具的站内内容，不请求第三方，也不需要数据库或用户登录。
@@ -55,14 +62,12 @@ func (s *copywritingService) Library(kind string) (CopywritingLibraryResult, err
 	if copywritingCatalogErr != nil {
 		return CopywritingLibraryResult{}, copywritingCatalogErr
 	}
-	items, ok := copywritingCatalog.Entries[strings.TrimSpace(kind)]
+	library, ok := copywritingCatalog[strings.TrimSpace(kind)]
 	if !ok {
 		return CopywritingLibraryResult{}, response.AssertArgumentError.Make("不支持的站内文案类型")
 	}
-	return CopywritingLibraryResult{
-		UpdatedAt: copywritingCatalog.UpdatedAt,
-		Items:     append([]CopywritingLibraryEntry(nil), items...),
-	}, nil
+	library.Items = append([]CopywritingLibraryEntry(nil), library.Items...)
+	return library, nil
 }
 
 // libraryRandomText 保留已有随机接口的字段和切换语义，内容直接从站内库选取。
@@ -70,7 +75,7 @@ func (s *copywritingService) libraryRandomText(kind string) (CopywritingTextResu
 	if copywritingCatalogErr != nil {
 		return CopywritingTextResult{}, copywritingCatalogErr
 	}
-	items := copywritingCatalog.Entries[kind]
+	items := copywritingCatalog[kind].Items
 	if len(items) == 0 {
 		return CopywritingTextResult{}, response.SystemError
 	}
@@ -80,7 +85,7 @@ func (s *copywritingService) libraryRandomText(kind string) (CopywritingTextResu
 
 // libraryKFCTranslation 查找站内原句的配套英文，供仍在使用旧翻译入口的页面复用。
 func libraryKFCTranslation(text string) string {
-	for _, item := range copywritingCatalog.Entries["kfc"] {
+	for _, item := range copywritingCatalog["kfc"].Items {
 		if item.Text == text {
 			return item.English
 		}

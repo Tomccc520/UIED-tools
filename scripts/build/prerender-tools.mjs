@@ -11,6 +11,7 @@ import http from 'node:http'
 import crypto from 'node:crypto'
 import { execFileSync } from 'node:child_process'
 import { load } from 'cheerio'
+import { extractStaticRouteInfos } from '../release/lib/vue-router-paths.mjs'
 
 const mimeTypes = {
   '.html': 'text/html; charset=utf-8', '.js': 'application/javascript', '.css': 'text/css',
@@ -20,17 +21,58 @@ const mimeTypes = {
 }
 
 /** 函数说明：校验预渲染清单，要求路径唯一、安全，并有独立 SEO 与页面就绪条件。 */
-export const validatePrerenderRoutes = (routes, seoOverrides) => {
+export const validatePrerenderRoutes = (routes, seoPages) => {
   const seen = new Set()
   for (const route of routes) {
-    if (!/^\/tools\/[a-z0-9/-]+$/.test(route.path) || route.path.includes('//') || seen.has(route.path)) {
+    if (!/^\/(?:[a-z0-9-]+(?:\/[a-z0-9-]+)*)?$/.test(route.path) || seen.has(route.path)) {
       throw new Error(`预渲染路由无效或重复：${route.path}`)
     }
-    if (!route.readySelector || !route.headingIncludes || !seoOverrides[route.path]?.title || !seoOverrides[route.path]?.description) {
+    const seo = seoPages[route.path]
+    if (!route.readySelector || !route.headingIncludes || !seo?.title || !seo?.description) {
       throw new Error(`预渲染缺少页面就绪条件或独立 SEO：${route.path}`)
     }
     seen.add(route.path)
   }
+}
+
+/** 函数说明：通过 Vite 加载现有路由和 SEO 服务，按同一套规则解析各路由的首次响应元数据。 */
+export const loadRouteSeoDocuments = async (root, mode, envDir, canonicalOrigin) => {
+  const { createServer } = await import('vite')
+  const server = await createServer({
+    root, mode, envDir, configFile: false,
+    appType: 'custom',
+    resolve: { alias: { '@': path.join(root, 'src') } },
+    optimizeDeps: { disabled: true },
+    server: { middlewareMode: true, hmr: false, watch: null }
+  })
+  try {
+    const { constantRoute } = await server.ssrLoadModule('/src/router/router.ts')
+    const { getRouteSeoDocument } = await server.ssrLoadModule('/src/services/siteSeo.ts')
+    const routeByPath = new Map(constantRoute.map((route) => [route.path, route]))
+    const source = fs.readFileSync(path.join(root, 'src/router/router.ts'), 'utf8')
+    return extractStaticRouteInfos(source).filter((route) => !route.isRedirect).map((route) => {
+      const { meta = {} } = routeByPath.get(route.path)
+      return { ...route, ...getRouteSeoDocument({ path: route.path, fullPath: route.path, meta }, canonicalOrigin) }
+    })
+  } finally { await server.close() }
+}
+
+/** 函数说明：将同一路由的标题、描述、分享标签和结构化数据写入生成的响应模板。 */
+const renderSeoDocument = (template, seo) => {
+  const $ = load(template)
+  $('head > title').text(seo.title)
+  $('head link[rel="canonical"]').attr('href', seo.canonical)
+  for (const [attribute, entries] of Object.entries(seo.meta)) {
+    for (const [key, value] of Object.entries(entries)) {
+      const existing = $(`head meta[${attribute}="${key}"]`)
+      const tag = existing.length ? existing : $('<meta>').attr(attribute, key).appendTo('head')
+      tag.attr('content', value)
+    }
+  }
+  $('<script></script>').attr({ id: 'site-route-seo-schema', type: 'application/ld+json' })
+    .text(JSON.stringify(seo.schema).replace(/</g, '\\u003c'))
+    .appendTo('head')
+  return $.html()
 }
 
 /** 函数说明：仅在回环地址临时提供本次构建文件；已登记的工具入口读取 SPA 源模板，其他未知地址返回 404。 */
@@ -95,12 +137,23 @@ export const validatePrerenderHtml = (html, route, seo, canonicalOrigin) => {
 }
 
 /** 函数说明：从生产构建启动隔离浏览器，禁用外部网络与真实 API，捕获页面内容并在成功后写出完整清单。 */
-export const prerenderToolPages = async ({ rootDir, outDir, canonicalOrigin = 'https://uiedtool.com' }) => {
+export const prerenderToolPages = async ({ rootDir, outDir, mode = 'production', envDir = rootDir, canonicalOrigin = 'https://uiedtool.com' }) => {
   const routes = JSON.parse(fs.readFileSync(path.join(rootDir, 'src/config/prerender-routes.json'), 'utf8'))
-  const overrides = JSON.parse(fs.readFileSync(path.join(rootDir, 'src/config/tool-seo-overrides.json'), 'utf8'))
-  validatePrerenderRoutes(routes, overrides)
+  const seoDocuments = await loadRouteSeoDocuments(rootDir, mode, envDir, canonicalOrigin)
+  const seoPages = Object.fromEntries(seoDocuments.filter((route) => route.isIndexable).map((route) => [
+    route.path, { title: route.title, description: route.meta.name.description }
+  ]))
+  for (const field of ['title', 'description']) {
+    const values = Object.values(seoPages).map((seo) => seo[field])
+    if (values.some((value) => !value.trim()) || new Set(values).size !== values.length) {
+      throw new Error(`可索引页面存在空白或重复的 SEO ${field}`)
+    }
+  }
+  validatePrerenderRoutes(routes, seoPages)
+  const prerenderedPaths = new Set(routes.map((route) => route.path))
   const snapshotDir = path.join(outDir, '_prerender')
   fs.rmSync(snapshotDir, { recursive: true, force: true })
+  const template = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8')
   const { server, origin } = await startSourceServer(outDir, routes)
   let browser
   try {
@@ -132,20 +185,33 @@ export const prerenderToolPages = async ({ rootDir, outDir, canonicalOrigin = 'h
         const $ = load(await page.content())
         // 函数说明：移除首次挂载产生的空浮层宿主，避免浏览器再次启动时复用过期的 Element Plus 容器。
         $('body > div[id^="el-popper-container-"]').remove()
-        $('body').append('<noscript><p>当前显示工具界面和使用说明；启用 JavaScript 后可进行本地处理。</p></noscript>')
+        $('body').append('<noscript><p>启用 JavaScript 后可使用页面上的交互功能。</p></noscript>')
         const html = $.html()
-        const meta = validatePrerenderHtml(html, route, overrides[route.path], canonicalOrigin)
-        const relativeFile = `_prerender${route.path}.html`
+        const meta = validatePrerenderHtml(html, route, seoPages[route.path], canonicalOrigin)
+        const relativeFile = `_prerender${route.path === '/' ? '/index' : route.path}.html`
         const file = path.join(outDir, relativeFile)
         fs.mkdirSync(path.dirname(file), { recursive: true })
         fs.writeFileSync(file, html)
         snapshots.push({ path: route.path, file: relativeFile, ...meta, sha256: crypto.createHash('sha256').update(html).digest('hex') })
-        process.stdout.write(`工具首个 HTML 已预渲染：${route.path}\n`)
+        process.stdout.write(`页面首个 HTML 已预渲染：${route.path}\n`)
       } finally { await context.close() }
     }
+    const metadataPaths = []
+    for (const seo of seoDocuments) {
+      if (prerenderedPaths.has(seo.path) || seo.path === '/404') continue
+      const file = path.join(snapshotDir, seo.path + '.html')
+      fs.mkdirSync(path.dirname(file), { recursive: true })
+      fs.writeFileSync(file, renderSeoDocument(template, seo))
+      metadataPaths.push(seo.path)
+    }
     const appVersion = JSON.parse(fs.readFileSync(path.join(rootDir, 'package.json'), 'utf8')).version
-    fs.writeFileSync(path.join(snapshotDir, 'manifest.json'), JSON.stringify({ schemaVersion: 1, appVersion, generatedAt: new Date().toISOString(), routes: snapshots }, null, 2) + '\n')
+    fs.writeFileSync(path.join(snapshotDir, 'manifest.json'), JSON.stringify({
+      schemaVersion: 2, appVersion, generatedAt: new Date().toISOString(), routes: snapshots, metadataPaths
+    }, null, 2) + '\n')
     execFileSync(process.execPath, [path.join(rootDir, 'scripts/release/generate-frontend-route-allowlist.mjs'), path.join(outDir, 'frontend-route-allowlist.conf')])
+    execFileSync(process.execPath, [path.join(rootDir, 'scripts/release/generate-sitemap.mjs'), path.join(outDir, 'sitemap.xml')], {
+      env: { ...process.env, UIEDTOOL_SITEMAP_BASE_URL: canonicalOrigin }
+    })
   } catch (error) {
     fs.rmSync(snapshotDir, { recursive: true, force: true })
     throw error
@@ -176,6 +242,8 @@ export const toolPrerenderPlugin = () => {
       await prerenderToolPages({
         rootDir: config.root,
         outDir: path.resolve(config.root, config.build.outDir),
+        mode: config.mode,
+        envDir: config.envDir,
         canonicalOrigin: String(config.env.VITE_APP_URL || 'https://uiedtool.com').replace(/\/+$/, '')
       })
     }

@@ -3214,7 +3214,7 @@ const toolsCategories: ToolCategory[] = [
               id: 722,
               title: '随机表情包',
               logo: { type: 'svg', name: 'randomEmoji' },
-              desc: '随机获取热门表情包，包含多种风格和类型',
+              desc: '随机获取静态表情和 GIF 动图，支持预览和原格式下载',
               url: '/tools/emoji/random',
               cate: '随机表情'
             },

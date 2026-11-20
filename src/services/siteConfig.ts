@@ -398,9 +398,9 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
   seoPages: [
     {
       path: '/',
-      title: '首页',
-      keywords: 'tools-web,在线工具,开发人员工具,时间戳转换,加密,解密,md5,进制转换,二维码,正则表达式,json格式化,照片处理,字数统计',
-      description: 'tools-web,在线工具,在线工具大全,开发人员工具,日常生活工具,办公助手,时间戳转换,加密,解密,md5,进制转换,二维码,正则表达式,json格式化,照片处理,字数统计',
+      title: '免费在线工具大全',
+      keywords: '免费在线工具,图片压缩,PDF工具,视频压缩,JSON格式化,二维码生成,AI工具',
+      description: 'UIED-Tools 提供图片与视频压缩、PDF 处理、JSON 格式化、二维码生成等在线工具，按场景分类，打开网页即可使用。',
       image: '/favicon.ico'
     },
     {
@@ -918,13 +918,18 @@ const normalizeSeoPages = (input: unknown): SiteSeoPageItem[] => {
       }
       const record = item as Record<string, unknown>
       const path = String(record.path || '').trim()
-      const title = String(record.title || '').trim()
+      const rawTitle = String(record.title || '').trim()
       const keywords = String(record.keywords || '').trim()
-      const description = String(record.description || '').trim()
+      const rawDescription = String(record.description || '').trim()
       const image = String(record.image || '').trim()
       if (!path) {
         return null
       }
+      const home = path === '/' ? DEFAULT_SITE_PUBLIC_CONFIG.seoPages.find((page) => page.path === '/') : undefined
+      const title = home && rawTitle === '首页' ? home.title : rawTitle
+      const description = home && rawDescription === 'tools-web,在线工具,在线工具大全,开发人员工具,日常生活工具,办公助手,时间戳转换,加密,解密,md5,进制转换,二维码,正则表达式,json格式化,照片处理,字数统计'
+        ? home.description
+        : rawDescription
       return {
         path,
         title,

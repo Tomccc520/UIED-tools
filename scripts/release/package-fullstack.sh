@@ -43,13 +43,11 @@ require_build_artifacts() {
   local required_paths=(
     "${ROOT_DIR}/dist/index.html"
     "${ROOT_DIR}/dist/_prerender/manifest.json"
+    "${ROOT_DIR}/dist/frontend-route-allowlist.conf"
+    "${ROOT_DIR}/dist/sitemap.xml"
     "${BACKEND_DIR}/admin/dist/index.html"
     "${BACKEND_DIR}/sql/install.sql"
   )
-
-  while IFS= read -r route_path; do
-    required_paths+=("${ROOT_DIR}/dist/_prerender${route_path}.html")
-  done < <(node -p "require('${ROOT_DIR}/src/config/prerender-routes.json').map(route => route.path).join('\\n')")
 
   for required_path in "${required_paths[@]}"; do
     if [[ ! -f "${required_path}" ]]; then
@@ -57,6 +55,22 @@ require_build_artifacts() {
       return 1
     fi
   done
+
+  node --input-type=module - "${ROOT_DIR}" <<'NODE' || return 1
+import fs from 'node:fs'
+import path from 'node:path'
+const [, , root] = process.argv
+const dist = path.join(root, 'dist')
+const routes = JSON.parse(fs.readFileSync(path.join(root, 'src/config/prerender-routes.json'), 'utf8'))
+const manifest = JSON.parse(fs.readFileSync(path.join(dist, '_prerender/manifest.json'), 'utf8'))
+const allowlist = fs.readFileSync(path.join(dist, 'frontend-route-allowlist.conf'), 'utf8')
+const requiredSnapshots = [...allowlist.matchAll(/try_files (\/_prerender\S+\.html) =404;/g)]
+if (manifest.schemaVersion !== 2 || !requiredSnapshots.length ||
+    routes.some((route) => !manifest.routes.some((snapshot) => snapshot.path === route.path)) ||
+    requiredSnapshots.some(([, file]) => !fs.existsSync(path.join(dist, file)))) {
+  throw new Error('前台首次响应文件不完整，请重新构建主站')
+}
+NODE
 
   if [[ ! -f "${DEPLOY_DOC}" ]]; then
     printf "缺少当前版本部署文档: %s\n" "${DEPLOY_DOC}" >&2
@@ -106,10 +120,6 @@ assemble_release_files() {
     "${RELEASE_DIR}/docs"
 
   cp -R "${ROOT_DIR}/dist/." "${RELEASE_DIR}/web/"
-  node "${ROOT_DIR}/scripts/release/generate-frontend-route-allowlist.mjs" \
-    "${RELEASE_DIR}/web/frontend-route-allowlist.conf"
-  node "${ROOT_DIR}/scripts/release/generate-sitemap.mjs" \
-    "${RELEASE_DIR}/web/sitemap.xml"
   cp -R "${BACKEND_DIR}/admin/dist/." "${RELEASE_DIR}/admin/"
   cp -R "${SERVER_DIR}/static/." "${RELEASE_DIR}/server/static/"
   cp "${ROOT_DIR}/deploy/env/uiedtool-api.env.example" "${RELEASE_DIR}/server/.env.example"

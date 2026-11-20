@@ -17,6 +17,7 @@ var InitFunctions = []interface{}{
 	common.NewCopywritingService,
 	common.NewFrontendUserService,
 	common.NewIndexService,
+	common.NewRandomEmojiService,
 	common.NewToolRankingService,
 	common.NewUploadService,
 	common.NewVideoCompressService,

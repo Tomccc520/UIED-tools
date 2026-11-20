@@ -1,5 +1,20 @@
 [
   {
+    "path": "/",
+    "readySelector": ".home-container a[href=\"/tools/qrcode\"]",
+    "headingIncludes": "免费在线工具集"
+  },
+  {
+    "path": "/about",
+    "readySelector": ".about-container h1",
+    "headingIncludes": "关于 UIED-Tools"
+  },
+  {
+    "path": "/changelog",
+    "readySelector": ".changelog-list",
+    "headingIncludes": "更新记录"
+  },
+  {
     "path": "/tools/qrcode",
     "readySelector": ".uied-tool-view textarea[aria-label=\"二维码内容\"]",
     "headingIncludes": "二维码"
@@ -8,6 +23,11 @@
     "path": "/tools/dev/json-format",
     "readySelector": ".json-format-page textarea[aria-label=\"输入 JSON\"]",
     "headingIncludes": "JSON"
+  },
+  {
+    "path": "/tools/json",
+    "readySelector": ".json-tran-editor .cm-content",
+    "headingIncludes": "JSON在线转换"
   },
   {
     "path": "/tools/image-compress",
@@ -28,5 +48,25 @@
     "path": "/tools/video/compress",
     "readySelector": ".video-compress-page button[aria-label=\"上传需要压缩的视频\"]",
     "headingIncludes": "视频压缩"
+  },
+  {
+    "path": "/tools/copywriting/kfc",
+    "readySelector": "[data-copywriting-content]",
+    "headingIncludes": "疯狂星期四文案"
+  },
+  {
+    "path": "/tools/copywriting/daily-poem",
+    "readySelector": "[data-copywriting-content]",
+    "headingIncludes": "今日诗词"
+  },
+  {
+    "path": "/tools/copywriting/dog-diary",
+    "readySelector": "[data-copywriting-content]",
+    "headingIncludes": "舔狗日记"
+  },
+  {
+    "path": "/tools/copywriting/moments",
+    "readySelector": "[data-copywriting-content]",
+    "headingIncludes": "朋友圈文案"
   }
 ]

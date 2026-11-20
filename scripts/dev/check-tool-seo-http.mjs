@@ -10,13 +10,12 @@ import os from 'node:os'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { load } from 'cheerio'
-import { validatePrerenderHtml } from '../build/prerender-tools.mjs'
+import { loadRouteSeoDocuments, validatePrerenderHtml } from '../build/prerender-tools.mjs'
 
 const root = path.resolve(import.meta.dirname, '../..')
 const baseUrl = (process.env.UIED_TOOL_SEO_BASE_URL || 'https://uiedtool.com').replace(/\/+$/, '')
 const canonicalOrigin = process.env.UIED_TOOL_SEO_CANONICAL_ORIGIN || 'https://uiedtool.com'
 const routes = JSON.parse(fs.readFileSync(path.join(root, 'src/config/prerender-routes.json'), 'utf8'))
-const overrides = JSON.parse(fs.readFileSync(path.join(root, 'src/config/tool-seo-overrides.json'), 'utf8'))
 
 /** 函数说明：保存 curl 的状态、响应头与原始 HTML 至独立临时目录，避免浏览器执行脚本干扰验收。 */
 const readHttp = (routePath, directory) => {
@@ -29,19 +28,37 @@ const readHttp = (routePath, directory) => {
   return { status: Number(status), headers: fs.readFileSync(headers, 'utf8'), body: fs.readFileSync(body, 'utf8') }
 }
 
-/** 函数说明：检查两种地址形式的工具首 HTML，并确认未知地址和快照内部地址都返回真实 404。 */
-const main = () => {
+/** 函数说明：读取原始 HTML，检查所有可索引路由的独立元数据和重点页面的正文。 */
+const main = async () => {
+  const documents = await loadRouteSeoDocuments(root, 'production', root, canonicalOrigin)
+  const crawlable = documents.filter((route) => route.isIndexable)
+  const routesByPath = new Map(routes.map((route) => [route.path, route]))
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'uied-tool-seo-'))
   try {
     const results = []
-    for (const route of routes) {
-      for (const variant of [route.path, `${route.path}/?source=seo-check`]) {
+    for (const seo of crawlable) {
+      const route = routesByPath.get(seo.path)
+      const description = seo.meta.name.description
+      const alternate = (seo.path === '/' ? '/' : `${seo.path}/`) + '?source=seo-check'
+      for (const variant of route ? [seo.path, alternate] : [seo.path]) {
         const response = readHttp(variant, directory)
         if (response.status !== 200 || !/content-type:\s*text\/html/i.test(response.headers)) {
           throw new Error(`${variant} 期望 HTML 200，实际为 ${response.status}`)
         }
-        const meta = validatePrerenderHtml(response.body, route, overrides[route.path], canonicalOrigin)
-        results.push({ path: variant, status: response.status, ...meta })
+        const $ = load(response.body)
+        const canonical = $('head link[rel="canonical"]')
+        const schema = JSON.parse($('head #site-route-seo-schema').text() || '{}')
+        if (canonical.length !== 1 || canonical.attr('href') !== seo.canonical ||
+            $('head > title').text() !== seo.title || $('head meta[name="description"]').attr('content') !== description ||
+            $('head meta[property="og:url"]').attr('content') !== seo.canonical || schema.url !== seo.canonical ||
+            /noindex/i.test($('head meta[name="robots"]').attr('content') || '') ||
+            /x-robots-tag:.*noindex/i.test(response.headers)) {
+          throw new Error(`${variant} 的首个 HTML 元数据不匹配`)
+        }
+        if (route) {
+          const meta = validatePrerenderHtml(response.body, route, { title: seo.title, description }, canonicalOrigin)
+          results.push({ path: variant, status: response.status, ...meta })
+        }
       }
     }
     for (const routePath of ['/tools/qa-missing-20261025', '/404', '/_prerender/tools/qrcode.html']) {
@@ -53,11 +70,18 @@ const main = () => {
       }
       results.push({ path: routePath, status: 404, robots: 'noindex' })
     }
-    process.stdout.write(`${JSON.stringify({ baseUrl, javascriptExecuted: false, results }, null, 2)}\n`)
+    for (const seo of documents.filter((route) => !route.isIndexable && route.path !== '/404')) {
+      const response = readHttp(seo.path, directory)
+      const $ = load(response.body)
+      if (response.status !== 200 || !/noindex/i.test($('head meta[name="robots"]').attr('content') || '')) {
+        throw new Error(`${seo.path} 未在首个 HTML 标明 noindex`)
+      }
+    }
+    process.stdout.write(`${JSON.stringify({ baseUrl, javascriptExecuted: false, indexablePages: crawlable.length, results }, null, 2)}\n`)
   } finally { fs.rmSync(directory, { recursive: true, force: true }) }
 }
 
-try { main() } catch (error) {
+main().catch((error) => {
   process.stderr.write(`[FAIL] 工具首个 HTML 验收失败：${error.message}\n`)
   process.exitCode = 1
-}
+})

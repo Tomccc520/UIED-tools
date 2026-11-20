@@ -6,9 +6,10 @@
 -->
 
 <script setup lang="ts">
+import bundledLibrary from '../../../../backend/likeadmin-go/server/admin/service/common/copywriting_library/daily-poem.json'
 import EditorialCopywritingTool from './EditorialCopywritingTool.vue'
 </script>
 
 <template>
-  <EditorialCopywritingTool kind="daily-poem" />
+  <EditorialCopywritingTool kind="daily-poem" :bundled-library="bundledLibrary" />
 </template>

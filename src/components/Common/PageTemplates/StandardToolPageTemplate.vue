@@ -34,7 +34,7 @@ withDefaults(defineProps<{
         <p class="standard-tool-header__eyebrow">{{ eyebrow }}</p>
         <h1>{{ title }}</h1>
         <p class="standard-tool-header__description">{{ description }}</p>
-        <div class="standard-tool-header__meta">
+        <div v-if="$slots.meta" class="standard-tool-header__meta">
           <slot name="meta"></slot>
         </div>
       </div>

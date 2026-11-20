@@ -47,12 +47,14 @@ test('生成的 sitemap 全部命中可索引页面，旧链接生成保留参�
       assert.ok(allowlist.includes(`location = ${info.path} {\n    return 301 ${info.redirectTo}$is_args$args;\n}`), info.path)
     }
     assert.match(allowlist, /location = \/404 \{\s+add_header X-Robots-Tag "noindex, nofollow" always;\s+return 404;/)
-    assert.match(allowlist, /location = \/tools\/json\/ \{\s+try_files \$uri \$uri\/ \/index.html;/)
+    assert.match(allowlist, /location = \/tools\/md5\/ \{\s+try_files \/_prerender\/tools\/md5.html =404;/)
     const prerenderRoutes = JSON.parse(fs.readFileSync(path.join(rootDir, 'src/config/prerender-routes.json'), 'utf8'))
     for (const { path: routePath } of prerenderRoutes) {
       assert.ok(routeInfos.some((info) => info.path === routePath && !info.isRedirect && info.isIndexable), routePath)
-      for (const variant of [routePath, `${routePath}/`]) {
-        assert.ok(allowlist.includes(`location = ${variant} {\n    try_files /_prerender${routePath}.html =404;\n}`), variant)
+      const variants = routePath === '/' ? ['/'] : [routePath, `${routePath}/`]
+      const snapshotPath = routePath === '/' ? '/index' : routePath
+      for (const variant of variants) {
+        assert.ok(allowlist.includes(`location = ${variant} {\n    try_files /_prerender${snapshotPath}.html =404;\n}`), variant)
       }
     }
   } finally {

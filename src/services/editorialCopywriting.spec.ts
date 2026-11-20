@@ -5,7 +5,8 @@
  * @createDate 2026-11-12
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { fetchEditorialLibrary, getBundledEditorialLibrary, getDailyEditorialEntry, getEditorialDay } from './editorialCopywriting'
+import poems from '../../backend/likeadmin-go/server/admin/service/common/copywriting_library/daily-poem.json'
+import { fetchEditorialLibrary, getDailyEditorialEntry, getEditorialDay } from './editorialCopywriting'
 
 describe('站内文案服务', () => {
   afterEach(() => {
@@ -16,7 +17,7 @@ describe('站内文案服务', () => {
   it('北京时间 00:00 统一换日，同一天的首条保持稳定', () => {
     const before = getEditorialDay(Date.parse('2026-11-12T15:59:59.999Z'))
     const after = getEditorialDay(Date.parse('2026-11-12T16:00:00.000Z'))
-    const items = getBundledEditorialLibrary('daily-poem').items
+    const { items } = poems
     expect(before.date).toBe('2026-11-12')
     expect(before.nextAt).toBe(Date.parse('2026-11-12T16:00:00.000Z'))
     expect(after.date).toBe('2026-11-13')
@@ -24,8 +25,15 @@ describe('站内文案服务', () => {
     expect(getEditorialDay(Date.parse('2026-11-13T09:00:00Z')).index).toBe(after.index)
   })
 
+  it('今日诗词在连续 366 个北京时间日序内没有重复篇目', () => {
+    const start = getEditorialDay(Date.parse('2026-11-12T00:00:00+08:00')).index
+    const chosen = Array.from({ length: 366 }, (_, offset) => getDailyEditorialEntry(poems.items, start + offset))
+    expect(new Set(chosen.map(item => item.id)).size).toBe(366)
+    expect(new Set(chosen.map(item => item.text)).size).toBe(366)
+  })
+
   it.each([
-    ['daily-poem', { code: 503, data: getBundledEditorialLibrary('daily-poem') }],
+    ['daily-poem', { code: 503, data: poems }],
     ['daily-poem', { code: 200, data: { updatedAt: '2026-11-13', items: [{ id: 'p1', text: '片段' }, { id: 'p2', text: '缺少出处' }] } }],
     ['dog-diary', { code: 200, data: { updatedAt: '2026-11-13', items: [{ id: 'd1', text: '同一篇' }, { id: 'd2', text: '同一篇' }] } }]
   ] as const)('%s 拒绝错误响应、不完整条目和重复正文', async (kind, payload) => {

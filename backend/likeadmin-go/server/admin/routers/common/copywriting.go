@@ -45,14 +45,16 @@ func (h copywritingHandler) yiyan(c *gin.Context) {
 	response.CheckAndRespWithData(c, result, err)
 }
 
-// kfc 函数说明：返回一条站内疯狂星期四原创文案。
+// kfc 函数说明：返回网关选取的疯狂星期四文案，禁止缓存随机响应。
 func (h copywritingHandler) kfc(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
 	result, err := h.srv.KFC(c.Request.Context())
 	response.CheckAndRespWithData(c, result, err)
 }
 
-// random 函数说明：按路径中的白名单类型返回随机文案，屏蔽各第三方接口差异。
+// random 函数说明：按路径中的白名单类型返回随机文案，禁止缓存每次换条的结果。
 func (h copywritingHandler) random(c *gin.Context) {
+	c.Header("Cache-Control", "no-store")
 	result, err := h.srv.Random(c.Request.Context(), c.Param("kind"))
 	response.CheckAndRespWithData(c, result, err)
 }

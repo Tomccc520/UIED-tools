@@ -4,9 +4,9 @@
  * @author UIED技术团队
  * @createDate 2026-11-12
  */
-import bundledLibrary from '../../backend/likeadmin-go/server/admin/service/common/copywriting_library.json'
+import { fetchCopywritingText, fetchCopywritingTranslation } from './copywriting'
 
-export type EditorialCopywritingKind = keyof typeof bundledLibrary.entries
+export type EditorialCopywritingKind = 'kfc' | 'daily-poem' | 'dog-diary' | 'moments'
 
 export interface EditorialCopywritingEntry {
   id: string
@@ -27,17 +27,15 @@ export interface EditorialCopywritingLibrary {
 const DAY_MS = 24 * 60 * 60 * 1000
 const BEIJING_OFFSET_MS = 8 * 60 * 60 * 1000
 const SYNC_TIMEOUT_MS = 1800
+const KFC_TIMEOUT_MS = 4500
+const DOG_DIARY_TIMEOUT_MS = 2500
+const TRANSLATION_TIMEOUT_MS = 6500
 const entryFields = ['english', 'title', 'author', 'dynasty', 'from', 'topic'] as const
 const requiredFields: Record<EditorialCopywritingKind, ReadonlyArray<typeof entryFields[number]>> = {
   kfc: ['english'],
   'daily-poem': ['title', 'author', 'dynasty', 'from'],
   'dog-diary': [],
   moments: ['topic']
-}
-
-/** 从随工具页面加载的同一份站内内容库取值，首屏不需要等接口。 */
-export function getBundledEditorialLibrary(kind: EditorialCopywritingKind): EditorialCopywritingLibrary {
-  return { updatedAt: bundledLibrary.updatedAt, items: bundledLibrary.entries[kind] }
 }
 
 /** 把当前时刻转换为北京时间的日序、日期和下一次换日时间，所有设备按同一口径切换。 */
@@ -97,24 +95,44 @@ function readEditorialLibrary(payload: unknown, kind: EditorialCopywritingKind):
   return { updatedAt: data.updatedAt, items }
 }
 
-/** 进入页面后尝试同步同域内容，失败、超时和离页时保持可用的内置库。 */
-export async function fetchEditorialLibrary(kind: EditorialCopywritingKind, signal?: AbortSignal): Promise<EditorialCopywritingLibrary | null> {
+/** 在时限内执行同域请求，超时、失败或主动取消时交由调用方处理兜底。 */
+async function requestWithTimeout<T>(request: (signal: AbortSignal) => Promise<T>, timeout: number, signal?: AbortSignal): Promise<T | null> {
   if (signal?.aborted) return null
   const controller = new AbortController()
   /** 同步外部取消，避免切走工具后仍等待响应。 */
   const abort = () => controller.abort()
   signal?.addEventListener('abort', abort, { once: true })
-  const timer = setTimeout(abort, SYNC_TIMEOUT_MS)
+  const timer = setTimeout(abort, timeout)
   try {
-    const response = await fetch(`/api/common/copywriting/library/${kind}`, {
-      headers: { Accept: 'application/json' },
-      signal: controller.signal
-    })
-    return response.ok ? readEditorialLibrary(await response.json(), kind) : null
+    const result = await request(controller.signal)
+    return controller.signal.aborted ? null : result
   } catch {
     return null
   } finally {
     clearTimeout(timer)
     signal?.removeEventListener('abort', abort)
   }
+}
+
+/** 进入页面后尝试同步同域内容，失败、超时和离页时保留内置库。 */
+export function fetchEditorialLibrary(kind: EditorialCopywritingKind, signal?: AbortSignal): Promise<EditorialCopywritingLibrary | null> {
+  return requestWithTimeout(async requestSignal => {
+    const response = await fetch(`/api/common/copywriting/library/${kind}`, {
+      headers: { Accept: 'application/json' },
+      signal: requestSignal
+    })
+    return response.ok ? readEditorialLibrary(await response.json(), kind) : null
+  }, SYNC_TIMEOUT_MS, signal)
+}
+
+/** 读取网关返回的网络文案，遇到旧网关或站内兜底时由页面沿内容库顺序切换。 */
+export async function fetchOnlineEditorialEntry(kind: 'kfc' | 'dog-diary', signal?: AbortSignal) {
+  const timeout = kind === 'kfc' ? KFC_TIMEOUT_MS : DOG_DIARY_TIMEOUT_MS
+  const result = await requestWithTimeout(requestSignal => fetchCopywritingText(kind, requestSignal), timeout, signal)
+  return result?.source === 'upstream' ? result : null
+}
+
+/** 按需翻译当前网络文案，调用方在文案切换或离页时可以取消请求。 */
+export function fetchOnlineKFCEnglish(text: string, signal?: AbortSignal): Promise<string | null> {
+  return requestWithTimeout(requestSignal => fetchCopywritingTranslation(text, requestSignal), TRANSLATION_TIMEOUT_MS, signal)
 }
