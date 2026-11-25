@@ -169,7 +169,7 @@ const main = async () => {
     await waitPreviewQuadrant(page, bCard.locator('canvas'), 'bottom-right')
     const cCard = page.locator('.uied-tool-view canvas').nth(2).locator('xpath=ancestor::div[contains(@class,"group")][1]')
     await cCard.hover()
-    await cCard.getByRole('button', { name: '标记删除', exact: true }).click()
+    await cCard.getByRole('button', { name: '标记删除源第 3 页', exact: true }).click()
     await downloadPdf(page, '保存PDF', 'delete-c-rotate-b', [320, 340], [270, 180])
     await checkWidths(page, 'delete')
     assert.deepEqual(errors, [])

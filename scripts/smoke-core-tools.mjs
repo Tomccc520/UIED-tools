@@ -19,7 +19,7 @@ const CORE_TOOL_SPECS = [
   },
   {
     route: '/tools/image-compress',
-    checks: [/data-smoke="image-compress-start"/, /data-smoke="image-compress-download"/, /@click="compressAll"/, /@click="downloadAll"/]
+    checks: [/data-smoke="image-compress-start"/, /data-smoke="image-compress-download"/, /@click="[^"]*\bcompressAll\(\)[^"]*"/, /@click="downloadAll"/]
   },
   {
     route: '/tools/pdf-merge',
@@ -27,7 +27,7 @@ const CORE_TOOL_SPECS = [
   },
   {
     route: '/tools/pdf-compress',
-    checks: [/@click="compressPDF"/, /@click="clearAll"/, /@click="downloadAllFiles"/]
+    checks: [/@click="compressPDF\(\)"/, /@click="clearAll"/, /@click="downloadAllWithFeedback"/, /await downloadAllFiles\(\)/]
   },
   {
     route: '/tools/video/compress',

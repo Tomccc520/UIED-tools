@@ -305,7 +305,7 @@
                         </ul>
                     </a-scrollbar>
 
-                    <a-table
+                    <a-table v-slot:columns
                         class="mt-4"
                         v-show="listShowType == 'table' && pager.lists.length > 0"
                         :data="pager.lists"

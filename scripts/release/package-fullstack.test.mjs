@@ -64,3 +64,30 @@ test('发布信息使用根仓完整提交和最终 API 字节，且被文件摘
   assert.ok(manifest.includes(`源码提交: ${sourceRevision}`))
   assert.ok(manifest.includes(`${crypto.createHash('sha256').update(infoBytes).digest('hex')}  ./RELEASE-INFO.json`))
 }))
+
+test('全栈发布拒绝主站或管理端的旧构建', () => withFixture(({ root, execute }) => {
+  const paths = {
+    'dist/index.html': '<html></html>',
+    'dist/_prerender/manifest.json': JSON.stringify({ schemaVersion: 2, appVersion: '3.0.7', routes: [{ path: '/' }] }),
+    'dist/_prerender/index.html': '<h1>首页</h1>',
+    'dist/frontend-route-allowlist.conf': 'location = / { try_files /_prerender/index.html =404; }',
+    'dist/sitemap.xml': '<urlset/>',
+    'src/config/prerender-routes.json': '[{"path":"/"}]',
+    'backend/likeadmin-go/admin/dist/index.html': '<meta name="uied-release" content="3.0.7" />',
+    'backend/likeadmin-go/sql/install.sql': '',
+    'deploy.md': ''
+  }
+  for (const [name, value] of Object.entries(paths)) {
+    fs.mkdirSync(path.dirname(path.join(root, name)), { recursive: true })
+    fs.writeFileSync(path.join(root, name), value)
+  }
+  const check = 'ROOT_DIR="$UIEDTOOL_TEST_ROOT"; BACKEND_DIR="$ROOT_DIR/backend/likeadmin-go"; DEPLOY_DOC="$ROOT_DIR/deploy.md"; VERSION=3.0.7; require_build_artifacts'
+  assert.equal(execute(check).status, 0)
+  for (const file of ['dist/_prerender/manifest.json', 'backend/likeadmin-go/admin/dist/index.html']) {
+    fs.writeFileSync(path.join(root, file), paths[file].replace('3.0.7', '3.0.6'))
+    const result = execute(check)
+    assert.notEqual(result.status, 0)
+    assert.match(result.stderr, /构建版本不一致/)
+    fs.writeFileSync(path.join(root, file), paths[file])
+  }
+}))

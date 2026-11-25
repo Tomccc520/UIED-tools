@@ -37,7 +37,7 @@ func parseDogDiaryResponse(body []byte) string {
 	if json.Unmarshal(body, &payload) != nil || (payload.Code != nil && *payload.Code != http.StatusOK) {
 		return ""
 	}
-	if payload.Code == nil && payload.Newslist == nil {
+	if payload.Newslist == nil {
 		return parsePlainCopywritingText([]byte(payload.Msg))
 	}
 	for _, row := range payload.Newslist {

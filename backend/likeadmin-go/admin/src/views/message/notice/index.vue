@@ -27,7 +27,7 @@
                 />
             </a-tabs>
 
-            <a-table
+            <a-table v-slot:columns
                 :loading="state.loading"
                 :data="state.lists"
                 :pagination="false"

@@ -363,11 +363,11 @@ const DEFAULT_SITE_PUBLIC_CONFIG: SitePublicConfig = {
     { name: 'CSDN 博客', link: 'https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343' },
     { name: 'UIED技术团队', link: 'https://fsuied.com/' }
   ],
-  changelogSplitTitle: '3.0.6 全栈开源说明',
-  changelogSplitDesc: '主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.6 完善站点配置请求可靠性、工具页首个 HTML 预渲染及独立 SEO，继续保持未知路径真实 404 与非必要商业化入口默认隐藏。',
+  changelogSplitTitle: '3.0.7 全栈开源说明',
+  changelogSplitDesc: '主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。',
   changelogSplitLink: 'https://github.com/Tomccc520/UIED-tools',
   changelogSplitLinkText: '查看完整源码与部署说明',
-  changelogStatsText: '当前版本：3.0.6 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-25',
+  changelogStatsText: '当前版本：3.0.7 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-11-25',
   changelogTimeline: (defaultChangelogTimeline as SiteChangelogTimelineItem[]).map((item) => ({
     ...item,
     features: Array.isArray(item.features)
@@ -585,11 +585,11 @@ const normalizeChangelogTextKey = (input: unknown): string => {
 }
 
 /**
- * 函数说明：兼容迁移更新记录旧统计文案，新增 Nine-patch 工具后将工具总数统一更新为 334 个。
+ * 函数说明：公共接口已升级历史默认统计，这里仅处理未设置统计说明的情况。
  */
 const normalizeChangelogStatsText = (input: unknown): string => {
   const text = String(input || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).trim()
-  return (text || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText).replace(/当前工具总数：333个/g, '当前工具总数：334个')
+  return text || DEFAULT_SITE_PUBLIC_CONFIG.changelogStatsText
 }
 
 /**

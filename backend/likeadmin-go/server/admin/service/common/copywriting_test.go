@@ -26,6 +26,8 @@ func TestParseCopywritingResponse(t *testing.T) {
 		{name: "hitokoto", body: `{"hitokoto":"保持热爱，奔赴山海。"}`, want: "保持热爱，奔赴山海。"},
 		{name: "MyMemory response", body: `{"responseData":{"translatedText":"Crazy Thursday"}}`, want: "Crazy Thursday"},
 		{name: "script wrapped moments", body: `<script>alert(1)</script>{"pyq":"今日宜开心"}`, want: "今日宜开心"},
+		{name: "业务失败的 msg", body: `{"code":503,"msg":"上游维护中"}`, want: ""},
+		{name: "截断的 JSON", body: `{"code":200,"data":`, want: ""},
 		{name: "plain text", body: "\ufeff纯文本接口返回", want: "纯文本接口返回"},
 	}
 	for _, test := range tests {
@@ -105,6 +107,7 @@ func TestCopywritingDogDiary(t *testing.T) {
 		err  error
 	}{
 		{name: "实测格式", body: `{"msg":"测试日记第一篇\n第二段"}`, want: "测试日记第一篇\n第二段"},
+		{name: "成功状态与 msg 正文", body: `{"code":200,"msg":"日记正文"}`, want: "日记正文"},
 		{name: "文档格式", body: `{"code":200,"msg":"success","newslist":[{"content":"测试日记第二篇"}]}`, want: "测试日记第二篇"},
 		{name: "业务错误", body: `{"code":503,"msg":"接口维护中","newslist":[{"content":"不应显示"}]}`},
 		{name: "缺少正文", body: `{"code":200,"msg":"获取成功","newslist":null}`},
@@ -196,6 +199,23 @@ func TestCopywritingTranslateFallback(t *testing.T) {
 	}
 	if requestCount != 2 || result.Text != "Crazy Thursday" {
 		t.Fatalf("备用翻译结果不符合预期: count=%d result=%+v", requestCount, result)
+	}
+}
+
+// TestTranslationRejectsProviderError 校验两个翻译源 HTTP 成功但正文报告故障时返回可重试错误。
+func TestTranslationRejectsProviderError(t *testing.T) {
+	requests := 0
+	service := &copywritingService{client: &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		requests++
+		body := `{"code":200,"msg":"请求成功,无Key调用仅供测试随时失效.","data":[]}`
+		if requests == 2 {
+			body = `{"responseData":{"translatedText":"QUERY LENGTH LIMIT EXCEEDED. MAX ALLOWED QUERY : 500 CHARS"},"responseStatus":"403"}`
+		}
+		return &http.Response{StatusCode: http.StatusOK, Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}}
+	result, err := service.Translate(context.Background(), "测试文案")
+	if requests != 2 || err == nil || result.Text != "" {
+		t.Fatalf("翻译应尝试备用源并报告失败，实际请求 %d 次，结果 %+v，错误 %v", requests, result, err)
 	}
 }
 

@@ -2,6 +2,7 @@
  * @file ImageToPdf.vue
  * @description 图片转PDF工具，支持批量转换和合并
  * @author UIED技术团队
+ * @copyright Tomda (https://www.tomda.top)
  * @copyright UIED技术团队 (https://fsuied.com)
  * @createDate 2024-12-22
 -->
@@ -14,7 +15,8 @@ import { ElMessage } from 'element-plus'
 import { genFileId } from 'element-plus'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import UsageGuide from '@/components/Common/UsageGuide.vue'
-import { ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
+import { autoDown } from '@/utils/file'
+import { buildImagePdf, type ImagePdfPageSize } from './buildImagePdf'
 // @ts-ignore
 import draggable from 'vuedraggable'
 
@@ -74,7 +76,7 @@ const faqs = [
   },
   {
     question: '如何选择合适的页面尺寸？',
-    answer: '如果要保持图片原始比例，选择"原始尺寸"；如果需要打印，建议选择"竖版A4"或"横版A4"。'
+    answer: '原始尺寸按 96 像素/英寸设置每页大小；打印可选择横版或竖版 A4，图片会保持比例并居中。'
   },
   {
     question: '文件大小有限制吗？',
@@ -106,7 +108,7 @@ const previewUrls = ref<Map<string, string>>(new Map())
 // 转换配置
 const config = reactive({
   mergeType: 'merge', // merge: 合并文件, separate: 独立文件
-  pageSize: 'original', // original: 图像尺寸, a4-portrait: 竖版A4, a4-landscape: 横版A4
+  pageSize: 'original' as ImagePdfPageSize, // original: 图像尺寸, a4-portrait: 竖版A4, a4-landscape: 横版A4
 })
 
 const guideSteps = [
@@ -190,7 +192,9 @@ const handleRemove = (file: FileItem) => {
 }
 
 // 组件载时清理预览URL
+let disposed = false
 onBeforeUnmount(() => {
+  disposed = true
   previewUrls.value.forEach((url: string) => {
     URL.revokeObjectURL(url)
   })
@@ -225,113 +229,35 @@ const handleDrop = async (e: DragEvent) => {
   }
 }
 
-// 转换为PDF
+/** 导出开始时固定的图片、顺序与页面设置，离开页面后停止下载。 */
 const convertToPdf = async () => {
-  if (fileList.value.length === 0) {
+  if (isProcessing.value || disposed) return
+  const files = fileList.value.map(item => item.file)
+  if (!files.length) {
     ElMessage.warning('请先选择图片')
     return
   }
 
+  const { pageSize, mergeType } = config
+  const batches = mergeType === 'merge' ? [files] : files.map(file => [file])
   isProcessing.value = true
   try {
-    if (config.mergeType === 'merge') {
-      await convertMergedPdf()
-    } else {
-      await convertSeparatePdfs()
+    for (const batch of batches) {
+      const blob = await buildImagePdf(batch, pageSize)
+      if (disposed) return
+      const filename = mergeType === 'merge' ? 'converted.pdf' : batch[0].name.replace(/\.[^/.]+$/, '') + '.pdf'
+      const url = URL.createObjectURL(blob)
+      autoDown(url, filename)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
     }
     ElMessage.success('转换成功')
   } catch (error) {
+    if (disposed) return
     console.error('转换过程中错误:', error)
-    ElMessage.error('转换失败，请重试')
+    ElMessage.error('转换失败，请确认图片可正常打开后重试')
   } finally {
     isProcessing.value = false
   }
-}
-
-// 合并为单个PDF
-const convertMergedPdf = async () => {
-  const { jsPDF } = await ensureJsPdfRuntime()
-  const pdf = new jsPDF({
-    orientation: config.pageSize === 'a4-landscape' ? 'landscape' : 'portrait',
-    unit: 'mm',
-  })
-
-  for (let i = 0; i < fileList.value.length; i++) {
-    if (i > 0) pdf.addPage()
-
-    const file = fileList.value[i].file
-    const imgData = await fileToDataUrl(file)
-
-    if (config.pageSize === 'original') {
-      const img = await loadImage(imgData)
-      const { width, height } = calculateDimensions(img)
-      pdf.addImage(imgData, 'JPEG', 0, 0, width, height)
-    } else {
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight)
-    }
-  }
-
-  pdf.save('converted.pdf')
-}
-
-// 转换为独立PDF
-const convertSeparatePdfs = async () => {
-  const { jsPDF } = await ensureJsPdfRuntime()
-  for (const item of fileList.value) {
-    const pdf = new jsPDF({
-      orientation: config.pageSize === 'a4-landscape' ? 'landscape' : 'portrait',
-      unit: 'mm',
-    })
-
-    const imgData = await fileToDataUrl(item.file)
-
-    if (config.pageSize === 'original') {
-      const img = await loadImage(imgData)
-      const { width, height } = calculateDimensions(img)
-      pdf.addImage(imgData, 'JPEG', 0, 0, width, height)
-    } else {
-      const pageWidth = pdf.internal.pageSize.getWidth()
-      const pageHeight = pdf.internal.pageSize.getHeight()
-      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight)
-    }
-
-    const fileName = item.file.name.replace(/\.[^/.]+$/, '')
-    pdf.save(`${fileName}.pdf`)
-  }
-}
-
-// 工具函数
-const fileToDataUrl = (file: File): Promise<string> => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
-
-const loadImage = (src: string): Promise<HTMLImageElement> => {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.onload = () => resolve(img)
-    img.onerror = reject
-    img.src = src
-  })
-}
-
-const calculateDimensions = (img: HTMLImageElement) => {
-  const aspectRatio = img.width / img.height
-  let width = 210 // A4 width in mm
-  let height = width / aspectRatio
-
-  if (height > 297) { // A4 height in mm
-    height = 297
-    width = height * aspectRatio
-  }
-
-  return { width, height }
 }
 
 // 清空文件列表

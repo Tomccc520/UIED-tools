@@ -49,7 +49,7 @@
 
         <a-spin :loading="loading" class="w-full">
             <a-card class="general-card" title="基础信息" :bordered="false">
-                <a-table class="mt-4" :data="baseInfoRows" :pagination="false" :bordered="false" row-key="id" :scroll="{ x: 1120 }">
+                <a-table v-slot:columns class="mt-4" :data="baseInfoRows" :pagination="false" :bordered="false" row-key="id" :scroll="{ x: 1120 }">
                     <a-table-column title="指标" data-index="k1" :width="140" />
                     <a-table-column title="值" data-index="v1" :min-width="140" />
                     <a-table-column title="指标" data-index="k2" :width="140" />

@@ -75,7 +75,7 @@ beforeEach(() => {
     if (!pdfRuntime.enabled) return new Promise(() => undefined)
     const blob = new Blob(['x'.repeat(pdfRuntime.outputSize)], { type: 'application/pdf' })
     Object.defineProperty(blob, 'arrayBuffer', { value: async () => new ArrayBuffer(pdfRuntime.outputSize) })
-    return Promise.resolve(blob)
+    return Promise.resolve({ blob, images: 0 })
   })
 })
 afterEach(() => { wrapper?.unmount(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
@@ -102,7 +102,8 @@ async function uploadPdf(name: string) {
 
 /** 扫描件操作必须显式选择有损模式，不把旧测试默认为结构压缩。 */
 async function selectScanCompression() {
-  await wrapper!.get('button[aria-pressed="false"]').trigger('click')
+  wrapper!.get<HTMLDetailsElement>('details.pdf-compress-parameters').element.open = true
+  await wrapper!.get('input[value="scan"]').setValue(true)
 }
 
 /** 模拟一页 PDF 的本地渲染，测试手机入口复用真实队列与下载状态。 */
@@ -162,7 +163,7 @@ describe('PDF 默认结构压缩和任务生命周期', () => {
     expect(pdfRuntime.structureCompress).toHaveBeenCalledOnce()
   })
 
-  it('默认调用结构引擎，不把整页绘制成 JPEG', async () => {
+  it('默认使用推荐档位，仅压缩内嵌图片，不把整页绘制成 JPEG', async () => {
     enablePdfRuntime()
     const view = mountTool()
     await uploadPdf('structured.pdf')
@@ -170,6 +171,7 @@ describe('PDF 默认结构压缩和任务生命周期', () => {
     await view.get('.pdf-compress-inline-start').trigger('click')
     await flushPromises()
     expect(pdfRuntime.structureCompress).toHaveBeenCalledOnce()
+    expect(pdfRuntime.structureCompress.mock.calls[0][2]).toBe('balanced')
     expect(pdfRuntime.render).toHaveBeenCalledTimes(sourcePreviewRenders)
     expect(pdfRuntime.addImage).not.toHaveBeenCalled()
     expect(view.find('button[aria-label="下载 structured.pdf"]').exists()).toBe(true)
@@ -177,7 +179,7 @@ describe('PDF 默认结构压缩和任务生命周期', () => {
 
   it('处理中防重复开始，取消后旧结构压缩结果不能重新出现', async () => {
     enablePdfRuntime()
-    const pending = deferred<Blob>()
+    const pending = deferred<{ blob: Blob; images: number }>()
     pdfRuntime.structureCompress.mockReturnValueOnce(pending.promise)
     const view = mountTool()
     await uploadPdf('cancel.pdf')
@@ -192,7 +194,7 @@ describe('PDF 默认结构压缩和任务生命周期', () => {
     expect(view.get('.pdf-compress-inline-start').attributes('disabled')).toBeUndefined()
     expect(view.text()).toContain('已取消压缩')
     const createdUrls = vi.mocked(URL.createObjectURL).mock.calls.length
-    pending.resolve(new Blob(['old output']))
+    pending.resolve({ blob: new Blob(['old output']), images: 0 })
     await flushPromises()
     expect(URL.createObjectURL).toHaveBeenCalledTimes(createdUrls)
     expect(view.find('button[aria-label="下载 cancel.pdf"]').exists()).toBe(false)
@@ -280,7 +282,7 @@ describe('PDF 压缩手机工作区', () => {
     mountTool()
     await uploadPdf('mobile.pdf')
     expect((wrapper!.get('details.pdf-compress-parameters').element as HTMLDetailsElement).open).toBe(false)
-    expect(wrapper!.get('[role=note]').text()).toContain('默认保留文字、链接和表单')
+    expect(wrapper!.get('[role=note]').text()).toContain('三个档位均保留文字、链接和表单')
     expect(wrapper!.find('details.pdf-compress-advanced').exists()).toBe(false)
     await selectScanCompression()
     expect((wrapper!.get('details.pdf-compress-advanced').element as HTMLDetailsElement).open).toBe(false)
@@ -341,11 +343,12 @@ describe('PDF 压缩手机工作区', () => {
     expect(mobileBar.props('busy')).toBe(false)
   })
 
-  it('桌面参数保持展开且预览不切全屏', async () => {
+  it('桌面直接展示压缩档位，展开高级选项后可调整参数', async () => {
     mountTool()
     await uploadPdf('desktop.pdf')
+    expect(wrapper!.find('input[value="balanced"]').exists()).toBe(true)
+    expect(wrapper!.get<HTMLDetailsElement>('details.pdf-compress-parameters').element.open).toBe(false)
     await selectScanCompression()
-    expect((wrapper!.get('details.pdf-compress-parameters').element as HTMLDetailsElement).open).toBe(true)
     expect((wrapper!.get('details.pdf-compress-advanced').element as HTMLDetailsElement).open).toBe(true)
     await wrapper!.get('button[aria-label="预览 desktop.pdf"]').trigger('click')
     expect(wrapper!.getComponent(DialogStub).props('fullscreen')).toBe(false)

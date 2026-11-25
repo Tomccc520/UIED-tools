@@ -78,7 +78,7 @@
                         </a-form-item>
                     </a-tab-pane>
                     <a-tab-pane key="column" title="字段管理">
-                        <a-table
+                        <a-table v-slot:columns
                             :data="formData.column"
                             :pagination="false"
                             :bordered="false"

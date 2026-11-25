@@ -12,6 +12,7 @@ describe('copywriting service', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.restoreAllMocks()
+    vi.useRealTimers()
   })
 
   it('解析 Go 标准响应并保留后端来源标记', async () => {
@@ -79,6 +80,30 @@ describe('copywriting service', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     await expect(fetchCopywritingText('yiyan')).rejects.toThrow('文案服务暂不可用')
+  })
+
+  it('网关即使返回 HTTP 200，业务失败时也拒绝 data 中的占位文案', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, status: 200, json: async () => ({ code: 503, msg: '翻译源不可用', data: { text: '超额提示' } })
+    }))
+    await expect(fetchCopywritingTranslation('待翻译')).rejects.toThrow('翻译源不可用')
+  })
+
+  it('旧文案页面未传取消信号时，网络停滞仍会终止并允许页面兜底', async () => {
+    vi.useFakeTimers()
+    let networkSignal: AbortSignal | undefined
+    vi.stubGlobal('fetch', vi.fn((_path: string, options: RequestInit) => {
+      networkSignal = options.signal ?? undefined
+      return new Promise((_resolve, reject) => {
+        networkSignal?.addEventListener('abort', () => reject(new Error('网络请求已终止')), { once: true })
+      })
+    }))
+    const pending = fetchCopywritingText('funny')
+    expect(networkSignal).toBeDefined()
+    const result = expect(pending).rejects.toThrow()
+    await vi.advanceTimersByTimeAsync(7000)
+    await result
+    expect(networkSignal?.aborted).toBe(true)
   })
 
   it('通过同域接口解析翻译结果', async () => {

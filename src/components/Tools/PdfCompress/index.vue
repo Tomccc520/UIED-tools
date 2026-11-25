@@ -21,6 +21,7 @@ import { getPdfFileError, ensurePdfjsRuntime } from '@/utils/pdf'
 import { ensureJsPdfRuntime } from '@/utils/toolRuntimeLoaders'
 import { createPdfCompressionTask, type PdfCompressionTask } from './pdfCompressionTask'
 import { compressPdfStructure } from './pdfCompressionWorker'
+import type { PdfCompressionLevel, PdfCompressionNotice, PdfStructureMode } from './pdfImageCompression'
 
 // 类型定义
 interface UploadFile {
@@ -43,6 +44,7 @@ interface ProcessedFile {
   url: string;
   size: number;
   fileName: string;
+  note?: string;
 }
 
 interface AdvancedConfig {
@@ -54,7 +56,7 @@ interface AdvancedConfig {
 
 const info = reactive({
   title: "PDF压缩",
-  subtitle: "默认保留文字、链接与表单；扫描件可选择有损压缩，调节画质与文件大小。"
+  subtitle: "选择画质与体积之间的平衡，在浏览器内批量压缩 PDF，保留文字、链接与表单。"
 })
 
 const route = useRoute()
@@ -62,7 +64,17 @@ const route = useRoute()
 // 状态管理
 const fileList = ref<UploadFile[]>([])
 const isProcessing = ref(false)
-const compressionMode = ref<'preserve' | 'scan'>('preserve')
+const compressionMode = ref<PdfStructureMode | 'scan'>('balanced')
+const compressionLevels = [
+  { value: 'gentle', title: '高清压缩', description: '保留较多图片细节' },
+  { value: 'balanced', title: '推荐压缩', description: '平衡图片清晰度和体积' },
+  { value: 'strong', title: '强力压缩', description: '降低图片分辨率以缩小体积' }
+] as const satisfies ReadonlyArray<{ value: PdfCompressionLevel; title: string; description: string }>
+const selectedLevel = computed(() => compressionLevels.find(level => level.value === compressionMode.value))
+const compressionNotices: Record<PdfCompressionNotice, string> = {
+  protected: '检测到数字签名或动态表单，已保留原文件。',
+  browser: '当前浏览器无法优化内嵌图片，本次仅优化文档结构。'
+}
 const isDragging = ref(false)
 const dataFileRef = ref()
 const processedFiles = ref<Map<string, ProcessedFile>>(new Map())
@@ -93,14 +105,14 @@ const cancelCompression = () => {
 
 const guideSteps = [
   { title: '上传PDF文件', description: '点击上传区域或直接拖拽PDF文件到指定区域，支持批量上传。' },
-  { title: '选择压缩模式', description: '默认保留文档文字、链接和表单；扫描件可选择有损压缩，调节分辨率和图片质量。' },
+  { title: '选择压缩档位', description: '先试用推荐压缩。图片应尽量清晰时选择高清压缩，需要更小体积时选择强力压缩。' },
   { title: '开始压缩', description: '点击“开始压缩”按钮，系统将自动处理文件。' },
   { title: '下载文件', description: '压缩完成后，可预览效果并下载单个文件或打包下载所有文件。' }
 ]
 
 const guideNotes = [
-  '压缩效果取决于原文件内容；扫描件有损模式适合图片较多的 PDF。',
-  '默认模式不降低图片质量，已压缩的扫描件可能没有明显收益；需要更小体积时可选择扫描件压缩。'
+  '压缩档位会优化符合条件的内嵌图片，保留文字、链接和表单。体积没有减少时下载原文件。',
+  '高级选项支持仅优化结构，也可将扫描件整页转成图片后重新压缩。'
 ]
 
 // 预设配置
@@ -314,7 +326,7 @@ const features = [
   {
     icon: 'Compress',
     title: '默认保留文档结构',
-    desc: '压缩对象和数据流，保留文字、链接与表单；扫描件另提供有损重绘模式'
+    desc: '按档位压缩内嵌图片和数据流，保留文字、链接与表单'
   },
   {
     icon: 'Quality',
@@ -337,15 +349,15 @@ const features = [
 const faqs = [
   {
     question: 'DPI 参数如何选择？',
-    answer: 'DPI 仅用于“扫描件压缩（有损）”，决定重新绘制页面的目标分辨率，实际尺寸还受大页面保护上限限制。默认“保留文档”模式不重绘页面，也不改变图片分辨率。'
+    answer: 'DPI 仅用于高级选项中的“整页转图片”，决定重新绘制页面的目标分辨率。选用三个常用档位时，按原图尺寸和档位处理内嵌图片。'
   },
   {
     question: '灰度模式有什么用？',
-    answer: '灰度模式会将文档中的彩色信息移除，转为黑白灰显示。对于合同、发票、书籍扫描件等不依赖颜色的文档，开启灰度模式可以显著减小文件体积。'
+    answer: '整页转图片时可选灰度，适用于无需保留颜色的扫描件。体积取决于原始图片和所选画质。'
   },
   {
     question: '压缩后文字和表单还在吗？',
-    answer: '默认“保留文档”模式保留文字、链接和表单。只有主动选择“扫描件压缩”时才会将页面转为图片，文字不可复制或搜索，表单和链接不再交互。两种模式体积不降时都会保留原文件。'
+    answer: '三个常用档位均保留文字、链接和表单。主动选择“整页转图片”会移除可搜索文字和交互。压缩后体积没有减少时会保留原文件。'
   }
 ]
 
@@ -549,24 +561,27 @@ const validateFile = (file: File): boolean => {
 /**
  * 核心压缩逻辑
  */
-const compressFile = async (file: UploadFile, snapshot: AdvancedConfig, preset: keyof typeof presets, mode: 'preserve' | 'scan', task: PdfCompressionTask): Promise<ProcessedFile> => {
+const compressFile = async (file: UploadFile, snapshot: AdvancedConfig, preset: keyof typeof presets, mode: PdfStructureMode | 'scan', task: PdfCompressionTask): Promise<ProcessedFile> => {
   file.startTime = Date.now()
   file.logs = []
   file.logs.push(`[${new Date().toLocaleTimeString()}] 开始处理文件: ${file.name}`)
   file.progress = 10
 
   const rawFile = file.raw!
-  if (mode === 'preserve') {
-    file.logs.push('策略: 结构压缩，保留文字、链接、表单和原始图片编码')
+  if (mode !== 'scan') {
+    file.logs.push('策略: ' + (mode === 'structure' ? '只优化结构' : '优化符合条件的内嵌图片与文档结构'))
     file.progress = 20
-    const output = await task.wait(compressPdfStructure(rawFile, task.signal))
+    const result = await task.wait(compressPdfStructure(rawFile, task.signal, mode))
     task.assertActive()
-    const keepOriginal = output.size >= file.size
-    const blob = keepOriginal ? rawFile : output
+    const keepOriginal = result.blob.size >= file.size
+    const blob = keepOriginal ? rawFile : result.blob
     file.progress = 100
     file.endTime = Date.now()
-    file.logs.push(keepOriginal ? '结构优化没有减少体积，保留原文件' : `结构压缩完成，耗时 ${((file.endTime - file.startTime!) / 1000).toFixed(1)}s`)
-    return { blob, url: URL.createObjectURL(blob), size: blob.size, fileName: keepOriginal ? file.name : getOutputFilename(file.name, 'compressed_{name}') }
+    const note = result.notice ? compressionNotices[result.notice] : undefined
+    if (note) file.logs.push(note)
+    if (result.images) file.logs.push(`已压缩 ${result.images} 张内嵌图片`)
+    file.logs.push(keepOriginal ? '体积未减少，保留原文件' : `压缩完成，耗时 ${((file.endTime - file.startTime!) / 1000).toFixed(1)}s`)
+    return { blob, url: URL.createObjectURL(blob), size: blob.size, note, fileName: keepOriginal ? file.name : getOutputFilename(file.name, 'compressed_{name}') }
   }
   const arrayBuffer = await task.wait(rawFile.arrayBuffer())
   const pdfjsLib = await task.wait(ensurePdfjsRuntime())
@@ -974,27 +989,42 @@ onUnmounted(() => {
           </el-upload>
         </div>
 
+        <fieldset v-if="fileList.length > 0" class="pdf-compression-levels"
+          :disabled="isProcessing || isDownloadingAll">
+          <legend>压缩档位</legend>
+          <div class="pdf-compression-option-grid">
+            <label v-for="level in compressionLevels" :key="level.value" class="pdf-compression-option">
+              <input v-model="compressionMode" type="radio" name="pdf-compression-level" :value="level.value">
+              <span><strong>{{ level.title }}</strong><small>{{ level.description }}</small></span>
+            </label>
+          </div>
+        </fieldset>
+
         <aside v-if="fileList.length > 0" class="pdf-raster-notice" role="note" aria-label="PDF 压缩方式说明">
-          <strong>{{ compressionMode === 'preserve' ? '保留文档结构' : '扫描件压缩前请注意' }}</strong>
-          <p v-if="compressionMode === 'preserve'">默认保留文字、链接和表单，不降低图片质量。体积没有减少时保留原文件；扫描件可改用有损压缩。</p>
-          <p v-else>此方式会把页面转为图片，文字将无法选中、复制或搜索，表单、超链接等交互信息也不会保留。请保留原文件，下载后先检查内容。</p>
+          <p v-if="compressionMode === 'scan'">此方式会把页面转为图片，文字将无法选中、复制或搜索，表单、链接和数字签名也不会保留。</p>
+          <p v-else-if="compressionMode === 'structure'">保留原图画质，只压缩 PDF 对象与数据流。体积没有减少时保留原文件。</p>
+          <p v-else>三个档位均保留文字、链接和表单。压缩后体积没有减少时保留原文件。</p>
         </aside>
 
-        <!-- 手机默认只展示参数摘要，重要压缩影响始终放在折叠区外。 -->
-        <details v-if="fileList.length > 0" :open="!isMobileViewport"
+        <details v-if="fileList.length > 0"
           class="mt-8 bg-gray-50 rounded-xl p-6 border border-gray-100 pdf-settings-panel pdf-compress-parameters">
           <summary class="pdf-compress-settings-summary">
-            <span>压缩参数</span>
-            <span>{{ compressionMode === 'preserve' ? '保留文字、链接和表单' : `${presets[currentPreset].name} · 图片质量 ${config.imageQuality}%` }}</span>
+            <span>高级选项</span>
+            <span>{{ selectedLevel?.title ?? (compressionMode === 'structure' ? '仅优化结构' : '整页转图片') }}</span>
           </summary>
           <div class="flex flex-col gap-6">
 
-            <div role="group" aria-label="PDF 压缩方式" class="flex flex-wrap gap-2">
-              <button type="button" :aria-pressed="compressionMode === 'preserve'" :disabled="isProcessing || isDownloadingAll"
-                @click="compressionMode = 'preserve'" class="px-4 py-2 rounded-lg border" :class="compressionMode === 'preserve' ? 'border-brand bg-brand-soft text-brand' : 'border-gray-200'">保留文档（推荐）</button>
-              <button type="button" :aria-pressed="compressionMode === 'scan'" :disabled="isProcessing || isDownloadingAll"
-                @click="compressionMode = 'scan'" class="px-4 py-2 rounded-lg border" :class="compressionMode === 'scan' ? 'border-brand bg-brand-soft text-brand' : 'border-gray-200'">扫描件压缩（有损）</button>
-            </div>
+            <fieldset aria-label="其他 PDF 压缩方式" class="pdf-compression-option-grid pdf-compression-option-grid--advanced"
+              :disabled="isProcessing || isDownloadingAll">
+              <label class="pdf-compression-option">
+                <input v-model="compressionMode" type="radio" name="pdf-compression-level" value="structure">
+                <span><strong>仅优化结构</strong><small>保持原图画质</small></span>
+              </label>
+              <label class="pdf-compression-option">
+                <input v-model="compressionMode" type="radio" name="pdf-compression-level" value="scan">
+                <span><strong>整页转图片（有损）</strong><small>扫描件专用，可自定义 DPI</small></span>
+              </label>
+            </fieldset>
             <template v-if="compressionMode === 'scan'">
             <!-- 预设选择 -->
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
@@ -1063,7 +1093,10 @@ onUnmounted(() => {
             </div>
             </details>
             </template>
+          </div>
+        </details>
 
+        <div v-if="fileList.length > 0" class="mt-4">
             <!-- 操作按钮 -->
             <div class="flex gap-4 justify-end border-t border-gray-100 pt-4 pdf-actions">
               <button @click="clearAll" :disabled="isProcessing || isDownloadingAll"
@@ -1083,8 +1116,7 @@ onUnmounted(() => {
                 {{ isProcessing ? '正在处理...' : '开始压缩' }}
               </button>
             </div>
-          </div>
-        </details>
+        </div>
 
         <p v-if="compressionMessage" class="mt-4 text-sm text-gray-600" role="status">{{ compressionMessage }}</p>
 
@@ -1151,14 +1183,15 @@ onUnmounted(() => {
               </div>
 
               <p v-if="file.errorMessage" class="mb-2 text-xs text-red-600" role="alert">{{ file.errorMessage }}</p>
+              <p v-if="processedFiles.get(file.uid)?.note" class="mb-2 text-xs text-gray-600">{{ processedFiles.get(file.uid)?.note }}</p>
               <!-- 进度条 -->
               <div class="w-full bg-gray-100 rounded-full h-2 overflow-hidden" role="progressbar"
                 :aria-label="`${file.name} 压缩进度`" aria-valuemin="0" aria-valuemax="100"
-                :aria-valuenow="file.status === 'processing' && compressionMode === 'preserve' ? undefined : file.progress"
-                :aria-valuetext="file.status === 'processing' && compressionMode === 'preserve' ? '正在优化文档结构，暂无法估算百分比' : undefined">
+                :aria-valuenow="file.status === 'processing' && compressionMode !== 'scan' ? undefined : file.progress"
+                :aria-valuetext="file.status === 'processing' && compressionMode !== 'scan' ? '正在压缩文档，暂无法估算百分比' : undefined">
                 <div class="h-full bg-brand transition-all duration-300 rounded-full"
-                  :style="{ width: file.status === 'processing' && compressionMode === 'preserve' ? '40%' : `${file.progress}%` }"
-                  :class="{ 'bg-green-500': file.status === 'success', 'bg-red-500': file.status === 'error', 'pdf-structure-progress': file.status === 'processing' && compressionMode === 'preserve' }"></div>
+                  :style="{ width: file.status === 'processing' && compressionMode !== 'scan' ? '40%' : `${file.progress}%` }"
+                  :class="{ 'bg-green-500': file.status === 'success', 'bg-red-500': file.status === 'error', 'pdf-structure-progress': file.status === 'processing' && compressionMode !== 'scan' }"></div>
               </div>
             </div>
 
@@ -1287,7 +1320,7 @@ onUnmounted(() => {
     <!-- 预览对话框 -->
     <MobileToolActions v-if="fileList.length > 0"
       :title="isProcessing ? '正在压缩 PDF' : `已选择 ${fileList.length} 个 PDF`"
-      :description="pendingFiles.length ? (compressionMode === 'preserve' ? '保留文字、链接和表单' : '页面将转为图片，文字不可复制或搜索') : `已完成 ${successfulFiles.length} 个文件`"
+      :description="pendingFiles.length ? (compressionMode === 'scan' ? '页面将转为图片，文字不可复制或搜索' : '保留文字、链接和表单') : `已完成 ${successfulFiles.length} 个文件`"
       :action-label="mobileActionLabel"
       :busy="isProcessing || isDownloadingAll"
       :cancel-label="isProcessing ? '取消' : ''" @cancel="cancelCompression"
@@ -1354,8 +1387,40 @@ onUnmounted(() => {
   font-size: 14px;
   line-height: 1.7;
 }
-.pdf-raster-notice strong { display: block; margin-bottom: 4px; }
 .pdf-raster-notice p { margin: 0; color: var(--uied-color-text-secondary); }
+
+.pdf-compression-levels { margin-top: 24px; min-width: 0; }
+.pdf-compression-levels legend { margin-bottom: 12px; font-weight: 600; }
+.pdf-compression-option-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.pdf-compression-option-grid--advanced { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pdf-compression-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--uied-color-border);
+  border-radius: 8px;
+  background: var(--uied-color-surface);
+  cursor: pointer;
+}
+.pdf-compression-option:has(input:checked) {
+  border-color: var(--uied-color-primary);
+  background: var(--uied-color-primary-soft);
+}
+.pdf-compression-option:focus-within { outline: 2px solid var(--uied-color-primary); outline-offset: 2px; }
+.pdf-compression-option:has(input:disabled) { cursor: default; opacity: 0.7; }
+.pdf-compression-option input { margin-top: 4px; accent-color: var(--uied-color-primary); }
+.pdf-compression-option strong, .pdf-compression-option small { display: block; }
+.pdf-compression-option small { color: var(--uied-color-text-secondary); }
+@media (max-width: 640px) {
+  .pdf-compression-option-grid { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .pdf-compression-levels { margin-top: 16px; }
+}
 .pdf-compress-settings-summary,
 .pdf-compress-mobile-list-heading,
 .pdf-compress-action-label { display: none; }

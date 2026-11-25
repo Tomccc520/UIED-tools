@@ -147,7 +147,7 @@ const loadSiteConfig = async (): Promise<void> => {
     changelogSplitDesc.value = siteConfig.changelogSplitDesc || defaultSiteConfig.changelogSplitDesc
     changelogSplitLink.value = siteConfig.changelogSplitLink || defaultSiteConfig.changelogSplitLink
     changelogSplitLinkText.value = siteConfig.changelogSplitLinkText || defaultSiteConfig.changelogSplitLinkText
-    changelogStatsText.value = (siteConfig.changelogStatsText || defaultSiteConfig.changelogStatsText).replace(/当前工具总数：333个/g, '当前工具总数：334个')
+    changelogStatsText.value = siteConfig.changelogStatsText || defaultSiteConfig.changelogStatsText
     timelineEntries.value = normalizeChangelogTimeline(siteConfig.changelogTimeline)
   } finally {
     isLoading.value = false
@@ -163,7 +163,7 @@ onMounted(() => {
   <main class="changelog-page">
     <section class="changelog-hero" aria-labelledby="changelog-title">
       <div class="changelog-hero__copy">
-        <div class="changelog-kicker">UIED-Tools 3.0.6</div>
+        <div class="changelog-kicker">UIED-Tools 3.0.7</div>
         <h1 id="changelog-title">更新记录</h1>
         <p>{{ changelogIntroText }}</p>
       </div>

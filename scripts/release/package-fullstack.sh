@@ -56,14 +56,19 @@ require_build_artifacts() {
     fi
   done
 
-  node --input-type=module - "${ROOT_DIR}" <<'NODE' || return 1
+  node --input-type=module - "${ROOT_DIR}" "${VERSION}" <<'NODE' || return 1
 import fs from 'node:fs'
 import path from 'node:path'
-const [, , root] = process.argv
+const [, , root, version] = process.argv
 const dist = path.join(root, 'dist')
 const routes = JSON.parse(fs.readFileSync(path.join(root, 'src/config/prerender-routes.json'), 'utf8'))
 const manifest = JSON.parse(fs.readFileSync(path.join(dist, '_prerender/manifest.json'), 'utf8'))
 const allowlist = fs.readFileSync(path.join(dist, 'frontend-route-allowlist.conf'), 'utf8')
+const adminHtml = fs.readFileSync(path.join(root, 'backend/likeadmin-go/admin/dist/index.html'), 'utf8')
+const adminVersion = adminHtml.match(/<meta name="uied-release" content="([^"]+)"/)?.[1]
+if (version !== manifest.appVersion || version !== adminVersion) {
+  throw new Error(`构建版本不一致：目标 ${version}，主站 ${manifest.appVersion}，管理端 ${adminVersion || '未知'}。请重新构建。`)
+}
 const requiredSnapshots = [...allowlist.matchAll(/try_files (\/_prerender\S+\.html) =404;/g)]
 if (manifest.schemaVersion !== 2 || !requiredSnapshots.length ||
     routes.some((route) => !manifest.routes.some((snapshot) => snapshot.path === route.path)) ||

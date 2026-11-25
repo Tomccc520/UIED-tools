@@ -87,54 +87,56 @@
                 v-model:expanded-keys="expandedKeys"
                 :scroll="{ x: 960 }"
             >
-                <a-table-column
-                    title="部门名称"
-                    data-index="name"
-                    :min-width="200"
-                    :ellipsis="true"
-                    :tooltip="true"
-                />
-                <a-table-column title="部门状态" data-index="isStop" :width="110">
-                    <template #cell="{ record }">
-                        <a-tag :color="record.isStop ? 'red' : 'green'">
-                            {{ record.isStop ? '停用' : '正常' }}
-                        </a-tag>
-                    </template>
-                </a-table-column>
-                <a-table-column title="排序" data-index="sort" :width="100" />
-                <a-table-column title="更新时间" data-index="updateTime" :width="180" />
-                <a-table-column title="操作" :width="180" fixed="right">
-                    <template #cell="{ record }">
-                        <div class="row-actions">
-                            <a-button
-                                v-perms="['system:dept:add']"
-                                type="text"
-                                size="small"
-                                @click="handleAdd(record.id)"
-                            >
-                                新增
-                            </a-button>
-                            <a-button
-                                v-perms="['system:dept:edit']"
-                                type="text"
-                                size="small"
-                                @click="handleEdit(record)"
-                            >
-                                编辑
-                            </a-button>
-                            <a-button
-                                v-if="record.pid !== 0"
-                                v-perms="['system:dept:del']"
-                                type="text"
-                                size="small"
-                                status="danger"
-                                @click="handleDelete(record.id)"
-                            >
-                                删除
-                            </a-button>
-                        </div>
-                    </template>
-                </a-table-column>
+                <template #columns>
+                    <a-table-column
+                        title="部门名称"
+                        data-index="name"
+                        :min-width="200"
+                        :ellipsis="true"
+                        :tooltip="true"
+                    />
+                    <a-table-column title="部门状态" data-index="isStop" :width="110">
+                        <template #cell="{ record }">
+                            <a-tag :color="record.isStop ? 'red' : 'green'">
+                                {{ record.isStop ? '停用' : '正常' }}
+                            </a-tag>
+                        </template>
+                    </a-table-column>
+                    <a-table-column title="排序" data-index="sort" :width="100" />
+                    <a-table-column title="更新时间" data-index="updateTime" :width="180" />
+                    <a-table-column title="操作" :width="180" fixed="right">
+                        <template #cell="{ record }">
+                            <div class="row-actions">
+                                <a-button
+                                    v-perms="['system:dept:add']"
+                                    type="text"
+                                    size="small"
+                                    @click="handleAdd(record.id)"
+                                >
+                                    新增
+                                </a-button>
+                                <a-button
+                                    v-perms="['system:dept:edit']"
+                                    type="text"
+                                    size="small"
+                                    @click="handleEdit(record)"
+                                >
+                                    编辑
+                                </a-button>
+                                <a-button
+                                    v-if="record.pid !== 0"
+                                    v-perms="['system:dept:del']"
+                                    type="text"
+                                    size="small"
+                                    status="danger"
+                                    @click="handleDelete(record.id)"
+                                >
+                                    删除
+                                </a-button>
+                            </div>
+                        </template>
+                    </a-table-column>
+                </template>
                 <template #empty>
                     <a-empty :description="deptEmptyDescription">
                         <template #extra>

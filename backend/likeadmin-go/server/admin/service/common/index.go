@@ -244,13 +244,6 @@ func getDefaultToolsChangelogMetaLinks() []map[string]interface{} {
 }
 
 /**
- * 函数说明：返回更新记录页顶部统计说明默认值，供运营后台未配置时兜底渲染
- */
-func getDefaultToolsChangelogStatsText() string {
-	return "当前版本：3.0.6 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-25"
-}
-
-/**
  * 函数说明：返回 AI 对话页顶部快捷链接默认配置，供运营后台未配置时兜底渲染
  */
 func getDefaultToolsAiChatHeaderLinks() []map[string]interface{} {
@@ -615,14 +608,8 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 	if len(toolsChangelogMetaLinks) == 0 {
 		toolsChangelogMetaLinks = getDefaultToolsChangelogMetaLinks()
 	}
-	toolsChangelogSplitTitle := strings.TrimSpace(website["toolsChangelogSplitTitle"])
-	if toolsChangelogSplitTitle == "" || toolsChangelogSplitTitle == "3.0.1 全栈开源说明" || toolsChangelogSplitTitle == "3.0.3 全栈开源说明" || toolsChangelogSplitTitle == "3.0.4 全栈开源说明" || toolsChangelogSplitTitle == "3.0.5 全栈开源说明" {
-		toolsChangelogSplitTitle = "3.0.6 全栈开源说明"
-	}
-	toolsChangelogSplitDesc := strings.TrimSpace(website["toolsChangelogSplitDesc"])
-	if toolsChangelogSplitDesc == "" {
-		toolsChangelogSplitDesc = "主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.6 完善站点配置请求可靠性、工具页首个 HTML 预渲染及独立 SEO，继续保持未知路径真实 404 与非必要商业化入口默认隐藏。"
-	}
+	toolsChangelogSplitTitle := servicedefaults.NormalizeChangelogTitle(website["toolsChangelogSplitTitle"])
+	toolsChangelogSplitDesc := servicedefaults.NormalizeChangelogDescription(website["toolsChangelogSplitDesc"])
 	toolsChangelogSplitLink := strings.TrimSpace(website["toolsChangelogSplitLink"])
 	if toolsChangelogSplitLink == "" {
 		toolsChangelogSplitLink = "https://github.com/Tomccc520/UIED-tools"
@@ -631,25 +618,8 @@ func (iSrv indexService) Config() (res map[string]interface{}, e error) {
 	if toolsChangelogSplitLinkText == "" {
 		toolsChangelogSplitLinkText = "查看完整源码与部署说明"
 	}
-	toolsChangelogStatsText := strings.TrimSpace(website["toolsChangelogStatsText"])
-	if toolsChangelogStatsText == "" {
-		toolsChangelogStatsText = getDefaultToolsChangelogStatsText()
-	}
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前工具总数：333个", "当前工具总数：334个")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.1", "当前版本：3.0.6")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.3", "当前版本：3.0.6")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.4", "当前版本：3.0.6")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前版本：3.0.5", "当前版本：3.0.6")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-08-28 18:00", "最后更新：2026-10-25")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-09-12 15:50", "最后更新：2026-10-25")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-10-20", "最后更新：2026-10-25")
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "最后更新：2026-10-21", "最后更新：2026-10-25")
-	toolsChangelogTimeline := parseWebsiteJsonArray(website, "toolsChangelogTimeline")
-	if len(toolsChangelogTimeline) == 0 {
-		toolsChangelogTimeline = servicedefaults.GetToolsChangelogTimelineItems()
-	} else {
-		toolsChangelogTimeline = servicedefaults.NormalizeToolsChangelogTimelineItems(toolsChangelogTimeline)
-	}
+	toolsChangelogStatsText := servicedefaults.NormalizeChangelogStats(website["toolsChangelogStatsText"])
+	toolsChangelogTimeline := servicedefaults.NormalizeToolsChangelogTimelineItems(website["toolsChangelogTimeline"])
 	toolsAiChatHeaderLinks := parseWebsiteJsonArray(website, "toolsAiChatHeaderLinks")
 	if len(toolsAiChatHeaderLinks) == 0 {
 		toolsAiChatHeaderLinks = getDefaultToolsAiChatHeaderLinks()

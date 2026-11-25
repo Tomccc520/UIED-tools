@@ -53,7 +53,7 @@
                         {{ brandTitle }}
                     </a>
                     <span class="login-footer__divider">·</span>
-                    <span class="login-footer__text">开源运营后台</span>
+                    <span class="login-footer__text">版本 {{ releaseVersion }}</span>
                 </div>
             </div>
         </div>
@@ -130,11 +130,11 @@ const bannerSlides = computed(() => [
         image: bannerImage
     }
 ])
-const bannerMetricList = computed(() => [
+const releaseVersion = document.querySelector<HTMLMetaElement>('meta[name="uied-release"]')?.content || '未知'
+const bannerMetricList = [
     { label: 'UI 库', value: 'Arco Pro' },
-    { label: '后台能力', value: 'Go API' },
-    { label: '当前版本', value: 'v3.0.6' }
-])
+    { label: '后台能力', value: 'Go API' }
+]
 </script>
 
 <style lang="scss" scoped>

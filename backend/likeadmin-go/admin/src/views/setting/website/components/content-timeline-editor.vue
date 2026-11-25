@@ -28,7 +28,7 @@
             <section v-if="active" class="timeline-editor__form" aria-label="编辑版本">
                 <a-form :disabled="disabled" :model="active" layout="vertical">
                     <div class="timeline-editor__pair">
-                        <a-form-item label="版本号" required><a-input :model-value="String(active.version || '')" :input-attrs="{ 'aria-label': '版本号' }" placeholder="如：3.0.6" @update:model-value="updateVersion('version', $event)" /></a-form-item>
+                        <a-form-item label="版本号" required><a-input :model-value="String(active.version || '')" :input-attrs="{ 'aria-label': '版本号' }" placeholder="如：3.0.7" @update:model-value="updateVersion('version', $event)" /></a-form-item>
                         <a-form-item label="发布日期" required><a-input :model-value="String(active.date || '')" :input-attrs="{ 'aria-label': '发布日期' }" placeholder="YYYY-MM-DD" @update:model-value="updateVersion('date', $event)" /></a-form-item>
                     </div>
                     <a-form-item label="版本标题" required><a-input :model-value="String(active.title || '')" :input-attrs="{ 'aria-label': '版本标题' }" placeholder="说明这次更新的主要变化" @update:model-value="updateVersion('title', $event)" /></a-form-item>

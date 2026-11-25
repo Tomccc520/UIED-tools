@@ -70,7 +70,7 @@
                     </a-button>
                 </div>
                 <div class="mt-4">
-                    <a-table
+                    <a-table v-slot:columns
                         :data="pager.lists"
                         :loading="pager.loading"
                         :pagination="false"

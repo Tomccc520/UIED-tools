@@ -76,11 +76,8 @@ const (
 	toolsChangelogHeaderLinksDefaultJSON    = `[{"name":"AI学习平台","link":"https://www.uied.cn/"},{"name":"AI免费工具","link":"https://uiedtool.com"},{"name":"AI资讯热榜","link":"https://hot.uied.cn"},{"name":"AI工具导航","link":"https://hao.uied.cn/ai"},{"name":"AI交流群","link":"https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink"},{"name":"AI知识库","link":"https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink"}]`
 	toolsChangelogIntroTextDefaultValue     = "UIED-Tools 现已开放主站、Go API 与管理后台源码，持续以免费工具、内容与社区共建获取长期流量。"
 	toolsChangelogMetaLinksDefaultJSON      = `[{"name":"GitHub 源码仓库","link":"https://github.com/Tomccc520/UIED-tools"},{"name":"提交问题","link":"https://github.com/Tomccc520/UIED-tools/issues"},{"name":"CSDN 博客","link":"https://blog.csdn.net/Tomdac?spm=1000.2115.3001.5343"},{"name":"UIED技术团队","link":"https://fsuied.com/"}]`
-	toolsChangelogSplitTitleDefaultValue    = "3.0.6 全栈开源说明"
-	toolsChangelogSplitDescDefaultValue     = "主站、Go API、Arco Pro 管理后台与部署工具按 MIT 协议开放源码。3.0.6 完善站点配置请求可靠性、工具页首个 HTML 预渲染及独立 SEO，继续保持未知路径真实 404 与非必要商业化入口默认隐藏。"
 	toolsChangelogSplitLinkDefaultValue     = "https://github.com/Tomccc520/UIED-tools"
 	toolsChangelogSplitLinkTextDefaultValue = "查看完整源码与部署说明"
-	toolsChangelogStatsTextDefaultValue     = "当前版本：3.0.6 全栈开源版 | 当前工具总数：334个 | 最后更新：2026-10-25"
 	toolsAiChatHeaderLinksDefaultJSON       = `[{"name":"AI学习平台","link":"https://www.uied.cn/"},{"name":"AI免费工具","link":"https://uiedtool.com"},{"name":"AI资讯热榜","link":"https://hot.uied.cn"},{"name":"AI工具导航","link":"https://hao.uied.cn/ai"},{"name":"AI交流群","link":"https://ai.feishu.cn/wiki/CUuaw5ooxiHAkckgtRkcn6rnnVQ?from=from_copylink"},{"name":"AI知识库","link":"https://ai.feishu.cn/wiki/ZjddwTFpWivK6ukwBoDc5DoHnVt?from=from_copylink"}]`
 	toolsAiCommonHeaderLinksDefaultJSON     = `[{"name":"每日免费分享最新AI资讯","link":"https://ai.feishu.cn/wiki/CIktwhQHni3FLwkllYac6Bm2ndb?from=from_copylink"},{"name":"AI学习平台","link":"https://www.uied.cn/"},{"name":"AI免费工具uiedtool.com","link":"https://uiedtool.com"},{"name":"AI资讯热榜hot.uied.cn","link":"https://hot.uied.cn"},{"name":"AI工具导航","link":"https://hao.uied.cn/ai"}]`
 	toolsFooterSupportLinksDefaultJSON      = `[{"name":"uiedtool.com","link":"https://uiedtool.com/"},{"name":"UIED技术团队","link":"https://fsuied.com"}]`
@@ -538,14 +535,8 @@ func (wSrv settingWebsiteService) Detail() (res map[string]string, e error) {
 		toolsChangelogIntroText = toolsChangelogIntroTextDefaultValue
 	}
 	toolsChangelogMetaLinks := normalizeToolsLayoutArrayConfig(data[toolsChangelogMetaLinksConfigName], toolsChangelogMetaLinksDefaultJSON)
-	toolsChangelogSplitTitle := strings.TrimSpace(data[toolsChangelogSplitTitleConfigName])
-	if toolsChangelogSplitTitle == "" {
-		toolsChangelogSplitTitle = toolsChangelogSplitTitleDefaultValue
-	}
-	toolsChangelogSplitDesc := strings.TrimSpace(data[toolsChangelogSplitDescConfigName])
-	if toolsChangelogSplitDesc == "" {
-		toolsChangelogSplitDesc = toolsChangelogSplitDescDefaultValue
-	}
+	toolsChangelogSplitTitle := defaults.NormalizeChangelogTitle(data[toolsChangelogSplitTitleConfigName])
+	toolsChangelogSplitDesc := defaults.NormalizeChangelogDescription(data[toolsChangelogSplitDescConfigName])
 	toolsChangelogSplitLink := strings.TrimSpace(data[toolsChangelogSplitLinkConfigName])
 	if toolsChangelogSplitLink == "" {
 		toolsChangelogSplitLink = toolsChangelogSplitLinkDefaultValue
@@ -554,14 +545,8 @@ func (wSrv settingWebsiteService) Detail() (res map[string]string, e error) {
 	if toolsChangelogSplitLinkText == "" {
 		toolsChangelogSplitLinkText = toolsChangelogSplitLinkTextDefaultValue
 	}
-	toolsChangelogStatsText := strings.TrimSpace(data[toolsChangelogStatsTextConfigName])
-	if toolsChangelogStatsText == "" {
-		toolsChangelogStatsText = toolsChangelogStatsTextDefaultValue
-	}
-	toolsChangelogStatsText = strings.ReplaceAll(toolsChangelogStatsText, "当前工具总数：333个", "当前工具总数：334个")
-	toolsChangelogTimeline := defaults.NormalizeToolsChangelogTimelineJSON(
-		normalizeToolsLayoutArrayConfig(data[toolsChangelogTimelineConfigName], defaults.GetToolsChangelogTimelineJSON()),
-	)
+	toolsChangelogStatsText := defaults.NormalizeChangelogStats(data[toolsChangelogStatsTextConfigName])
+	toolsChangelogTimeline := defaults.NormalizeToolsChangelogTimelineJSON(data[toolsChangelogTimelineConfigName])
 	toolsAiChatHeaderLinks := normalizeToolsLayoutArrayConfig(data[toolsAiChatHeaderLinksConfigName], toolsAiChatHeaderLinksDefaultJSON)
 	toolsAiCommonHeaderLinks := normalizeToolsLayoutArrayConfig(data[toolsAiCommonHeaderLinksConfigName], toolsAiCommonHeaderLinksDefaultJSON)
 	toolsFooterQuickSections := normalizeToolsLayoutArrayConfig(data[toolsFooterQuickSectionsConfigName], toolsFooterQuickSectionsDefaultJSON)
@@ -761,21 +746,8 @@ func buildWebsiteConfigUpdates(wsReq req.SettingWebsiteReq) []websiteConfigUpdat
 	appendUpdate(toolsChangelogSplitDescConfigName, wsReq.ToolsChangelogSplitDesc, strings.TrimSpace)
 	appendUpdate(toolsChangelogSplitLinkConfigName, wsReq.ToolsChangelogSplitLink, strings.TrimSpace)
 	appendUpdate(toolsChangelogSplitLinkTextConfigName, wsReq.ToolsChangelogSplitLinkText, strings.TrimSpace)
-	appendUpdate(toolsChangelogStatsTextConfigName, wsReq.ToolsChangelogStatsText, func(value string) string {
-		return strings.ReplaceAll(
-			strings.TrimSpace(value),
-			"当前工具总数：333个",
-			"当前工具总数：334个",
-		)
-	})
-	appendUpdate(toolsChangelogTimelineConfigName, wsReq.ToolsChangelogTimeline, func(value string) string {
-		return defaults.NormalizeToolsChangelogTimelineJSON(
-			normalizeToolsLayoutArrayConfig(
-				value,
-				defaults.GetToolsChangelogTimelineJSON(),
-			),
-		)
-	})
+	appendUpdate(toolsChangelogStatsTextConfigName, wsReq.ToolsChangelogStatsText, strings.TrimSpace)
+	appendUpdate(toolsChangelogTimelineConfigName, wsReq.ToolsChangelogTimeline, defaults.NormalizeToolsChangelogTimelineJSON)
 	appendUpdate(toolsAiChatHeaderLinksConfigName, wsReq.ToolsAiChatHeaderLinks, func(value string) string {
 		return normalizeToolsLayoutArrayConfig(value, toolsAiChatHeaderLinksDefaultJSON)
 	})

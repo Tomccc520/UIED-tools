@@ -85,10 +85,12 @@ const main = async () => {
     // 损坏文件留有可理解错误，并可移除；其余图片继续正常压缩。
     await input.setInputFiles({ name: 'broken.png', mimeType: 'image/png', buffer: Buffer.from('not a PNG') })
     await page.locator('[data-smoke="image-compress-start"]').click()
-    await page.getByRole('alert').filter({ hasText: '图片可能已损坏' }).waitFor()
+    const brokenFileError = page.locator('[data-smoke="image-compress-file"]').filter({ hasText: 'broken.png' })
+      .getByRole('alert').filter({ hasText: 'PNG 文件无法读取' })
+    await brokenFileError.waitFor()
     await page.getByRole('button', { name: '移除 broken.png', exact: true }).click()
     assert.equal(await page.locator('[data-smoke="image-compress-file"]').count(), 3)
-    assert.equal(await page.getByRole('alert').filter({ hasText: '图片可能已损坏' }).count(), 0)
+    assert.equal(await brokenFileError.count(), 0)
     for (const width of [320, 1440]) {
       await page.setViewportSize({ width, height: 1000 })
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), `${width}px 存在横向溢出`)

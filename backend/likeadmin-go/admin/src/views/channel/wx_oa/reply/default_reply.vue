@@ -162,7 +162,7 @@
                 </a-alert>
             </div>
 
-            <a-table
+            <a-table v-slot:columns
                 row-key="id"
                 :loading="pager.loading"
                 :pagination="false"

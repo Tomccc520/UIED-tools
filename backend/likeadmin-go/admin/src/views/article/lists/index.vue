@@ -61,7 +61,7 @@
                 </router-link>
             </div>
 
-            <a-table
+            <a-table v-slot:columns
                 :data="pager.lists"
                 :loading="pager.loading"
                 :pagination="false"

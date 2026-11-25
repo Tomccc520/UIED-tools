@@ -48,27 +48,27 @@
               <div class="space-y-4">
                 <div>
                   <label class="text-sm text-gray-600 mb-2 block">图片宽度 ({{ width }}px)</label>
-                  <el-input-number v-model="width" :min="50" :max="2000" :step="10" class="w-full" />
+                  <el-input-number v-model="width" :disabled="isProcessing" :min="50" :max="2000" :step="10" class="w-full" />
                 </div>
 
                 <div>
                   <label class="text-sm text-gray-600 mb-2 block">图片高度 ({{ height }}px)</label>
-                  <el-input-number v-model="height" :min="50" :max="2000" :step="10" class="w-full" />
+                  <el-input-number v-model="height" :disabled="isProcessing" :min="50" :max="2000" :step="10" class="w-full" />
                 </div>
 
                 <div>
                   <label class="text-sm text-gray-600 mb-2 block">每帧延迟 ({{ delay }}ms)</label>
-                  <el-slider v-model="delay" :min="50" :max="2000" :step="50" />
+                  <el-slider v-model="delay" :disabled="isProcessing" :min="50" :max="2000" :step="50" />
                 </div>
 
                 <div>
                   <label class="text-sm text-gray-600 mb-2 block">画质 (1-10, 10为最佳)</label>
-                  <el-slider v-model="quality" :min="1" :max="10" :step="1" />
+                  <el-slider v-model="quality" :disabled="isProcessing" :min="1" :max="10" :step="1" />
                 </div>
 
                 <div>
                   <label class="text-sm text-gray-600 mb-2 block">循环播放</label>
-                  <el-switch v-model="loop" active-text="开启" inactive-text="关闭" />
+                  <el-switch v-model="loop" :disabled="isProcessing" active-text="开启" inactive-text="关闭" />
                 </div>
               </div>
             </div>
@@ -156,6 +156,7 @@ import draggable from 'vuedraggable'
 import ToolsRecommend from '@/components/Common/ToolsRecommend.vue'
 import FileUploadZone from '@/components/Common/FileUploadZone.vue'
 import GIF from 'gif.js'
+import { disposeVideoGifEncoder, VIDEO_GIF_JOB_TIMEOUT_MS, type VideoGifEncoder } from '../Video/VideoToGif/videoToGifJob'
 
 const route = useRoute()
 
@@ -166,7 +167,7 @@ const info = {
 
 interface ImageFile {
   id: string
-  file: File
+  image: HTMLImageElement
   name: string
   size: number
   url: string
@@ -176,7 +177,6 @@ interface ImageFile {
 
 interface ImageLoadTask {
   item: ImageFile
-  image: HTMLImageElement
   settled: boolean
   loaded: boolean
   timer: ReturnType<typeof setTimeout> | null
@@ -192,6 +192,8 @@ const isLoading = computed(() => pendingCount.value > 0)
 const IMAGE_LOAD_TIMEOUT_MS = 30_000
 let pendingUploads: ImageLoadTask[] = []
 let isDisposed = false
+let activeEncoder: VideoGifEncoder | null = null
+let encodingTimer: ReturnType<typeof setTimeout> | undefined
 
 // 设置
 const width = ref(400)
@@ -206,6 +208,8 @@ const clearPreview = () => {
   previewUrl.value = ''
 }
 
+watch([width, height, quality, delay, loop], clearPreview)
+
 /** 图片增删或顺序变化后统一撤销预览，覆盖按钮排序与拖拽排序。 */
 watch(() => fileList.value.map(item => item.id), (currentIds, previousIds) => {
   if (currentIds.length === previousIds.length && currentIds.every((id, index) => id === previousIds[index])) return
@@ -213,12 +217,12 @@ watch(() => fileList.value.map(item => item.id), (currentIds, previousIds) => {
 })
 
 /** 释放单张图片的解码监听和计时器，终止继续解码；图片地址由队列或帧列表持有。 */
-const releaseImageDecoder = (task: ImageLoadTask) => {
+const releaseImageDecoder = (task: ImageLoadTask, discardImage = true) => {
   if (task.timer !== null) clearTimeout(task.timer)
   task.timer = null
-  task.image.onload = null
-  task.image.onerror = null
-  task.image.src = ''
+  task.item.image.onload = null
+  task.item.image.onerror = null
+  if (discardImage) task.item.image.src = ''
 }
 
 /** 按预留的选择位置提交已完成的连续帧；失败帧跳过，首个成功帧决定默认画布。 */
@@ -241,9 +245,9 @@ const finishImageLoad = (task: ImageLoadTask, errorMessage?: string) => {
   if (task.settled || isDisposed) return
   task.settled = true
   task.loaded = !errorMessage
-  task.item.width = task.image.width
-  task.item.height = task.image.height
-  releaseImageDecoder(task)
+  task.item.width = task.item.image.width
+  task.item.height = task.item.image.height
+  releaseImageDecoder(task, !task.loaded)
   if (errorMessage) {
     URL.revokeObjectURL(task.item.url)
     ElMessage.error(errorMessage)
@@ -269,17 +273,17 @@ const processFiles = (files: File[]) => {
   const batch = files.map(file => ({
     item: {
       id: Math.random().toString(36).slice(2, 11),
-      file, name: file.name, size: file.size, url: URL.createObjectURL(file), width: 0, height: 0
+      image: new Image(), name: file.name, size: file.size, url: URL.createObjectURL(file), width: 0, height: 0
     },
-    image: new Image(), settled: false, loaded: false, timer: null
+    settled: false, loaded: false, timer: null
   } as ImageLoadTask))
   pendingUploads.push(...batch)
   pendingCount.value = pendingUploads.length
   for (const task of batch) {
-    task.image.onload = () => finishImageLoad(task)
-    task.image.onerror = () => finishImageLoad(task, `图片“${task.item.name}”读取失败，已跳过`)
+    task.item.image.onload = () => finishImageLoad(task)
+    task.item.image.onerror = () => finishImageLoad(task, `图片“${task.item.name}”读取失败，已跳过`)
     task.timer = setTimeout(() => finishImageLoad(task, `图片“${task.item.name}”读取超时，已跳过，请重新上传`), IMAGE_LOAD_TIMEOUT_MS)
-    task.image.src = task.item.url
+    task.item.image.src = task.item.url
   }
 }
 
@@ -327,32 +331,33 @@ const formatSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
-/** 使用当前帧顺序生成 GIF；上传队列结算前禁止开始编码。 */
-const generatePreview = async () => {
-  if (fileList.value.length === 0 || isLoading.value || isProcessing.value) return
+/** 释放本次编码的活动与空闲线程，同时使迟到的事件失效。 */
+const stopEncoding = () => {
+  const encoder = activeEncoder
+  activeEncoder = null
+  clearTimeout(encodingTimer)
+  if (encoder) disposeVideoGifEncoder(encoder)
+  isProcessing.value = false
+}
 
+/** 使用入队时已解码的图片生成 GIF，失败或离开页面时释放编码器。 */
+const generatePreview = () => {
+  if (!fileList.value.length || isLoading.value || isProcessing.value) return
+  clearPreview()
   isProcessing.value = true
   progress.value = 0
 
   try {
-    const gif = new GIF({
+    const options = {
       workers: 2,
-      quality: quality.value,
+      quality: 11 - quality.value,
       width: width.value,
       height: height.value,
       workerScript: '/workers/gif.worker.js',
       repeat: loop.value ? 0 : -1
-    } as any)
-
-    // 加载所有图片
-    const images = await Promise.all(fileList.value.map(item => {
-      return new Promise<HTMLImageElement>((resolve) => {
-        const img = new Image()
-        img.crossOrigin = 'anonymous'
-        img.onload = () => resolve(img)
-        img.src = item.url
-      })
-    }))
+    }
+    const gif: VideoGifEncoder = new GIF(options)
+    activeEncoder = gif
 
     // 添加帧
     const canvas = document.createElement('canvas')
@@ -361,7 +366,7 @@ const generatePreview = async () => {
     const ctx = canvas.getContext('2d')
     if (!ctx) throw new Error('Canvas not supported')
 
-    images.forEach(img => {
+    fileList.value.forEach(({ image: img }) => {
       // 清空画布
       ctx.fillStyle = '#ffffff'
       ctx.fillRect(0, 0, width.value, height.value)
@@ -379,22 +384,33 @@ const generatePreview = async () => {
     })
 
     gif.on('progress', (p: number) => {
-      progress.value = Math.round(p * 100)
+      if (activeEncoder === gif) progress.value = Math.round(p * 100)
     })
 
     gif.on('finished', (blob: Blob) => {
-      if (previewUrl.value) URL.revokeObjectURL(previewUrl.value)
+      if (activeEncoder !== gif) return
+      stopEncoding()
       previewUrl.value = URL.createObjectURL(blob)
-      isProcessing.value = false
       ElMessage.success('GIF 生成成功')
     })
 
+    /** 处理线程加载失败和超时，允许用户修改参数并重试。 */
+    const failEncoding = () => {
+      if (activeEncoder !== gif) return
+      stopEncoding()
+      ElMessage.error('GIF 编码未完成，请重试或减少帧数和尺寸')
+    }
+    encodingTimer = setTimeout(failEncoding, VIDEO_GIF_JOB_TIMEOUT_MS)
     gif.render()
+    for (const worker of [...(gif.activeWorkers || []), ...(gif.freeWorkers || [])]) {
+      worker.addEventListener('error', failEncoding, { once: true })
+      worker.addEventListener('messageerror', failEncoding, { once: true })
+    }
 
   } catch (error) {
     console.error('生成 GIF 失败:', error)
+    stopEncoding()
     ElMessage.error('生成 GIF 失败，请重试')
-    isProcessing.value = false
   }
 }
 
@@ -412,6 +428,7 @@ const downloadGif = () => {
 
 onUnmounted(() => {
   isDisposed = true
+  stopEncoding()
   clearAll()
 })
 </script>

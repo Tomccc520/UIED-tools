@@ -139,9 +139,9 @@ func NewCopywritingService(db *gorm.DB) ICopywritingService {
 
 // Yiyan 函数说明：获取随机一言，上游不可用时自动返回本地精选语录。
 func (s *copywritingService) Yiyan(ctx context.Context) (CopywritingTextResult, error) {
-	text, err := s.fetchText(ctx, copywritingYiyanUpstreams)
-	if err == nil && text != "" {
-		return CopywritingTextResult{Text: text, Source: "upstream"}, nil
+	result, err := s.fetchResultWithTimeout(ctx, copywritingYiyanUpstreams, copywritingRequestTimeout, parseCopywritingResult)
+	if err == nil {
+		return CopywritingTextResult{Text: result.Text, Source: "upstream"}, nil
 	}
 	return CopywritingTextResult{Text: randomCopywritingFallback(copywritingYiyanFallbacks), Source: "fallback"}, nil
 }
@@ -160,7 +160,7 @@ func (s *copywritingService) Random(ctx context.Context, kind string) (Copywriti
 		return CopywritingTextResult{}, errors.New("不支持的文案类型")
 	}
 
-	result, err := s.fetchResultWithTimeout(ctx, config.upstreams, copywritingRequestTimeout)
+	result, err := s.fetchResultWithTimeout(ctx, config.upstreams, copywritingRequestTimeout, parseCopywritingResult)
 	if err == nil && result.Text != "" {
 		result.Source = "upstream"
 		return result, nil
@@ -193,29 +193,41 @@ func (s *copywritingService) Translate(ctx context.Context, text string) (Copywr
 		copywritingTranslateUpstreams[0] + "?" + primaryQuery.Encode(),
 		copywritingTranslateUpstreams[1] + "?" + backupQuery.Encode(),
 	}
-	translated, err := s.fetchTextWithTimeout(ctx, upstreams, copywritingTranslateRequestTimeout)
-	if err != nil || translated == "" {
-		if err == nil {
-			err = errors.New("翻译接口未返回有效内容")
-		}
-		return CopywritingTranslationResult{}, err
+	result, err := s.fetchResultWithTimeout(ctx, upstreams, copywritingTranslateRequestTimeout, parseTranslationResult)
+	if err != nil {
+		return CopywritingTranslationResult{}, errors.New("暂时无法获取译文，请重试")
 	}
-	return CopywritingTranslationResult{Text: translated}, nil
+	return CopywritingTranslationResult{Text: result.Text}, nil
 }
 
-// fetchText 函数说明：按固定顺序尝试上游地址，统一处理超时、非成功状态和响应体大小限制。
-func (s *copywritingService) fetchText(ctx context.Context, upstreams []string) (string, error) {
-	return s.fetchTextWithTimeout(ctx, upstreams, copywritingRequestTimeout)
-}
-
-// fetchTextWithTimeout 函数说明：在给定的整体时限内按顺序请求上游，为关键接口预留备用源切换时间。
-func (s *copywritingService) fetchTextWithTimeout(ctx context.Context, upstreams []string, timeout time.Duration) (string, error) {
-	result, err := s.fetchResultWithTimeout(ctx, upstreams, timeout)
-	return result.Text, err
+// parseTranslationResult 校验翻译源的业务状态，仅从 SuAPI 和 MyMemory 约定的译文字段读取正文。
+func parseTranslationResult(body []byte) CopywritingTextResult {
+	var payload struct {
+		Code *json.Number `json:"code"`
+		Data []struct {
+			Translations []struct {
+				Text string `json:"text"`
+			} `json:"translations"`
+		} `json:"data"`
+		ResponseStatus *json.Number `json:"responseStatus"`
+		ResponseData   struct {
+			Text string `json:"translatedText"`
+		} `json:"responseData"`
+	}
+	if json.Unmarshal(body, &payload) != nil ||
+		(payload.Code != nil && payload.Code.String() != "200") ||
+		(payload.ResponseStatus != nil && payload.ResponseStatus.String() != "200") {
+		return CopywritingTextResult{}
+	}
+	text := payload.ResponseData.Text
+	if len(payload.Data) > 0 && len(payload.Data[0].Translations) > 0 {
+		text = payload.Data[0].Translations[0].Text
+	}
+	return CopywritingTextResult{Text: normalizeCopywritingText(text)}
 }
 
 // fetchResultWithTimeout 函数说明：在限定时间内请求白名单上游，同时保留诗词标题、作者和音乐来源等可选元数据。
-func (s *copywritingService) fetchResultWithTimeout(ctx context.Context, upstreams []string, timeout time.Duration) (CopywritingTextResult, error) {
+func (s *copywritingService) fetchResultWithTimeout(ctx context.Context, upstreams []string, timeout time.Duration, parse func([]byte) CopywritingTextResult) (CopywritingTextResult, error) {
 	if s == nil || s.client == nil {
 		return CopywritingTextResult{}, errors.New("文案服务 HTTP 客户端未初始化")
 	}
@@ -229,7 +241,7 @@ func (s *copywritingService) fetchResultWithTimeout(ctx context.Context, upstrea
 			lastErr = err
 			continue
 		}
-		if result := parseCopywritingResult(body); result.Text != "" {
+		if result := parse(body); result.Text != "" {
 			return result, nil
 		}
 		lastErr = errors.New("上游未返回有效文案")
@@ -336,7 +348,7 @@ func parseCopywritingResponse(body []byte) string {
 	if json.Unmarshal([]byte(raw), &payload) == nil {
 		return extractCopywritingText(payload)
 	}
-	return normalizeCopywritingText(raw)
+	return parsePlainCopywritingText([]byte(raw))
 }
 
 // extractCopywritingText 函数说明：优先读取文案字段，再递归处理 data 嵌套对象和数组。
@@ -351,6 +363,14 @@ func extractCopywritingText(payload interface{}) string {
 			}
 		}
 	case map[string]interface{}:
+		if code, ok := value["code"]; ok {
+			// 兼容旧接口的成功码 0、1、200，业务异常时不要把 msg 混入用户文案。
+			switch fmt.Sprint(code) {
+			case "0", "1", "200":
+			default:
+				return ""
+			}
+		}
 		for _, key := range []string{"text", "translatedText", "hitokoto", "content", "sentence", "wenan", "dujitang", "pyq", "translations", "responseData", "data"} {
 			if item, ok := value[key]; ok {
 				if text := extractCopywritingText(item); text != "" {
@@ -380,7 +400,7 @@ func normalizeCopywritingText(raw string) string {
 // isCopywritingStatusText 函数说明：过滤上游把状态信息误放在 msg 字段时的无效文案。
 func isCopywritingStatusText(text string) bool {
 	switch strings.ToLower(strings.TrimSpace(text)) {
-	case "ok", "success", "成功", "请求成功", "操作成功":
+	case "ok", "success", "成功", "请求成功", "操作成功", "获取成功":
 		return true
 	default:
 		return false

@@ -46,7 +46,7 @@
                 </a-form-item>
             </a-form>
             <div class="m-4">
-                <a-table
+                <a-table v-slot:columns
                     :data="pager.lists"
                     :loading="pager.loading"
                     :pagination="false"

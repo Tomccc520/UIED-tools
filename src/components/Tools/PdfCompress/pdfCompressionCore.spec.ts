@@ -10,6 +10,7 @@ import { PDFDocument, PDFName, PDFString, StandardFonts } from 'pdf-lib'
 import createQpdf from '@neslinesli93/qpdf-wasm'
 import * as pdfjs from 'pdfjs-dist'
 import { compressPdfStructureWithRuntime } from './pdfCompressionCore'
+import { optimizeEmbeddedPdfImages } from './pdfImageCompression'
 
 const dependenciesPath = `${globalThis.process.cwd()}/node_modules`
 
@@ -70,4 +71,22 @@ describe('PDF 结构压缩真实 WASM 验证', () => {
   it('损坏的 PDF 不会返回伪成功产物', async () => {
     await expect(compress(new TextEncoder().encode('not a valid PDF'))).rejects.toThrow('PDF 压缩失败')
   }, 30000)
+
+  it('签名字典和 XFA 表单触发原文件保护', async () => {
+    for (const protectedField of [
+      { Type: 'DocTimeStamp', ByteRange: [0, 100, 200, 300], Contents: PDFString.of('placeholder') },
+      { XFA: PDFString.of('dynamic form') }
+    ]) {
+      const doc = await PDFDocument.load(await fixture())
+      const dictionary = doc.context.obj(protectedField)
+      doc.catalog.set(PDFName.of('ProtectedFixture'), doc.context.register(dictionary))
+      const source = await doc.save()
+      for (const mode of ['balanced', 'structure'] as const) {
+        const result = await optimizeEmbeddedPdfImages(source, mode)
+        expect(result.notice).toBe('protected')
+        expect(result.data).toBe(source)
+        expect(result.images).toBe(0)
+      }
+    }
+  })
 })

@@ -9,10 +9,14 @@ import { defineComponent } from 'vue'
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import ImageToGif from './ImageToGif.vue'
 
-const mocks = vi.hoisted(() => ({ finished: null as null | ((blob: Blob) => void), render: vi.fn(), error: vi.fn() }))
+const mocks = vi.hoisted(() => ({ finished: null as null | ((blob: Blob) => void), render: vi.fn(), options: vi.fn(), abort: vi.fn(), error: vi.fn() }))
 vi.mock('vue-router', () => ({ useRoute: () => ({ path: '/tools/image-to-gif' }) }))
 vi.mock('element-plus', () => ({ ElMessage: { success: vi.fn(), error: mocks.error } }))
 vi.mock('gif.js', () => ({ default: class {
+  /** 记录界面设置映射到编码器的实际采样参数。 */
+  constructor(options: unknown) { mocks.options(options) }
+  /** 记录任务是否结束并释放。 */
+  abort() { mocks.abort() }
   /** 测试仅替换编码器，保留页面上传、排序与下载交互。 */
   addFrame() {}
   /** 保存完成回调，让测试明确控制编码结束时机。 */
@@ -271,6 +275,29 @@ describe('图片合成 GIF 的排序预览一致性', () => {
     await flushPromises()
     expect(findButton('下载GIF').attributes('disabled')).toBeDefined()
     expect(view!.find('.image-gif-preview img').exists()).toBe(false)
+  })
+
+  it('高画质对应密集采样，修改尺寸会撤销旧 GIF 下载', async () => {
+    await createPreview()
+    expect(mocks.options).toHaveBeenCalledWith(expect.objectContaining({ quality: 1 }))
+    view!.findComponent({ name: 'ElInputNumber' }).vm.$emit('update:modelValue', 250)
+    await flushPromises()
+    expect(findButton('下载GIF').attributes('disabled')).toBeDefined()
+  })
+
+  it('编码未回包时限时恢复，迟到结果不能重新启用下载', async () => {
+    vi.useFakeTimers()
+    mountPage()
+    await uploadFiles(['timeout.png'])
+    await findButton('预览GIF').trigger('click')
+    const complete = mocks.finished!
+    await vi.advanceTimersByTimeAsync(120_000)
+    complete(new Blob(['late'], { type: 'image/gif' }))
+    await flushPromises()
+    expect(mocks.abort).toHaveBeenCalled()
+    expect(mocks.error).toHaveBeenCalledWith(expect.stringContaining('编码未完成'))
+    expect(findButton('预览GIF').attributes('disabled')).toBeUndefined()
+    expect(findButton('下载GIF').attributes('disabled')).toBeDefined()
   })
 
   it('正在生成时锁定拖拽和顺序按钮，防止结果顺序在编码期间变化', async () => {

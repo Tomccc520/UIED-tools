@@ -210,26 +210,23 @@ const defaultFormData = (): ToolRankingConfigDetail => ({
 const formData = reactive<ToolRankingConfigDetail>(defaultFormData())
 
 /**
- * 函数说明：构建榜单配置快照，供未保存状态判断与离开提醒使用。
+ * 函数说明：生成本次要发送的配置；草稿比较和写入使用同一套字段归一化。
  */
-const buildSnapshot = (): string =>
-    JSON.stringify({
-        enabled: Number(formData.enabled || 0),
-        pageTitle: String(formData.pageTitle || '').trim(),
-        pageDescription: String(formData.pageDescription || '').trim(),
-        defaultPeriod: String(formData.defaultPeriod || 'week').trim(),
-        pageLimit: Number(formData.pageLimit || 12),
-        showOnSidebar: Number(formData.showOnSidebar || 0),
-        sidebarTitle: String(formData.sidebarTitle || '').trim(),
-        sidebarPeriod: String(formData.sidebarPeriod || 'week').trim()
-    })
+const buildPayload = (): ToolRankingConfigDetail => ({
+    enabled: Number(formData.enabled || 0),
+    pageTitle: String(formData.pageTitle || '').trim(),
+    pageDescription: String(formData.pageDescription || '').trim(),
+    defaultPeriod: formData.defaultPeriod,
+    pageLimit: Math.min(20, Math.max(1, Number(formData.pageLimit) || 12)),
+    showOnSidebar: Number(formData.showOnSidebar || 0),
+    sidebarTitle: String(formData.sidebarTitle || '').trim(),
+    sidebarPeriod: formData.sidebarPeriod
+})
 
 /**
- * 函数说明：更新榜单配置页面基线快照，供未保存状态比较使用。
+ * 函数说明：序列化当前草稿，供未保存状态比较使用。
  */
-const updateBaselineSnapshot = () => {
-    baselineSnapshot.value = buildSnapshot()
-}
+const buildSnapshot = (): string => JSON.stringify(buildPayload())
 
 /**
  * 函数说明：收集榜单配置校验提示，统一输出给运营折叠工作区。
@@ -275,19 +272,16 @@ const resolvePeriodLabel = (period: ToolRankingPeriod): string =>
 /**
  * 函数说明：将接口返回配置写入页面表单，避免直接替换响应式对象。
  */
-const patchFormData = (payload: Partial<ToolRankingConfigDetail>) => {
-    const nextData = {
-        ...defaultFormData(),
-        ...(payload || {})
+const patchFormData = (detail: ToolRankingConfigDetail) => {
+    if (!detail || ![0, 1].includes(detail.enabled) || ![0, 1].includes(detail.showOnSidebar)
+        || !Number.isFinite(detail.pageLimit)
+        || typeof detail.pageTitle !== 'string' || typeof detail.pageDescription !== 'string'
+        || typeof detail.sidebarTitle !== 'string'
+        || !periodOptions.some(item => item.value === detail.defaultPeriod)
+        || !periodOptions.some(item => item.value === detail.sidebarPeriod)) {
+        throw new Error('榜单配置响应不完整')
     }
-    formData.enabled = Number(nextData.enabled || 0) === 1 ? 1 : 0
-    formData.pageTitle = String(nextData.pageTitle || '').trim()
-    formData.pageDescription = String(nextData.pageDescription || '').trim()
-    formData.defaultPeriod = (String(nextData.defaultPeriod || 'week').trim() || 'week') as ToolRankingPeriod
-    formData.pageLimit = Math.min(20, Math.max(1, Number(nextData.pageLimit || 12) || 12))
-    formData.showOnSidebar = Number(nextData.showOnSidebar || 0) === 1 ? 1 : 0
-    formData.sidebarTitle = String(nextData.sidebarTitle || '').trim()
-    formData.sidebarPeriod = (String(nextData.sidebarPeriod || 'week').trim() || 'week') as ToolRankingPeriod
+    Object.assign(formData, detail)
 }
 
 const { isLoadingData, hasLoadedData, loadErrorMessage, loadConfiguration, reloadConfiguration } = useConfigLoad(hasUnsavedChanges)
@@ -298,7 +292,7 @@ const loadData = async () => {
     return loadConfiguration(async () => {
         const detail = await getToolRankingConfigDetail()
         patchFormData(detail)
-        updateBaselineSnapshot()
+        baselineSnapshot.value = buildSnapshot()
     })
 }
 
@@ -335,17 +329,9 @@ const goManagePage = () => {
 const handleSubmit = async () => {
     if (isLoadingData.value || !hasLoadedData.value || loadErrorMessage.value || isSubmitting.value) return
     const passed = await runSubmit(async () => {
-        await saveToolRankingConfigDetail({
-            enabled: formData.enabled,
-            pageTitle: String(formData.pageTitle || '').trim(),
-            pageDescription: String(formData.pageDescription || '').trim(),
-            defaultPeriod: formData.defaultPeriod,
-            pageLimit: Math.min(20, Math.max(1, Number(formData.pageLimit || 12) || 12)),
-            showOnSidebar: formData.showOnSidebar,
-            sidebarTitle: String(formData.sidebarTitle || '').trim(),
-            sidebarPeriod: formData.sidebarPeriod
-        })
-        updateBaselineSnapshot()
+        const payload = buildPayload()
+        await saveToolRankingConfigDetail(payload)
+        baselineSnapshot.value = JSON.stringify(payload)
     })
     if (passed) {
         void appStore.getConfig()

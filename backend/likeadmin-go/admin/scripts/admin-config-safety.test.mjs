@@ -60,7 +60,7 @@ const createRankingPage = () => {
         saveToolRankingConfigDetail: async (payload) => { calls.saves.push({ ...payload }); await io.save() },
         onMounted: () => {},
         onBeforeRouteLeave: () => {}
-    }, ['loadData', 'reloadRankingConfig', 'handleSubmit', 'formData'])
+    }, ['loadData', 'reloadRankingConfig', 'handleSubmit', 'formData', 'hasUnsavedChanges'])
     return { page, io, calls, feedback }
 }
 
@@ -176,4 +176,33 @@ test('取消重新加载不会丢失未保存编辑，确认后才读取最新�
     assert.equal(calls.read, 2)
     assert.equal(calls.confirm, 2)
     assert.equal(page.formData.pageTitle, '实际已保存的榜单')
+})
+
+
+test('热榜读取到残缺对象不能放行保存或覆盖既有草稿', async () => {
+    const { page, io, calls } = createRankingPage()
+    await page.loadData()
+    page.formData.pageTitle = '保留的草稿'
+    io.read = async () => ({ enabled: 1 })
+    assert.equal(await page.loadData(), false)
+    await page.handleSubmit()
+    assert.equal(calls.saves.length, 0)
+    assert.equal(page.formData.pageTitle, '保留的草稿')
+})
+
+test('热榜保存只确认已发送的字段，保存期间新草稿继续提示并可再次保存', async () => {
+    const { page, io, calls } = createRankingPage()
+    await page.loadData()
+    page.formData.pageTitle = '第一版'
+    const pending = deferred()
+    io.save = () => pending.promise
+    const first = page.handleSubmit()
+    page.formData.pageTitle = '第二版'
+    pending.resolve()
+    await first
+    assert.equal(calls.saves[0].pageTitle, '第一版')
+    assert.equal(page.hasUnsavedChanges.value, true)
+    await page.handleSubmit()
+    assert.equal(calls.saves[1].pageTitle, '第二版')
+    assert.equal(page.hasUnsavedChanges.value, false)
 })

@@ -9,7 +9,7 @@
 <template>
     <div>
         <a-card class="!border-none" :bordered="false">
-            <a-table
+            <a-table v-slot:columns
                 :loading="state.loading"
                 :data="state.lists"
                 :pagination="false"

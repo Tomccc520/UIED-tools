@@ -9,55 +9,42 @@
 <template>
     <div class="storage">
         <a-card class="!border-none" :bordered="false">
-            <a-alert
-                type="warning"
-                :closable="false"
-                show-icon
-                banner
-                title="温馨提示：1.切换存储方式后，需要将资源文件传输至新的存储端；2.请勿随意切换存储方式，可能导致图片无法查看"
-            />
+            <a-alert type="info" :closable="false" show-icon>
+                当前上传服务使用本地存储，文件保存在服务器的上传目录中。
+            </a-alert>
         </a-card>
 
         <a-card class="!border-none mt-4" :bordered="false">
-            <a-spin :loading="state.loading" class="w-full">
-                <a-table :data="state.lists" :pagination="false" :bordered="false" row-key="alias">
-                    <a-table-column title="储存方式" data-index="alias" :width="160" />
-                    <a-table-column title="储存位置" data-index="describe" :min-width="220" />
+            <a-alert v-if="state.loadError" type="error" :closable="false">
+                存储方式读取失败，请重试。
+                <template #action><a-button size="small" @click="getLists">重新读取</a-button></template>
+            </a-alert>
+            <a-spin v-else :loading="state.loading" class="w-full">
+                <a-table v-slot:columns :data="state.lists" :pagination="false" :bordered="false" row-key="alias">
+                    <a-table-column title="存储方式" data-index="name" :width="160" />
+                    <a-table-column title="存储位置" data-index="describe" :min-width="220" />
                     <a-table-column title="状态" :width="100">
                         <template #cell="{ record }">
                             <a-tag v-if="record.status == 1" color="green">开启</a-tag>
                             <a-tag v-else color="red">关闭</a-tag>
                         </template>
                     </a-table-column>
-                    <a-table-column title="操作" :width="100" fixed="right">
-                        <template #cell="{ record }">
-                            <a-button
-                                v-perms="['setting:storage:edit']"
-                                type="text"
-                                @click="handleSet(record.alias)"
-                            >
-                                设置
-                            </a-button>
-                        </template>
-                    </a-table-column>
                 </a-table>
             </a-spin>
         </a-card>
 
-        <edit-popup ref="editRef" @success="getLists" />
     </div>
 </template>
 
 <script lang="ts" setup name="storage">
 import { storageLists } from '@/api/setting/storage'
-import EditPopup from './edit.vue'
-
-const editRef = shallowRef<InstanceType<typeof EditPopup>>()
 
 const state = reactive<{
+    loadError: boolean
     loading: boolean
     lists: Record<string, any>[]
 }>({
+    loadError: false,
     loading: false,
     lists: []
 })
@@ -66,19 +53,18 @@ const state = reactive<{
  * 函数说明：获取存储引擎列表数据
  */
 const getLists = async () => {
+    if (state.loading) return
+    state.loadError = false
     state.loading = true
     try {
-        state.lists = (await storageLists()) || []
+        const lists = await storageLists()
+        if (!Array.isArray(lists)) throw new Error('存储列表响应格式错误')
+        state.lists = lists
+    } catch {
+        state.loadError = true
     } finally {
         state.loading = false
     }
-}
-
-/**
- * 函数说明：打开指定存储引擎的配置弹窗
- */
-const handleSet = (alias: string) => {
-    editRef.value?.open(alias)
 }
 
 getLists()
